@@ -1,9 +1,10 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Bell, LogOut } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
+import { useSidebar } from "@/components/layout/sidebar-provider";
 
 export function Header({
   userName,
@@ -12,26 +13,41 @@ export function Header({
   userName?: string | null;
   userImage?: string | null;
 }) {
+  const { toggle } = useSidebar();
+
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/10 bg-black/40 px-6 backdrop-blur-xl lg:pl-72">
-      <div className="pl-12 lg:pl-0 flex items-center gap-3 min-w-0">
-        <UserAvatar src={userImage} name={userName} size="sm" />
-        <div className="min-w-0">
-          <p className="text-sm text-zinc-500">Willkommen zurück</p>
-          <p className="font-semibold text-white truncate">{userName ?? "Athlet"}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" aria-label="Benachrichtigungen">
-          <Bell className="h-5 w-5" />
+    <header className="mobile-app-header sticky top-0 z-30 border-b border-white/10 bg-zinc-950/90 backdrop-blur-xl transform-gpu">
+      <div className="mobile-app-frame flex h-14 items-center justify-between gap-2 px-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-11 w-11 shrink-0 rounded-xl"
+          onClick={toggle}
+          aria-label="Menü öffnen"
+        >
+          <Menu className="h-6 w-6" />
         </Button>
+
+        <Link
+          href="/profile"
+          prefetch
+          className="flex flex-1 justify-center min-w-0 active:opacity-80"
+          aria-label="Profil öffnen"
+        >
+          <UserAvatar src={userImage} name={userName} size="md" />
+        </Link>
+
         <Button
           variant="ghost"
-          size="sm"
-          onClick={() => signOut({ callbackUrl: "/" })}
+          size="icon"
+          className="h-11 w-11 shrink-0 rounded-xl"
+          aria-label="Benachrichtigungen"
+          asChild
         >
-          <LogOut className="h-4 w-4" />
-          Abmelden
+          <Link href="/settings#benachrichtigungen" prefetch>
+            <Bell className="h-5 w-5" />
+          </Link>
         </Button>
       </div>
     </header>

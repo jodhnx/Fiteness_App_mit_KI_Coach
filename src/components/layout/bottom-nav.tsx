@@ -31,7 +31,7 @@ export const BottomNav = memo(function BottomNav() {
       className="fixed bottom-0 left-0 right-0 z-50 lg:hidden border-t border-white/10 bg-zinc-950/98 backdrop-blur-xl safe-area-pb transform-gpu"
       aria-label="Hauptnavigation"
     >
-      <div className="mobile-app-frame flex items-stretch justify-between px-1 pt-1 pb-1.5">
+      <div className="mx-auto w-full max-w-[430px] flex items-stretch justify-between px-1 pt-1 pb-1.5">
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isNavActive(pathname, href);
           return (

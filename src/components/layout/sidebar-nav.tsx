@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { memo, useState, useCallback } from "react";
+import { memo, useCallback } from "react";
 import {
   Home,
   Dumbbell,
@@ -11,7 +11,6 @@ import {
   Bot,
   User,
   Shield,
-  Menu,
   X,
   TrendingUp,
   Target,
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isNavActive } from "@/lib/nav-active";
+import { useSidebar } from "@/components/layout/sidebar-provider";
 
 const PRIMARY_NAV = [
   { href: "/home", label: "Home", icon: Home },
@@ -70,30 +70,35 @@ const NavLink = memo(function NavLink({
 
 export const SidebarNav = memo(function SidebarNav({ isAdmin }: { isAdmin?: boolean }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const close = useCallback(() => setOpen(false), []);
+  const { open, setOpen } = useSidebar();
+  const close = useCallback(() => setOpen(false), [setOpen]);
 
   const isActive = (href: string) => isNavActive(pathname, href);
 
   return (
     <>
-      <button
-        type="button"
-        className="fixed left-4 top-4 z-50 rounded-xl bg-zinc-900/90 border border-white/10 p-2 hidden lg:flex"
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Menü"
-      >
-        {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-      </button>
       {open && (
-        <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={close} />
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]"
+          onClick={close}
+          aria-hidden
+        />
       )}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r border-white/10 bg-zinc-950/98 p-5 backdrop-blur-xl transition-transform duration-150 lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          "fixed left-0 top-0 z-50 flex h-full w-[min(18rem,85vw)] flex-col border-r border-white/10 bg-zinc-950/98 p-5 pt-[calc(1rem+env(safe-area-inset-top))] backdrop-blur-xl transition-transform duration-200 ease-out",
+          open ? "translate-x-0" : "-translate-x-full"
         )}
+        aria-hidden={!open}
       >
+        <button
+          type="button"
+          className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] rounded-lg p-2 text-zinc-400 hover:text-white"
+          onClick={close}
+          aria-label="Menü schließen"
+        >
+          <X className="h-5 w-5" />
+        </button>
         <div className="mb-6 px-1">
           <Link href="/home" prefetch className="block" onClick={close}>
             <span className="text-xl font-bold text-white tracking-tight">

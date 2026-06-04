@@ -144,10 +144,8 @@ body {
   margin-right: auto;
 }
 
-@media (min-width: 1024px) {
-  .mobile-app-frame {
-    max-width: 56rem;
-  }
+.mobile-app-header {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
 }
 
 .safe-top {

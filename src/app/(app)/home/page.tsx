@@ -25,14 +25,7 @@ import { HomeChallengesRow } from "@/components/home/home-challenges-row";
 import { HomeBodyCard } from "@/components/home/home-body-card";
 import { HomeAchievementsCard } from "@/components/home/home-achievements-card";
 import { HomeCoachRecommendations } from "@/components/home/home-coach-recommendations";
-import { UserAvatar } from "@/components/user/user-avatar";
-
-function greeting(name?: string | null) {
-  const h = new Date().getHours();
-  const part = h < 12 ? "Morgen" : h < 18 ? "Tag" : "Abend";
-  const first = name?.trim().split(/\s+/)[0];
-  return first ? `Guten ${part}, ${first}` : `Guten ${part}`;
-}
+import { HomeGreeting } from "@/components/home/home-greeting";
 
 export default function HomePage() {
   const router = useRouter();
@@ -88,20 +81,18 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-4 pb-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <Link href="/profile" prefetch className="shrink-0">
-            <UserAvatar
-              src={data.userImage ?? session?.user?.image}
-              name={displayName}
-              size="sm"
-            />
-          </Link>
-          <p className="text-base font-semibold text-white truncate">{greeting(displayName)}</p>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-2">
+        <HomeGreeting name={displayName} />
         {error && (
-          <Button type="button" variant="ghost" size="icon" onClick={reload} aria-label="Neu laden">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0 mt-2"
+            onClick={reload}
+            aria-label="Neu laden"
+          >
             <RefreshCw className="h-4 w-4" />
           </Button>
         )}
