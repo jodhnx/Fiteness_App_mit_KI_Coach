@@ -6,6 +6,7 @@ import { safeAuthRedirect } from "@/lib/auth-redirect";
 export const authConfig: NextAuthConfig = {
   trustHost: true,
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  debug: process.env.AUTH_DEBUG === "1",
   pages: {
     signIn: "/login",
     error: "/login",

@@ -18,13 +18,23 @@ import {
 } from "@/lib/auth-errors";
 import { isDatabaseConnectionError } from "@/lib/prisma-errors";
 import { rateLimit } from "@/lib/security/rate-limit";
-import { AuthLog, logAuth } from "@/lib/auth-logger";
+import { AuthLog, logAuth, logAuthServer, logAuthEnvOnce } from "@/lib/auth-logger";
+import { looksLikeEphemeralDeploymentUrl } from "@/lib/auth-redirect";
 
 if (!process.env.AUTH_SECRET?.trim() && !process.env.NEXTAUTH_SECRET?.trim()) {
-  console.error(
-    AuthLog.AUTH_ERROR,
-    "AUTH_SECRET fehlt — Sessions funktionieren nicht. Setze AUTH_SECRET in .env (min. 32 Zeichen)."
-  );
+  logAuthServer("startup_error", {
+    message:
+      "AUTH_SECRET fehlt — Sessions funktionieren nicht. Setze AUTH_SECRET in Vercel (min. 32 Zeichen).",
+  });
+}
+
+const nextAuthUrl = process.env.NEXTAUTH_URL?.trim();
+if (nextAuthUrl && looksLikeEphemeralDeploymentUrl(nextAuthUrl)) {
+  logAuthServer("startup_warning", {
+    message:
+      "NEXTAUTH_URL zeigt auf eine Preview-/Deployment-URL. Entfernen oder auf Produktions-Domain setzen — sonst DEPLOYMENT_NOT_FOUND nach Login.",
+    nextAuthUrl: nextAuthUrl.slice(0, 120),
+  });
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -43,17 +53,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        logAuthEnvOnce();
         const emailHint =
           typeof credentials?.email === "string"
             ? credentials.email.toLowerCase().trim()
             : "unknown";
 
         try {
+          logAuthServer("login_attempt", { email: emailHint });
           logAuth(AuthLog.LOGIN_ATTEMPT, { email: emailHint });
 
           const parsed = loginSchema.safeParse(credentials);
+          logAuthServer("parse_credentials", {
+            email: emailHint,
+            success: parsed.success,
+            issues: parsed.success ? undefined : parsed.error.flatten().fieldErrors,
+          });
+
           if (!parsed.success) {
-            logAuth(AuthLog.AUTH_ERROR, {
+            logAuthServer("login_failed", {
+              email: emailHint,
               reason: "invalid_payload",
               issues: parsed.error.flatten().fieldErrors,
             });
@@ -63,43 +82,108 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const email = parsed.data.email.toLowerCase().trim();
           const limit = rateLimit(`login:${email}`, 10, 900_000);
           if (!limit.success) {
-            logAuth(AuthLog.RATE_LIMITED, { email });
+            logAuthServer("login_failed", { email, reason: "rate_limited" });
             throw new InvalidCredentialsError();
           }
 
           if (email === ADMIN_EMAIL) {
             try {
               await ensureAdminUser();
+              logAuthServer("admin_ensure", { email, ok: true });
             } catch (e) {
-              if (isDatabaseConnectionError(e)) throw new DatabaseConnectionError();
+              if (isDatabaseConnectionError(e)) {
+                logAuthServer("login_failed", {
+                  email,
+                  reason: "database_connection",
+                  during: "ensure_admin",
+                  message: e instanceof Error ? e.message : String(e),
+                });
+                throw new DatabaseConnectionError();
+              }
+              logAuthServer("login_failed", {
+                email,
+                reason: "ensure_admin_error",
+                message: e instanceof Error ? e.message : String(e),
+              });
               throw e;
             }
           }
 
-          const user = await dbQuery("auth.user.findUnique", (db) =>
-            db.user.findUnique({ where: { email } })
-          );
+          let user: {
+            id: string;
+            email: string;
+            name: string | null;
+            image: string | null;
+            role: string;
+            passwordHash: string | null;
+            emailVerified: Date | null;
+          } | null = null;
+
+          try {
+            user = await dbQuery("auth.user.findUnique", (db) =>
+              db.user.findUnique({ where: { email } })
+            );
+            logAuthServer("db_user_lookup", {
+              email,
+              found: Boolean(user),
+              hasPasswordHash: Boolean(user?.passwordHash),
+              emailVerified: user?.emailVerified?.toISOString() ?? null,
+            });
+          } catch (e) {
+            logAuthServer("login_failed", {
+              email,
+              reason: "database_connection",
+              during: "user_lookup",
+              message: e instanceof Error ? e.message : String(e),
+              prismaCode:
+                e && typeof e === "object" && "code" in e
+                  ? String((e as { code: unknown }).code)
+                  : undefined,
+            });
+            if (isDatabaseConnectionError(e)) throw new DatabaseConnectionError();
+            throw e;
+          }
 
           if (!user?.passwordHash) {
-            logAuth(AuthLog.USER_NOT_FOUND, { email });
+            logAuthServer("login_failed", {
+              email,
+              reason: "user_not_found_or_no_password",
+              userFound: Boolean(user),
+            });
             throw new InvalidCredentialsError();
           }
 
           logAuth(AuthLog.USER_FOUND, { id: user.id, role: user.role });
 
           const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
+          logAuthServer("password_check", { email, valid });
+
           if (!valid) {
-            logAuth(AuthLog.PASSWORD_INVALID, { email });
+            logAuthServer("login_failed", { email, reason: "password_invalid" });
             throw new InvalidCredentialsError();
           }
 
-          logAuth(AuthLog.PASSWORD_VALID, { email });
+          const verificationRequired = isEmailVerificationEnabled();
+          const verified = isEmailVerified(user.emailVerified);
+          logAuthServer("email_verification_check", {
+            email,
+            verificationRequired,
+            verified,
+          });
 
-          if (isEmailVerificationEnabled() && !isEmailVerified(user.emailVerified)) {
-            logAuth(AuthLog.EMAIL_NOT_VERIFIED, { email });
+          if (verificationRequired && !verified) {
+            logAuthServer("login_failed", {
+              email,
+              reason: "email_not_verified",
+            });
             throw new UnverifiedEmailError();
           }
 
+          logAuthServer("login_success", {
+            userId: user.id,
+            email,
+            role: user.role,
+          });
           logAuth(AuthLog.SESSION_CREATED, { userId: user.id, email });
 
           return {
@@ -111,31 +195,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         } catch (error) {
           if (error instanceof InvalidCredentialsError) {
-            logAuth(AuthLog.AUTH_ERROR, {
-              reason: "invalid_credentials",
+            logAuthServer("authorize_throw", {
               email: emailHint,
+              code: error.code,
+              type: "InvalidCredentialsError",
             });
             throw error;
           }
           if (error instanceof UnverifiedEmailError) {
-            logAuth(AuthLog.AUTH_ERROR, {
-              reason: "email_not_verified",
+            logAuthServer("authorize_throw", {
               email: emailHint,
+              code: error.code,
+              type: "UnverifiedEmailError",
             });
             throw error;
           }
           if (error instanceof DatabaseConnectionError) {
-            logAuth(AuthLog.DB_UNAVAILABLE, emailHint);
+            logAuthServer("authorize_throw", {
+              email: emailHint,
+              code: error.code,
+              type: "DatabaseConnectionError",
+            });
             throw error;
           }
           if (isDatabaseConnectionError(error)) {
-            logAuth(AuthLog.DB_UNAVAILABLE, emailHint);
+            logAuthServer("authorize_throw", {
+              email: emailHint,
+              code: "database_connection",
+              type: "DatabaseConnectionError",
+              message: error instanceof Error ? error.message : String(error),
+            });
             throw new DatabaseConnectionError();
           }
-          logAuth(AuthLog.AUTH_ERROR, {
-            reason: "unexpected",
+
+          logAuthServer("login_failed", {
             email: emailHint,
+            reason: "unexpected",
             message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack?.split("\n").slice(0, 4) : undefined,
           });
           throw new InvalidCredentialsError();
         }
@@ -223,9 +320,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       } catch (e) {
         if (isDatabaseConnectionError(e)) {
-          logAuth(AuthLog.DB_UNAVAILABLE, "jwt callback");
+          logAuthServer("jwt_callback_db_error", {
+            reason: "database_connection",
+            message: e instanceof Error ? e.message : String(e),
+          });
         } else {
-          console.error("[auth] jwt callback DB skipped", e);
+          logAuthServer("jwt_callback_db_error", {
+            message: e instanceof Error ? e.message : String(e),
+          });
         }
       }
       return token;
@@ -273,7 +375,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .catch(() => undefined);
         }
       } catch (e) {
-        console.error("[auth] signIn event failed (login continues)", e);
+        logAuthServer("signin_event_error", {
+          message: e instanceof Error ? e.message : String(e),
+        });
       }
     },
   },

@@ -1,56 +1,19 @@
 /**
- * Safe post-login paths only — never redirect to external or stale Vercel deployment URLs.
+ * Post-login redirects: always same-origin /home, never stale Vercel deployment URLs.
  */
+import { logAuthServer } from "@/lib/auth-logger";
+
 export const DEFAULT_POST_LOGIN = "/home";
 
-const BLOCKED_PREFIXES = [
-  "/login",
-  "/register",
-  "/reset-password",
-  "/verify-email",
-  "/api/",
-];
-
-/** Internal path only (e.g. /home, /profile). */
-export function resolvePostLoginPath(input: string | null | undefined): string {
-  if (!input?.trim()) return DEFAULT_POST_LOGIN;
-
-  let raw = input.trim();
-
-  try {
-    raw = decodeURIComponent(raw);
-  } catch {
-    /* keep raw */
-  }
-
-  if (raw.startsWith("http://") || raw.startsWith("https://")) {
-    try {
-      const parsed = new URL(raw);
-      raw = parsed.pathname + parsed.search;
-    } catch {
-      return DEFAULT_POST_LOGIN;
-    }
-  }
-
-  if (!raw.startsWith("/")) raw = `/${raw}`;
-  if (raw.startsWith("//") || raw.includes("://") || raw.toLowerCase().includes("vercel.app")) {
-    return DEFAULT_POST_LOGIN;
-  }
-
-  const pathOnly = raw.split("?")[0];
-  if (BLOCKED_PREFIXES.some((p) => pathOnly === p || pathOnly.startsWith(p))) {
-    return DEFAULT_POST_LOGIN;
-  }
-
-  if (pathOnly === "/dashboard" || raw.startsWith("/dashboard?")) {
-    return raw.replace(/^\/dashboard/, "/home");
-  }
-
-  return raw;
+/**
+ * After successful login always /home (ignores callbackUrl and external URLs).
+ */
+export function resolvePostLoginPath(_input?: string | null): string {
+  return DEFAULT_POST_LOGIN;
 }
 
 /**
- * NextAuth redirect callback — always same-origin + sanitized path (fixes stale NEXTAUTH_URL).
+ * NextAuth redirect callback — **relative path only** (stays on current host; trustHost).
  */
 export function safeAuthRedirect({
   url,
@@ -59,23 +22,52 @@ export function safeAuthRedirect({
   url: string;
   baseUrl: string;
 }): string {
-  const path = resolvePostLoginPath(url);
-  const base = baseUrl.replace(/\/$/, "");
-  return `${base}${path}`;
+  if (url && looksLikeEphemeralDeploymentUrl(url)) {
+    logAuthServer("redirect_blocked", {
+      reason: "ephemeral_url_param",
+      url: url.slice(0, 240),
+      baseUrl: baseUrl.slice(0, 240),
+      fallback: DEFAULT_POST_LOGIN,
+    });
+  } else if (baseUrl && looksLikeEphemeralDeploymentUrl(baseUrl)) {
+    logAuthServer("redirect_blocked", {
+      reason: "ephemeral_base_url",
+      baseUrl: baseUrl.slice(0, 240),
+      fallback: DEFAULT_POST_LOGIN,
+    });
+  }
+
+  return DEFAULT_POST_LOGIN;
 }
 
-/** Server-side base URL for e-mails (reset password). Prefer production URL, not preview. */
+/** Preview / per-deployment URLs — unsuitable for redirects or NEXTAUTH_URL. */
+export function looksLikeEphemeralDeploymentUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes("---")) return true;
+    if (/^[a-z0-9-]+-[a-z0-9]{20,}\.vercel\.app$/i.test(host)) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+/** Server-side base URL for e-mails (reset password). Prefer stable production domain. */
 export function getServerAuthBaseUrl(): string {
-  const explicit =
+  const production =
     process.env.AUTH_URL?.trim() ||
-    process.env.NEXTAUTH_URL?.trim() ||
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.replace(/^https?:\/\//, "")}`
       : "");
 
-  if (explicit) return explicit.replace(/\/$/, "");
+  if (production) return production.replace(/\/$/, "");
 
-  if (process.env.VERCEL_URL) {
+  const nextAuth = process.env.NEXTAUTH_URL?.trim();
+  if (nextAuth && !looksLikeEphemeralDeploymentUrl(nextAuth)) {
+    return nextAuth.replace(/\/$/, "");
+  }
+
+  if (process.env.VERCEL_ENV === "production" && process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`.replace(/\/$/, "");
   }
 

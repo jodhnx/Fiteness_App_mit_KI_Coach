@@ -11,18 +11,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { getLoginErrorMessage } from "@/lib/auth-errors";
 import {
+  DEFAULT_POST_LOGIN,
   logAuthFlow,
   redirectAfterLogin,
-  resolvePostLoginPath,
 } from "@/lib/auth-flow";
-import { AuthLog, logAuth } from "@/lib/auth-logger";
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { status: sessionStatus } = useSession();
-  const postLoginPath = resolvePostLoginPath(params.get("callbackUrl"));
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const err = params.get("error");
+    if (err) {
+      toast.error(getLoginErrorMessage(err === "CredentialsSignin" ? "invalid_credentials" : err));
+    }
+  }, [params]);
 
   useEffect(() => {
     if (params.get("verified") === "1") {
@@ -32,11 +37,10 @@ function LoginForm() {
 
   useEffect(() => {
     if (sessionStatus === "authenticated") {
-      logAuthFlow("SESSION CREATED", "already authenticated on /login");
-      logAuthFlow("REDIRECTING TO DASHBOARD", postLoginPath);
-      router.replace(postLoginPath);
+      logAuthFlow("already_authenticated", DEFAULT_POST_LOGIN);
+      router.replace(DEFAULT_POST_LOGIN);
     }
-  }, [sessionStatus, postLoginPath, router]);
+  }, [sessionStatus, router]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -47,51 +51,48 @@ function LoginForm() {
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
 
     try {
-      logAuth(AuthLog.LOGIN_ATTEMPT, { email });
-
       const res = await signIn("credentials", {
         email,
         password,
         redirect: false,
+        callbackUrl: DEFAULT_POST_LOGIN,
       });
 
-      logAuthFlow("signIn() response", {
+      logAuthFlow("signIn_response", {
         ok: res?.ok,
         status: res?.status,
         error: res?.error,
+        code: res?.code,
         url: res?.url,
       });
 
+      if (res?.url && /^https?:\/\//i.test(res.url)) {
+        logAuthFlow("ignored_absolute_redirect_url", res.url);
+      }
+
       if (res?.ok) {
-        logAuth(AuthLog.SESSION_CREATED, { email });
-        logAuth(AuthLog.REDIRECT_SUCCESS, postLoginPath);
         toast.success("Willkommen zurück!");
-        await redirectAfterLogin(router, postLoginPath);
+        await redirectAfterLogin(router);
         return;
       }
 
-      if (res?.url && /^https?:\/\//i.test(res.url)) {
-        logAuth(AuthLog.AUTH_ERROR, {
-          reason: "unexpected_absolute_redirect_url",
-          url: res.url,
-        });
-      }
-
       const code =
-        res?.code && res.code !== "credentials" && res.code !== "CredentialsSignin"
+        res?.code && res.code !== "CredentialsSignin" && res.code !== "credentials"
           ? res.code
           : res?.error && res.error !== "CredentialsSignin"
             ? res.error
-            : res?.code ?? res?.error ?? undefined;
-      logAuth(AuthLog.AUTH_ERROR, { email, code, status: res?.status, error: res?.error });
-      const message = getLoginErrorMessage(code);
+            : res?.code ?? res?.error ?? "invalid_credentials";
+
+      const message = getLoginErrorMessage(
+        typeof code === "string" ? code : undefined
+      );
       toast.error(message);
 
       if (code === "email_not_verified") {
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       }
     } catch (err) {
-      logAuth(AuthLog.AUTH_ERROR, err instanceof Error ? err.message : String(err));
+      logAuthFlow("signIn_exception", err instanceof Error ? err.message : String(err));
       toast.error("Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
       setLoading(false);
@@ -124,7 +125,7 @@ function LoginForm() {
             className="w-full"
             disabled={loading}
             onClick={() =>
-              signIn("google", { callbackUrl: postLoginPath, redirect: true })
+              signIn("google", { callbackUrl: DEFAULT_POST_LOGIN, redirect: true })
             }
           >
             Mit Google anmelden

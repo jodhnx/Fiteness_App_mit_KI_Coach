@@ -50,11 +50,8 @@ function VerifyEmailForm() {
           redirect: false,
         });
         if (signInRes?.ok) {
-          logAuthFlow("LOGIN SUCCESS");
-          const statusRes = await fetch("/api/onboarding");
-          const status = await statusRes.json().catch(() => ({}));
-          const target = status.completed ? "/home" : "/onboarding";
-          await redirectAfterLogin(router, target);
+          logAuthFlow("verify_email_auto_login");
+          await redirectAfterLogin(router);
           return;
         }
         toast.message(getLoginErrorMessage(signInRes?.code));
