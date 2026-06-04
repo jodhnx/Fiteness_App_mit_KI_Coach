@@ -1,6 +1,7 @@
 import type { User } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import { dbQuery } from "@/lib/prisma";
+import { logAuthServer } from "@/lib/auth-logger";
 import { buildSlimJwt, handleJwtCallbackEdge } from "@/lib/auth-jwt-edge";
 
 export { buildSlimJwt, buildSlimSession, handleSessionCallback } from "@/lib/auth-jwt-edge";
@@ -56,23 +57,36 @@ type JwtCallbackParams = {
   session?: { onboardingComplete?: boolean };
 };
 
-/** Full auth handler (Node) — resolves onboarding from DB on sign-in. */
 export async function handleJwtCallbackWithDb(
   params: JwtCallbackParams
 ): Promise<JWT> {
   const { user, token } = params;
 
-  if (user?.id) {
-    const role = (user as { role?: string }).role ?? "USER";
-    const onboardingComplete = await resolveOnboardingComplete(user.id, role);
-    return buildSlimJwt({
-      id: user.id,
-      email: user.email,
-      role,
-      onboardingComplete,
-      iat: token.iat,
-      exp: token.exp,
-      jti: token.jti,
+  try {
+    if (user?.id) {
+      const role = (user as { role?: string }).role ?? "USER";
+      let onboardingComplete = role === "ADMIN";
+      try {
+        onboardingComplete = await resolveOnboardingComplete(user.id, role);
+      } catch (e) {
+        logAuthServer("jwt_onboarding_lookup_failed", {
+          userId: user.id,
+          message: e instanceof Error ? e.message : String(e),
+        });
+      }
+      return buildSlimJwt({
+        id: user.id,
+        email: user.email,
+        role,
+        onboardingComplete,
+        iat: token.iat,
+        exp: token.exp,
+        jti: token.jti,
+      });
+    }
+  } catch (e) {
+    logAuthServer("jwt_callback_error", {
+      message: e instanceof Error ? e.message : String(e),
     });
   }
 

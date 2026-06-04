@@ -14,18 +14,41 @@ import {
   DEFAULT_POST_LOGIN,
   logAuthFlow,
   redirectAfterLogin,
+  signInCredentials,
 } from "@/lib/auth-flow";
+
+const SHOW_AUTH_DEBUG =
+  process.env.NEXT_PUBLIC_DEBUG_AUTH === "1" ||
+  process.env.NODE_ENV !== "production";
+
+function resolveErrorCode(
+  error?: string | null,
+  code?: string | null
+): string {
+  if (code && code !== "CredentialsSignin" && code !== "credentials") {
+    return code;
+  }
+  if (error && error !== "CredentialsSignin" && error !== "credentials") {
+    return error;
+  }
+  return code ?? error ?? "invalid_credentials";
+}
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { status: sessionStatus } = useSession();
   const [loading, setLoading] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
     const err = params.get("error");
     if (err) {
-      toast.error(getLoginErrorMessage(err === "CredentialsSignin" ? "invalid_credentials" : err));
+      const msg = getLoginErrorMessage(
+        err === "CredentialsSignin" ? "invalid_credentials" : err
+      );
+      setLastError(msg);
+      toast.error(msg);
     }
   }, [params]);
 
@@ -45,55 +68,43 @@ function LoginForm() {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
+    setLastError(null);
 
     const form = e.currentTarget;
     const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
 
     try {
-      const res = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-        callbackUrl: DEFAULT_POST_LOGIN,
-      });
+      const res = await signInCredentials(email, password, DEFAULT_POST_LOGIN);
+      logAuthFlow("signIn_result", res);
 
-      logAuthFlow("signIn_response", {
-        ok: res?.ok,
-        status: res?.status,
-        error: res?.error,
-        code: res?.code,
-        url: res?.url,
-      });
-
-      if (res?.url && /^https?:\/\//i.test(res.url)) {
-        logAuthFlow("ignored_absolute_redirect_url", res.url);
-      }
-
-      if (res?.ok) {
+      if (res.ok) {
         toast.success("Willkommen zurück!");
         await redirectAfterLogin(router);
         return;
       }
 
-      const code =
-        res?.code && res.code !== "CredentialsSignin" && res.code !== "credentials"
-          ? res.code
-          : res?.error && res.error !== "CredentialsSignin"
-            ? res.error
-            : res?.code ?? res?.error ?? "invalid_credentials";
+      const errCode = resolveErrorCode(res.error, res.code);
+      const message = getLoginErrorMessage(errCode);
+      const detail = SHOW_AUTH_DEBUG
+        ? `${message} (${errCode}, HTTP ${res.status})`
+        : message;
 
-      const message = getLoginErrorMessage(
-        typeof code === "string" ? code : undefined
-      );
-      toast.error(message);
+      setLastError(detail);
+      toast.error(detail);
+      console.log("LOGIN ERROR", { code: errCode, status: res.status, url: res.url });
 
-      if (code === "email_not_verified") {
+      if (errCode === "email_not_verified") {
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       }
     } catch (err) {
-      logAuthFlow("signIn_exception", err instanceof Error ? err.message : String(err));
-      toast.error("Anmeldung fehlgeschlagen. Bitte erneut versuchen.");
+      console.log("LOGIN ERROR", err);
+      const raw = err instanceof Error ? err.message : String(err);
+      const detail = SHOW_AUTH_DEBUG
+        ? `Anmeldung fehlgeschlagen: ${raw}`
+        : getLoginErrorMessage("unknown");
+      setLastError(detail);
+      toast.error(detail);
     } finally {
       setLoading(false);
     }
@@ -107,6 +118,11 @@ function LoginForm() {
           <CardDescription>Willkommen bei AI Fitness Coach Pro</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {lastError && (
+            <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+              {lastError}
+            </p>
+          )}
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
               <Label htmlFor="email">E-Mail</Label>

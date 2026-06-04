@@ -150,6 +150,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           if (!user?.passwordHash) {
+            console.log("USER FOUND", user ? { id: user.id, email: user.email } : null);
+            console.log("PASSWORD VALID", false);
+            console.log("EMAIL VERIFIED", user?.emailVerified ?? null);
             logAuthServer("login_failed", {
               email,
               reason: "user_not_found_or_no_password",
@@ -158,18 +161,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             throw new InvalidCredentialsError();
           }
 
+          console.log("USER FOUND", {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            hasPasswordHash: true,
+          });
           logAuth(AuthLog.USER_FOUND, { id: user.id, role: user.role });
 
           const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
+          console.log("PASSWORD VALID", valid);
           logAuthServer("password_check", { email, valid });
 
           if (!valid) {
+            console.log("EMAIL VERIFIED", user.emailVerified);
             logAuthServer("login_failed", { email, reason: "password_invalid" });
             throw new InvalidCredentialsError();
           }
 
           const verificationRequired = isEmailVerificationEnabled();
           const verified = isEmailVerified(user.emailVerified);
+          console.log("EMAIL VERIFIED", user.emailVerified);
           logAuthServer("email_verification_check", {
             email,
             verificationRequired,
@@ -194,9 +206,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return {
             id: user.id,
             email: user.email,
-            role: user.role,
+            role: String(user.role),
           };
         } catch (error) {
+          console.log("LOGIN ERROR", error);
           if (error instanceof InvalidCredentialsError) {
             logAuthServer("authorize_throw", {
               email: emailHint,

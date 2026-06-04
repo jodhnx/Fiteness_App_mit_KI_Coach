@@ -1,19 +1,17 @@
 /**
- * Post-login redirects: always same-origin /home, never stale Vercel deployment URLs.
+ * Post-login redirects: same-origin /home via trustHost baseUrl (absolute URL for NextAuth client).
  */
 import { logAuthServer } from "@/lib/auth-logger";
 
 export const DEFAULT_POST_LOGIN = "/home";
 
-/**
- * After successful login always /home (ignores callbackUrl and external URLs).
- */
 export function resolvePostLoginPath(_input?: string | null): string {
   return DEFAULT_POST_LOGIN;
 }
 
 /**
- * NextAuth redirect callback — **relative path only** (stays on current host; trustHost).
+ * NextAuth redirect callback — absolute URL on current host (trustHost baseUrl).
+ * Relative-only URLs break next-auth/react signIn() which does `new URL(data.url)`.
  */
 export function safeAuthRedirect({
   url,
@@ -22,25 +20,30 @@ export function safeAuthRedirect({
   url: string;
   baseUrl: string;
 }): string {
+  const path = DEFAULT_POST_LOGIN;
+
   if (url && looksLikeEphemeralDeploymentUrl(url)) {
     logAuthServer("redirect_blocked", {
       reason: "ephemeral_url_param",
       url: url.slice(0, 240),
       baseUrl: baseUrl.slice(0, 240),
-      fallback: DEFAULT_POST_LOGIN,
-    });
-  } else if (baseUrl && looksLikeEphemeralDeploymentUrl(baseUrl)) {
-    logAuthServer("redirect_blocked", {
-      reason: "ephemeral_base_url",
-      baseUrl: baseUrl.slice(0, 240),
-      fallback: DEFAULT_POST_LOGIN,
     });
   }
 
-  return DEFAULT_POST_LOGIN;
+  if (!baseUrl || looksLikeEphemeralDeploymentUrl(baseUrl)) {
+    logAuthServer("redirect_fallback_relative", {
+      reason: "unsafe_base_url",
+      baseUrl: baseUrl?.slice(0, 240) ?? null,
+      path,
+    });
+    return path;
+  }
+
+  const base = baseUrl.replace(/\/$/, "");
+  return `${base}${path}`;
 }
 
-/** Preview / per-deployment URLs — unsuitable for redirects or NEXTAUTH_URL. */
+/** Preview / per-deployment URLs — unsuitable for NEXTAUTH_URL. */
 export function looksLikeEphemeralDeploymentUrl(url: string): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase();

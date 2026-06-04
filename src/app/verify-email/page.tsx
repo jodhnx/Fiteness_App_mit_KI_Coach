@@ -3,14 +3,14 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signInCredentials, redirectAfterLogin } from "@/lib/auth-flow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { getLoginErrorMessage } from "@/lib/auth-errors";
-import { logAuthFlow, redirectAfterLogin } from "@/lib/auth-flow";
+import { logAuthFlow } from "@/lib/auth-flow";
 import { AuthFlowSteps } from "@/components/auth/auth-flow-steps";
 
 function VerifyEmailForm() {
@@ -44,17 +44,16 @@ function VerifyEmailForm() {
       toast.success(data.message ?? "E-Mail bestätigt!");
 
       if (password.length >= 8) {
-        const signInRes = await signIn("credentials", {
-          email: email.trim(),
-          password,
-          redirect: false,
-        });
-        if (signInRes?.ok) {
+        const signInRes = await signInCredentials(email.trim(), password);
+        if (signInRes.ok) {
           logAuthFlow("verify_email_auto_login");
           await redirectAfterLogin(router);
           return;
         }
-        toast.message(getLoginErrorMessage(signInRes?.code));
+        console.log("LOGIN ERROR", signInRes);
+        toast.message(
+          getLoginErrorMessage(signInRes.code ?? signInRes.error ?? "invalid_credentials")
+        );
         router.push("/login");
         return;
       }

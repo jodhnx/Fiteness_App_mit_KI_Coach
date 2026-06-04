@@ -23,6 +23,10 @@ export function getLoginErrorMessage(code: string | undefined): string {
     case "CredentialsSignin":
     case "credentials":
       return "E-Mail oder Passwort ist falsch.";
+    case "csrf_failed":
+      return "Sicherheits-Token fehlt. Seite neu laden und erneut versuchen.";
+    case "invalid_response":
+      return "Ungültige Antwort vom Auth-Server.";
     default:
       return "Anmeldung fehlgeschlagen.";
   }
