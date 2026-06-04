@@ -37,7 +37,7 @@ export async function GET() {
       ],
       summary: "Keine Ernährungsdaten vorhanden",
       consumed: { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
-      targets: { calories: 2000, proteinG: 150, carbsG: 200, fatG: 65 },
+      targets: { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
     });
   }
 }

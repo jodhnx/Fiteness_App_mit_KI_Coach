@@ -1,4 +1,5 @@
 import { setCached, invalidateCache, getCached } from "@/lib/client-cache";
+import { roundMacros } from "@/lib/food-macros";
 import {
   type NutritionDashboardPayload,
   isValidDashboardPayload,
@@ -75,6 +76,57 @@ export function buildSummaryFromDashboard(
     nutrition: isValidDashboardPayload(dashboard)
       ? dashboard
       : createEmptyNutritionDashboard(),
+  };
+}
+
+/** Optimistic UI while DELETE/PATCH is in flight */
+export function optimisticRemoveMealItem(
+  dashboard: NutritionDashboardPayload,
+  itemId: string
+): NutritionDashboardPayload | null {
+  type RemovedMacros = { calories: number; proteinG: number; carbsG: number; fatG: number };
+  let removed: RemovedMacros | undefined;
+  let found = false;
+
+  const mealsByType = dashboard.mealsByType.map((slot) => {
+    const item = slot.items.find((i) => i.id === itemId);
+    if (!item) return slot;
+    found = true;
+    removed = {
+      calories: item.calories,
+      proteinG: item.proteinG,
+      carbsG: item.carbsG ?? 0,
+      fatG: item.fatG ?? 0,
+    };
+    const items = slot.items.filter((i) => i.id !== itemId);
+    const totals = {
+      calories: Math.max(0, slot.totals.calories - item.calories),
+      proteinG: Math.max(0, slot.totals.proteinG - item.proteinG),
+      carbsG: Math.max(0, slot.totals.carbsG - (item.carbsG ?? 0)),
+      fatG: Math.max(0, slot.totals.fatG - (item.fatG ?? 0)),
+    };
+    return { ...slot, items, totals };
+  });
+
+  if (!found || !removed) return null;
+
+  const consumed = roundMacros({
+    calories: Math.max(0, dashboard.consumed.calories - removed.calories),
+    proteinG: Math.max(0, dashboard.consumed.proteinG - removed.proteinG),
+    carbsG: Math.max(0, dashboard.consumed.carbsG - removed.carbsG),
+    fatG: Math.max(0, dashboard.consumed.fatG - removed.fatG),
+  });
+
+  return {
+    ...dashboard,
+    consumed: { ...dashboard.consumed, ...consumed },
+    remaining: {
+      calories: Math.max(0, dashboard.targets.calories - consumed.calories),
+      proteinG: Math.max(0, dashboard.targets.proteinG - consumed.proteinG),
+      carbsG: Math.max(0, dashboard.targets.carbsG - consumed.carbsG),
+      fatG: Math.max(0, dashboard.targets.fatG - consumed.fatG),
+    },
+    mealsByType,
   };
 }
 

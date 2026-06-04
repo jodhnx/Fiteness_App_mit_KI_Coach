@@ -55,7 +55,13 @@ export default function RootLayout({
         <AuthSessionProvider>
           <PreferencesProvider>
             {children}
-            <Toaster theme="dark" position="top-right" richColors />
+            <Toaster
+              theme="dark"
+              position="bottom-center"
+              richColors
+              offset="calc(5.5rem + env(safe-area-inset-bottom, 0px))"
+              mobileOffset="calc(5.5rem + env(safe-area-inset-bottom, 0px))"
+            />
           </PreferencesProvider>
         </AuthSessionProvider>
       </body>

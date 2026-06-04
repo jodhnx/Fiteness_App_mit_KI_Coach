@@ -25,8 +25,9 @@ export const HeuteHeroCard = memo(function HeuteHeroCard({
   const { consumed, targets, remaining } = nutrition;
   const eaten = Math.round(consumed.calories);
   const goal = Math.round(targets.calories);
-  const left = Math.max(0, Math.round(remaining.calories));
-  const overGoal = eaten >= goal && goal > 0;
+  const hasGoal = goal > 0 && nutrition.profileComplete;
+  const left = hasGoal ? Math.max(0, Math.round(remaining.calories)) : 0;
+  const overGoal = hasGoal && eaten >= goal;
   const stepPct = stepGoal > 0 ? Math.min(100, Math.round((steps / stepGoal) * 100)) : 0;
 
   return (
@@ -49,7 +50,15 @@ export const HeuteHeroCard = memo(function HeuteHeroCard({
         </div>
 
         <div className="text-center py-1">
-          {overGoal ? (
+          {!hasGoal ? (
+            <>
+              <p className="text-[11px] uppercase tracking-widest text-zinc-500">Kalorienziel</p>
+              <p className="text-lg font-semibold text-zinc-300 mt-1">In Einstellungen festlegen</p>
+              <p className="text-xs text-zinc-500 mt-1 tabular-nums">
+                {eaten > 0 ? `${eaten} kcal gegessen` : "Noch nichts getrackt"}
+              </p>
+            </>
+          ) : overGoal ? (
             <>
               <p className="text-[11px] uppercase tracking-widest text-emerald-400/90">
                 Ziel erreicht

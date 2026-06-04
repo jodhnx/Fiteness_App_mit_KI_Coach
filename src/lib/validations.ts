@@ -109,6 +109,7 @@ export const profileSchema = z.object({
   chestCm: optionalNum(1, 200),
   waistCm: optionalNum(1, 200),
   hipsCm: optionalNum(1, 200),
+  manualCalorieTarget: z.boolean().optional(),
 });
 
 export const onboardingSchema = z.object({

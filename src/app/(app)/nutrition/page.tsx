@@ -5,6 +5,7 @@ import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
 import {
   invalidateAllNutritionCaches,
   applyNutritionMutationResponse,
+  optimisticRemoveMealItem,
   NUTRITION_DASHBOARD_CACHE_KEY,
 } from "@/lib/nutrition-sync";
 import { getCached } from "@/lib/client-cache";
@@ -37,13 +38,56 @@ export default function NutritionPage() {
 
   const removeItem = useCallback(
     async (itemId: string) => {
+      const optimistic = optimisticRemoveMealItem(dashboard, itemId);
+      if (optimistic) applyDashboard(optimistic);
       const res = await fetch(`/api/nutrition/items/${itemId}`, { method: "DELETE" });
       if (!res.ok) {
         toast.error("Löschen fehlgeschlagen");
+        refreshAll();
         return;
       }
       const updated = await applyNutritionMutationResponse(res);
       if (!updated) refreshAll();
+    },
+    [dashboard, applyDashboard, refreshAll]
+  );
+
+  const deleteMeal = useCallback(
+    async (mealId: string) => {
+      if (!window.confirm("Diese Mahlzeit und alle Einträge löschen?")) return;
+      const res = await fetch(`/api/nutrition/meals/${mealId}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast.error("Mahlzeit konnte nicht gelöscht werden");
+        return;
+      }
+      const updated = await applyNutritionMutationResponse(res);
+      if (!updated) refreshAll();
+      else toast.success("Mahlzeit gelöscht");
+    },
+    [refreshAll]
+  );
+
+  const editItemQuantity = useCallback(
+    async (itemId: string, currentQty: number) => {
+      const raw = window.prompt("Menge in Gramm:", String(currentQty));
+      if (raw == null) return;
+      const quantityG = Number(raw);
+      if (!Number.isFinite(quantityG) || quantityG <= 0) {
+        toast.error("Ungültige Menge");
+        return;
+      }
+      const res = await fetch(`/api/nutrition/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quantityG }),
+      });
+      if (!res.ok) {
+        toast.error("Speichern fehlgeschlagen");
+        return;
+      }
+      const updated = await applyNutritionMutationResponse(res);
+      if (!updated) refreshAll();
+      else toast.success("Eintrag aktualisiert");
     },
     [refreshAll]
   );
@@ -148,6 +192,8 @@ export default function NutritionPage() {
           expandedMeal={expandedMeal}
           onToggle={(m) => setExpandedMeal((e) => (e === m ? null : m))}
           onRemove={removeItem}
+          onEdit={editItemQuantity}
+          onDeleteMeal={deleteMeal}
         />
       </section>
 

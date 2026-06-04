@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { previewTargetsFromForm } from "@/lib/calorie-target";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,10 +58,10 @@ function applyProfileToForm(d: ProfileApiResponse) {
     nutritionGoal: (p?.nutritionGoal as NutritionGoal) ?? "MAINTENANCE",
     experienceLevel: (p?.experienceLevel as PlanLevel) ?? "BEGINNER",
     workoutDaysPerWeek: p?.workoutDaysPerWeek?.toString() ?? "3",
-    calorieTarget: p?.calorieTarget?.toString() ?? "",
-    proteinTargetG: p?.proteinTargetG?.toString() ?? "",
-    carbsTargetG: p?.carbsTargetG?.toString() ?? "",
-    fatTargetG: p?.fatTargetG?.toString() ?? "",
+    calorieTarget: "",
+    proteinTargetG: "",
+    carbsTargetG: "",
+    fatTargetG: "",
     waterTargetMl: p?.waterTargetMl?.toString() ?? "2500",
     targetWeightKg: p?.targetWeightKg?.toString() ?? "",
     targetWeightDate: p?.targetWeightDate
@@ -128,8 +129,28 @@ export default function SettingsPage() {
     setUserImage(profileData.user?.image ?? null);
   }, [profileData]);
 
+  const livePreview = useMemo(() => previewTargetsFromForm(form), [form]);
+
+  useEffect(() => {
+    if (!livePreview) return;
+    setPreview({
+      bmi: livePreview.bmi,
+      calorieTarget: livePreview.calorieTarget,
+      proteinTargetG: livePreview.proteinTargetG,
+      carbsTargetG: livePreview.carbsTargetG,
+      fatTargetG: livePreview.fatTargetG,
+      recommendedTrainingDays: livePreview.recommendedTrainingDays,
+    });
+  }, [livePreview]);
+
   async function save() {
     setSaving(true);
+    const manualMacros = Boolean(
+      form.calorieTarget.trim() ||
+        form.proteinTargetG.trim() ||
+        form.carbsTargetG.trim() ||
+        form.fatTargetG.trim()
+    );
     const res = await fetch("/api/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -146,10 +167,14 @@ export default function SettingsPage() {
         workoutDaysPerWeek: form.workoutDaysPerWeek
           ? Number(form.workoutDaysPerWeek)
           : undefined,
-        calorieTarget: form.calorieTarget ? Number(form.calorieTarget) : undefined,
-        proteinTargetG: form.proteinTargetG ? Number(form.proteinTargetG) : undefined,
-        carbsTargetG: form.carbsTargetG ? Number(form.carbsTargetG) : undefined,
-        fatTargetG: form.fatTargetG ? Number(form.fatTargetG) : undefined,
+        manualCalorieTarget: manualMacros || undefined,
+        calorieTarget:
+          manualMacros && form.calorieTarget ? Number(form.calorieTarget) : undefined,
+        proteinTargetG:
+          manualMacros && form.proteinTargetG ? Number(form.proteinTargetG) : undefined,
+        carbsTargetG:
+          manualMacros && form.carbsTargetG ? Number(form.carbsTargetG) : undefined,
+        fatTargetG: manualMacros && form.fatTargetG ? Number(form.fatTargetG) : undefined,
         waterTargetMl: form.waterTargetMl ? Number(form.waterTargetMl) : undefined,
         targetWeightKg: form.targetWeightKg ? Number(form.targetWeightKg) : undefined,
         targetWeightDate: form.targetWeightDate || undefined,
@@ -182,6 +207,15 @@ export default function SettingsPage() {
     if (data.calculations) setPreview(data.calculations);
     if (data.smartGoal?.weightProjection) setSmartGoalHint(data.smartGoal.weightProjection);
     else setSmartGoalHint(null);
+    if (data.profile) {
+      setForm(
+        applyProfileToForm({
+          user: { ...data.user, name: data.user?.name },
+          profile: data.profile as Record<string, unknown>,
+          calculations: data.calculations,
+        })
+      );
+    }
     if (data.user?.name) setForm((f) => ({ ...f, name: data.user!.name! }));
     if (data.user?.image !== undefined) {
       setUserImage(data.user.image);
@@ -497,15 +531,17 @@ export default function SettingsPage() {
 
       <section id="settings-ernaehrung" className="card-premium p-4 space-y-3 scroll-mt-24">
         <h2 className="font-semibold text-white text-lg">Ernährung</h2>
-        <p className="text-xs text-zinc-500">Leer = automatisch aus Zielen</p>
+        <p className="text-xs text-zinc-500">
+          Leer = automatisch ({preview?.calorieTarget ?? "—"} kcal aus deinen Zielen)
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label>Kalorien</Label>
+            <Label>Kalorien (manuell)</Label>
             <Input
               type="number"
               value={form.calorieTarget}
               onChange={(e) => setForm({ ...form, calorieTarget: e.target.value })}
-              placeholder="Auto"
+              placeholder={preview ? String(preview.calorieTarget) : "Auto"}
               className="mt-1"
             />
           </div>

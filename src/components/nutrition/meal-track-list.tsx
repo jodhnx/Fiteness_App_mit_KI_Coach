@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Coffee, Sun, Moon, Cookie } from "lucide-react";
+import { Plus, Trash2, Pencil, Coffee, Sun, Moon, Cookie } from "lucide-react";
 import { MEAL_TYPE_LABELS } from "@/lib/meal-types";
 import type { MealType } from "@prisma/client";
 
@@ -22,6 +22,7 @@ type MealItemRow = {
 
 type MealSlotData = {
   mealType: MealType;
+  mealId?: string | null;
   totals: { calories: number; proteinG: number };
   items: MealItemRow[];
 };
@@ -31,6 +32,8 @@ type Props = {
   expandedMeal: MealType | null;
   onToggle: (mealType: MealType) => void;
   onRemove: (itemId: string) => void;
+  onEdit?: (itemId: string, quantityG: number) => void;
+  onDeleteMeal?: (mealId: string) => void;
 };
 
 export const MealTrackList = memo(function MealTrackList({
@@ -38,6 +41,8 @@ export const MealTrackList = memo(function MealTrackList({
   expandedMeal,
   onToggle,
   onRemove,
+  onEdit,
+  onDeleteMeal,
 }: Props) {
   return (
     <div className="space-y-2">
@@ -82,26 +87,50 @@ export const MealTrackList = memo(function MealTrackList({
               </Link>
             </div>
             {expanded && slot.items.length > 0 && (
-              <ul className="border-t border-zinc-800 px-4 py-2 space-y-2">
-                {slot.items.map((item) => (
-                  <li key={item.id} className="flex items-center gap-2 text-sm">
-                    <span className="text-zinc-300 truncate flex-1">
-                      {item.food.name}{" "}
-                      <span className="text-zinc-500">({item.quantityG} g)</span>
-                    </span>
-                    <span className="text-zinc-500 tabular-nums shrink-0">
-                      {Math.round(item.calories)} kcal
-                    </span>
+              <div className="border-t border-zinc-800">
+                <ul className="px-4 py-2 space-y-2">
+                  {slot.items.map((item) => (
+                    <li key={item.id} className="flex items-center gap-2 text-sm">
+                      <span className="text-zinc-300 truncate flex-1">
+                        {item.food.name}{" "}
+                        <span className="text-zinc-500">({item.quantityG} g)</span>
+                      </span>
+                      <span className="text-zinc-500 tabular-nums shrink-0">
+                        {Math.round(item.calories)} kcal
+                      </span>
+                      {onEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(item.id, item.quantityG)}
+                          className="text-zinc-600 hover:text-accent p-1 shrink-0"
+                          aria-label="Menge bearbeiten"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onRemove(item.id)}
+                        className="text-zinc-600 hover:text-red-400 p-1 shrink-0"
+                        aria-label="Eintrag löschen"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {slot.mealId && onDeleteMeal && (
+                  <div className="px-4 pb-3">
                     <button
                       type="button"
-                      onClick={() => onRemove(item.id)}
-                      className="text-zinc-600 hover:text-red-400 p-1 shrink-0"
+                      onClick={() => onDeleteMeal(slot.mealId!)}
+                      className="text-xs text-red-400/90 hover:text-red-300"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      Ganze Mahlzeit löschen
                     </button>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                )}
+              </div>
             )}
             {expanded && slot.items.length === 0 && (
               <p className="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-500">

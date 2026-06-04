@@ -2,16 +2,8 @@ import type { MealType, NutritionGoal, Profile } from "@prisma/client";
 import { MEAL_TYPE_LABELS, TRACK_MEAL_ORDER } from "@/lib/meal-types";
 import { prisma } from "@/lib/prisma";
 import { macrosForQuantity, sumMacros, roundMacros, type MacroTotals } from "@/lib/food-macros";
-import {
-  calculateTDEE,
-  calculateTDEEForNutritionGoal,
-  calculateMacros,
-  trainingGoalFromNutritionGoal,
-} from "@/lib/nutrition";
-import {
-  profileToMetricsInput,
-  recalculateProfileTargets,
-} from "@/lib/profile-calculations";
+import { computeProfileTargets, nutritionTargetsFromProfile } from "@/lib/calorie-target";
+import { trainingGoalFromNutritionGoal } from "@/lib/nutrition";
 import { startOfDay, subDays, format } from "date-fns";
 import { de } from "date-fns/locale";
 import {
@@ -49,46 +41,14 @@ const foodSelectMinimal = {
 } as const;
 
 export function resolveTargets(profile: Profile | null) {
-  const calories =
-    profile?.calorieTarget ??
-    (profile?.weightKg &&
-    profile.heightCm &&
-    profile.age &&
-    profile.gender &&
-    profile.activityLevel
-      ? profile.nutritionGoal
-        ? calculateTDEEForNutritionGoal(
-            profile.weightKg,
-            profile.heightCm,
-            profile.age,
-            profile.gender,
-            profile.activityLevel,
-            profile.nutritionGoal
-          )
-        : profile.trainingGoal
-          ? calculateTDEE(
-              profile.weightKg,
-              profile.heightCm,
-              profile.age,
-              profile.gender,
-              profile.activityLevel,
-              profile.trainingGoal
-            )
-          : 2000
-      : 2000);
-
-  const trainingGoal =
-    profile?.trainingGoal ??
-    (profile?.nutritionGoal ? trainingGoalFromNutritionGoal(profile.nutritionGoal) : "MAINTAIN");
-
-  const macros = calculateMacros(calories, trainingGoal, profile?.nutritionGoal);
+  const t = nutritionTargetsFromProfile(profile);
   return {
-    calories: profile?.calorieTarget ?? macros.calories,
-    proteinG: profile?.proteinTargetG ?? macros.proteinG,
-    carbsG: profile?.carbsTargetG ?? macros.carbsG,
-    fatG: profile?.fatTargetG ?? macros.fatG,
-    waterTargetMl: profile?.waterTargetMl ?? 2500,
-    nutritionGoal: profile?.nutritionGoal ?? null,
+    calories: t.calories,
+    proteinG: t.proteinG,
+    carbsG: t.carbsG,
+    fatG: t.fatG,
+    waterTargetMl: t.waterTargetMl,
+    nutritionGoal: t.nutritionGoal,
   };
 }
 
@@ -419,16 +379,19 @@ export async function applyNutritionGoal(
   nutritionGoal: NutritionGoal
 ) {
   const profile = await prisma.profile.findUnique({ where: { userId } });
-  const input = profile ? profileToMetricsInput({ ...profile, nutritionGoal }) : null;
-  if (!input) return null;
-  input.nutritionGoal = nutritionGoal;
-  input.trainingGoal = trainingGoalFromNutritionGoal(nutritionGoal);
-  const calc = recalculateProfileTargets(input);
+  if (!profile) return null;
+  const merged = {
+    ...profile,
+    nutritionGoal,
+    trainingGoal: trainingGoalFromNutritionGoal(nutritionGoal),
+  };
+  const calc = computeProfileTargets(merged);
+  if (!calc) return null;
   await prisma.profile.update({
     where: { userId },
     data: {
       nutritionGoal,
-      trainingGoal: input.trainingGoal,
+      trainingGoal: merged.trainingGoal,
       calorieTarget: calc.calorieTarget,
       proteinTargetG: calc.proteinTargetG,
       carbsTargetG: calc.carbsTargetG,

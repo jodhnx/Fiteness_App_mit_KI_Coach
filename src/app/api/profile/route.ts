@@ -4,11 +4,13 @@ import { prisma } from "@/lib/prisma";
 import type { Profile } from "@prisma/client";
 import { settingsSchema, validationErrorMessage } from "@/lib/validations";
 import { trainingGoalFromNutritionGoal } from "@/lib/nutrition";
+import { profileToMetricsInput } from "@/lib/profile-calculations";
+import { computeProfileTargets } from "@/lib/calorie-target";
 import {
-  profileToMetricsInput,
-  recalculateProfileTargets,
-} from "@/lib/profile-calculations";
-import { applySmartGoalsToProfilePatch, smartGoalCaloriePreview } from "@/lib/smart-goals";
+  applySmartGoalsToProfilePatch,
+  shouldRecalculateCalories,
+  smartGoalCaloriePreview,
+} from "@/lib/smart-goals";
 import { buildProfileUpsertData } from "@/lib/profile-patch";
 import { startOfDay, isValid } from "date-fns";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
@@ -20,28 +22,30 @@ function mergeProfile(
 ): Record<string, unknown> {
   const withSmart = applySmartGoalsToProfilePatch(existing, patch);
   const mergedSmart = { ...(existing ?? {}), ...withSmart } as Profile;
-
   const input = profileToMetricsInput(mergedSmart);
   if (!input) return withSmart;
 
-  const calc = recalculateProfileTargets(input);
-  const smart = smartGoalCaloriePreview(mergedSmart);
-  const useAutoCalories = patch.calorieTarget == null;
-  const useAutoProtein = patch.proteinTargetG == null;
-  const useAutoCarbs = patch.carbsTargetG == null;
-  const useAutoFat = patch.fatTargetG == null;
+  const manual = patch.manualCalorieTarget === true;
+  const recalc = shouldRecalculateCalories(patch);
+  const computed = computeProfileTargets(mergedSmart);
+
+  if (!computed) return withSmart;
 
   return {
     ...withSmart,
-    trainingGoal: mergedSmart.trainingGoal ?? trainingGoalFromNutritionGoal(input.nutritionGoal),
+    trainingGoal:
+      mergedSmart.trainingGoal ?? trainingGoalFromNutritionGoal(input.nutritionGoal),
     nutritionGoal: input.nutritionGoal,
-    calorieTarget: useAutoCalories
-      ? (smart?.calorieTarget ?? calc.calorieTarget)
-      : patch.calorieTarget,
-    proteinTargetG: useAutoProtein ? calc.proteinTargetG : patch.proteinTargetG,
-    carbsTargetG: useAutoCarbs ? calc.carbsTargetG : patch.carbsTargetG,
-    fatTargetG: useAutoFat ? calc.fatTargetG : patch.fatTargetG,
-    bmi: calc.bmi,
+    calorieTarget:
+      manual && !recalc && patch.calorieTarget != null
+        ? patch.calorieTarget
+        : computed.calorieTarget,
+    proteinTargetG:
+      manual && patch.proteinTargetG != null ? patch.proteinTargetG : computed.proteinTargetG,
+    carbsTargetG:
+      manual && patch.carbsTargetG != null ? patch.carbsTargetG : computed.carbsTargetG,
+    fatTargetG: manual && patch.fatTargetG != null ? patch.fatTargetG : computed.fatTargetG,
+    bmi: computed.bmi,
   };
 }
 
@@ -63,12 +67,12 @@ export async function GET() {
         onboardingCompletedAt: true,
       },
     });
-    const metrics = profile ? profileToMetricsInput(profile) : null;
+    const calculations = profile ? computeProfileTargets(profile) : null;
     return jsonOk({
       user,
       profile,
       onboardingCompleted: Boolean(user?.onboardingCompletedAt),
-      calculations: metrics ? recalculateProfileTargets(metrics) : null,
+      calculations,
       smartGoal: profile ? smartGoalCaloriePreview(profile) : null,
     });
   } catch (e) {
@@ -126,11 +130,10 @@ export async function PATCH(req: NextRequest) {
       select: { id: true, name: true, email: true, image: true },
     });
 
-    const metrics = profileToMetricsInput(profile);
     return jsonOk({
       user,
       profile,
-      calculations: metrics ? recalculateProfileTargets(metrics) : null,
+      calculations: computeProfileTargets(profile),
       smartGoal: smartGoalCaloriePreview(profile),
     });
   } catch (e) {

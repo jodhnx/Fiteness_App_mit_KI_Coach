@@ -61,11 +61,11 @@ export function createEmptyNutritionDashboard(
 ): NutritionDashboardPayload {
   const day = startOfDay(date);
   const targets = {
-    calories: 2000,
-    proteinG: 150,
-    carbsG: 200,
-    fatG: 65,
-    fiberG: 35,
+    calories: 0,
+    proteinG: 0,
+    carbsG: 0,
+    fatG: 0,
+    fiberG: 0,
     waterTargetMl: 2500,
     nutritionGoal: null,
   };

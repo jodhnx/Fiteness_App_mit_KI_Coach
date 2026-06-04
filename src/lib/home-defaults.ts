@@ -110,11 +110,11 @@ export type HomeDataPayload = {
 export function createEmptyHomeData(): HomeDataPayload {
   return {
     caloriesIntake: 0,
-    calorieTarget: 2000,
-    caloriesRemaining: 2000,
+    calorieTarget: 0,
+    caloriesRemaining: 0,
     proteinConsumed: 0,
-    proteinTarget: 150,
-    proteinRemaining: 150,
+    proteinTarget: 0,
+    proteinRemaining: 0,
     weightKg: null,
     streak: null,
     trainingStreak: null,
