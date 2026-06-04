@@ -91,6 +91,14 @@ Profil: 80 kg, 180 cm, 27 J., M., `ACTIVE` (1,725), 4 Trainingstage, `MUSCLE_GAI
 
 ---
 
+## Einstellungen speichern (Bugfix)
+
+- `save()` nutzt `try/finally` — `Speichern…` endet immer
+- `fetchJson` mit 25s Timeout und klaren Fehlermeldungen
+- Nach Erfolg: **kein** `invalidateAllNutritionCaches()` mehr (hat Caches direkt nach dem Speichern geleert)
+- Optimistic Update über `publishNutritionDashboard` für Home/Ernährung
+- API: `dbQuery` + Logging (`DEBUG_PROFILE=1` oder Development)
+
 ## Performance / UI
 
 - Einstellungen: Live-Vorschau ohne API (`previewTargetsFromForm`)

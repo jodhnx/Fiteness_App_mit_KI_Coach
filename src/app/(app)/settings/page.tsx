@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { previewTargetsFromForm } from "@/lib/calorie-target";
+import { fetchJson } from "@/lib/fetch-json";
+import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
+import type { HomeDataPayload } from "@/lib/home-defaults";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,10 +20,10 @@ import {
 import { NUTRITION_GOAL_LABELS } from "@/lib/nutrition";
 import type { ActivityLevel, NutritionGoal, PlanLevel, TrainingGoal } from "@prisma/client";
 import {
-  invalidateAllNutritionCaches,
   PROFILE_CACHE_KEY,
   publishNutritionDashboard,
   NUTRITION_DASHBOARD_CACHE_KEY,
+  HOME_DATA_CACHE_KEY,
 } from "@/lib/nutrition-sync";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { useSession } from "next-auth/react";
@@ -170,17 +173,33 @@ export default function SettingsPage() {
   }, [livePreview]);
 
   async function save() {
-    setSaving(true);
+    if (saving) return;
+
     const manualMacros = Boolean(
-      form.calorieTarget.trim() ||
-        form.proteinTargetG.trim() ||
-        form.carbsTargetG.trim() ||
-        form.fatTargetG.trim()
+      (form.calorieTarget ?? "").trim() ||
+        (form.proteinTargetG ?? "").trim() ||
+        (form.carbsTargetG ?? "").trim() ||
+        (form.fatTargetG ?? "").trim()
     );
-    const res = await fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+
+    if (livePreview) {
+      setPreview({
+        bmi: livePreview.bmi,
+        calorieTarget: livePreview.calorieTarget,
+        proteinTargetG: livePreview.proteinTargetG,
+        carbsTargetG: livePreview.carbsTargetG,
+        fatTargetG: livePreview.fatTargetG,
+        recommendedTrainingDays: livePreview.recommendedTrainingDays,
+      });
+    }
+
+    setSaving(true);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[settings] PATCH /api/profile gestartet");
+    }
+
+    try {
+      const payload = {
         name: form.name || undefined,
         age: form.age ? Number(form.age) : undefined,
         weightKg: form.weightKg ? Number(form.weightKg) : undefined,
@@ -193,7 +212,7 @@ export default function SettingsPage() {
         workoutDaysPerWeek: form.workoutDaysPerWeek
           ? Number(form.workoutDaysPerWeek)
           : undefined,
-        manualCalorieTarget: manualMacros || undefined,
+        manualCalorieTarget: manualMacros ? true : undefined,
         calorieTarget:
           manualMacros && form.calorieTarget ? Number(form.calorieTarget) : undefined,
         proteinTargetG:
@@ -210,56 +229,109 @@ export default function SettingsPage() {
         chestCm: form.chestCm ? Number(form.chestCm) : undefined,
         waistCm: form.waistCm ? Number(form.waistCm) : undefined,
         hipsCm: form.hipsCm ? Number(form.hipsCm) : undefined,
-      }),
-    });
-    setSaving(false);
-    let data: {
-      error?: string;
-      profile?: unknown;
-      calculations?: CalcPreview;
-      smartGoal?: { weightProjection?: string };
-      user?: { name?: string; image?: string | null };
-    } = {};
-    try {
-      data = await res.json();
-    } catch {
-      toast.error("Ungültige Server-Antwort");
-      return;
-    }
-    if (!res.ok) {
-      toast.error(data.error ?? "Speichern fehlgeschlagen");
-      return;
-    }
-    if (data.calculations) setPreview(data.calculations);
-    if (data.smartGoal?.weightProjection) setSmartGoalHint(data.smartGoal.weightProjection);
-    else setSmartGoalHint(null);
-    if (data.profile) {
-      setForm(
-        applyProfileToForm({
-          user: { ...data.user, name: data.user?.name },
-          profile: data.profile as Record<string, unknown>,
-          calculations: data.calculations,
-        })
-      );
-    }
-    if (data.user?.name) setForm((f) => ({ ...f, name: data.user!.name! }));
-    if (data.user?.image !== undefined) {
-      setUserImage(data.user.image);
-      await updateSession({ user: { image: data.user.image ?? undefined } });
-    }
-    const prev = getCached<ProfileApiResponse>(PROFILE_CACHE_KEY);
-    setCached(
-      PROFILE_CACHE_KEY,
-      {
+      };
+
+      const { res, data } = await fetchJson<{
+        error?: string;
+        code?: string;
+        profile?: Record<string, unknown>;
+        calculations?: CalcPreview;
+        smartGoal?: { weightProjection?: string };
+        user?: { name?: string; image?: string | null };
+      }>("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        timeoutMs: 25_000,
+      });
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[settings] PATCH Antwort", res.status, data);
+      }
+
+      if (!res.ok) {
+        const msg =
+          data.code === "ONBOARDING_REQUIRED"
+            ? "Bitte zuerst das Onboarding abschließen."
+            : data.error ?? `Speichern fehlgeschlagen (${res.status})`;
+        toast.error(msg);
+        return;
+      }
+
+      if (data.calculations) setPreview(data.calculations);
+      if (data.smartGoal?.weightProjection) setSmartGoalHint(data.smartGoal.weightProjection);
+      else setSmartGoalHint(null);
+
+      if (data.profile) {
+        setForm(
+          applyProfileToForm({
+            user: data.user,
+            profile: data.profile,
+            calculations: data.calculations,
+          })
+        );
+      }
+      if (data.user?.name) setForm((f) => ({ ...f, name: data.user!.name! }));
+
+      const prev = getCached<ProfileApiResponse>(PROFILE_CACHE_KEY);
+      const nextProfile: ProfileApiResponse = {
         ...prev,
         ...data,
         user: { ...prev?.user, ...data.user },
-        profile: (data.profile as Record<string, unknown>) ?? prev?.profile,
-      },
-      120_000
-    );
-    invalidateAllNutritionCaches();
-    toast.success("Einstellungen gespeichert");
+        profile: data.profile ?? prev?.profile,
+        calculations: data.calculations ?? prev?.calculations,
+      };
+      setCached(PROFILE_CACHE_KEY, nextProfile, 120_000);
+
+      if (data.calculations) {
+        const dash = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
+        if (dash?.profileComplete) {
+          const targets = {
+            calories: data.calculations.calorieTarget,
+            proteinG: data.calculations.proteinTargetG,
+            carbsG: data.calculations.carbsTargetG,
+            fatG: data.calculations.fatTargetG,
+          };
+          publishNutritionDashboard({
+            ...dash,
+            targets: { ...dash.targets, ...targets, fiberG: dash.targets.fiberG },
+            remaining: {
+              calories: Math.max(0, targets.calories - dash.consumed.calories),
+              proteinG: Math.max(0, targets.proteinG - dash.consumed.proteinG),
+              carbsG: Math.max(0, targets.carbsG - dash.consumed.carbsG),
+              fatG: Math.max(0, targets.fatG - dash.consumed.fatG),
+            },
+          });
+          const updatedDash = getCached<NutritionDashboardPayload>(
+            NUTRITION_DASHBOARD_CACHE_KEY
+          );
+          const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
+          if (prevHome && updatedDash) {
+            setCached(
+              HOME_DATA_CACHE_KEY,
+              { ...prevHome, ...nutritionDashboardToHomeMacros(updatedDash) },
+              120_000
+            );
+          }
+        }
+      }
+
+      if (data.user?.image !== undefined) {
+        setUserImage(data.user.image);
+        void updateSession({ user: { image: data.user.image ?? undefined } }).catch(
+          (err) => console.warn("[settings] session image update", err)
+        );
+      }
+
+      toast.success("Einstellungen gespeichert");
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Speichern fehlgeschlagen — unbekannter Fehler";
+      console.error("[settings] save failed", e);
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading && !getCached<ProfileApiResponse>(PROFILE_CACHE_KEY)) {
@@ -695,7 +767,12 @@ export default function SettingsPage() {
         </p>
       </section>
 
-      <Button className="w-full h-12 text-base" onClick={save} disabled={saving}>
+      <Button
+        type="button"
+        className="w-full h-12 text-base"
+        onClick={() => void save()}
+        disabled={saving}
+      >
         {saving ? "Speichern…" : "Speichern & neu berechnen"}
       </Button>
     </div>

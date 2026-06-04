@@ -1,59 +1,17 @@
-import type {
-  ActivityLevel,
-  Gender,
-  NutritionGoal,
-  PlanLevel,
-  Profile,
-  TrainingGoal,
-} from "@prisma/client";
+import type { ActivityLevel, Profile, TrainingGoal } from "@prisma/client";
+import type { CalculatedTargets, ProfileMetricsInput } from "@/lib/profile-types";
 import { calculateMacros, trainingGoalFromNutritionGoal } from "@/lib/nutrition";
 import { computeCaloriePlan, type CaloriePlanContext } from "@/lib/calorie-target";
+import { recommendedTrainingDays } from "@/lib/profile-training-days";
+
+export { recommendedTrainingDays } from "@/lib/profile-training-days";
 
 export function calculateBMI(weightKg: number, heightCm: number): number {
   const h = heightCm / 100;
   return Math.round((weightKg / (h * h)) * 10) / 10;
 }
 
-export function recommendedTrainingDays(
-  workoutDaysPerWeek: number | null | undefined,
-  trainingGoal: TrainingGoal
-): number {
-  if (workoutDaysPerWeek && workoutDaysPerWeek >= 2 && workoutDaysPerWeek <= 6) {
-    return workoutDaysPerWeek;
-  }
-  switch (trainingGoal) {
-    case "STRENGTH":
-    case "GAIN_MUSCLE":
-      return 4;
-    case "ENDURANCE":
-      return 5;
-    case "LOSE_WEIGHT":
-      return 4;
-    default:
-      return 3;
-  }
-}
-
-export type ProfileMetricsInput = {
-  age: number;
-  weightKg: number;
-  heightCm: number;
-  gender: Gender;
-  activityLevel: ActivityLevel;
-  trainingGoal: TrainingGoal;
-  nutritionGoal: NutritionGoal;
-  workoutDaysPerWeek?: number | null;
-};
-
-export type CalculatedTargets = {
-  bmi: number;
-  bmr: number;
-  calorieTarget: number;
-  proteinTargetG: number;
-  carbsTargetG: number;
-  fatTargetG: number;
-  recommendedTrainingDays: number;
-};
+export type { ProfileMetricsInput, CalculatedTargets } from "@/lib/profile-types";
 
 export function recalculateProfileTargets(
   input: ProfileMetricsInput,
@@ -150,9 +108,4 @@ export const ACTIVITY_LABELS: Record<ActivityLevel, string> = {
   VERY_ACTIVE: "Sehr aktiv",
 };
 
-export const EXPERIENCE_LABELS: Record<PlanLevel, string> = {
-  BEGINNER: "Anfänger",
-  INTERMEDIATE: "Fortgeschritten",
-  ADVANCED: "Advanced",
-  PRO: "Pro",
-};
+export { EXPERIENCE_LABELS } from "@/lib/profile-training-days";

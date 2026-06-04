@@ -1,7 +1,8 @@
 import { differenceInDays, isAfter } from "date-fns";
 import type { ActivityLevel, Gender, NutritionGoal, Profile, TrainingGoal } from "@prisma/client";
 import { calculateBMR, calculateMacros, trainingGoalFromNutritionGoal } from "@/lib/nutrition";
-import { recommendedTrainingDays, type CalculatedTargets, type ProfileMetricsInput } from "@/lib/profile-calculations";
+import { recommendedTrainingDays } from "@/lib/profile-training-days";
+import type { CalculatedTargets, ProfileMetricsInput } from "@/lib/profile-types";
 
 function calculateBMI(weightKg: number, heightCm: number): number {
   const h = heightCm / 100;
