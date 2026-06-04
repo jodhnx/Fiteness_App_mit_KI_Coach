@@ -143,6 +143,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, user, trigger, session }) {
       if (trigger === "update" && session?.onboardingComplete === true) {
         token.onboardingComplete = true;

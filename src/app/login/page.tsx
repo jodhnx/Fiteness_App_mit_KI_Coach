@@ -21,7 +21,7 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const { status: sessionStatus } = useSession();
-  const callbackUrl = resolvePostLoginPath(params.get("callbackUrl"));
+  const postLoginPath = resolvePostLoginPath(params.get("callbackUrl"));
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -33,10 +33,10 @@ function LoginForm() {
   useEffect(() => {
     if (sessionStatus === "authenticated") {
       logAuthFlow("SESSION CREATED", "already authenticated on /login");
-      logAuthFlow("REDIRECTING TO DASHBOARD", callbackUrl);
-      router.replace(callbackUrl);
+      logAuthFlow("REDIRECTING TO DASHBOARD", postLoginPath);
+      router.replace(postLoginPath);
     }
-  }, [sessionStatus, callbackUrl, router]);
+  }, [sessionStatus, postLoginPath, router]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -64,10 +64,17 @@ function LoginForm() {
 
       if (res?.ok) {
         logAuth(AuthLog.SESSION_CREATED, { email });
-        logAuth(AuthLog.REDIRECT_SUCCESS, callbackUrl);
+        logAuth(AuthLog.REDIRECT_SUCCESS, postLoginPath);
         toast.success("Willkommen zurück!");
-        await redirectAfterLogin(router, callbackUrl);
+        await redirectAfterLogin(router, postLoginPath);
         return;
+      }
+
+      if (res?.url && /^https?:\/\//i.test(res.url)) {
+        logAuth(AuthLog.AUTH_ERROR, {
+          reason: "unexpected_absolute_redirect_url",
+          url: res.url,
+        });
       }
 
       const code =
@@ -116,7 +123,9 @@ function LoginForm() {
             variant="outline"
             className="w-full"
             disabled={loading}
-            onClick={() => signIn("google", { callbackUrl })}
+            onClick={() =>
+              signIn("google", { callbackUrl: postLoginPath, redirect: true })
+            }
           >
             Mit Google anmelden
           </Button>

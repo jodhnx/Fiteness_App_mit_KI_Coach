@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
+import { safeAuthRedirect } from "@/lib/auth-redirect";
 
 export const authConfig: NextAuthConfig = {
   trustHost: true,
@@ -24,6 +25,7 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
+    redirect: safeAuthRedirect,
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const path = nextUrl.pathname;

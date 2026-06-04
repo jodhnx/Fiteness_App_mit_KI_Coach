@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { resetRequestSchema, resetPasswordSchema } from "@/lib/validations";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { jsonOk, jsonError } from "@/lib/api-response";
+import { getServerAuthBaseUrl } from "@/lib/auth-redirect";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`;
+  const resetUrl = `${getServerAuthBaseUrl()}/reset-password?token=${token}`;
   return jsonOk({
     message: "Reset-Link erstellt",
     resetUrl: process.env.NODE_ENV === "development" ? resetUrl : undefined,

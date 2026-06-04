@@ -50,7 +50,7 @@ Der Benutzername ist **`postgres.hdvitxmxrpsjfgsdbfst`** (nicht `postgres.[irgen
 | `NEXT_PUBLIC_SUPABASE_URL` | Optional | `https://hdvitxmxrpsjfgsdbfst.supabase.co` |
 | `AUTH_SECRET` | Ja | Min. 32 Zeichen Zufallsstring |
 | `NEXTAUTH_SECRET` | Ja | Gleich wie `AUTH_SECRET` oder eigener Wert |
-| `NEXTAUTH_URL` | Ja | Production-URL, z. B. `https://deine-app.vercel.app` |
+| `NEXTAUTH_URL` / `AUTH_URL` | Empfohlen | **Nur die feste Produktions-Domain** (z. B. `https://deine-app.vercel.app`). Keine Preview- oder alten Deployment-URLs — sonst 404 `DEPLOYMENT_NOT_FOUND` nach Login. Alternativ leer lassen: `trustHost` + Redirect-Callback nutzen die aktuelle Domain. |
 | `EMAIL_VERIFICATION` | Empfohlen | `false` zum Testen, `true` in Production |
 | `RESEND_API_KEY` | Wenn E-Mail | Resend API Key |
 | `EMAIL_FROM` | Wenn E-Mail | Absender-Adresse |
