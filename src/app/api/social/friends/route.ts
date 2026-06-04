@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         userId: receiver.id,
         type: "FRIEND_REQUEST",
         title: "Neue Freundschaftsanfrage",
-        message: `${session.user.name ?? "Jemand"} möchte dich als Freund hinzufügen`,
+        message: "Jemand möchte dich als Freund hinzufügen",
         link: "/social",
       },
     });

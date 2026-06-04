@@ -2,6 +2,12 @@ import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { safeAuthRedirect } from "@/lib/auth-redirect";
+import {
+  handleJwtCallbackEdge,
+  handleSessionCallback,
+} from "@/lib/auth-jwt-edge";
+
+const useSecureCookies = process.env.NODE_ENV === "production";
 
 export const authConfig: NextAuthConfig = {
   trustHost: true,
@@ -10,6 +16,23 @@ export const authConfig: NextAuthConfig = {
   pages: {
     signIn: "/login",
     error: "/login",
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60,
+  },
+  cookies: {
+    sessionToken: {
+      name: useSecureCookies
+        ? "__Secure-authjs.session-token.v2"
+        : "authjs.session-token.v2",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+      },
+    },
   },
   providers: [
     Google({
@@ -48,25 +71,7 @@ export const authConfig: NextAuthConfig = {
       if (path.startsWith("/api/auth")) return true;
       return isLoggedIn;
     },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = (user as { role?: string }).role ?? "USER";
-        if ((user as { role?: string }).role === "ADMIN") {
-          token.onboardingComplete = true;
-        }
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = (token.id as string) ?? session.user.id;
-        session.user.role = (token.role as string) ?? "USER";
-        session.user.onboardingComplete =
-          token.role === "ADMIN" || Boolean(token.onboardingComplete);
-      }
-      return session;
-    },
+    jwt: handleJwtCallbackEdge,
+    session: handleSessionCallback,
   },
-  session: { strategy: "jwt" },
 };

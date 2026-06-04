@@ -29,7 +29,7 @@ import {
 } from "@/lib/nutrition-sync";
 import { invalidateCache } from "@/lib/client-cache";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
-import { useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { AvatarUpload } from "@/components/user/avatar-upload";
 import { usePreferences } from "@/components/providers/preferences-provider";
 import { APP_THEMES, UI_DENSITY_OPTIONS, COLOR_MODE_OPTIONS } from "@/lib/themes";
@@ -119,8 +119,8 @@ export default function SettingsPage() {
     waistCm: "",
     hipsCm: "",
   });
-  const { update: updateSession } = useSession();
   const [userImage, setUserImage] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [smartGoalHint, setSmartGoalHint] = useState<string | null>(null);
 
   const { data: profileData, loading } = useCachedFetch<ProfileApiResponse>(
@@ -321,9 +321,6 @@ export default function SettingsPage() {
 
       if (data.user?.image !== undefined) {
         setUserImage(data.user.image);
-        void updateSession({ user: { image: data.user.image ?? undefined } }).catch(
-          (err) => console.warn("[settings] session image update", err)
-        );
       }
 
       invalidateCache(HOME_COACH_CACHE);
@@ -391,9 +388,8 @@ export default function SettingsPage() {
         <AvatarUpload
           imageUrl={userImage}
           name={form.name}
-          onUpdated={async (url) => {
+          onUpdated={(url) => {
             setUserImage(url);
-            await updateSession({ user: { image: url ?? undefined } });
           }}
         />
         <div>
@@ -782,6 +778,26 @@ export default function SettingsPage() {
       >
         {saving ? "Speichern…" : "Speichern & neu berechnen"}
       </Button>
+
+      <section className="card-premium p-4 space-y-3 scroll-mt-24">
+        <h2 className="font-semibold text-white text-lg">Konto</h2>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full border-red-500/40 text-red-300 hover:bg-red-500/10"
+          disabled={loggingOut}
+          onClick={async () => {
+            setLoggingOut(true);
+            try {
+              await signOut({ callbackUrl: "/login", redirect: true });
+            } finally {
+              setLoggingOut(false);
+            }
+          }}
+        >
+          {loggingOut ? "Abmelden…" : "Abmelden"}
+        </Button>
+      </section>
     </div>
   );
 }

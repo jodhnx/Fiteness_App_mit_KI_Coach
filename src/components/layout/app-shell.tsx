@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { useProfileHeader } from "@/hooks/use-profile-header";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Header } from "@/components/layout/header";
@@ -10,6 +11,7 @@ import { SidebarProvider } from "@/components/layout/sidebar-provider";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
+  const { name: headerName, image: headerImage } = useProfileHeader();
   const isAdmin = session?.user?.role === "ADMIN";
 
   return (
@@ -18,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <RoutePrefetcher />
         <SidebarNav isAdmin={isAdmin} />
         <div className="mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
-          <Header userName={session?.user?.name} userImage={session?.user?.image} />
+          <Header userName={headerName} userImage={headerImage} />
           <main className="app-page-content flex-1 px-4 pb-4">{children}</main>
         </div>
         <BottomNav />

@@ -20,6 +20,7 @@ import { isDatabaseConnectionError } from "@/lib/prisma-errors";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { AuthLog, logAuth, logAuthServer, logAuthEnvOnce } from "@/lib/auth-logger";
 import { looksLikeEphemeralDeploymentUrl } from "@/lib/auth-redirect";
+import { handleJwtCallbackWithDb } from "@/lib/auth-jwt";
 
 if (!process.env.AUTH_SECRET?.trim() && !process.env.NEXTAUTH_SECRET?.trim()) {
   logAuthServer("startup_error", {
@@ -39,6 +40,10 @@ if (nextAuthUrl && looksLikeEphemeralDeploymentUrl(nextAuthUrl)) {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    jwt: handleJwtCallbackWithDb,
+  },
   adapter: PrismaAdapter(prisma),
   providers: [
     Google({
@@ -189,8 +194,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return {
             id: user.id,
             email: user.email,
-            name: user.name,
-            image: user.image,
             role: user.role,
           };
         } catch (error) {
@@ -239,108 +242,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    ...authConfig.callbacks,
-    async jwt({ token, user, trigger, session }) {
-      if (trigger === "update" && session?.onboardingComplete === true) {
-        token.onboardingComplete = true;
-      }
-      const userId = user?.id ?? (token.id as string | undefined);
-      if (user) {
-        token.id = user.id;
-        token.role = (user as { role?: string }).role ?? "USER";
-      }
-      try {
-        const userSelect = {
-          id: true,
-          role: true,
-          onboardingCompletedAt: true,
-          profile: {
-            select: {
-              age: true,
-              weightKg: true,
-              heightCm: true,
-              gender: true,
-              activityLevel: true,
-            },
-          },
-        } as const;
-
-        const applyDbUser = (dbUser: {
-          id: string;
-          role: string;
-          onboardingCompletedAt: Date | null;
-          profile: {
-            age: number | null;
-            weightKg: number | null;
-            heightCm: number | null;
-            gender: string | null;
-            activityLevel: string | null;
-          } | null;
-        }) => {
-          token.id = dbUser.id;
-          token.role = dbUser.role;
-          const legacyComplete = Boolean(
-            dbUser.profile?.age &&
-              dbUser.profile.weightKg &&
-              dbUser.profile.heightCm &&
-              dbUser.profile.gender &&
-              dbUser.profile.activityLevel
-          );
-          token.onboardingComplete =
-            dbUser.role === "ADMIN" ||
-            Boolean(dbUser.onboardingCompletedAt) ||
-            legacyComplete;
-          return { dbUser, legacyComplete };
-        };
-
-        if (userId) {
-          const dbUser = await dbQuery("auth.jwt.userById", (db) =>
-            db.user.findUnique({ where: { id: userId }, select: userSelect })
-          );
-          if (dbUser) {
-            const { legacyComplete } = applyDbUser(dbUser);
-            if (legacyComplete && !dbUser.onboardingCompletedAt) {
-              await dbQuery("auth.jwt.completeOnboarding", (db) =>
-                db.user.update({
-                  where: { id: dbUser.id },
-                  data: { onboardingCompletedAt: new Date() },
-                })
-              ).catch(() => undefined);
-            }
-          }
-        } else if (token.email) {
-          const dbUser = await dbQuery("auth.jwt.userByEmail", (db) =>
-            db.user.findUnique({
-              where: { email: token.email as string },
-              select: userSelect,
-            })
-          );
-          if (dbUser) applyDbUser(dbUser);
-        }
-      } catch (e) {
-        if (isDatabaseConnectionError(e)) {
-          logAuthServer("jwt_callback_db_error", {
-            reason: "database_connection",
-            message: e instanceof Error ? e.message : String(e),
-          });
-        } else {
-          logAuthServer("jwt_callback_db_error", {
-            message: e instanceof Error ? e.message : String(e),
-          });
-        }
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = (token.id as string) ?? session.user.id;
-        session.user.role = (token.role as string) ?? "USER";
-        session.user.onboardingComplete = Boolean(token.onboardingComplete);
-      }
-      return session;
-    },
-  },
   events: {
     async signIn({ user, account }) {
       try {

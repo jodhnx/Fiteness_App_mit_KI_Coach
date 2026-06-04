@@ -40,10 +40,7 @@ export default auth((req) => {
   }
 
   if (!isPublic && !isLoggedIn && !path.startsWith("/api/")) {
-    const callback = encodeURIComponent(path);
-    return NextResponse.redirect(
-      new URL(`/login?callbackUrl=${callback}`, nextUrl)
-    );
+    return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
   if (isLoggedIn && onboardingComplete && path === "/onboarding") {

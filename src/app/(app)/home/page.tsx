@@ -65,7 +65,8 @@ export default function HomePage() {
   const coach = data.coach;
   const nextWorkout = data.nextWorkout ?? null;
   const activeSessionId = data.activeSession?.id ?? null;
-  const displayName = data.userName ?? session?.user?.name ?? null;
+  const displayName =
+    data.userName ?? session?.user?.email?.split("@")[0] ?? null;
 
   useEffect(() => {
     if (process.env.NODE_ENV === "development" && error) {

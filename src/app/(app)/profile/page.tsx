@@ -8,11 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { AvatarUpload } from "@/components/user/avatar-upload";
-import { useSession } from "next-auth/react";
 import { ChevronRight } from "lucide-react";
 
 export default function ProfilePage() {
-  const { update: updateSession } = useSession();
   const [userImage, setUserImage] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
@@ -96,9 +94,8 @@ export default function ProfilePage() {
           <AvatarUpload
             imageUrl={userImage}
             name={form.name}
-            onUpdated={async (url) => {
+            onUpdated={(url) => {
               setUserImage(url);
-              await updateSession({ user: { image: url ?? undefined } });
             }}
           />
         </CardContent>
