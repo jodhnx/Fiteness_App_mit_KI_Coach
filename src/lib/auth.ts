@@ -7,7 +7,10 @@ import { prisma, dbQuery } from "@/lib/prisma";
 import { ensureAdminUser, ADMIN_EMAIL } from "@/lib/ensure-admin";
 import { loginSchema } from "@/lib/validations";
 import { authConfig } from "@/lib/auth.config";
-import { isEmailVerified } from "@/lib/verification";
+import {
+  isEmailVerified,
+  isEmailVerificationEnabled,
+} from "@/lib/verification";
 import {
   DatabaseConnectionError,
   InvalidCredentialsError,
@@ -48,9 +51,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           logAuth(AuthLog.LOGIN_ATTEMPT, { email: emailHint });
 
+          const parsed = loginSchema.safeParse(credentials);
           if (!parsed.success) {
-            logAuth(AuthLog.AUTH_ERROR, "invalid payload");
-            console.log("LOGIN ERROR: InvalidCredentials");
+            logAuth(AuthLog.AUTH_ERROR, {
+              reason: "invalid_payload",
+              issues: parsed.error.flatten().fieldErrors,
+            });
             throw new InvalidCredentialsError();
           }
 
@@ -58,7 +64,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const limit = rateLimit(`login:${email}`, 10, 900_000);
           if (!limit.success) {
             logAuth(AuthLog.RATE_LIMITED, { email });
-            console.log("LOGIN ERROR: InvalidCredentials");
             throw new InvalidCredentialsError();
           }
 
@@ -76,7 +81,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           );
 
           if (!user?.passwordHash) {
-            console.log("LOGIN ERROR: InvalidCredentials");
             logAuth(AuthLog.USER_NOT_FOUND, { email });
             throw new InvalidCredentialsError();
           }
@@ -85,19 +89,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
           if (!valid) {
-            console.log("LOGIN ERROR: InvalidCredentials");
             logAuth(AuthLog.PASSWORD_INVALID, { email });
             throw new InvalidCredentialsError();
           }
 
           logAuth(AuthLog.PASSWORD_VALID, { email });
 
-          if (!isEmailVerified(user.emailVerified)) {
+          if (isEmailVerificationEnabled() && !isEmailVerified(user.emailVerified)) {
             logAuth(AuthLog.EMAIL_NOT_VERIFIED, { email });
             throw new UnverifiedEmailError();
           }
 
-          logAuth(AuthLog.SESSION_CREATED, { userId: user.id });
+          logAuth(AuthLog.SESSION_CREATED, { userId: user.id, email });
 
           return {
             id: user.id,
@@ -107,19 +110,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             role: user.role,
           };
         } catch (error) {
-          if (
-            error instanceof InvalidCredentialsError ||
-            error instanceof UnverifiedEmailError ||
-            error instanceof DatabaseConnectionError
-          ) {
+          if (error instanceof InvalidCredentialsError) {
+            logAuth(AuthLog.AUTH_ERROR, {
+              reason: "invalid_credentials",
+              email: emailHint,
+            });
+            throw error;
+          }
+          if (error instanceof UnverifiedEmailError) {
+            logAuth(AuthLog.AUTH_ERROR, {
+              reason: "email_not_verified",
+              email: emailHint,
+            });
+            throw error;
+          }
+          if (error instanceof DatabaseConnectionError) {
+            logAuth(AuthLog.DB_UNAVAILABLE, emailHint);
             throw error;
           }
           if (isDatabaseConnectionError(error)) {
             logAuth(AuthLog.DB_UNAVAILABLE, emailHint);
-            console.log("LOGIN ERROR: InvalidCredentials");
             throw new DatabaseConnectionError();
           }
-          logAuth(AuthLog.AUTH_ERROR, error instanceof Error ? error.message : String(error));
+          logAuth(AuthLog.AUTH_ERROR, {
+            reason: "unexpected",
+            email: emailHint,
+            message: error instanceof Error ? error.message : String(error),
+          });
           throw new InvalidCredentialsError();
         }
       },

@@ -2,6 +2,7 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { prisma, pingDatabase, dbQuery } from "../src/lib/prisma";
 import { ensureAdminUser, ADMIN_EMAIL, ADMIN_PASSWORD } from "../src/lib/ensure-admin";
+import { isEmailVerificationEnabled } from "../src/lib/verification";
 
 async function main() {
   console.log("=== Auth Flow Test ===\n");
@@ -23,6 +24,12 @@ async function main() {
     process.exit(1);
   }
   console.log("✓ Datenbank erreichbar");
+  console.log(
+    `  EMAIL_VERIFICATION: ${process.env.EMAIL_VERIFICATION ?? "(default on)"} → ${isEmailVerificationEnabled() ? "aktiv" : "deaktiviert"}`
+  );
+  console.log(
+    `  AUTH_SECRET: ${process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET ? "gesetzt" : "FEHLT"}`
+  );
 
   const ensured = await ensureAdminUser();
   console.log(ensured.created ? "✓ Admin angelegt" : "✓ Admin aktualisiert", ADMIN_EMAIL);

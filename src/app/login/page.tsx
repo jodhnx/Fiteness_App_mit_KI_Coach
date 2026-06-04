@@ -70,8 +70,13 @@ function LoginForm() {
         return;
       }
 
-      const code = res?.code ?? res?.error ?? undefined;
-      logAuth(AuthLog.AUTH_ERROR, { email, code, status: res?.status });
+      const code =
+        res?.code && res.code !== "credentials" && res.code !== "CredentialsSignin"
+          ? res.code
+          : res?.error && res.error !== "CredentialsSignin"
+            ? res.error
+            : res?.code ?? res?.error ?? undefined;
+      logAuth(AuthLog.AUTH_ERROR, { email, code, status: res?.status, error: res?.error });
       const message = getLoginErrorMessage(code);
       toast.error(message);
 

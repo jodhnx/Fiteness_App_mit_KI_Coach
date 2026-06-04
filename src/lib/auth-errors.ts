@@ -21,6 +21,7 @@ export function getLoginErrorMessage(code: string | undefined): string {
     case "database_connection":
       return "Datenbank nicht erreichbar. Prüfe Supabase DATABASE_URL / DIRECT_URL in .env.";
     case "CredentialsSignin":
+    case "credentials":
       return "E-Mail oder Passwort ist falsch.";
     default:
       return "Anmeldung fehlgeschlagen.";
