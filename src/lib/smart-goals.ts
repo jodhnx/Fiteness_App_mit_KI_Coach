@@ -81,8 +81,6 @@ function subDaysSafe(date: Date, days: number): Date {
   return d;
 }
 
-export { adjustCaloriesForWeightGoal } from "@/lib/calorie-target";
-
 export function smartGoalCaloriePreview(profile: Profile): {
   calorieTarget: number;
   weightProjection: string;

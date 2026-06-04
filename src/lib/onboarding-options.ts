@@ -19,7 +19,8 @@ export const ONBOARDING_ACTIVITY_OPTIONS: {
   { value: "SEDENTARY", label: "Kaum aktiv", hint: "Büro, wenig Bewegung" },
   { value: "LIGHT", label: "Leicht aktiv", hint: "1–2× Sport / Woche" },
   { value: "MODERATE", label: "Aktiv", hint: "3–4× Training / Woche" },
-  { value: "VERY_ACTIVE", label: "Sehr aktiv", hint: "5–6× oder körperliche Arbeit" },
+  { value: "ACTIVE", label: "Hoch aktiv", hint: "4–5× Kraft/Cardio, viel Bewegung" },
+  { value: "VERY_ACTIVE", label: "Sehr aktiv", hint: "6–7× oder körperliche Arbeit" },
 ];
 
 export const ONBOARDING_MAIN_GOAL_OPTIONS: {

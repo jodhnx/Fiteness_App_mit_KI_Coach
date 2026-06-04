@@ -5,7 +5,9 @@ import type { Profile } from "@prisma/client";
 import { settingsSchema, validationErrorMessage } from "@/lib/validations";
 import { trainingGoalFromNutritionGoal } from "@/lib/nutrition";
 import { profileToMetricsInput } from "@/lib/profile-calculations";
-import { computeProfileTargets } from "@/lib/calorie-target";
+import { computeProfileTargets, type CaloriePlanContext } from "@/lib/calorie-target";
+import { loadCaloriePlanContext } from "@/lib/calorie-health-context";
+import { revalidateTag } from "next/cache";
 import {
   applySmartGoalsToProfilePatch,
   shouldRecalculateCalories,
@@ -18,7 +20,8 @@ import { isSchemaMismatchError } from "@/lib/prisma-errors";
 
 function mergeProfile(
   existing: Profile | null,
-  patch: Record<string, unknown>
+  patch: Record<string, unknown>,
+  calorieContext?: CaloriePlanContext
 ): Record<string, unknown> {
   const withSmart = applySmartGoalsToProfilePatch(existing, patch);
   const mergedSmart = { ...(existing ?? {}), ...withSmart } as Profile;
@@ -27,7 +30,7 @@ function mergeProfile(
 
   const manual = patch.manualCalorieTarget === true;
   const recalc = shouldRecalculateCalories(patch);
-  const computed = computeProfileTargets(mergedSmart);
+  const computed = computeProfileTargets(mergedSmart, calorieContext);
 
   if (!computed) return withSmart;
 
@@ -67,7 +70,10 @@ export async function GET() {
         onboardingCompletedAt: true,
       },
     });
-    const calculations = profile ? computeProfileTargets(profile) : null;
+    const calorieContext = await loadCaloriePlanContext(session.user.id);
+    const calculations = profile
+      ? computeProfileTargets(profile, calorieContext)
+      : null;
     return jsonOk({
       user,
       profile,
@@ -116,7 +122,8 @@ export async function PATCH(req: NextRequest) {
       raw.targetWeightDate = isValid(d) ? d : undefined;
     }
 
-    const merged = mergeProfile(existing, raw);
+    const calorieContext = await loadCaloriePlanContext(session.user.id);
+    const merged = mergeProfile(existing, raw, calorieContext);
     const { create, update } = buildProfileUpsertData(session.user.id, merged);
 
     const profile = await prisma.profile.upsert({
@@ -130,10 +137,12 @@ export async function PATCH(req: NextRequest) {
       select: { id: true, name: true, email: true, image: true },
     });
 
+    revalidateTag(`home-${session.user.id}`);
+
     return jsonOk({
       user,
       profile,
-      calculations: computeProfileTargets(profile),
+      calculations: computeProfileTargets(profile, calorieContext),
       smartGoal: smartGoalCaloriePreview(profile),
     });
   } catch (e) {

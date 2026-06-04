@@ -2,7 +2,12 @@ import type { MealType, NutritionGoal, Profile } from "@prisma/client";
 import { MEAL_TYPE_LABELS, TRACK_MEAL_ORDER } from "@/lib/meal-types";
 import { prisma } from "@/lib/prisma";
 import { macrosForQuantity, sumMacros, roundMacros, type MacroTotals } from "@/lib/food-macros";
-import { computeProfileTargets, nutritionTargetsFromProfile } from "@/lib/calorie-target";
+import {
+  computeProfileTargets,
+  nutritionTargetsFromProfile,
+  type CaloriePlanContext,
+} from "@/lib/calorie-target";
+import { loadCaloriePlanContext } from "@/lib/calorie-health-context";
 import { trainingGoalFromNutritionGoal } from "@/lib/nutrition";
 import { startOfDay, subDays, format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -40,8 +45,8 @@ const foodSelectMinimal = {
   fiberG: true,
 } as const;
 
-export function resolveTargets(profile: Profile | null) {
-  const t = nutritionTargetsFromProfile(profile);
+export function resolveTargets(profile: Profile | null, context?: CaloriePlanContext) {
+  const t = nutritionTargetsFromProfile(profile, context);
   return {
     calories: t.calories,
     proteinG: t.proteinG,
@@ -107,8 +112,12 @@ export async function loadNutritionDashboard(
 ): Promise<NutritionDashboardPayload> {
   const day = startOfDay(date);
   let profile: Profile | null = null;
+  let calorieContext: CaloriePlanContext = {};
   try {
-    profile = await prisma.profile.findUnique({ where: { userId } });
+    [profile, calorieContext] = await Promise.all([
+      prisma.profile.findUnique({ where: { userId } }),
+      loadCaloriePlanContext(userId),
+    ]);
   } catch (e) {
     console.error("[nutrition-dashboard] profile", e);
   }
@@ -122,7 +131,7 @@ export async function loadNutritionDashboard(
   );
 
   try {
-    const targets = resolveTargets(profile);
+    const targets = resolveTargets(profile, calorieContext);
     const foodSelect = foodSelectFull;
 
     const loadMeals = async () => {
@@ -249,7 +258,7 @@ export async function loadNutritionDashboard(
         include: { items: { include: { foodItem: { select: foodSelectMinimal } } } },
       });
       const empty = createEmptyNutritionDashboard(day, profileComplete);
-      const targets = resolveTargets(profile);
+      const targets = resolveTargets(profile, calorieContext);
       const consumedMacros = roundMacros(
         sumMacros(
           meals.flatMap((m) =>

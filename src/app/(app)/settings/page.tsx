@@ -16,7 +16,13 @@ import {
 } from "@/lib/onboarding-options";
 import { NUTRITION_GOAL_LABELS } from "@/lib/nutrition";
 import type { ActivityLevel, NutritionGoal, PlanLevel, TrainingGoal } from "@prisma/client";
-import { invalidateAllNutritionCaches, PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
+import {
+  invalidateAllNutritionCaches,
+  PROFILE_CACHE_KEY,
+  publishNutritionDashboard,
+  NUTRITION_DASHBOARD_CACHE_KEY,
+} from "@/lib/nutrition-sync";
+import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { useSession } from "next-auth/react";
 import { AvatarUpload } from "@/components/user/avatar-upload";
 import { usePreferences } from "@/components/providers/preferences-provider";
@@ -141,6 +147,26 @@ export default function SettingsPage() {
       fatTargetG: livePreview.fatTargetG,
       recommendedTrainingDays: livePreview.recommendedTrainingDays,
     });
+
+    const dash = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
+    if (dash?.profileComplete) {
+      publishNutritionDashboard({
+        ...dash,
+        targets: {
+          ...dash.targets,
+          calories: livePreview.calorieTarget,
+          proteinG: livePreview.proteinTargetG,
+          carbsG: livePreview.carbsTargetG,
+          fatG: livePreview.fatTargetG,
+        },
+        remaining: {
+          calories: Math.max(0, livePreview.calorieTarget - dash.consumed.calories),
+          proteinG: Math.max(0, livePreview.proteinTargetG - dash.consumed.proteinG),
+          carbsG: Math.max(0, livePreview.carbsTargetG - dash.consumed.carbsG),
+          fatG: Math.max(0, livePreview.fatTargetG - dash.consumed.fatG),
+        },
+      });
+    }
   }, [livePreview]);
 
   async function save() {

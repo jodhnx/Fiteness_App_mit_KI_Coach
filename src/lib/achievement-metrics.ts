@@ -95,7 +95,7 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
   ]);
 
   const proteinTarget = profile?.proteinTargetG ?? 150;
-  const calorieTarget = profile?.calorieTarget ?? 2200;
+  const calorieTarget = profile?.calorieTarget ?? 0;
 
   const proteinByDay = macroDaysOnTarget(mealItems30, proteinTarget, "protein");
   const calorieByDay = macroDaysOnTarget(mealItems30, calorieTarget, "calories");

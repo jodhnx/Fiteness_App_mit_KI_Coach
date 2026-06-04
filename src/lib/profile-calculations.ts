@@ -6,12 +6,8 @@ import type {
   Profile,
   TrainingGoal,
 } from "@prisma/client";
-import {
-  calculateBMR,
-  calculateTDEEForNutritionGoal,
-  calculateMacros,
-  trainingGoalFromNutritionGoal,
-} from "@/lib/nutrition";
+import { calculateMacros, trainingGoalFromNutritionGoal } from "@/lib/nutrition";
+import { computeCaloriePlan, type CaloriePlanContext } from "@/lib/calorie-target";
 
 export function calculateBMI(weightKg: number, heightCm: number): number {
   const h = heightCm / 100;
@@ -60,28 +56,32 @@ export type CalculatedTargets = {
 };
 
 export function recalculateProfileTargets(
-  input: ProfileMetricsInput
+  input: ProfileMetricsInput,
+  context?: CaloriePlanContext,
+  targetWeightKg?: number | null,
+  targetWeightDate?: Date | null
 ): CalculatedTargets {
-  const bmi = calculateBMI(input.weightKg, input.heightCm);
-  const bmr = Math.round(
-    calculateBMR(input.weightKg, input.heightCm, input.age, input.gender)
-  );
-  const calories = calculateTDEEForNutritionGoal(
-    input.weightKg,
-    input.heightCm,
-    input.age,
-    input.gender,
-    input.activityLevel,
-    input.nutritionGoal
-  );
   const trainingGoal =
     input.trainingGoal ?? trainingGoalFromNutritionGoal(input.nutritionGoal);
-  const macros = calculateMacros(calories, trainingGoal, input.nutritionGoal);
+  const plan = computeCaloriePlan({
+    age: input.age,
+    weightKg: input.weightKg,
+    heightCm: input.heightCm,
+    gender: input.gender,
+    activityLevel: input.activityLevel,
+    nutritionGoal: input.nutritionGoal,
+    trainingGoal,
+    workoutDaysPerWeek: input.workoutDaysPerWeek,
+    targetWeightKg: targetWeightKg ?? null,
+    targetWeightDate: targetWeightDate ?? null,
+    context,
+  });
+  const macros = calculateMacros(plan.calorieTarget, trainingGoal, input.nutritionGoal);
 
   return {
-    bmi,
-    bmr,
-    calorieTarget: macros.calories,
+    bmi: calculateBMI(input.weightKg, input.heightCm),
+    bmr: plan.bmr,
+    calorieTarget: plan.calorieTarget,
     proteinTargetG: macros.proteinG,
     carbsTargetG: macros.carbsG,
     fatTargetG: macros.fatG,

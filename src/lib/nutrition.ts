@@ -1,28 +1,19 @@
 import type { ActivityLevel, Gender, NutritionGoal, TrainingGoal } from "@prisma/client";
+import {
+  ACTIVITY_MULTIPLIERS,
+  computeCaloriePlan,
+  type CaloriePlanContext,
+} from "@/lib/calorie-target";
 
-const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, number> = {
-  SEDENTARY: 1.2,
-  LIGHT: 1.375,
-  MODERATE: 1.55,
-  ACTIVE: 1.725,
-  VERY_ACTIVE: 1.9,
-};
+export { ACTIVITY_MULTIPLIERS };
 
-const TRAINING_GOAL_ADJUSTMENTS: Record<TrainingGoal, number> = {
-  LOSE_WEIGHT: -500,
-  MAINTAIN: 0,
-  GAIN_MUSCLE: 300,
-  ENDURANCE: 200,
-  STRENGTH: 250,
-  GENERAL_FITNESS: 0,
-};
-
-const NUTRITION_GOAL_ADJUSTMENTS: Record<NutritionGoal, number> = {
-  FAT_LOSS: -450,
-  MAINTENANCE: 0,
-  MUSCLE_GAIN: 350,
-  LEAN_BULK: 200,
-  RECOMP: -150,
+const TRAINING_GOAL_TO_NUTRITION: Partial<Record<TrainingGoal, NutritionGoal>> = {
+  LOSE_WEIGHT: "FAT_LOSS",
+  GAIN_MUSCLE: "MUSCLE_GAIN",
+  MAINTAIN: "MAINTENANCE",
+  STRENGTH: "MUSCLE_GAIN",
+  ENDURANCE: "MAINTENANCE",
+  GENERAL_FITNESS: "MAINTENANCE",
 };
 
 export function calculateBMR(
@@ -37,30 +28,49 @@ export function calculateBMR(
   return 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
 }
 
+/** TDEE ohne Ziel-% (nur BMR × Aktivitätsfaktor) */
 export function calculateTDEE(
   weightKg: number,
   heightCm: number,
   age: number,
   gender: Gender,
   activityLevel: ActivityLevel,
-  trainingGoal: TrainingGoal
+  _trainingGoal?: TrainingGoal
 ): number {
   const bmr = calculateBMR(weightKg, heightCm, age, gender);
-  const tdee = bmr * ACTIVITY_MULTIPLIERS[activityLevel];
-  return Math.round(tdee + TRAINING_GOAL_ADJUSTMENTS[trainingGoal]);
+  return Math.round(bmr * ACTIVITY_MULTIPLIERS[activityLevel]);
 }
 
+/** Tagesziel-Kalorien inkl. Ziel, Training, optional Kontext */
 export function calculateTDEEForNutritionGoal(
   weightKg: number,
   heightCm: number,
   age: number,
   gender: Gender,
   activityLevel: ActivityLevel,
-  nutritionGoal: NutritionGoal
+  nutritionGoal: NutritionGoal,
+  options?: {
+    trainingGoal?: TrainingGoal;
+    workoutDaysPerWeek?: number | null;
+    targetWeightKg?: number | null;
+    targetWeightDate?: Date | null;
+    context?: CaloriePlanContext;
+  }
 ): number {
-  const bmr = calculateBMR(weightKg, heightCm, age, gender);
-  const tdee = bmr * ACTIVITY_MULTIPLIERS[activityLevel];
-  return Math.round(tdee + NUTRITION_GOAL_ADJUSTMENTS[nutritionGoal]);
+  const plan = computeCaloriePlan({
+    age,
+    weightKg,
+    heightCm,
+    gender,
+    activityLevel,
+    nutritionGoal,
+    trainingGoal: options?.trainingGoal,
+    workoutDaysPerWeek: options?.workoutDaysPerWeek,
+    targetWeightKg: options?.targetWeightKg,
+    targetWeightDate: options?.targetWeightDate,
+    context: options?.context,
+  });
+  return plan.calorieTarget;
 }
 
 export function trainingGoalFromNutritionGoal(goal: NutritionGoal): TrainingGoal {
@@ -77,6 +87,10 @@ export function trainingGoalFromNutritionGoal(goal: NutritionGoal): TrainingGoal
   }
 }
 
+export function nutritionGoalFromTrainingGoal(goal: TrainingGoal): NutritionGoal {
+  return TRAINING_GOAL_TO_NUTRITION[goal] ?? "MAINTENANCE";
+}
+
 export function calculateMacros(
   calories: number,
   trainingGoal: TrainingGoal,
@@ -86,7 +100,12 @@ export function calculateMacros(
   let fatRatio = 0.25;
 
   const goal = nutritionGoal ?? null;
-  if (goal === "MUSCLE_GAIN" || goal === "LEAN_BULK" || trainingGoal === "GAIN_MUSCLE" || trainingGoal === "STRENGTH") {
+  if (
+    goal === "MUSCLE_GAIN" ||
+    goal === "LEAN_BULK" ||
+    trainingGoal === "GAIN_MUSCLE" ||
+    trainingGoal === "STRENGTH"
+  ) {
     proteinRatio = 0.32;
     fatRatio = 0.22;
   } else if (goal === "FAT_LOSS" || trainingGoal === "LOSE_WEIGHT") {
