@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarNav isAdmin={isAdmin} />
         <div className="mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
           <Header userName={session?.user?.name} userImage={session?.user?.image} />
-          <main className="flex-1 px-4 pb-4">{children}</main>
+          <main className="app-page-content flex-1 px-4 pb-4">{children}</main>
         </div>
         <BottomNav />
         <GamificationUnlockToast />

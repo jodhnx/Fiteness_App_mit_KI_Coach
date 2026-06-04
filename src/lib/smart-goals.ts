@@ -10,6 +10,7 @@ export type WeightGoalProgress = {
   daysRemaining: number;
   projectedKgPerWeek: number;
   onTrack: boolean;
+  recommendedCalories?: number;
 };
 
 export type WeightGoalProfileInput = {
@@ -17,6 +18,23 @@ export type WeightGoalProfileInput = {
   targetWeightKg: number | null;
   targetWeightDate: Date | null;
 };
+
+const RECALC_TRIGGER_KEYS = [
+  "weightKg",
+  "targetWeightKg",
+  "targetWeightDate",
+  "activityLevel",
+  "workoutDaysPerWeek",
+  "nutritionGoal",
+  "trainingGoal",
+  "heightCm",
+  "age",
+  "gender",
+] as const;
+
+export function shouldRecalculateCalories(patch: Record<string, unknown>): boolean {
+  return RECALC_TRIGGER_KEYS.some((k) => patch[k] !== undefined);
+}
 
 export function computeWeightGoalProgress(
   profile: WeightGoalProfileInput,
@@ -84,63 +102,79 @@ export function adjustCaloriesForWeightGoal(
   return Math.max(1200, Math.min(5500, adjusted));
 }
 
+function resolveCalorieTarget(merged: Profile): number | null {
+  const metrics = profileToMetricsInput(merged);
+  if (!metrics || merged.weightKg == null) return null;
+
+  const base = recalculateProfileTargets(metrics);
+  const targetKg = merged.targetWeightKg;
+  const targetDate = merged.targetWeightDate;
+  const nutritionGoal = merged.nutritionGoal ?? "MAINTENANCE";
+
+  if (
+    targetKg != null &&
+    targetDate &&
+    isAfter(targetDate, new Date())
+  ) {
+    return adjustCaloriesForWeightGoal(
+      base.calorieTarget,
+      merged.weightKg,
+      targetKg,
+      targetDate,
+      nutritionGoal
+    );
+  }
+
+  return base.calorieTarget;
+}
+
 export function smartGoalCaloriePreview(profile: Profile): {
   calorieTarget: number;
   weightProjection: string;
+  projectedKgPerWeek?: number;
+  daysRemaining?: number;
 } | null {
   const metrics = profileToMetricsInput(profile);
   if (!metrics || !profile.targetWeightKg || !profile.targetWeightDate) return null;
 
-  const base = recalculateProfileTargets(metrics);
-  const adjusted = adjustCaloriesForWeightGoal(
-    base.calorieTarget,
-    profile.weightKg!,
-    profile.targetWeightKg,
-    profile.targetWeightDate,
-    metrics.nutritionGoal
-  );
+  const calorieTarget = resolveCalorieTarget(profile);
+  if (calorieTarget == null) return null;
 
   const progress = computeWeightGoalProgress(profile);
   const projection = progress
     ? `~${progress.projectedKgPerWeek > 0 ? "+" : ""}${progress.projectedKgPerWeek} kg/Woche · ${progress.daysRemaining} Tage`
     : "";
 
-  return { calorieTarget: adjusted, weightProjection: projection };
+  return {
+    calorieTarget,
+    weightProjection: projection,
+    projectedKgPerWeek: progress?.projectedKgPerWeek,
+    daysRemaining: progress?.daysRemaining,
+  };
 }
 
+/** Auto-update calories when weight, goals, activity or training frequency change. */
 export function applySmartGoalsToProfilePatch(
   existing: Profile | null,
   patch: Record<string, unknown>
 ): Record<string, unknown> {
   const merged = { ...(existing ?? {}), ...patch } as Profile;
-  const targetKg = merged.targetWeightKg ?? existing?.targetWeightKg;
-  const targetDate = merged.targetWeightDate ?? existing?.targetWeightDate;
-  const weightKg = merged.weightKg ?? existing?.weightKg;
-  const nutritionGoal = merged.nutritionGoal ?? existing?.nutritionGoal ?? "MAINTENANCE";
-
-  if (
-    targetKg == null ||
-    !targetDate ||
-    weightKg == null ||
-    !isAfter(targetDate, new Date())
-  ) {
+  if (!shouldRecalculateCalories(patch) && patch.calorieTarget != null) {
     return patch;
   }
 
-  const metrics = profileToMetricsInput(merged as Profile);
-  if (!metrics) return patch;
+  const calorieTarget = resolveCalorieTarget(merged);
+  const metrics = profileToMetricsInput(merged);
+  if (!metrics || calorieTarget == null) return patch;
 
   const base = recalculateProfileTargets(metrics);
-  const calorieTarget = adjustCaloriesForWeightGoal(
-    base.calorieTarget,
-    weightKg,
-    targetKg,
-    targetDate,
-    nutritionGoal
-  );
 
   return {
     ...patch,
     calorieTarget: patch.calorieTarget == null ? calorieTarget : patch.calorieTarget,
+    proteinTargetG: patch.proteinTargetG == null ? base.proteinTargetG : patch.proteinTargetG,
+    carbsTargetG: patch.carbsTargetG == null ? base.carbsTargetG : patch.carbsTargetG,
+    fatTargetG: patch.fatTargetG == null ? base.fatTargetG : patch.fatTargetG,
+    bmi: patch.bmi == null ? base.bmi : patch.bmi,
   };
 }

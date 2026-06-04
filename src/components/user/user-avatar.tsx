@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 type Props = {
   src?: string | null;
   name?: string | null;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 };
 
@@ -14,6 +14,7 @@ const sizes = {
   sm: { box: "h-9 w-9", text: "text-xs" },
   md: { box: "h-12 w-12", text: "text-sm" },
   lg: { box: "h-20 w-20", text: "text-xl" },
+  xl: { box: "h-14 w-14", text: "text-base" },
 };
 
 function initials(name?: string | null) {
@@ -41,7 +42,9 @@ export function UserAvatar({ src, name, size = "md", className }: Props) {
           alt={name ?? "Profilbild"}
           fill
           className="object-cover"
-          sizes={size === "lg" ? "80px" : size === "md" ? "48px" : "36px"}
+          sizes={
+            size === "lg" ? "80px" : size === "xl" ? "56px" : size === "md" ? "48px" : "36px"
+          }
           unoptimized
         />
       </div>

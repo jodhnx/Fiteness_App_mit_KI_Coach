@@ -17,7 +17,7 @@ export const HomeGreeting = memo(function HomeGreeting({
   const { part, first } = greetingParts(name);
 
   return (
-    <div className="pt-5 pb-1">
+    <div className="pb-2">
       <p className="text-lg font-medium text-zinc-400 tracking-tight">
         Guten {part},
       </p>

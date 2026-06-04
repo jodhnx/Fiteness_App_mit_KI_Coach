@@ -6,6 +6,8 @@ import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { LevelProgressBar } from "@/components/gamification/level-progress-bar";
 import { AchievementRow } from "@/components/gamification/achievement-row";
 import { ChallengesPanel } from "@/components/gamification/challenges-panel";
+import { TrophyRoom } from "@/components/gamification/trophy-room";
+import { PersonalRecordsPanel } from "@/components/gamification/personal-records-panel";
 import { ACHIEVEMENT_CATEGORIES } from "@/lib/achievement-catalog";
 import {
   createEmptyGamificationPayload,
@@ -22,7 +24,7 @@ const FETCH_TIMEOUT_MS = 10_000;
 
 function ErfolgeSkeleton() {
   return (
-    <div className="space-y-6 max-w-2xl mx-auto pb-28 animate-pulse">
+    <div className="space-y-6 pb-4 animate-pulse">
       <div className="h-16 rounded-2xl bg-white/5" />
       <div className="h-28 rounded-2xl bg-white/5" />
       <div className="h-40 rounded-2xl bg-white/5" />
@@ -39,7 +41,9 @@ export default function ErfolgePage() {
     { revalidateOnMount: false, staleRatio: 0.95 }
   );
   const [category, setCategory] = useState<string>("all");
-  const [tab, setTab] = useState<"overview" | "achievements" | "challenges">("overview");
+  const [tab, setTab] = useState<
+    "overview" | "achievements" | "challenges" | "trophies" | "records"
+  >("overview");
 
   const data = useMemo(
     () => rawData ?? (!loading && !error ? createEmptyGamificationPayload() : null),
@@ -101,7 +105,7 @@ export default function ErfolgePage() {
   const display = data ?? createEmptyGamificationPayload();
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto pb-28">
+    <div className="space-y-6 pb-4">
       {display._degraded && display._error && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 flex items-start gap-2">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -167,8 +171,10 @@ export default function ErfolgePage() {
         {(
           [
             { id: "overview", label: "Übersicht" },
+            { id: "trophies", label: "Trophäen" },
             { id: "achievements", label: "Erfolge" },
             { id: "challenges", label: "Challenges" },
+            { id: "records", label: "Rekorde" },
           ] as const
         ).map((t) => (
           <button
@@ -257,6 +263,23 @@ export default function ErfolgePage() {
               filtered.map((a) => <AchievementRow key={a.id} a={a} />)
             )}
           </div>
+        </div>
+      )}
+
+      {tab === "trophies" && (
+        <div className="card-premium p-4">
+          <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+            <Medal className="h-4 w-4 text-amber-400" />
+            Trophäenraum
+          </h2>
+          <TrophyRoom achievements={display.achievements} />
+        </div>
+      )}
+
+      {tab === "records" && (
+        <div className="card-premium p-4">
+          <h2 className="text-sm font-semibold text-white mb-3">Persönliche Rekorde</h2>
+          <PersonalRecordsPanel />
         </div>
       )}
 

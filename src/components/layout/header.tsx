@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Bell, Menu } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { useSidebar } from "@/components/layout/sidebar-provider";
+import { cn } from "@/lib/utils";
 
 export function Header({
   userName,
@@ -16,39 +16,42 @@ export function Header({
   const { toggle } = useSidebar();
 
   return (
-    <header className="mobile-app-header sticky top-0 z-30 border-b border-white/10 bg-zinc-950/90 backdrop-blur-xl transform-gpu">
-      <div className="mobile-app-frame flex h-14 items-center justify-between gap-2 px-3">
-        <Button
+    <header className="mobile-app-header sticky top-0 z-30 border-b border-white/10 backdrop-blur-2xl transform-gpu">
+      <div className="mobile-app-frame flex h-[3.75rem] items-center justify-between gap-3 px-3">
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
-          className="h-11 w-11 shrink-0 rounded-xl"
           onClick={toggle}
           aria-label="Menü öffnen"
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+            "header-glass-btn text-zinc-200 active:scale-95 transition-transform duration-100"
+          )}
         >
-          <Menu className="h-6 w-6" />
-        </Button>
+          <Menu className="h-6 w-6" strokeWidth={2.25} />
+        </button>
 
         <Link
           href="/profile"
           prefetch
-          className="flex flex-1 justify-center min-w-0 active:opacity-80"
+          className="flex flex-1 justify-center min-w-0 active:scale-[0.98] transition-transform"
           aria-label="Profil öffnen"
         >
-          <UserAvatar src={userImage} name={userName} size="md" />
+          <span className="rounded-full ring-2 ring-accent/40 ring-offset-2 ring-offset-zinc-950 shadow-lg shadow-cyan-500/10">
+            <UserAvatar src={userImage} name={userName} size="xl" />
+          </span>
         </Link>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-11 w-11 shrink-0 rounded-xl"
+        <Link
+          href="/settings#benachrichtigungen"
+          prefetch
           aria-label="Benachrichtigungen"
-          asChild
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+            "header-glass-btn text-zinc-200 active:scale-95 transition-transform duration-100"
+          )}
         >
-          <Link href="/settings#benachrichtigungen" prefetch>
-            <Bell className="h-5 w-5" />
-          </Link>
-        </Button>
+          <Bell className="h-5 w-5" strokeWidth={2} />
+        </Link>
       </div>
     </header>
   );

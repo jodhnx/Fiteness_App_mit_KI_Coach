@@ -2,9 +2,10 @@
 
 import { useRef, useState } from "react";
 import { UserAvatar } from "@/components/user/user-avatar";
+import { AvatarCropDialog } from "@/components/user/avatar-crop-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, Trash2, RefreshCw } from "lucide-react";
 
 type Props = {
   imageUrl?: string | null;
@@ -15,12 +16,13 @@ type Props = {
 export function AvatarUpload({ imageUrl, name, onUpdated }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  async function upload(file: File) {
+  async function uploadBlob(blob: Blob) {
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", blob, "avatar.jpg");
       const res = await fetch("/api/profile/avatar", { method: "POST", body: fd });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -33,7 +35,16 @@ export function AvatarUpload({ imageUrl, name, onUpdated }: Props) {
       toast.error("Upload fehlgeschlagen");
     } finally {
       setUploading(false);
+      setPendingFile(null);
     }
+  }
+
+  function onFileSelected(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Bitte ein Bild (JPG, PNG, WebP) wählen");
+      return;
+    }
+    setPendingFile(file);
   }
 
   async function remove() {
@@ -53,54 +64,70 @@ export function AvatarUpload({ imageUrl, name, onUpdated }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-        className="relative group rounded-full"
-        aria-label="Profilbild ändern"
-      >
-        <UserAvatar src={imageUrl} name={name} size="lg" />
-        <span className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-          <Camera className="h-5 w-5 text-white" />
-        </span>
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) upload(file);
-          e.target.value = "";
-        }}
-      />
-      <div className="flex flex-col gap-2">
-        <Button
+    <>
+      <div className="flex flex-col sm:flex-row items-center gap-5">
+        <button
           type="button"
-          variant="outline"
-          size="sm"
-          disabled={uploading}
           onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="relative group rounded-full shrink-0"
+          aria-label="Profilbild ändern"
         >
-          Bild hochladen
-        </Button>
-        {imageUrl && (
+          <span className="block rounded-full ring-2 ring-accent/30 ring-offset-4 ring-offset-zinc-950">
+            <UserAvatar src={imageUrl} name={name} size="lg" />
+          </span>
+          <span className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 group-active:opacity-100 flex items-center justify-center transition-opacity">
+            <Camera className="h-6 w-6 text-white" />
+          </span>
+        </button>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onFileSelected(file);
+            e.target.value = "";
+          }}
+        />
+
+        <div className="flex flex-col gap-2 w-full sm:w-auto">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             disabled={uploading}
-            onClick={remove}
-            className="text-red-400 hover:text-red-300"
+            onClick={() => inputRef.current?.click()}
           >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Entfernen
+            <RefreshCw className="h-4 w-4 mr-1.5" />
+            Bild wechseln
           </Button>
-        )}
+          {imageUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={uploading}
+              onClick={remove}
+              className="text-red-400 hover:text-red-300"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Entfernen
+            </Button>
+          )}
+          <p className="text-[11px] text-zinc-500">Zuschneiden, Vorschau, dann Upload</p>
+        </div>
       </div>
-    </div>
+
+      {pendingFile && (
+        <AvatarCropDialog
+          file={pendingFile}
+          onCancel={() => setPendingFile(null)}
+          onConfirm={(blob) => void uploadBlob(blob)}
+        />
+      )}
+    </>
   );
 }

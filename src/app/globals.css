@@ -145,7 +145,23 @@ body {
 }
 
 .mobile-app-header {
-  padding-top: max(0.5rem, env(safe-area-inset-top));
+  padding-top: max(0.625rem, env(safe-area-inset-top));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--background) 92%, transparent) 0%,
+    color-mix(in srgb, #09090b 75%, transparent) 100%
+  );
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+}
+
+.app-page-content {
+  padding-top: 1.25rem;
+}
+
+.header-glass-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
 }
 
 .safe-top {

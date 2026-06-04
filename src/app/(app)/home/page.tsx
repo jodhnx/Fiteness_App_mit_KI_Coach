@@ -26,6 +26,11 @@ import { HomeBodyCard } from "@/components/home/home-body-card";
 import { HomeAchievementsCard } from "@/components/home/home-achievements-card";
 import { HomeCoachRecommendations } from "@/components/home/home-coach-recommendations";
 import { HomeGreeting } from "@/components/home/home-greeting";
+import { HomePlannedWorkouts } from "@/components/home/home-planned-workouts";
+import { HomeCalorieTrend } from "@/components/home/home-calorie-trend";
+import { HomeActivityOverview } from "@/components/home/home-activity-overview";
+import { HomeWeightGoalCard } from "@/components/home/home-weight-goal-card";
+import { HomeMotivationCard } from "@/components/home/home-motivation-card";
 
 export default function HomePage() {
   const router = useRouter();
@@ -113,7 +118,22 @@ export default function HomePage() {
         trainingStreakDays={trainingStreakDays}
       />
 
+      <HomeMotivationCard streakDays={trainingStreakDays} />
+
+      <HomePlannedWorkouts home={data} />
+
+      <HomeCalorieTrend home={data} />
+
+      {data.weightGoal && (
+        <HomeWeightGoalCard
+          weightGoal={data.weightGoal}
+          calorieTarget={data.calorieTarget}
+        />
+      )}
+
       <HomeWeekOverview home={data} />
+
+      <HomeActivityOverview home={data} />
 
       {data.challenges && data.challenges.length > 0 && (
         <HomeChallengesRow challenges={data.challenges} />
