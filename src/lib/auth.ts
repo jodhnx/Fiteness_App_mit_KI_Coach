@@ -48,9 +48,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           logAuth(AuthLog.LOGIN_ATTEMPT, { email: emailHint });
 
-          const parsed = loginSchema.safeParse(credentials);
           if (!parsed.success) {
             logAuth(AuthLog.AUTH_ERROR, "invalid payload");
+            console.log("LOGIN ERROR: InvalidCredentials");
             throw new InvalidCredentialsError();
           }
 
@@ -58,6 +58,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const limit = rateLimit(`login:${email}`, 10, 900_000);
           if (!limit.success) {
             logAuth(AuthLog.RATE_LIMITED, { email });
+            console.log("LOGIN ERROR: InvalidCredentials");
             throw new InvalidCredentialsError();
           }
 
@@ -75,6 +76,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           );
 
           if (!user?.passwordHash) {
+            console.log("LOGIN ERROR: InvalidCredentials");
             logAuth(AuthLog.USER_NOT_FOUND, { email });
             throw new InvalidCredentialsError();
           }
@@ -83,6 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
           if (!valid) {
+            console.log("LOGIN ERROR: InvalidCredentials");
             logAuth(AuthLog.PASSWORD_INVALID, { email });
             throw new InvalidCredentialsError();
           }
@@ -113,6 +116,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           if (isDatabaseConnectionError(error)) {
             logAuth(AuthLog.DB_UNAVAILABLE, emailHint);
+            console.log("LOGIN ERROR: InvalidCredentials");
             throw new DatabaseConnectionError();
           }
           logAuth(AuthLog.AUTH_ERROR, error instanceof Error ? error.message : String(error));
