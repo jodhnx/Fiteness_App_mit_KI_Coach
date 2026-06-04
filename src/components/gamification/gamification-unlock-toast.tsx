@@ -11,9 +11,20 @@ export type UnlockPayload = {
   icon: string;
   tier: string;
   xpReward: number;
+  kind?: "achievement" | "level";
 };
 
 const QUEUE_KEY = "gamification-unlock-queue";
+
+export function pushLevelUpEvent(level: number) {
+  pushUnlockEvent({
+    name: `Level ${level}`,
+    icon: "⬆️",
+    tier: "gold",
+    xpReward: 0,
+    kind: "level",
+  });
+}
 
 export function pushUnlockEvent(event: UnlockPayload) {
   if (typeof window === "undefined") return;
@@ -76,7 +87,10 @@ export function GamificationUnlockToast() {
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              "h-14 w-14 rounded-xl bg-gradient-to-br flex items-center justify-center text-2xl animate-[pulse_1s_ease-in-out_2]",
+              "h-14 w-14 rounded-xl bg-gradient-to-br flex items-center justify-center text-2xl",
+              current.kind === "level"
+                ? "animate-[bounce_0.6s_ease-in-out_3] from-violet-600/40 to-cyan-600/40"
+                : "animate-[pulse_1s_ease-in-out_2]",
               tierGradient(current.tier)
             )}
           >
@@ -84,11 +98,14 @@ export function GamificationUnlockToast() {
           </div>
           <div>
             <p className="text-xs text-cyan-400 flex items-center gap-1">
-              <Sparkles className="h-3 w-3" /> Neuer Erfolg
+              <Sparkles className="h-3 w-3" />
+              {current.kind === "level" ? "Levelaufstieg!" : "Neuer Erfolg"}
             </p>
             <p className="font-bold text-white">{current.name}</p>
             <p className="text-xs text-zinc-400">
-              {BADGE_TIER_LABELS[current.tier as BadgeTier] ?? current.tier} · +{current.xpReward} XP
+              {current.kind === "level"
+                ? "Weiter so — neue Belohnungen warten!"
+                : `${BADGE_TIER_LABELS[current.tier as BadgeTier] ?? current.tier} · +${current.xpReward} XP`}
             </p>
           </div>
         </div>

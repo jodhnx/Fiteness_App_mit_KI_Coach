@@ -204,8 +204,8 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
             stepStreak: health.stepStreak,
           }
         : null,
-      caloriesBurnedTotal: health?.calorieBurn?.totalBurned ?? 0,
-      caloriesBurnGoal: health?.calorieBurn?.bmr ?? nutrition.targets.calories,
+      caloriesBurnedTotal: health?.today?.caloriesBurned ?? 0,
+      caloriesBurnGoal: 0,
       calorieBurnDetail: health?.calorieBurn
         ? `BMR ${health.calorieBurn.bmrToday} + Aktivität ${health.calorieBurn.activityCalories} + Schritte ${health.calorieBurn.stepCalories} kcal`
         : null,

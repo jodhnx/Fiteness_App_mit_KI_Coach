@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
+import { useExerciseLibrarySearch } from "@/hooks/use-exercise-library-search";
 import { getPlanRecoveryMessage, type MuscleRecovery } from "@/lib/recovery-shared";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -34,8 +35,35 @@ import type { PlanScores } from "@/lib/plan-science-engine";
 type PlanExercise = {
   id: string;
   orderIndex: number;
+  targetSets: number;
+  targetReps: string;
+  restSeconds: number;
   exercise: { id: string; name: string; muscleGroup: string };
 };
+
+const MUSCLE_OPTIONS = [
+  "CHEST",
+  "BACK",
+  "SHOULDERS",
+  "BICEPS",
+  "TRICEPS",
+  "LEGS",
+  "ABS",
+  "FOREARMS",
+  "CALVES",
+  "CARDIO",
+] as const;
+
+const EQUIPMENT_OPTIONS = [
+  "BARBELL",
+  "DUMBBELL",
+  "MACHINE",
+  "CABLE",
+  "BODYWEIGHT",
+  "KETTLEBELL",
+  "BAND",
+  "OTHER",
+] as const;
 
 type PlanDay = {
   id: string;
@@ -49,10 +77,12 @@ function SortableExercise({
   ex,
   onRemove,
   onReplace,
+  onUpdate,
 }: {
   ex: PlanExercise;
   onRemove: () => void;
   onReplace: () => void;
+  onUpdate: (patch: { targetSets?: number; targetReps?: string; restSeconds?: number }) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: ex.id,
@@ -67,9 +97,37 @@ function SortableExercise({
       <button type="button" className="touch-none text-zinc-500" {...attributes} {...listeners}>
         <GripVertical className="h-4 w-4" />
       </button>
-      <div className="flex-1">
-        <p className="text-white text-sm">{ex.exercise.name}</p>
+      <div className="flex-1 min-w-0 space-y-1">
+        <p className="text-white text-sm truncate">{ex.exercise.name}</p>
         <p className="text-xs text-zinc-500">{ex.exercise.muscleGroup}</p>
+        <div className="flex flex-wrap gap-1">
+          <Input
+            type="number"
+            min={1}
+            max={20}
+            className="h-7 w-14 text-xs"
+            defaultValue={ex.targetSets}
+            onBlur={(e) =>
+              onUpdate({ targetSets: Math.max(1, Number(e.target.value) || ex.targetSets) })
+            }
+          />
+          <Input
+            className="h-7 w-20 text-xs"
+            defaultValue={ex.targetReps}
+            onBlur={(e) => onUpdate({ targetReps: e.target.value || ex.targetReps })}
+            placeholder="Wdh"
+          />
+          <Input
+            type="number"
+            min={0}
+            className="h-7 w-14 text-xs"
+            defaultValue={ex.restSeconds}
+            onBlur={(e) =>
+              onUpdate({ restSeconds: Math.max(0, Number(e.target.value) || ex.restSeconds) })
+            }
+            title="Pause (s)"
+          />
+        </div>
       </div>
       <Button variant="ghost" size="icon" onClick={onReplace} title="Ersetzen">
         <RefreshCw className="h-4 w-4 text-cyan-400" />
@@ -93,17 +151,17 @@ export default function PlanEditorPage() {
   } | null>(null);
   const [search, setSearch] = useState("");
   const [muscleFilter, setMuscleFilter] = useState("");
-  const [library, setLibrary] = useState<
-    {
-      id: string;
-      name: string;
-      muscleGroup: string;
-      difficulty: string;
-      equipment: string;
-      ratingAvg: number | null;
-      popularity: number;
-    }[]
-  >([]);
+  const [equipmentFilter, setEquipmentFilter] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState("");
+  const [showCustomExercise, setShowCustomExercise] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customMuscle, setCustomMuscle] = useState<string>("CHEST");
+  const { exercises: library, loading: libraryLoading, error: libraryError, total: libraryTotal } =
+    useExerciseLibrarySearch(search, {
+      muscle: muscleFilter,
+      equipment: equipmentFilter,
+      difficulty: difficultyFilter,
+    });
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
   const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
   const [alternatives, setAlternatives] = useState<{ id: string; name: string }[]>([]);
@@ -134,38 +192,23 @@ export default function PlanEditorPage() {
   const load = useCallback(async () => {
     const res = await fetch(`/api/workouts/plans/${planId}`);
     const data = await res.json();
-    if (res.ok) {
+    if (res.ok && data.plan) {
       setPlan(data.plan);
-      if (!activeDayId && data.plan.days[0]) setActiveDayId(data.plan.days[0].id);
+      setActiveDayId((current) => {
+        if (current && data.plan.days.some((d: PlanDay) => d.id === current)) return current;
+        return data.plan.days[0]?.id ?? null;
+      });
+    } else if (!res.ok) {
+      toast.error(data.error ?? "Plan konnte nicht geladen werden");
     }
     fetch(`/api/workouts/plans/${planId}/score`)
       .then((r) => r.json())
       .then((d) => setPlanScores(d.scores ?? null));
-  }, [planId, activeDayId]);
+  }, [planId]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    const params = new URLSearchParams({ limit: "25", sort: "popularity" });
-    if (search) params.set("q", search);
-    if (muscleFilter) params.set("muscle", muscleFilter);
-    fetch(`/api/exercises?${params}`)
-      .then((r) => r.json())
-      .then((d) => setLibrary(d.exercises ?? []));
-    fetch("/api/exercises/recent")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!search && d.exercises?.length) {
-          setLibrary((prev) => {
-            const ids = new Set(prev.map((p) => p.id));
-            const merged = [...(d.exercises as typeof library), ...prev.filter((p) => !ids.has(p.id))];
-            return merged.slice(0, 25);
-          });
-        }
-      });
-  }, [search, muscleFilter]);
 
   async function savePlanMeta() {
     if (!plan) return;
@@ -237,12 +280,18 @@ export default function PlanEditorPage() {
   }
 
   async function applyDaySetup() {
-    await fetch(`/api/workouts/plans/${planId}/days`, {
+    const res = await fetch(`/api/workouts/plans/${planId}/days`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "setup", days: setupDays }),
     });
+    const data = await res.json();
+    if (!res.ok) {
+      toast.error(data.error ?? "Trainingstage konnten nicht erstellt werden");
+      return;
+    }
     setShowSetup(false);
+    if (data.days?.[0]?.id) setActiveDayId(data.days[0].id);
     toast.success(`${setupDays.length} Trainingstage erstellt`);
     load();
   }
@@ -308,14 +357,88 @@ export default function PlanEditorPage() {
   }
 
   async function addExercise(exerciseLibraryId: string) {
-    if (!activeDayId) return;
-    await fetch(`/api/workouts/plans/${planId}/exercises`, {
+    if (!activeDayId) {
+      toast.error("Bitte zuerst einen Trainingstag auswählen");
+      return;
+    }
+    const res = await fetch(`/api/workouts/plans/${planId}/exercises`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ workoutDayId: activeDayId, exerciseLibraryId }),
     });
+    const data = await res.json();
+    if (!res.ok) {
+      toast.error(data.error ?? "Übung konnte nicht hinzugefügt werden");
+      return;
+    }
+    if (data.exercise && plan) {
+      const ex = data.exercise as PlanExercise;
+      setPlan((p) =>
+        p
+          ? {
+              ...p,
+              days: p.days.map((d) =>
+                d.id === activeDayId ? { ...d, exercises: [...d.exercises, ex] } : d
+              ),
+            }
+          : p
+      );
+    } else {
+      load();
+    }
     toast.success("Übung hinzugefügt");
-    load();
+  }
+
+  async function updateExerciseMeta(
+    workoutExerciseId: string,
+    patch: { targetSets?: number; targetReps?: string; restSeconds?: number }
+  ) {
+    const res = await fetch(`/api/workouts/plans/${planId}/exercises`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workoutExerciseId, ...patch }),
+    });
+    if (!res.ok) {
+      toast.error("Speichern fehlgeschlagen");
+      return;
+    }
+    setPlan((p) => {
+      if (!p) return p;
+      return {
+        ...p,
+        days: p.days.map((d) => ({
+          ...d,
+          exercises: d.exercises.map((e) =>
+            e.id === workoutExerciseId ? { ...e, ...patch } : e
+          ),
+        })),
+      };
+    });
+  }
+
+  async function createCustomExercise() {
+    if (!customName.trim()) {
+      toast.error("Name eingeben");
+      return;
+    }
+    const res = await fetch("/api/exercises", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: customName.trim(),
+        muscleGroup: customMuscle,
+        equipment: equipmentFilter || "OTHER",
+        difficulty: difficultyFilter || "INTERMEDIATE",
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast.error(data.error ?? "Eigene Übung konnte nicht erstellt werden");
+      return;
+    }
+    setShowCustomExercise(false);
+    setCustomName("");
+    await addExercise(data.exercise.id);
   }
 
   async function removeExercise(exerciseId: string) {
@@ -512,6 +635,7 @@ export default function PlanEditorPage() {
                       ex={ex}
                       onRemove={() => removeExercise(ex.id)}
                       onReplace={() => openReplace(ex.id, ex.exercise.id)}
+                      onUpdate={(patch) => updateExerciseMeta(ex.id, patch)}
                     />
                   ))}
                 </SortableContext>
@@ -524,24 +648,90 @@ export default function PlanEditorPage() {
           <CardHeader>
             <CardTitle>Übung hinzufügen</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 max-h-[28rem] overflow-y-auto">
+            {!activeDayId && (
+              <p className="text-sm text-amber-400">Wähle oben einen Trainingstag, um Übungen hinzuzufügen.</p>
+            )}
             <Input
-              placeholder="Suche in 155+ Übungen..."
+              placeholder="Name, Muskel, Equipment…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <select
-              className="w-full rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm"
-              value={muscleFilter}
-              onChange={(e) => setMuscleFilter(e.target.value)}
+            <div className="grid grid-cols-3 gap-2">
+              <select
+                className="rounded-lg bg-zinc-900 border border-zinc-700 px-2 py-2 text-xs"
+                value={muscleFilter}
+                onChange={(e) => setMuscleFilter(e.target.value)}
+              >
+                <option value="">Muskel</option>
+                {MUSCLE_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="rounded-lg bg-zinc-900 border border-zinc-700 px-2 py-2 text-xs"
+                value={equipmentFilter}
+                onChange={(e) => setEquipmentFilter(e.target.value)}
+              >
+                <option value="">Equipment</option>
+                {EQUIPMENT_OPTIONS.map((e) => (
+                  <option key={e} value={e}>
+                    {e}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="rounded-lg bg-zinc-900 border border-zinc-700 px-2 py-2 text-xs"
+                value={difficultyFilter}
+                onChange={(e) => setDifficultyFilter(e.target.value)}
+              >
+                <option value="">Level</option>
+                <option value="BEGINNER">Anfänger</option>
+                <option value="INTERMEDIATE">Mittel</option>
+                <option value="ADVANCED">Pro</option>
+              </select>
+            </div>
+            <p className="text-xs text-zinc-500">
+              {libraryLoading
+                ? "Suche…"
+                : libraryError
+                  ? libraryError
+                  : `${libraryTotal} Übungen${libraryTotal < 50 ? " — ggf. npm run db:seed:exercises" : ""}`}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => setShowCustomExercise((v) => !v)}
             >
-              <option value="">Alle Muskeln</option>
-              {["CHEST", "BACK", "SHOULDERS", "BICEPS", "TRICEPS", "LEGS", "ABS"].map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              Eigene Übung erstellen
+            </Button>
+            {showCustomExercise && (
+              <div className="rounded-lg border border-zinc-700 p-2 space-y-2">
+                <Input
+                  placeholder="Übungsname"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                />
+                <select
+                  className="w-full rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm"
+                  value={customMuscle}
+                  onChange={(e) => setCustomMuscle(e.target.value)}
+                >
+                  {MUSCLE_OPTIONS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <Button type="button" size="sm" onClick={createCustomExercise}>
+                  Erstellen & hinzufügen
+                </Button>
+              </div>
+            )}
             {replaceTargetId && alternatives.length > 0 && (
               <div className="rounded-lg border border-cyan-500/30 p-2 space-y-1">
                 <p className="text-xs text-cyan-400">KI / Alternativen</p>
@@ -559,6 +749,11 @@ export default function PlanEditorPage() {
                   Abbrechen
                 </Button>
               </div>
+            )}
+            {!libraryLoading && library.length === 0 && !libraryError && (
+              <p className="text-sm text-zinc-500 py-4 text-center">
+                Keine Übungen gefunden. Datenbank seeden oder Suche anpassen.
+              </p>
             )}
             {library.map((ex) => (
               <button

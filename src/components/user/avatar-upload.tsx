@@ -29,7 +29,9 @@ export function AvatarUpload({ imageUrl, name, onUpdated }: Props) {
         toast.error(data.error ?? "Upload fehlgeschlagen");
         return;
       }
-      onUpdated(data.imageUrl ?? data.user?.image ?? null);
+      const url = data.imageUrl ?? data.user?.image ?? null;
+      onUpdated(url);
+      void fetch("/api/profile", { method: "GET", credentials: "include" }).catch(() => {});
       toast.success("Profilbild aktualisiert");
     } catch {
       toast.error("Upload fehlgeschlagen");

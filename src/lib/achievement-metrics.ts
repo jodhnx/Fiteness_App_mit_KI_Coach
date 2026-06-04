@@ -100,6 +100,12 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
   const proteinByDay = macroDaysOnTarget(mealItems30, proteinTarget, "protein");
   const calorieByDay = macroDaysOnTarget(mealItems30, calorieTarget, "calories");
 
+  const proteinByDayGrams = proteinGramsByDay(mealItems30);
+  const proteinSingleDayMax = proteinByDayGrams.length
+    ? Math.floor(Math.max(...proteinByDayGrams.map(([, g]) => g)))
+    : 0;
+  const mealsLoggedDaysStreak = maxStreakFromDistinctMealDays(mealItems30);
+
   const waterByDay = new Map<string, number>();
   for (const w of waterLogs) {
     const k = w.date.toISOString().slice(0, 10);
@@ -144,7 +150,45 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
     calorie_goal_days: countDayFlags(calorieByDay),
     water_3l_days: water3lDays,
     protein_goal_days_week: countDayFlags(proteinByDay.filter((_, i) => i < 7)),
+    meals_logged_days_streak: mealsLoggedDaysStreak,
+    protein_single_day_g: proteinSingleDayMax,
   };
+}
+
+function proteinGramsByDay(
+  items: {
+    quantityG: number;
+    foodItem: { proteinG: number; servingG: number };
+    meal: { date: Date };
+  }[]
+): [string, number][] {
+  const byDay = new Map<string, number>();
+  for (const i of items) {
+    const key = i.meal.date.toISOString().slice(0, 10);
+    const s = i.foodItem.servingG || 100;
+    const factor = i.quantityG / s;
+    byDay.set(key, (byDay.get(key) ?? 0) + i.foodItem.proteinG * factor);
+  }
+  return [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+function maxStreakFromDistinctMealDays(
+  items: { meal: { date: Date } }[]
+): number {
+  const days = [...new Set(items.map((i) => i.meal.date.toISOString().slice(0, 10)))].sort();
+  if (!days.length) return items.length > 0 ? 1 : 0;
+  let best = 1;
+  let cur = 1;
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1]);
+    const next = new Date(days[i]);
+    const diff = (next.getTime() - prev.getTime()) / 86400000;
+    if (diff === 1) {
+      cur++;
+      best = Math.max(best, cur);
+    } else cur = 1;
+  }
+  return Math.max(best, items.length > 0 && days.length === 1 ? 1 : best);
 }
 
 function macroDaysOnTarget(

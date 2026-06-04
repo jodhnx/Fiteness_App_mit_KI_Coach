@@ -16,7 +16,8 @@ function extForMime(mime: string) {
 }
 
 async function removeOldAvatar(imageUrl: string | null | undefined) {
-  if (!imageUrl?.startsWith("/uploads/avatars/")) return;
+  if (!imageUrl || imageUrl.startsWith("data:")) return;
+  if (!imageUrl.startsWith("/uploads/avatars/")) return;
   const filePath = path.join(process.cwd(), "public", imageUrl.replace(/^\//, ""));
   await unlink(filePath).catch(() => {});
 }
@@ -43,15 +44,30 @@ export async function POST(req: NextRequest) {
     });
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "avatars");
-    await mkdir(uploadDir, { recursive: true });
-
     const ext = extForMime(file.type);
-    const filename = `${session.user.id}.${ext}`;
-    await writeFile(path.join(uploadDir, filename), buffer);
-    const imageUrl = `/uploads/avatars/${filename}?v=${Date.now()}`;
+    const version = Date.now();
+    let imageUrl: string;
 
-    await removeOldAvatar(user?.image);
+    const useDataUrl =
+      Boolean(process.env.VERCEL) ||
+      process.env.AVATAR_STORAGE === "database";
+
+    if (useDataUrl) {
+      const base64 = buffer.toString("base64");
+      const dataUrl = `data:${file.type};base64,${base64}`;
+      if (dataUrl.length > 200_000) {
+        return jsonError("Bild zu groß — bitte kleineres Foto wählen (max. 2 MB)", 400);
+      }
+      imageUrl = dataUrl;
+      await removeOldAvatar(user?.image);
+    } else {
+      const uploadDir = path.join(process.cwd(), "public", "uploads", "avatars");
+      await mkdir(uploadDir, { recursive: true });
+      const filename = `${session.user.id}.${ext}`;
+      await writeFile(path.join(uploadDir, filename), buffer);
+      imageUrl = `/uploads/avatars/${filename}?v=${version}`;
+      await removeOldAvatar(user?.image);
+    }
 
     const updated = await prisma.user.update({
       where: { id: session.user.id },

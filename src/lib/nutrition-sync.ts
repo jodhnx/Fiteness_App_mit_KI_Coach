@@ -10,6 +10,8 @@ import type { HomeDataPayload } from "@/lib/home-defaults";
 import { createEmptyHomeData } from "@/lib/home-defaults";
 import { hydrateHomeSectionCaches, HOME_HEUTE_CACHE, HOME_COACH_CACHE, HOME_INSIGHTS_CACHE, HOME_WORKOUT_CACHE } from "@/lib/home-section-cache";
 
+export { HOME_COACH_CACHE, HOME_INSIGHTS_CACHE, HOME_HEUTE_CACHE, HOME_WORKOUT_CACHE } from "@/lib/home-section-cache";
+
 /** Single source of truth for daily nutrition numbers */
 export const NUTRITION_DASHBOARD_CACHE_KEY = "nutrition-dashboard";
 export const NUTRITION_SUMMARY_CACHE_KEY = "nutrition-summary";

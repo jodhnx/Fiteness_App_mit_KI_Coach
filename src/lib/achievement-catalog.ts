@@ -241,7 +241,7 @@ function weightAchievements(): AchievementSeed[] {
 }
 
 function challengeAchievements(): AchievementSeed[] {
-  const counts = [1, 3, 5, 10, 20, 30];
+  const counts = [1, 3, 5, 10, 20, 30, 50];
   return counts.map((n, i) => ({
     slug: `challenges-done-${n}`,
     name: n === 1 ? "Erste Challenge" : `${n} Challenges`,
@@ -256,8 +256,43 @@ function challengeAchievements(): AchievementSeed[] {
   }));
 }
 
+function nutritionTrackingStreakAchievements(): AchievementSeed[] {
+  const days = [1, 7, 30, 100];
+  return days.map((n, i) => ({
+    slug: `nutrition-track-${n}d`,
+    name: n === 1 ? "Erstes Tracking" : `${n} Tage Ernährung`,
+    description:
+      n === 1
+        ? "Erstes Lebensmittel erfasst"
+        : `${n} Tage mit Ernährungs-Tracking`,
+    icon: "📓",
+    xpReward: 25 + n * 8,
+    category: "nutrition",
+    tier: tierForIndex(i, days.length),
+    targetValue: n,
+    metricKey: "meals_logged_days_streak",
+    sortOrder: 205 + i,
+  }));
+}
+
+function proteinGramDayAchievements(): AchievementSeed[] {
+  const grams = [100, 150, 200];
+  return grams.map((g, i) => ({
+    slug: `protein-day-${g}g`,
+    name: `${g} g Protein`,
+    description: `An einem Tag ${g} g Protein erreicht`,
+    icon: "💪",
+    xpReward: 40 + i * 20,
+    category: "nutrition",
+    tier: tierForIndex(i, grams.length),
+    targetValue: g,
+    metricKey: "protein_single_day_g",
+    sortOrder: 215 + i,
+  }));
+}
+
 function trainingStreakAchievements(): AchievementSeed[] {
-  const days = [3, 7, 14, 30, 60, 90];
+  const days = [3, 7, 14, 30, 60, 90, 100];
   return days.map((n, i) => ({
     slug: `training-streak-${n}`,
     name: `Training ${n}d`,
@@ -402,6 +437,18 @@ function miscAchievements(): AchievementSeed[] {
       metricKey: "personal_records",
       sortOrder: 121,
     },
+    {
+      slug: "pr-50",
+      name: "50 Rekorde",
+      description: "50 Personal Records",
+      icon: "🏆",
+      xpReward: 400,
+      category: "training",
+      tier: "diamond",
+      targetValue: 50,
+      metricKey: "personal_records",
+      sortOrder: 122,
+    },
   ];
 }
 
@@ -411,6 +458,8 @@ export function getAllAchievementDefinitions(): AchievementSeed[] {
     ...workoutAchievements(),
     ...trainingStreakAchievements(),
     ...nutritionAchievements(),
+    ...nutritionTrackingStreakAchievements(),
+    ...proteinGramDayAchievements(),
     ...stepsAchievements(),
     ...streakAchievements(),
     ...sleepAchievements(),

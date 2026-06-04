@@ -24,7 +24,10 @@ import {
   publishNutritionDashboard,
   NUTRITION_DASHBOARD_CACHE_KEY,
   HOME_DATA_CACHE_KEY,
+  HOME_COACH_CACHE,
+  HOME_INSIGHTS_CACHE,
 } from "@/lib/nutrition-sync";
+import { invalidateCache } from "@/lib/client-cache";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { useSession } from "next-auth/react";
 import { AvatarUpload } from "@/components/user/avatar-upload";
@@ -322,6 +325,10 @@ export default function SettingsPage() {
           (err) => console.warn("[settings] session image update", err)
         );
       }
+
+      invalidateCache(HOME_COACH_CACHE);
+      invalidateCache(HOME_INSIGHTS_CACHE);
+      invalidateCache("nutrition-coach");
 
       toast.success("Einstellungen gespeichert");
     } catch (e) {

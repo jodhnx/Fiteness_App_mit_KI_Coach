@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
@@ -89,6 +90,73 @@ export async function GET(req: NextRequest) {
     }));
 
     return jsonOk({ exercises: enriched, total: enriched.length });
+  } catch (e) {
+    return handleApiError(e);
+  }
+}
+
+const createExerciseSchema = z.object({
+  name: z.string().min(2).max(120),
+  muscleGroup: z.enum([
+    "CHEST",
+    "BACK",
+    "SHOULDERS",
+    "BICEPS",
+    "TRICEPS",
+    "LEGS",
+    "ABS",
+    "FOREARMS",
+    "CALVES",
+    "CARDIO",
+  ]),
+  equipment: z
+    .enum([
+      "BARBELL",
+      "DUMBBELL",
+      "MACHINE",
+      "CABLE",
+      "BODYWEIGHT",
+      "KETTLEBELL",
+      "BAND",
+      "OTHER",
+    ])
+    .optional(),
+  difficulty: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]).optional(),
+});
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
+
+    const body = await req.json();
+    const parsed = createExerciseSchema.safeParse(body);
+    if (!parsed.success) return jsonError("Ungültige Übungsdaten");
+
+    const slugBase = parsed.data.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40);
+    const slug = `custom-${session.user.id.slice(0, 8)}-${slugBase}-${Date.now().toString(36)}`;
+
+    const exercise = await prisma.exerciseLibrary.create({
+      data: {
+        slug,
+        name: parsed.data.name.trim(),
+        muscleGroup: parsed.data.muscleGroup,
+        difficulty: parsed.data.difficulty ?? "INTERMEDIATE",
+        equipment: parsed.data.equipment ?? "OTHER",
+        description: "Eigene Übung",
+        instructions: "Vom Nutzer erstellt.",
+        primaryMuscles: [parsed.data.muscleGroup],
+        secondaryMuscles: [],
+        isCompound: false,
+        usageCount: 1,
+      },
+    });
+
+    return jsonOk({ exercise: { ...exercise, popularity: 1, ratingAvg: null } }, 201);
   } catch (e) {
     return handleApiError(e);
   }

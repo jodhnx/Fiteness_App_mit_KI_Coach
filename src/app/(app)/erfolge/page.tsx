@@ -13,7 +13,10 @@ import {
   createEmptyGamificationPayload,
   type GamificationApiPayload,
 } from "@/lib/gamification-defaults";
-import { pushUnlockEvent } from "@/components/gamification/gamification-unlock-toast";
+import {
+  pushUnlockEvent,
+  pushLevelUpEvent,
+} from "@/components/gamification/gamification-unlock-toast";
 import { getCached } from "@/lib/client-cache";
 import { cn } from "@/lib/utils";
 import { Trophy, Medal, Target, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
@@ -67,7 +70,15 @@ export default function ErfolgePage() {
       }
     }
     sessionStorage.setItem("erfolge-unlocked-count", String(rawData.unlockedCount));
-  }, [rawData?.unlockedCount, rawData?.achievements]);
+
+    const levelKey = "erfolge-last-level";
+    const prevLevel = sessionStorage.getItem(levelKey);
+    const curLevel = rawData.level.level;
+    if (prevLevel != null && Number(prevLevel) < curLevel) {
+      pushLevelUpEvent(curLevel);
+    }
+    sessionStorage.setItem(levelKey, String(curLevel));
+  }, [rawData?.unlockedCount, rawData?.achievements, rawData?.level.level]);
 
   const filtered = useMemo(() => {
     if (!data?.achievements) return [];
