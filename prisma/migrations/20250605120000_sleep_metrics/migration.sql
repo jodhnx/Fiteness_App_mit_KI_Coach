@@ -1,0 +1,3 @@
+ALTER TABLE "DailyHealthMetric" ADD COLUMN IF NOT EXISTS "sleepHours" DOUBLE PRECISION;
+ALTER TABLE "DailyHealthMetric" ADD COLUMN IF NOT EXISTS "sleepQuality" TEXT;
+ALTER TABLE "DailyHealthMetric" ADD COLUMN IF NOT EXISTS "recoveryRating" TEXT;

@@ -1,0 +1,161 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
+import {
+  invalidateAllNutritionCaches,
+  applyNutritionMutationResponse,
+  NUTRITION_DASHBOARD_CACHE_KEY,
+} from "@/lib/nutrition-sync";
+import { getCached } from "@/lib/client-cache";
+import { RemainingMacrosHero } from "@/components/nutrition/remaining-macros-hero";
+import { MealTrackList } from "@/components/nutrition/meal-track-list";
+import { WaterTracker } from "@/components/nutrition/water-tracker";
+import type { MealType } from "@prisma/client";
+import { toast } from "sonner";
+import { RefreshCw, AlertCircle, Settings2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
+import Link from "next/link";
+
+export default function NutritionPage() {
+  const [expandedMeal, setExpandedMeal] = useState<MealType | null>(null);
+
+  const {
+    dashboard,
+    loading,
+    error,
+    timedOut,
+    reload,
+    applyDashboard,
+  } = useNutritionDashboard(15_000);
+
+  const refreshAll = useCallback(() => {
+    invalidateAllNutritionCaches();
+    reload();
+  }, [reload]);
+
+  const removeItem = useCallback(
+    async (itemId: string) => {
+      const res = await fetch(`/api/nutrition/items/${itemId}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast.error("Löschen fehlgeschlagen");
+        return;
+      }
+      const updated = await applyNutritionMutationResponse(res);
+      if (!updated) refreshAll();
+    },
+    [refreshAll]
+  );
+
+  const addWater = useCallback(
+    async (amountMl: number) => {
+      const res = await fetch("/api/nutrition/water", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountMl }),
+      });
+      if (!res.ok) {
+        toast.error("Wasser konnte nicht gespeichert werden");
+        return;
+      }
+      const body = await res.json().catch(() => ({}));
+      if (body.dashboard) applyDashboard(body.dashboard);
+      else refreshAll();
+    },
+    [applyDashboard, refreshAll]
+  );
+
+  return (
+    <div className="space-y-5 pb-28 max-w-2xl mx-auto">
+      <PageHeader
+        title="Ernährung"
+        subtitle="Tagesübersicht · 2 Klicks zum Tracken"
+        action={
+          <Link
+            href="/settings"
+            className="p-2 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white"
+            aria-label="Einstellungen"
+          >
+            <Settings2 className="h-5 w-5" />
+          </Link>
+        }
+      />
+
+      {(error || timedOut) && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex gap-3">
+          <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-red-100">
+              {timedOut ? "Laden dauert zu lange" : "Daten nicht geladen"}
+            </p>
+            <Button type="button" variant="outline" size="sm" className="mt-2" onClick={refreshAll}>
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Erneut
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!dashboard.profileComplete && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Ziele fehlen —{" "}
+          <Link href="/settings" className="underline font-medium">
+            Einstellungen öffnen
+          </Link>
+        </div>
+      )}
+
+      <div
+        className={
+          loading && getCached(NUTRITION_DASHBOARD_CACHE_KEY) === null ? "opacity-80" : ""
+        }
+      >
+        <RemainingMacrosHero
+          calories={{
+            consumed: dashboard.consumed.calories,
+            target: dashboard.targets.calories,
+            remaining: dashboard.remaining.calories,
+          }}
+          protein={{
+            consumed: dashboard.consumed.proteinG,
+            target: dashboard.targets.proteinG,
+            remaining: dashboard.remaining.proteinG,
+          }}
+          carbs={{
+            consumed: dashboard.consumed.carbsG,
+            target: dashboard.targets.carbsG,
+            remaining: dashboard.remaining.carbsG,
+          }}
+          fat={{
+            consumed: dashboard.consumed.fatG,
+            target: dashboard.targets.fatG,
+            remaining: dashboard.remaining.fatG,
+          }}
+          fiber={{
+            consumed: dashboard.consumed.fiberG ?? 0,
+            target: dashboard.targets.fiberG ?? 35,
+          }}
+        />
+      </div>
+
+      <section>
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">
+          Mahlzeiten
+        </h2>
+        <MealTrackList
+          meals={dashboard.mealsByType}
+          expandedMeal={expandedMeal}
+          onToggle={(m) => setExpandedMeal((e) => (e === m ? null : m))}
+          onRemove={removeItem}
+        />
+      </section>
+
+      <WaterTracker
+        consumedMl={dashboard.water.consumedMl}
+        targetMl={dashboard.water.targetMl}
+        onAdd={addWater}
+      />
+    </div>
+  );
+}
