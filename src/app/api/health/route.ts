@@ -8,7 +8,7 @@ export async function GET() {
     const connected = await pingDatabase();
     if (!connected) {
       return jsonError(
-        "Datenbank nicht erreichbar. Terminal: npm run db:start — dann npm run auth:test",
+        "Datenbank nicht erreichbar. Prüfe Supabase DATABASE_URL und npm run db:verify-supabase",
         503
       );
     }

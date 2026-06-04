@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { Pool, type PoolConfig } from "pg";
 import { isDatabaseConnectionError } from "@/lib/prisma-errors";
 import {
   logDatabaseConnected,
@@ -17,25 +17,44 @@ const globalForPrisma = globalThis as unknown as {
 let pool: Pool | undefined = globalForPrisma.pool;
 let client: PrismaClient | undefined = globalForPrisma.prisma;
 
-function maskDatabaseUrl(url: string | undefined): string {
-  if (!url) return "(missing)";
-  return url.replace(/:[^:@]+@/, ":****@");
+function getConnectionString(): string {
+  const raw = process.env.DATABASE_URL?.trim();
+  if (!raw) {
+    throw new Error(
+      "DATABASE_URL fehlt. Supabase: Settings → Database → Transaction pooler (6543)."
+    );
+  }
+  if (/localhost|127\.0\.0\.1|:5121[789]\b/.test(raw)) {
+    throw new Error(
+      "DATABASE_URL zeigt auf localhost. Bitte Supabase Transaction-URL in .env setzen."
+    );
+  }
+  if (/:6543\b/.test(raw) && !/[?&]pgbouncer=true/i.test(raw)) {
+    throw new Error(
+      "DATABASE_URL (Port 6543) benötigt ?pgbouncer=true — sonst: prepared statement Fehler mit Supavisor."
+    );
+  }
+  return raw;
+}
+
+function poolConfig(connectionString: string): PoolConfig {
+  const isSupabase = /supabase\.co/i.test(connectionString);
+  const isVercel = Boolean(process.env.VERCEL);
+
+  return {
+    connectionString,
+    connectionTimeoutMillis: 15_000,
+    idleTimeoutMillis: isVercel ? 5_000 : 20_000,
+    max: isVercel ? 1 : 5,
+    keepAlive: true,
+    allowExitOnIdle: !isVercel,
+    ssl: isSupabase ? { rejectUnauthorized: false } : undefined,
+  };
 }
 
 function createPool(): Pool {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString?.trim()) {
-    logDatabaseError("DATABASE_URL is not set");
-  }
-
-  const p = new Pool({
-    connectionString,
-    connectionTimeoutMillis: 12_000,
-    idleTimeoutMillis: 20_000,
-    max: 5,
-    keepAlive: true,
-    allowExitOnIdle: false,
-  });
+  const connectionString = getConnectionString();
+  const p = new Pool(poolConfig(connectionString));
 
   p.on("error", (err) => {
     logDatabaseError(err);
@@ -81,7 +100,6 @@ export function getPrismaClient(): PrismaClient {
   return client;
 }
 
-/** Lazy Prisma singleton — pool resets on connection errors via dbQuery(). */
 export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   get(_target, prop, receiver) {
     const db = getPrismaClient();
@@ -93,30 +111,9 @@ export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   },
 });
 
-const PRISMA_DEV_PORTS = [51219, 51218, 51217];
-
-function candidateDatabaseUrls(): string[] {
-  const primary = process.env.DATABASE_URL?.trim();
-  const urls: string[] = [];
-  if (primary) urls.push(primary);
-  if (primary?.includes("51218")) {
-    urls.push(primary.replace("51218", "51219"));
-  }
-  if (primary?.includes("51219")) {
-    urls.push(primary.replace("51219", "51218"));
-  }
-  for (const port of PRISMA_DEV_PORTS) {
-    urls.push(
-      `postgres://postgres:postgres@localhost:${port}/template1?sslmode=disable`
-    );
-  }
-  return [...new Set(urls)];
-}
-
 async function tryPgPing(connectionString: string): Promise<boolean> {
   const probe = new Pool({
-    connectionString,
-    connectionTimeoutMillis: 8_000,
+    ...poolConfig(connectionString),
     max: 1,
   });
   try {
@@ -129,29 +126,22 @@ async function tryPgPing(connectionString: string): Promise<boolean> {
   }
 }
 
-/** Raw pg ping — tries Prisma Dev ports if DATABASE_URL fails (51218 often resets). */
-async function pingPgPool(): Promise<boolean> {
-  for (const url of candidateDatabaseUrls()) {
-    if (await tryPgPing(url)) {
-      if (url !== process.env.DATABASE_URL) {
-        process.env.DATABASE_URL = url;
-        await resetPrismaClient();
-      }
-      return true;
-    }
-  }
-  return false;
-}
-
-/** Ping DB; reconnects pool once on failure. */
 export async function pingDatabase(): Promise<boolean> {
   const verboseDb =
     process.env.NODE_ENV === "development" && process.env.DEBUG_DB === "1";
   if (verboseDb) logDatabaseQueryStart("ping");
 
-  if (!(await pingPgPool())) {
+  let connectionString: string;
+  try {
+    connectionString = getConnectionString();
+  } catch (e) {
+    logDatabaseError(e);
+    return false;
+  }
+
+  if (!(await tryPgPing(connectionString))) {
     logDatabaseError(
-      "PostgreSQL nicht erreichbar. Terminal 1: npm run db:start (offen lassen) oder npm run db:docker"
+      "Supabase nicht erreichbar. Prüfe DATABASE_URL, Passwort und ob das Projekt aktiv ist."
     );
     await resetPrismaClient();
     return false;
@@ -167,25 +157,12 @@ export async function pingDatabase(): Promise<boolean> {
   } catch (error) {
     logDatabaseError(error);
     await resetPrismaClient();
-    if (!(await pingPgPool())) return false;
-    try {
-      await getPrismaClient().$queryRaw`SELECT 1`;
-      if (verboseDb) {
-        logDatabaseConnected();
-        logDatabaseQuerySuccess("ping-retry");
-      }
-      return true;
-    } catch (retryError) {
-      logDatabaseError(retryError);
-      await resetPrismaClient();
-      return false;
-    }
+    return false;
   }
 }
 
 const RETRY_DELAY_MS = [300, 600, 1200];
 
-/** Run a Prisma operation with logging and automatic reconnect on connection loss. */
 export async function dbQuery<T>(
   label: string,
   fn: (db: PrismaClient) => Promise<T>,
@@ -216,4 +193,3 @@ export async function dbQuery<T>(
 
   throw lastError;
 }
-

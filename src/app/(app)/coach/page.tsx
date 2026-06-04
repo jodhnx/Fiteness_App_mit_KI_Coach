@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
-import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Send, Bot, Sparkles, ChevronRight } from "lucide-react";
+import { Send, Bot } from "lucide-react";
 import { toast } from "sonner";
+import { CoachRecommendations } from "@/components/coach/coach-recommendations";
 
 type Message = { role: string; content: string };
 type Insight = {
@@ -21,24 +19,27 @@ export default function CoachPage() {
   const { data: insights, loading: insightsLoading } = useCachedFetch<{
     summary: string;
     tips: Insight[];
-  }>("coach-insights", "/api/coach/insights", 90_000, 10_000);
+  }>("coach-insights", "/api/coach/insights", 90_000, 10_000, {
+    revalidateOnMount: false,
+    staleRatio: 0.95,
+  });
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [chatId, setChatId] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
-  const [chatStarted, setChatStarted] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
 
   async function send() {
     if (!input.trim() || loading) return;
     const userMsg = input.trim();
     setInput("");
-    setChatStarted(true);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     setMessages((m) => [...m, { role: "user", content: userMsg }]);
     setLoading(true);
     const res = await fetch("/api/coach/chat", {
@@ -56,64 +57,28 @@ export default function CoachPage() {
     setMessages((m) => [...m, { role: "assistant", content: data.message }]);
   }
 
-  return (
-    <div className="space-y-6 max-w-2xl mx-auto flex flex-col min-h-[calc(100vh-10rem)]">
-      <PageHeader
-        title="KI Coach"
-        subtitle="Analysiert Ernährung, Training, Aktivitäten & Ziele – basierend auf deinen Daten"
-      />
+  function onInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setInput(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+  }
 
-      <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-950/30 to-zinc-900/80 p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="h-5 w-5 text-violet-400" />
-          <h2 className="font-semibold text-white">Deine Empfehlungen</h2>
-        </div>
-        {insightsLoading && !insights ? (
-          <p className="text-sm text-zinc-500 animate-pulse">Analysiere deine Daten…</p>
-        ) : (
-          <>
-            <p className="text-sm text-zinc-300 mb-3">{insights?.summary}</p>
-            <ul className="space-y-2">
-              {(insights?.tips ?? []).map((t, i) => (
-                <li key={i}>
-                  {t.actionHref ? (
-                    <Link
-                      href={t.actionHref}
-                      className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm ${
-                        t.priority === "high"
-                          ? "bg-violet-500/10 text-violet-100 border border-violet-500/20"
-                          : "bg-zinc-800/60 text-zinc-300"
-                      }`}
-                    >
-                      <span>{t.message}</span>
-                      <ChevronRight className="h-4 w-4 shrink-0 opacity-60" />
-                    </Link>
-                  ) : (
-                    <span
-                      className={`block rounded-xl px-3 py-2.5 text-sm ${
-                        t.priority === "high"
-                          ? "bg-violet-500/10 text-violet-100"
-                          : "bg-zinc-800/60 text-zinc-400"
-                      }`}
-                    >
-                      {t.message}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+  return (
+    <div className="flex flex-col min-h-[calc(100dvh-5.5rem)] -mx-1">
+      <div className="px-1 pb-2">
+        <h1 className="text-lg font-bold text-white">KI Coach</h1>
+        <p className="text-xs text-zinc-500">Training · Ernährung · Regeneration</p>
       </div>
 
-      <div className="card-premium flex-1 flex flex-col min-h-[280px]">
-        <div className="p-4 border-b border-white/10 flex items-center gap-2">
+      <div className="flex-1 flex flex-col rounded-2xl border border-white/10 bg-zinc-900/80 overflow-hidden min-h-[min(72dvh,640px)] transform-gpu">
+        <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2 shrink-0">
           <Bot className="h-5 w-5 text-cyan-400" />
-          <span className="font-medium text-white">Chat</span>
+          <span className="font-medium text-white text-sm">Chat</span>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
-          {!chatStarted && messages.length === 0 && (
-            <p className="text-sm text-zinc-500 text-center py-8">
+
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-3 scrollbar-hide">
+          {messages.length === 0 && (
+            <p className="text-sm text-zinc-500 text-center py-12 px-4 leading-relaxed">
               Stelle eine Frage zu Training, Ernährung oder Regeneration – der Coach kennt
               deinen Kontext.
             </p>
@@ -121,32 +86,56 @@ export default function CoachPage() {
           {messages.map((m, i) => (
             <div
               key={i}
-              className={`max-w-[90%] rounded-2xl px-4 py-2.5 text-sm ${
+              className={`max-w-[92%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
                 m.role === "user"
-                  ? "ml-auto bg-cyan-500/20 text-cyan-50 border border-cyan-500/25"
-                  : "bg-zinc-800/80 text-zinc-200"
+                  ? "ml-auto bg-cyan-500/20 text-cyan-50 border border-cyan-500/30"
+                  : "mr-auto bg-zinc-800/90 text-zinc-100 border border-white/5"
               }`}
             >
               {m.content}
             </div>
           ))}
           {loading && (
-            <p className="text-xs text-zinc-500 animate-pulse">Coach antwortet…</p>
+            <p className="text-xs text-zinc-500 animate-pulse px-1">Coach antwortet…</p>
           )}
           <div ref={bottomRef} />
         </div>
-        <div className="p-3 border-t border-white/10 flex gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="z. B. Was soll ich heute essen?"
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            className="bg-zinc-900 border-zinc-700"
-          />
-          <Button size="icon" onClick={send} disabled={loading}>
-            <Send className="h-4 w-4" />
-          </Button>
+
+        <div className="shrink-0 p-3 border-t border-white/10 bg-zinc-950/90 safe-area-pb">
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={onInput}
+              rows={1}
+              placeholder="Nachricht an den Coach…"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+              className="flex-1 min-h-[52px] max-h-40 resize-none rounded-2xl border border-zinc-600 bg-zinc-900 px-4 py-3.5 text-[16px] text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+            />
+            <Button
+              size="icon"
+              className="h-[52px] w-[52px] shrink-0 rounded-2xl btn-accent"
+              onClick={() => void send()}
+              disabled={loading || !input.trim()}
+              aria-label="Senden"
+            >
+              <Send className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
+      </div>
+
+      <div className="mt-4 pb-2">
+        <CoachRecommendations
+          summary={insights?.summary}
+          tips={insights?.tips ?? []}
+          loading={insightsLoading}
+        />
       </div>
     </div>
   );

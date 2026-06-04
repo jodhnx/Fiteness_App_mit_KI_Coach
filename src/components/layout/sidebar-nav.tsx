@@ -19,12 +19,13 @@ import {
   Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isNavActive } from "@/lib/nav-active";
 
 const PRIMARY_NAV = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/workouts", label: "Training", icon: Dumbbell },
   { href: "/nutrition", label: "Ernährung", icon: Apple },
-  { href: "/activities", label: "Aktivitäten", icon: Footprints },
+  { href: "/activities", label: "Aktivität", icon: Footprints },
   { href: "/coach", label: "KI Coach", icon: Bot },
   { href: "/profile", label: "Profil", icon: User },
 ] as const;
@@ -72,16 +73,13 @@ export const SidebarNav = memo(function SidebarNav({ isAdmin }: { isAdmin?: bool
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
 
-  const isActive = (href: string) =>
-    pathname === href ||
-    pathname.startsWith(`${href}/`) ||
-    (href === "/home" && pathname === "/dashboard");
+  const isActive = (href: string) => isNavActive(pathname, href);
 
   return (
     <>
       <button
         type="button"
-        className="fixed left-4 top-4 z-50 rounded-xl bg-zinc-900/90 border border-white/10 p-2 lg:hidden"
+        className="fixed left-4 top-4 z-50 rounded-xl bg-zinc-900/90 border border-white/10 p-2 hidden lg:flex"
         onClick={() => setOpen((o) => !o)}
         aria-label="Menü"
       >

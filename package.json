@@ -22,8 +22,8 @@
     "perf:measure": "npx tsx scripts/measure-api-performance.ts",
     "db:test": "npx tsx scripts/test-database.ts",
     "db:apply-migrations": "npx tsx scripts/apply-migrations.ts",
-    "db:start": "prisma dev -n ai-fitness",
-    "db:resolve-url": "npx tsx scripts/resolve-database-url.ts",
+    "db:supabase:setup": "npx tsx scripts/setup-supabase.ts",
+    "db:verify-supabase": "npx tsx scripts/verify-supabase.ts",
     "db:docker": "docker compose up -d",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"

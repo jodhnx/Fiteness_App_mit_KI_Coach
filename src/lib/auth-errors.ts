@@ -19,7 +19,7 @@ export function getLoginErrorMessage(code: string | undefined): string {
     case "invalid_credentials":
       return "E-Mail oder Passwort ist falsch.";
     case "database_connection":
-      return "Datenbank nicht erreichbar. Terminal 1: npm run db:start (offen lassen). Terminal 2: npm run db:resolve-url && npm run db:push";
+      return "Datenbank nicht erreichbar. Prüfe Supabase DATABASE_URL / DIRECT_URL in .env.";
     case "CredentialsSignin":
       return "E-Mail oder Passwort ist falsch.";
     default:

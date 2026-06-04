@@ -14,7 +14,7 @@ export async function GET() {
     const userId = session.user.id;
     const getHome = unstable_cache(
       async () => loadHomeData(userId),
-      [`home-data-v2-${userId}`],
+      [`home-data-v3-${userId}`],
       { revalidate: 90, tags: [`home-${userId}`] }
     );
 

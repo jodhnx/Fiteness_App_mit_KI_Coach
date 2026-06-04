@@ -2,6 +2,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Prisma 7: URLs in prisma.config.ts (nicht im Schema):
+//   prisma.config.ts → DIRECT_URL (5432) — CLI: db push, migrate, studio
+//   DATABASE_URL (6543, ?pgbouncer=true) — App via src/lib/prisma.ts
 datasource db {
   provider = "postgresql"
 }

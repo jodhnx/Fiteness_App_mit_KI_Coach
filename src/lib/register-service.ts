@@ -37,7 +37,7 @@ function mapPrismaError(error: unknown): RegisterResult | null {
       ok: false,
       status: 503,
       error:
-        "Datenbank nicht erreichbar. Terminal 1: npm run db:start — Terminal 2: npm run dev — oder: npm run check",
+        "Datenbank nicht erreichbar. Prüfe Supabase DATABASE_URL in .env und npm run db:verify-supabase",
     };
   }
 

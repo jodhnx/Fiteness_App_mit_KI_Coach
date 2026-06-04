@@ -132,6 +132,33 @@ body {
   min-height: 100vh;
 }
 
+.mobile-app-body {
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-app-frame {
+  width: 100%;
+  max-width: 430px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (min-width: 1024px) {
+  .mobile-app-frame {
+    max-width: 56rem;
+  }
+}
+
+.safe-top {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+.transform-gpu {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
 .glass {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(16px);

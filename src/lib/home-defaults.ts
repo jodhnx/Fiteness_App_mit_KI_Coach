@@ -4,7 +4,12 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 
 export type HomeCoach = {
   summary: string;
-  tips: { type: string; message: string; priority: string; actionHref?: string }[];
+  tips: {
+    type: string;
+    message: string;
+    priority: string;
+    actionHref?: string;
+  }[];
 };
 
 export type HomeDataPayload = {
@@ -87,6 +92,19 @@ export type HomeDataPayload = {
     latestAchievement: { name: string; icon: string; tier: string } | null;
     activeChallenge: { title: string; progress: number; target: number } | null;
   };
+  challenges?: {
+    id: string;
+    title: string;
+    progress: number;
+    target: number;
+    tier: string;
+  }[];
+  bodyTransformation?: {
+    startKg: number;
+    currentKg: number;
+    targetKg: number | null;
+    progressPercent: number;
+  } | null;
 };
 
 export function createEmptyHomeData(): HomeDataPayload {
@@ -222,6 +240,15 @@ export function normalizeHomeData(raw: unknown): HomeDataPayload {
       d.gamification && typeof d.gamification === "object"
         ? (d.gamification as HomeDataPayload["gamification"])
         : undefined,
+    challenges: Array.isArray(d.challenges)
+      ? (d.challenges as HomeDataPayload["challenges"])
+      : undefined,
+    bodyTransformation:
+      d.bodyTransformation && typeof d.bodyTransformation === "object"
+        ? (d.bodyTransformation as HomeDataPayload["bodyTransformation"])
+        : d.bodyTransformation === null
+          ? null
+          : undefined,
   };
 }
 
