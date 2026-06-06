@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 
 export type LibraryExercise = {
@@ -29,6 +29,9 @@ export function useExerciseLibrarySearch(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [libraryCount, setLibraryCount] = useState(0);
+  const [seeding, setSeeding] = useState(false);
+  const retryRef = useRef(0);
 
   useEffect(() => {
     if (!enabled) return;
@@ -46,7 +49,10 @@ export function useExerciseLibrarySearch(
     setLoading(true);
     setError(null);
 
-    fetch(`/api/exercises?${params}`, { signal: controller.signal })
+    fetch(`/api/exercises?${params}`, {
+      signal: controller.signal,
+      credentials: "include",
+    })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -58,8 +64,33 @@ export function useExerciseLibrarySearch(
           throw new Error(msg);
         }
         const list = (data.exercises ?? []) as LibraryExercise[];
+        const count = (data as { libraryCount?: number }).libraryCount ?? list.length;
+        setLibraryCount(count);
+        setSeeding(count > 0 && count < 50);
         setExercises(list);
         setTotal((data as { total?: number }).total ?? list.length);
+
+        if (list.length === 0 && count < 50 && retryRef.current < 2) {
+          retryRef.current += 1;
+          setTimeout(() => {
+            if (!controller.signal.aborted) {
+              void fetch(`/api/exercises?${params}`, { credentials: "include" })
+                .then((r) => r.json())
+                .then((retry) => {
+                  const retryList = (retry.exercises ?? []) as LibraryExercise[];
+                  if (retryList.length > 0) {
+                    setExercises(retryList);
+                    setTotal(retry.total ?? retryList.length);
+                    setLibraryCount(retry.libraryCount ?? retryList.length);
+                    setSeeding(false);
+                  }
+                })
+                .catch(() => undefined);
+            }
+          }, 1500);
+        } else if (list.length > 0) {
+          retryRef.current = 0;
+        }
       })
       .catch((e) => {
         if (e instanceof Error && e.name === "AbortError") return;
@@ -72,5 +103,5 @@ export function useExerciseLibrarySearch(
     return () => controller.abort();
   }, [debouncedQ, filters.muscle, filters.equipment, filters.difficulty, limit, enabled]);
 
-  return { exercises, loading, error, total, debouncedQ };
+  return { exercises, loading, error, total, libraryCount, seeding, debouncedQ };
 }

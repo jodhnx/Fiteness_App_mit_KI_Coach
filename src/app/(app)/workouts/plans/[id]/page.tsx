@@ -62,7 +62,9 @@ const EQUIPMENT_OPTIONS = [
   "BODYWEIGHT",
   "KETTLEBELL",
   "BAND",
+  "SMITH_MACHINE",
   "OTHER",
+  "NONE",
 ] as const;
 
 type PlanDay = {
@@ -156,12 +158,18 @@ export default function PlanEditorPage() {
   const [showCustomExercise, setShowCustomExercise] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customMuscle, setCustomMuscle] = useState<string>("CHEST");
-  const { exercises: library, loading: libraryLoading, error: libraryError, total: libraryTotal } =
-    useExerciseLibrarySearch(search, {
-      muscle: muscleFilter,
-      equipment: equipmentFilter,
-      difficulty: difficultyFilter,
-    });
+  const {
+    exercises: library,
+    loading: libraryLoading,
+    error: libraryError,
+    total: libraryTotal,
+    libraryCount,
+    seeding: librarySeeding,
+  } = useExerciseLibrarySearch(search, {
+    muscle: muscleFilter,
+    equipment: equipmentFilter,
+    difficulty: difficultyFilter,
+  });
   const [activeDayId, setActiveDayId] = useState<string | null>(null);
   const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
   const [alternatives, setAlternatives] = useState<{ id: string; name: string }[]>([]);
@@ -694,11 +702,13 @@ export default function PlanEditorPage() {
               </select>
             </div>
             <p className="text-xs text-zinc-500">
-              {libraryLoading
-                ? "Suche…"
+              {libraryLoading || librarySeeding
+                ? librarySeeding
+                  ? "Übungsbibliothek wird initialisiert…"
+                  : "Suche…"
                 : libraryError
                   ? libraryError
-                  : `${libraryTotal} Übungen${libraryTotal < 50 ? " — ggf. npm run db:seed:exercises" : ""}`}
+                  : `${libraryTotal} Treffer · ${libraryCount} Übungen in Bibliothek`}
             </p>
             <Button
               type="button"
@@ -750,9 +760,9 @@ export default function PlanEditorPage() {
                 </Button>
               </div>
             )}
-            {!libraryLoading && library.length === 0 && !libraryError && (
+            {!libraryLoading && !librarySeeding && library.length === 0 && !libraryError && (
               <p className="text-sm text-zinc-500 py-4 text-center">
-                Keine Übungen gefunden. Datenbank seeden oder Suche anpassen.
+                Keine Übungen für diese Suche. Filter zurücksetzen oder anderen Begriff eingeben.
               </p>
             )}
             {library.map((ex) => (

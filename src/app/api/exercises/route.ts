@@ -6,12 +6,38 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import type { EquipmentType, MuscleGroup } from "@prisma/client";
 import { ensureExerciseLibrarySeeded } from "@/lib/exercise-seed-runtime";
 
+export const maxDuration = 60;
+
+function buildSearchClause(q: string) {
+  const tokens = q
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length >= 2);
+  if (tokens.length === 0) {
+    return {
+      OR: [
+        { name: { contains: q, mode: "insensitive" as const } },
+        { slug: { contains: q, mode: "insensitive" as const } },
+      ],
+    };
+  }
+  return {
+    AND: tokens.map((t) => ({
+      OR: [
+        { name: { contains: t, mode: "insensitive" as const } },
+        { slug: { contains: t, mode: "insensitive" as const } },
+      ],
+    })),
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
 
-    await ensureExerciseLibrarySeeded(prisma);
+    const dbCount = await ensureExerciseLibrarySeeded(prisma);
 
     const q = req.nextUrl.searchParams.get("q") ?? "";
     const muscle = req.nextUrl.searchParams.get("muscle") as MuscleGroup | null;
@@ -36,14 +62,7 @@ export async function GET(req: NextRequest) {
           muscle ? { muscleGroup: muscle } : {},
           equipment ? { equipment: equipment as EquipmentType } : {},
           difficulty ? { difficulty: difficulty as "BEGINNER" | "INTERMEDIATE" | "ADVANCED" } : {},
-          q
-            ? {
-                OR: [
-                  { name: { contains: q, mode: "insensitive" } },
-                  { slug: { contains: q, mode: "insensitive" } },
-                ],
-              }
-            : {},
+          q ? buildSearchClause(q) : {},
         ],
       },
       select: {
@@ -92,7 +111,12 @@ export async function GET(req: NextRequest) {
       isFavorite: favSet.has(ex.id),
     }));
 
-    return jsonOk({ exercises: enriched, total: enriched.length });
+    return jsonOk({
+      exercises: enriched,
+      total: enriched.length,
+      libraryCount: dbCount,
+      seeded: dbCount >= 50,
+    });
   } catch (e) {
     return handleApiError(e);
   }

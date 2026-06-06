@@ -1,7 +1,8 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import { memo, useCallback } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { memo } from "react";
 import { Home, Dumbbell, Apple, Footprints, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isNavActive } from "@/lib/nav-active";
@@ -16,15 +17,6 @@ const ITEMS = [
 
 export const BottomNav = memo(function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  const go = useCallback(
-    (href: (typeof ITEMS)[number]["href"]) => {
-      if (pathname === href || isNavActive(pathname, href)) return;
-      router.push(href);
-    },
-    [pathname, router]
-  );
 
   return (
     <nav
@@ -35,10 +27,10 @@ export const BottomNav = memo(function BottomNav() {
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isNavActive(pathname, href);
           return (
-            <button
+            <Link
               key={href}
-              type="button"
-              onClick={() => go(href)}
+              href={href}
+              prefetch
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 py-2 min-h-[52px] text-[11px] font-medium transition-colors duration-75 active:scale-95 transform-gpu",
                 active ? "text-accent" : "text-zinc-500"
@@ -50,7 +42,7 @@ export const BottomNav = memo(function BottomNav() {
                 strokeWidth={active ? 2.5 : 2}
               />
               <span className="truncate max-w-[72px]">{label}</span>
-            </button>
+            </Link>
           );
         })}
       </div>

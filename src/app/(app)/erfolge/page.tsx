@@ -171,10 +171,14 @@ export default function ErfolgePage() {
         </div>
       </div>
 
-      {display.totalAchievements === 0 && (
+      {display.totalAchievements === 0 && loading && (
         <p className="text-sm text-zinc-500 text-center px-4">
-          Noch keine Erfolge in der Datenbank. Führe{" "}
-          <code className="text-zinc-400">npm run db:seed</code> aus, um Erfolge anzulegen.
+          Erfolge werden initialisiert…
+        </p>
+      )}
+      {display.totalAchievements === 0 && !loading && error && (
+        <p className="text-sm text-amber-400/90 text-center px-4">
+          Erfolge konnten nicht geladen werden. Bitte Seite neu laden.
         </p>
       )}
 

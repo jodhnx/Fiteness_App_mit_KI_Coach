@@ -1,18 +1,15 @@
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import type { PrismaClient } from "@prisma/client";
 import { FOOD_CATALOG } from "../src/data/food-catalog";
+import { disconnectSeedPrisma, getSeedPrisma } from "./seed-client";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
-
-export async function seedFoods(prismaClient = prisma) {
+export async function seedFoods(prismaClient?: PrismaClient) {
+  const prisma = prismaClient ?? getSeedPrisma();
   console.log(`Seeding ${FOOD_CATALOG.length} foods...`);
   const batchSize = 500;
   let inserted = 0;
   for (let i = 0; i < FOOD_CATALOG.length; i += batchSize) {
     const batch = FOOD_CATALOG.slice(i, i + batchSize);
-    const result = await prismaClient.foodItem.createMany({
+    const result = await prisma.foodItem.createMany({
       data: batch.map((f) => ({
         slug: f.slug,
         name: f.name,
@@ -35,11 +32,16 @@ export async function seedFoods(prismaClient = prisma) {
   console.log(`Food catalog: ${inserted} new rows (duplicates skipped).`);
 }
 
-if (require.main === module) {
+const isDirectRun =
+  typeof require !== "undefined" &&
+  typeof require.main !== "undefined" &&
+  require.main === module;
+
+if (isDirectRun) {
   seedFoods()
-    .catch(console.error)
-    .finally(async () => {
-      await prisma.$disconnect();
-      await pool.end();
-    });
+    .catch((e) => {
+      console.error(e);
+      process.exitCode = 1;
+    })
+    .finally(() => disconnectSeedPrisma());
 }

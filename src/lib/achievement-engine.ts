@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ensureAchievementsSeeded } from "@/lib/achievement-seed-runtime";
 import { getCachedAchievementMetrics } from "@/lib/achievement-metrics-cache";
 import { checkAndAwardAchievements } from "@/lib/gamification";
 import type { BadgeTier } from "@/lib/achievement-catalog";
@@ -63,21 +64,32 @@ export async function loadAchievementsWithProgress(
   userId: string
 ): Promise<AchievementProgress[]> {
   try {
-    const [metrics, rows] = await Promise.all([
-      getCachedAchievementMetrics(userId).catch((e) => {
-        console.error("[achievement-engine] metrics failed", e);
-        return {} as Record<string, number>;
-      }),
-      prisma.achievement
+    const metrics = await getCachedAchievementMetrics(userId).catch((e) => {
+      console.error("[achievement-engine] metrics failed", e);
+      return {} as Record<string, number>;
+    });
+
+    let rows = await prisma.achievement
+      .findMany({
+        include: { userAchievements: { where: { userId }, take: 1 } },
+        orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
+      })
+      .catch((e) => {
+        console.error("[achievement-engine] findMany failed", e);
+        return [];
+      });
+
+    if (rows.length === 0) {
+      await ensureAchievementsSeeded(prisma).catch((e) =>
+        console.error("[achievement-engine] auto-seed failed", e)
+      );
+      rows = await prisma.achievement
         .findMany({
           include: { userAchievements: { where: { userId }, take: 1 } },
           orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
         })
-        .catch((e) => {
-          console.error("[achievement-engine] findMany failed", e);
-          return [];
-        }),
-    ]);
+        .catch(() => []);
+    }
 
     if (rows.length === 0) return [];
 

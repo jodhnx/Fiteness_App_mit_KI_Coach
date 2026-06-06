@@ -1,14 +1,12 @@
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { seedExercises } from "./seed-exercises";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
+import { disconnectSeedPrisma, getSeedPrisma } from "./seed-client";
 
 async function main() {
-  await seedExercises();
+  const prisma = getSeedPrisma();
+
+  await seedExercises(prisma);
 
   const { seedAchievementsAndLevels, seedExtendedChallenges } = await import("./seed-achievements");
   await seedAchievementsAndLevels(prisma);
@@ -58,5 +56,8 @@ async function main() {
 }
 
 main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .catch((e) => {
+    console.error(e);
+    process.exitCode = 1;
+  })
+  .finally(() => disconnectSeedPrisma());

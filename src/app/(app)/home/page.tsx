@@ -27,6 +27,7 @@ import { HomeBodyCard } from "@/components/home/home-body-card";
 import { HomeAchievementsCard } from "@/components/home/home-achievements-card";
 import { HomeCoachRecommendations } from "@/components/home/home-coach-recommendations";
 import { HomeGreeting } from "@/components/home/home-greeting";
+import { useDisplayName } from "@/hooks/use-display-name";
 import { HomePlannedWorkouts } from "@/components/home/home-planned-workouts";
 import { HomeCalorieTrend } from "@/components/home/home-calorie-trend";
 import { HomeActivityOverview } from "@/components/home/home-activity-overview";
@@ -35,7 +36,7 @@ import { HomeMotivationCard } from "@/components/home/home-motivation-card";
 
 export default function HomePage() {
   const router = useRouter();
-  const { data: session, status: sessionStatus } = useSession();
+  const { status: sessionStatus } = useSession();
   const { data: rawData, error, timedOut, reload } = useCachedFetch<HomeDataPayload>(
     HOME_DATA_CACHE_KEY,
     "/api/home",
@@ -73,8 +74,7 @@ export default function HomePage() {
   const coach = data.coach;
   const nextWorkout = data.nextWorkout ?? null;
   const activeSessionId = data.activeSession?.id ?? null;
-  const displayName =
-    data.userName ?? session?.user?.email?.split("@")[0] ?? null;
+  const displayName = useDisplayName(data.userName);
 
   useEffect(() => {
     if (process.env.NODE_ENV === "development" && error) {

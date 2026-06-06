@@ -37,6 +37,7 @@ import {
   SettingsCategoryNav,
   type SettingsCategoryId,
 } from "@/components/settings/settings-category-nav";
+import { SettingsPersonalSummary } from "@/components/settings/settings-personal-summary";
 import { cn } from "@/lib/utils";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { getCached, setCached } from "@/lib/client-cache";
@@ -92,6 +93,7 @@ export default function SettingsPage() {
   const { theme, uiDensity, colorMode, setTheme, setUiDensity, setColorMode } =
     usePreferences();
   const [category, setCategory] = useState<SettingsCategoryId>("ziele");
+  const [editingPersonal, setEditingPersonal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<CalcPreview | null>(null);
   const [form, setForm] = useState({
@@ -312,7 +314,11 @@ export default function SettingsPage() {
           if (prevHome && updatedDash) {
             setCached(
               HOME_DATA_CACHE_KEY,
-              { ...prevHome, ...nutritionDashboardToHomeMacros(updatedDash) },
+              {
+                ...prevHome,
+                ...nutritionDashboardToHomeMacros(updatedDash),
+                userName: data.user?.name ?? prevHome.userName ?? null,
+              },
               120_000
             );
           }
@@ -328,6 +334,7 @@ export default function SettingsPage() {
       invalidateCache("nutrition-coach");
 
       toast.success("Einstellungen gespeichert");
+      setEditingPersonal(false);
     } catch (e) {
       const msg =
         e instanceof Error ? e.message : "Speichern fehlgeschlagen — unbekannter Fehler";
@@ -383,149 +390,185 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <section id="settings-profil" className="card-premium p-4 space-y-4 scroll-mt-24">
-        <h2 className="font-semibold text-white text-lg">Profil</h2>
-        <AvatarUpload
-          imageUrl={userImage}
-          name={form.name}
-          onUpdated={(url) => {
-            setUserImage(url);
-          }}
-        />
-        <div>
-          <Label>Name</Label>
-          <Input
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="mt-1"
+      {!editingPersonal ? (
+        <>
+          <section id="settings-profil" className="scroll-mt-24">
+            <AvatarUpload
+              imageUrl={userImage}
+              name={form.name}
+              onUpdated={(url) => {
+                setUserImage(url);
+              }}
+            />
+          </section>
+          <SettingsPersonalSummary
+            form={form}
+            calorieTarget={preview?.calorieTarget ?? null}
+            onEdit={() => setEditingPersonal(true)}
           />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Alter</Label>
-            <Input
-              type="number"
-              value={form.age}
-              onChange={(e) => setForm({ ...form, age: e.target.value })}
-              className="mt-1"
+        </>
+      ) : (
+        <>
+          <section id="settings-profil" className="card-premium p-4 space-y-4 scroll-mt-24">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-white text-lg">Persönliche Daten bearbeiten</h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (profileData) setForm(applyProfileToForm(profileData));
+                  setEditingPersonal(false);
+                }}
+              >
+                Abbrechen
+              </Button>
+            </div>
+            <AvatarUpload
+              imageUrl={userImage}
+              name={form.name}
+              onUpdated={(url) => {
+                setUserImage(url);
+              }}
             />
-          </div>
-          <div>
-            <Label>Geschlecht</Label>
-            <select
-              className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-              value={form.gender}
-              onChange={(e) => setForm({ ...form, gender: e.target.value })}
-            >
-              <option value="MALE">Männlich</option>
-              <option value="FEMALE">Weiblich</option>
-            </select>
-          </div>
-        </div>
-      </section>
+            <div>
+              <Label>Name</Label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Alter</Label>
+                <Input
+                  type="number"
+                  value={form.age}
+                  onChange={(e) => setForm({ ...form, age: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Geschlecht</Label>
+                <select
+                  className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
+                  value={form.gender}
+                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                >
+                  <option value="MALE">Männlich</option>
+                  <option value="FEMALE">Weiblich</option>
+                </select>
+              </div>
+            </div>
+          </section>
 
-      <section id="settings-ziele" className="card-premium p-4 space-y-4 scroll-mt-24">
-        <h2 className="font-semibold text-white text-lg">Ziele</h2>
-        <p className="text-xs text-zinc-500 -mt-2">
-          Kalorien, Protein & Makros werden automatisch neu berechnet.
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Gewicht (kg)</Label>
-            <Input
-              type="number"
-              value={form.weightKg}
-              onChange={(e) => setForm({ ...form, weightKg: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>Größe (cm)</Label>
-            <Input
-              type="number"
-              value={form.heightCm}
-              onChange={(e) => setForm({ ...form, heightCm: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-        </div>
-        <div className="rounded-xl border border-zinc-700/80 bg-zinc-900/40 p-3 space-y-3">
-          <p className="text-xs font-semibold text-zinc-400 uppercase">Smart Goals</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Zielgewicht (kg)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                placeholder="z. B. 85"
-                value={form.targetWeightKg}
-                onChange={(e) => setForm({ ...form, targetWeightKg: e.target.value })}
-                className="mt-1"
-              />
+          <section id="settings-ziele" className="card-premium p-4 space-y-4 scroll-mt-24">
+            <p className="text-xs text-zinc-500">
+              Kalorien, Protein & Makros werden automatisch neu berechnet.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Gewicht (kg)</Label>
+                <Input
+                  type="number"
+                  value={form.weightKg}
+                  onChange={(e) => setForm({ ...form, weightKg: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Größe (cm)</Label>
+                <Input
+                  type="number"
+                  value={form.heightCm}
+                  onChange={(e) => setForm({ ...form, heightCm: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="rounded-xl border border-zinc-700/80 bg-zinc-900/40 p-3 space-y-3">
+              <p className="text-xs font-semibold text-zinc-400 uppercase">Smart Goals</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Zielgewicht (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    placeholder="z. B. 85"
+                    value={form.targetWeightKg}
+                    onChange={(e) => setForm({ ...form, targetWeightKg: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Wunschdatum</Label>
+                  <Input
+                    type="date"
+                    value={form.targetWeightDate}
+                    onChange={(e) => setForm({ ...form, targetWeightDate: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              {smartGoalHint && (
+                <p className="text-xs text-accent">Erwartung: {smartGoalHint}</p>
+              )}
             </div>
             <div>
-              <Label>Wunschdatum</Label>
-              <Input
-                type="date"
-                value={form.targetWeightDate}
-                onChange={(e) => setForm({ ...form, targetWeightDate: e.target.value })}
-                className="mt-1"
-              />
+              <Label>Aktivitätslevel</Label>
+              <select
+                className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
+                value={form.activityLevel}
+                onChange={(e) =>
+                  setForm({ ...form, activityLevel: e.target.value as ActivityLevel })
+                }
+              >
+                {ONBOARDING_ACTIVITY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
-          {smartGoalHint && (
-            <p className="text-xs text-accent">Erwartung: {smartGoalHint}</p>
-          )}
-        </div>
-        <div>
-          <Label>Aktivitätslevel</Label>
-          <select
-            className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-            value={form.activityLevel}
-            onChange={(e) =>
-              setForm({ ...form, activityLevel: e.target.value as ActivityLevel })
-            }
-          >
-            {ONBOARDING_ACTIVITY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <Label>Hauptziel (Training)</Label>
-          <select
-            className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-            value={form.trainingGoal}
-            onChange={(e) =>
-              setForm({ ...form, trainingGoal: e.target.value as TrainingGoal })
-            }
-          >
-            {ONBOARDING_MAIN_GOAL_UI.map((o) => (
-              <option key={o.key} value={o.trainingGoal}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <Label>Ernährungsziel</Label>
-          <select
-            className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-            value={form.nutritionGoal}
-            onChange={(e) =>
-              setForm({ ...form, nutritionGoal: e.target.value as NutritionGoal })
-            }
-          >
-            {ONBOARDING_NUTRITION_GOAL_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {NUTRITION_GOAL_LABELS[o.value]}
-              </option>
-            ))}
-          </select>
-        </div>
-      </section>
+            <div>
+              <Label>Hauptziel (Training)</Label>
+              <select
+                className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
+                value={form.trainingGoal}
+                onChange={(e) =>
+                  setForm({ ...form, trainingGoal: e.target.value as TrainingGoal })
+                }
+              >
+                {ONBOARDING_MAIN_GOAL_UI.map((o) => (
+                  <option key={o.key} value={o.trainingGoal}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Ernährungsziel</Label>
+              <select
+                className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
+                value={form.nutritionGoal}
+                onChange={(e) =>
+                  setForm({ ...form, nutritionGoal: e.target.value as NutritionGoal })
+                }
+              >
+                {ONBOARDING_NUTRITION_GOAL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {NUTRITION_GOAL_LABELS[o.value]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button type="button" onClick={save} disabled={saving} className="w-full">
+              {saving ? "Speichern…" : "Speichern"}
+            </Button>
+          </section>
+        </>
+      )}
 
       <section id="settings-vitaldaten" className="card-premium p-4 space-y-4 scroll-mt-24">
         <h2 className="font-semibold text-white text-lg">Vitaldaten</h2>
