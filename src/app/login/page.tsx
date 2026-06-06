@@ -115,7 +115,7 @@ function LoginForm() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Anmelden</CardTitle>
-          <CardDescription>Willkommen bei AI Fitness Coach Pro</CardDescription>
+          <CardDescription>Willkommen bei NEXFORM</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {lastError && (

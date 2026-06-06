@@ -6,6 +6,7 @@ export const TIER_RING: Record<string, string> = {
   gold: "from-yellow-400 to-amber-600",
   platinum: "from-slate-200 to-slate-400",
   diamond: "from-cyan-200 to-blue-400",
+  mythic: "from-fuchsia-400 via-purple-500 to-indigo-500",
   legendary: "from-violet-400 via-fuchsia-500 to-amber-400",
 };
 

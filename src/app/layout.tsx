@@ -17,16 +17,16 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "AI Fitness Coach Pro",
-    template: "%s | AI Fitness Coach Pro",
+    default: "NEXFORM",
+    template: "%s | NEXFORM",
   },
   description:
-    "Moderne Fitness-SaaS mit KI-Coach, Training, Ernährung, Vitaldaten und Gamification.",
-  keywords: ["Fitness", "KI Coach", "Training", "Ernährung", "HTL Diplomarbeit"],
+    "NEXFORM – Training, Ernährung, Fortschritt und KI-Coaching in einer mobilen Premium-App.",
+  keywords: ["NEXFORM", "Fitness", "KI Coach", "Training", "Ernährung"],
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "AI Coach",
+    title: "NEXFORM",
   },
   formatDetection: {
     telephone: false,

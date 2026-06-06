@@ -11,8 +11,8 @@ export default async function LandingPage() {
   return (
     <div className="gradient-mesh min-h-screen">
       <header className="flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
-        <span className="text-2xl font-bold">
-          AI<span className="text-cyan-400">Fitness</span> Coach Pro
+        <span className="text-2xl font-extrabold tracking-tight">
+          NEX<span className="text-cyan-400">FORM</span>
         </span>
         <div className="flex gap-3">
           <Link href="/login">
@@ -29,13 +29,13 @@ export default async function LandingPage() {
           HTL Diplomarbeit · SaaS Fitness Platform
         </p>
         <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-          Dein intelligenter
+          Form deinen
           <br />
-          <span className="text-cyan-400">Fitness Coach</span>
+          <span className="text-cyan-400">nächsten Peak</span>
         </h1>
         <p className="text-zinc-400 text-lg max-w-2xl mx-auto mb-10">
-          Training planen, Ernährung tracken, Vitaldaten analysieren und mit KI
-          motiviert bleiben – alles in einer Premium-App.
+          NEXFORM vereint Training, Ernährung, Fortschritt und KI-Coaching –
+          präzise, schnell und mobil optimiert.
         </p>
         <Link href="/register">
           <Button size="lg">Kostenlos starten</Button>
@@ -58,7 +58,7 @@ export default async function LandingPage() {
       </section>
 
       <footer className="text-center text-zinc-600 py-12 text-sm">
-        © {new Date().getFullYear()} AI Fitness Coach Pro
+        © {new Date().getFullYear()} NEXFORM
       </footer>
     </div>
   );

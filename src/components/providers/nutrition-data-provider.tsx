@@ -9,7 +9,9 @@ import {
   HOME_DATA_CACHE_KEY,
   NUTRITION_DASHBOARD_CACHE_KEY,
   publishNutritionDashboard,
+  ensureNutritionCacheIsToday,
 } from "@/lib/nutrition-sync";
+import { isNutritionDashboardToday } from "@/lib/nutrition-day";
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import { getCached, setCached } from "@/lib/client-cache";
 import type { HomeDataPayload } from "@/lib/home-defaults";
@@ -39,8 +41,15 @@ function resolveInitialDashboard(
   const cached = getCached<NutritionDashboardPayload>(
     NUTRITION_DASHBOARD_CACHE_KEY
   );
-  if (cached && isValidDashboardPayload(cached)) return cached;
-  if (initialDashboard && isValidDashboardPayload(initialDashboard)) {
+  ensureNutritionCacheIsToday();
+  if (cached && isValidDashboardPayload(cached) && isNutritionDashboardToday(cached.date)) {
+    return cached;
+  }
+  if (
+    initialDashboard &&
+    isValidDashboardPayload(initialDashboard) &&
+    isNutritionDashboardToday(initialDashboard.date)
+  ) {
     seedCachesFromDashboard(initialDashboard);
     return initialDashboard;
   }

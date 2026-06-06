@@ -24,9 +24,9 @@ import { useSidebar } from "@/components/layout/sidebar-provider";
 const PRIMARY_NAV = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/workouts", label: "Training", icon: Dumbbell },
-  { href: "/progress", label: "Fortschritt", icon: TrendingUp },
   { href: "/nutrition", label: "Ernährung", icon: Apple },
-  { href: "/coach", label: "KI Coach", icon: Bot },
+  { href: "/progress", label: "Fortschritt", icon: TrendingUp },
+  { href: "/coach", label: "NEXFORM Coach", icon: Bot },
   { href: "/profile", label: "Profil", icon: User },
 ] as const;
 

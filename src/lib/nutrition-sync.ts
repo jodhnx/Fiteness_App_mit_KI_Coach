@@ -8,17 +8,25 @@ import {
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { createEmptyHomeData } from "@/lib/home-defaults";
-import { hydrateHomeSectionCaches, HOME_HEUTE_CACHE, HOME_COACH_CACHE, HOME_INSIGHTS_CACHE, HOME_WORKOUT_CACHE } from "@/lib/home-section-cache";
+import {
+  hydrateHomeSectionCaches,
+  HOME_HEUTE_CACHE,
+  HOME_COACH_CACHE,
+  HOME_INSIGHTS_CACHE,
+  HOME_WORKOUT_CACHE,
+} from "@/lib/home-section-cache";
+import { nutritionDayKey, isNutritionDashboardToday } from "@/lib/nutrition-day";
+import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 
 export { HOME_COACH_CACHE, HOME_INSIGHTS_CACHE, HOME_HEUTE_CACHE, HOME_WORKOUT_CACHE } from "@/lib/home-section-cache";
 
-/** Single source of truth for daily nutrition numbers */
 export const NUTRITION_DASHBOARD_CACHE_KEY = "nutrition-dashboard";
 export const NUTRITION_SUMMARY_CACHE_KEY = "nutrition-summary";
 export const HOME_DATA_CACHE_KEY = "home-data";
 export const PROFILE_CACHE_KEY = "profile-data";
 
 export const NUTRITION_DASHBOARD_EVENT = "nutrition-dashboard-updated";
+export const HOME_DATA_EVENT = "home-data-updated";
 
 export type NutritionSummaryPayload = {
   nutrition: NutritionDashboardPayload;
@@ -33,6 +41,49 @@ export function invalidateAllNutritionCaches() {
   invalidateCache(HOME_INSIGHTS_CACHE);
   invalidateCache(HOME_WORKOUT_CACHE);
   invalidateCache("nutrition-coach");
+  invalidateCache(PROGRESS_CACHE_KEY);
+}
+
+/** Drop stale dashboard when calendar day changed (midnight rollover). */
+export function ensureNutritionCacheIsToday(): NutritionDashboardPayload | null {
+  const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
+  if (cached && !isNutritionDashboardToday(cached.date)) {
+    invalidateAllNutritionCaches();
+    return null;
+  }
+  return cached && isValidDashboardPayload(cached) ? cached : null;
+}
+
+function patchProgressNutritionToday(nutrition: NutritionDashboardPayload) {
+  const progress = getCached<{
+    dashboard?: { nutritionTrend?: { date: string; label: string; calories: number; proteinG: number }[] };
+  }>(PROGRESS_CACHE_KEY);
+  if (!progress?.dashboard?.nutritionTrend) return;
+
+  const today = nutrition.date;
+  const label = today.slice(8, 10) + "." + today.slice(5, 7);
+  const point = {
+    date: today,
+    label,
+    calories: Math.round(nutrition.consumed.calories),
+    proteinG: Math.round(nutrition.consumed.proteinG),
+  };
+  const trend = [...progress.dashboard.nutritionTrend];
+  const idx = trend.findIndex((p) => p.date === today);
+  if (idx >= 0) trend[idx] = point;
+  else trend.push(point);
+
+  setCached(
+    PROGRESS_CACHE_KEY,
+    {
+      ...progress,
+      dashboard: {
+        ...progress.dashboard,
+        nutritionTrend: trend.sort((a, b) => a.date.localeCompare(b.date)),
+      },
+    },
+    120_000
+  );
 }
 
 /** Push fresh dashboard to all client caches + notify mounted pages */
@@ -41,33 +92,33 @@ export function publishNutritionDashboard(dashboard: NutritionDashboardPayload) 
     ? dashboard
     : createEmptyNutritionDashboard();
 
+  if (!isNutritionDashboardToday(nutrition.date)) {
+    return;
+  }
+
   const summary: NutritionSummaryPayload = { nutrition };
-  const ttl = 60_000;
+  const ttl = 120_000;
 
   setCached(NUTRITION_DASHBOARD_CACHE_KEY, nutrition, ttl);
   setCached(NUTRITION_SUMMARY_CACHE_KEY, summary, ttl);
 
   const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
   const macroSlice = nutritionDashboardToHomeMacros(nutrition);
-  setCached(
-    HOME_DATA_CACHE_KEY,
-    {
-      ...(prevHome ?? createEmptyHomeData()),
-      ...macroSlice,
-    },
-    ttl
-  );
-
-  hydrateHomeSectionCaches({
+  const nextHome: HomeDataPayload = {
     ...(prevHome ?? createEmptyHomeData()),
     ...macroSlice,
     nutrition,
-  });
+  };
+
+  setCached(HOME_DATA_CACHE_KEY, nextHome, ttl);
+  hydrateHomeSectionCaches(nextHome);
+  patchProgressNutritionToday(nutrition);
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent(NUTRITION_DASHBOARD_EVENT, { detail: nutrition })
     );
+    window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: nextHome }));
   }
 }
 
@@ -121,6 +172,7 @@ export function optimisticRemoveMealItem(
 
   return {
     ...dashboard,
+    date: nutritionDayKey(),
     consumed: { ...dashboard.consumed, ...consumed },
     remaining: {
       calories: Math.max(0, dashboard.targets.calories - consumed.calories),

@@ -5,7 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
-import { invalidateCache } from "@/lib/client-cache";
+import { invalidateCache, getCached } from "@/lib/client-cache";
+import {
+  HOME_DATA_EVENT,
+  NUTRITION_DASHBOARD_EVENT,
+} from "@/lib/nutrition-sync";
 import { buildWeightAnalytics, type WeightPeriod } from "@/lib/weight-analytics";
 import { WeightQuickEntry } from "@/components/progress/weight-quick-entry";
 import { WeightTrendChart } from "@/components/progress/weight-trend-chart";
@@ -19,7 +23,6 @@ import type { BodyTransformation } from "@/lib/body-transformation";
 import type { WeeklyReport } from "@/lib/weekly-report";
 import { Sparkles, Camera } from "lucide-react";
 import { ProgressDashboardSections } from "@/components/progress/progress-dashboard-sections";
-import { getCached } from "@/lib/client-cache";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -115,7 +118,24 @@ export default function ProgressPage() {
   const insights = displayData?.insights;
   const profile = displayData?.profile ?? null;
   const startWeightKg = displayData?.startWeightKg ?? null;
-  const dashboard = displayData?.dashboard ?? null;
+  const [dashboard, setDashboard] = useState(displayData?.dashboard ?? null);
+
+  useEffect(() => {
+    setDashboard(displayData?.dashboard ?? null);
+  }, [displayData?.dashboard]);
+
+  useEffect(() => {
+    const refresh = () => {
+      const cached = getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
+      if (cached?.dashboard) setDashboard(cached.dashboard);
+    };
+    window.addEventListener(NUTRITION_DASHBOARD_EVENT, refresh);
+    window.addEventListener(HOME_DATA_EVENT, refresh);
+    return () => {
+      window.removeEventListener(NUTRITION_DASHBOARD_EVENT, refresh);
+      window.removeEventListener(HOME_DATA_EVENT, refresh);
+    };
+  }, []);
 
   const transformation = displayData?.transformation ?? null;
   const weeklyReport = displayData?.weeklyReport ?? null;

@@ -4,7 +4,7 @@ import nodemailer from "nodemailer";
 function buildVerificationHtml(name: string, code: string): string {
   return `
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #0a0a0a; color: #fafafa; border-radius: 12px;">
-      <h1 style="color: #22d3ee; margin-bottom: 8px;">AI Fitness Coach Pro</h1>
+      <h1 style="color: #22d3ee; margin-bottom: 8px;">NEXFORM</h1>
       <p>Hallo ${name},</p>
       <p>dein Bestätigungscode lautet:</p>
       <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #22d3ee; text-align: center; margin: 24px 0;">${code}</p>
@@ -24,11 +24,11 @@ export async function sendVerificationEmail(
   name: string,
   code: string
 ): Promise<void> {
-  const subject = "Dein Bestätigungscode – AI Fitness Coach Pro";
+  const subject = "Dein Bestätigungscode – NEXFORM";
   const html = buildVerificationHtml(name, code);
   const from =
     process.env.EMAIL_FROM?.trim() ??
-    "AI Fitness Coach <onboarding@resend.dev>";
+    "NEXFORM <onboarding@resend.dev>";
 
   const resendKey = process.env.RESEND_API_KEY?.trim();
   if (resendKey) {

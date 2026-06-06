@@ -21,7 +21,7 @@ export async function GET() {
     const userCount = await dbQuery("health.userCount", (db) => db.user.count());
     return jsonOk({
       status: "ok",
-      service: "AI Fitness Coach Pro",
+      service: "NEXFORM",
       database: "connected",
       userCount,
       adminEnsured,

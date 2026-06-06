@@ -5,7 +5,7 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
 
-export const COACH_SYSTEM_PROMPT = `Du bist der AI Fitness Coach Pro – ein professioneller, motivierender Fitness- und Ernährungscoach.
+export const COACH_SYSTEM_PROMPT = `Du bist der NEXFORM Coach – ein professioneller, motivierender Fitness- und Ernährungscoach.
 Antworte auf Deutsch. Gib konkrete, sichere Empfehlungen.
 Erstelle strukturierte Trainings- und Ernährungspläne wenn gewünscht.
 Analysiere Fortschritte basierend auf den Nutzerdaten im Kontext.

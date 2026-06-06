@@ -1,21 +1,15 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useSyncedNutrition } from "@/hooks/use-synced-nutrition";
 import { usePrefetchedNutrition } from "@/components/providers/nutrition-data-provider";
-import { getCached } from "@/lib/client-cache";
 import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
-import {
-  createEmptyHomeData,
-  normalizeHomeData,
-  type HomeDataPayload,
-} from "@/lib/home-defaults";
-import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
-import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
+import { type HomeDataPayload } from "@/lib/home-defaults";
+import { useHomeLiveData } from "@/hooks/use-home-live-data";
 import { RefreshCw, AlertCircle, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeuteHeroCard } from "@/components/home/heute-hero-card";
@@ -45,25 +39,12 @@ export default function HomePage() {
     { revalidateOnMount: false, staleRatio: 0.98 }
   );
 
-  const data = useMemo(
-    () => normalizeHomeData(rawData ?? getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY) ?? createEmptyHomeData()),
-    [rawData]
-  );
-
-  useEffect(() => {
-    if (rawData) hydrateHomeSectionCaches(normalizeHomeData(rawData));
-  }, [rawData]);
+  const data = useHomeLiveData(rawData);
 
   const prefetched = usePrefetchedNutrition();
-  const { dashboard: nutrition } = useSyncedNutrition(
-    prefetched ?? data.nutrition
-  );
+  const { dashboard: nutrition } = useSyncedNutrition(prefetched ?? data.nutrition);
 
-  const heuteNutrition =
-    nutrition ??
-    prefetched ??
-    data.nutrition ??
-    createEmptyNutritionDashboard();
+  const heuteNutrition = nutrition;
   const steps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10000;
   const caloriesBurned =

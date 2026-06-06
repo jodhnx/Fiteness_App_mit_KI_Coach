@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AI Fitness Coach Pro",
-    short_name: "AI Coach",
-    description: "Fitness, Ernährung und KI Coach für dein Training.",
+    name: "NEXFORM",
+    short_name: "NEXFORM",
+    description: "Training, Ernährung und KI Coach — modern & personalisiert.",
     start_url: "/home",
     scope: "/",
     display: "standalone",

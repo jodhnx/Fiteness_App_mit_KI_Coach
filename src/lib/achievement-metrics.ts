@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { startOfDay, subDays } from "date-fns";
+import { getUserTotalXP } from "@/lib/gamification";
+import { getLevelFromXP } from "@/lib/level-system";
 
 export type AchievementMetrics = Record<string, number>;
 
@@ -28,6 +30,7 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
     profile,
     waterLogs,
     mealItems30,
+    totalXP,
   ] = await Promise.all([
     prisma.workoutSession.count({ where: { userId, status: "COMPLETED" } }),
     prisma.trainingStreak.findUnique({ where: { userId }, select: { currentDays: true } }),
@@ -94,6 +97,7 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
         meal: { select: { date: true } },
       },
     }),
+    getUserTotalXP(userId),
   ]);
 
   const proteinTarget = profile?.proteinTargetG ?? 150;
@@ -159,6 +163,7 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
     protein_goal_days_week: countDayFlags(proteinByDay.filter((_, i) => i < 7)),
     meals_logged_days_streak: mealsLoggedDaysStreak,
     protein_single_day_g: proteinSingleDayMax,
+    user_level: getLevelFromXP(totalXP).level,
   };
 }
 

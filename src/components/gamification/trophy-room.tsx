@@ -19,6 +19,7 @@ const TROPHY_TIERS: BadgeTier[] = [
   "gold",
   "platinum",
   "diamond",
+  "mythic",
   "legendary",
 ];
 
@@ -28,6 +29,7 @@ const TIER_SECTION_LABELS: Record<BadgeTier, string> = {
   gold: "Gold Trophäen",
   platinum: "Platin Trophäen",
   diamond: "Diamant Trophäen",
+  mythic: "Mythic Trophäen",
   legendary: "Legendäre Trophäen",
 };
 

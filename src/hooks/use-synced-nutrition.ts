@@ -5,6 +5,7 @@ import {
   NUTRITION_DASHBOARD_CACHE_KEY,
   NUTRITION_DASHBOARD_EVENT,
   publishNutritionDashboard,
+  ensureNutritionCacheIsToday,
 } from "@/lib/nutrition-sync";
 import {
   createEmptyNutritionDashboard,
@@ -13,46 +14,59 @@ import {
 } from "@/lib/nutrition-defaults";
 import { getCached } from "@/lib/client-cache";
 import { usePrefetchedNutrition } from "@/components/providers/nutrition-data-provider";
+import { nutritionDayKey, isNutritionDashboardToday } from "@/lib/nutrition-day";
+
+function resolveDashboard(
+  initial?: NutritionDashboardPayload | null
+): NutritionDashboardPayload {
+  ensureNutritionCacheIsToday();
+  const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
+  if (cached && isValidDashboardPayload(cached) && isNutritionDashboardToday(cached.date)) {
+    return cached;
+  }
+  if (initial && isValidDashboardPayload(initial) && isNutritionDashboardToday(initial.date)) {
+    publishNutritionDashboard(initial);
+    return initial;
+  }
+  return { ...createEmptyNutritionDashboard(), date: nutritionDayKey() };
+}
 
 /**
- * Nutrition state synced via client cache + custom events (no extra fetch when home bundles nutrition).
+ * Nutrition state synced via client cache + custom events.
+ * Never overwrites fresher cache with stale server bundles.
  */
 export function useSyncedNutrition(initial?: NutritionDashboardPayload | null) {
   const prefetched = usePrefetchedNutrition();
   const [dashboard, setDashboard] = useState<NutritionDashboardPayload>(() => {
-    const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
-    if (cached && isValidDashboardPayload(cached)) return cached;
-    if (prefetched && isValidDashboardPayload(prefetched)) {
+    if (prefetched && isValidDashboardPayload(prefetched) && isNutritionDashboardToday(prefetched.date)) {
       publishNutritionDashboard(prefetched);
       return prefetched;
     }
-    if (initial && isValidDashboardPayload(initial)) {
-      publishNutritionDashboard(initial);
-      return initial;
-    }
-    return createEmptyNutritionDashboard();
+    return resolveDashboard(initial);
   });
-
-  useEffect(() => {
-    if (initial && isValidDashboardPayload(initial)) {
-      const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
-      if (!cached || cached.date !== initial.date) {
-        publishNutritionDashboard(initial);
-      }
-      setDashboard(initial);
-    }
-  }, [initial]);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<NutritionDashboardPayload>).detail;
-      if (detail && isValidDashboardPayload(detail)) {
+      if (detail && isValidDashboardPayload(detail) && isNutritionDashboardToday(detail.date)) {
         setDashboard(detail);
       }
     };
     window.addEventListener(NUTRITION_DASHBOARD_EVENT, handler);
     return () => window.removeEventListener(NUTRITION_DASHBOARD_EVENT, handler);
   }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      const today = nutritionDayKey();
+      if (dashboard.date !== today) {
+        ensureNutritionCacheIsToday();
+        setDashboard({ ...createEmptyNutritionDashboard(), date: today });
+      }
+    };
+    const id = window.setInterval(tick, 60_000);
+    return () => window.clearInterval(id);
+  }, [dashboard.date]);
 
   const applyDashboard = useCallback((next: NutritionDashboardPayload) => {
     publishNutritionDashboard(next);

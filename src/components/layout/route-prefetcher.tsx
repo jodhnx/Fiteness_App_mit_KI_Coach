@@ -3,12 +3,12 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-/** Hauptnavigation sofort vorladen — keine API-Calls. */
-const ALL_MAIN = [
+/** Reihenfolge = Hauptmenü: Home → Training → Ernährung → Fortschritt → Coach */
+const NAV_ROUTES = [
   "/home",
   "/workouts",
-  "/progress",
   "/nutrition",
+  "/progress",
   "/coach",
   "/erfolge",
   "/settings",
@@ -22,7 +22,7 @@ export function RoutePrefetcher() {
     if (done.current) return;
     done.current = true;
 
-    for (const href of ALL_MAIN.slice(0, 5)) {
+    for (const href of NAV_ROUTES.slice(0, 5)) {
       router.prefetch(href);
     }
 
@@ -32,7 +32,7 @@ export function RoutePrefetcher() {
         : (cb: () => void) => setTimeout(cb, 150);
 
     idle(() => {
-      for (const href of ALL_MAIN.slice(5)) {
+      for (const href of NAV_ROUTES.slice(5)) {
         router.prefetch(href);
       }
     });

@@ -4,7 +4,10 @@ export type BadgeTier =
   | "gold"
   | "platinum"
   | "diamond"
+  | "mythic"
   | "legendary";
+
+import { bulkAchievementDefinitions } from "@/data/achievement-catalog-bulk";
 
 export type AchievementSeed = {
   slug: string;
@@ -21,11 +24,12 @@ export type AchievementSeed = {
 
 function tierForIndex(i: number, max: number): BadgeTier {
   const r = i / Math.max(1, max - 1);
-  if (r >= 0.95) return "legendary";
-  if (r >= 0.8) return "diamond";
-  if (r >= 0.65) return "platinum";
-  if (r >= 0.45) return "gold";
-  if (r >= 0.25) return "silver";
+  if (r >= 0.97) return "legendary";
+  if (r >= 0.88) return "mythic";
+  if (r >= 0.75) return "diamond";
+  if (r >= 0.58) return "platinum";
+  if (r >= 0.4) return "gold";
+  if (r >= 0.2) return "silver";
   return "bronze";
 }
 
@@ -387,6 +391,25 @@ function activityCountAchievements(): AchievementSeed[] {
   }));
 }
 
+function levelAchievements(): AchievementSeed[] {
+  const items: AchievementSeed[] = [];
+  for (let level = 1; level <= 100; level++) {
+    items.push({
+      slug: `level-${level}`,
+      name: `Level ${level}`,
+      description: `Erreiche Level ${level} durch XP`,
+      icon: level >= 90 ? "👑" : level >= 50 ? "⭐" : "🎖️",
+      xpReward: 10 + level * 5,
+      category: "level",
+      tier: tierForIndex(level - 1, 100),
+      targetValue: level,
+      metricKey: "user_level",
+      sortOrder: 900 + level,
+    });
+  }
+  return items;
+}
+
 function miscAchievements(): AchievementSeed[] {
   return [
     {
@@ -467,6 +490,8 @@ export function getAllAchievementDefinitions(): AchievementSeed[] {
     ...challengeAchievements(),
     ...activityCountAchievements(),
     ...extraMilestones(),
+    ...levelAchievements(),
+    ...bulkAchievementDefinitions(),
   ];
   const bySlug = new Map<string, AchievementSeed>();
   for (const a of all) {
@@ -484,6 +509,7 @@ export const ACHIEVEMENT_CATEGORIES = [
   { id: "weight", label: "Gewicht", icon: "⚖️" },
   { id: "challenges", label: "Challenges", icon: "🎯" },
   { id: "ai", label: "KI Coach", icon: "🤖" },
+  { id: "level", label: "Level", icon: "🎖️" },
 ] as const;
 
 export const BADGE_TIER_LABELS: Record<BadgeTier, string> = {
@@ -492,5 +518,6 @@ export const BADGE_TIER_LABELS: Record<BadgeTier, string> = {
   gold: "Gold",
   platinum: "Platin",
   diamond: "Diamant",
+  mythic: "Mythic",
   legendary: "Legendär",
 };

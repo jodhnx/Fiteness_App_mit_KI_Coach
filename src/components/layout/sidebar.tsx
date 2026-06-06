@@ -42,9 +42,9 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
       <div className="mb-8 px-2">
         <Link href="/dashboard" className="block">
           <span className="text-2xl font-bold text-white">
-            AI<span className="text-cyan-400">Fitness</span>
+            NEX<span className="text-cyan-400">FORM</span>
           </span>
-          <span className="text-xs text-zinc-500">Coach Pro</span>
+          <span className="text-xs text-zinc-500">Train · Fuel · Rise</span>
         </Link>
       </div>
       <nav className="flex flex-1 flex-col gap-1">

@@ -1,8 +1,8 @@
 export const MAIN_NAV_ROUTES = [
   "/home",
   "/workouts",
-  "/progress",
   "/nutrition",
+  "/progress",
   "/coach",
   "/profile",
   "/erfolge",
@@ -10,7 +10,7 @@ export const MAIN_NAV_ROUTES = [
 ] as const;
 
 export function prefetchRouteData(_pathname: string) {
-  /* API-Warmup deaktiviert — verhindert DB-Stau beim Navigieren */
+  /* API-Warmup deaktiviert */
 }
 
 export function prefetchAllRouteData() {
