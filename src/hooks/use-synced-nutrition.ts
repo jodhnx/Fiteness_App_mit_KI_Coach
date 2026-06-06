@@ -12,15 +12,24 @@ import {
   type NutritionDashboardPayload,
 } from "@/lib/nutrition-defaults";
 import { getCached } from "@/lib/client-cache";
+import { usePrefetchedNutrition } from "@/components/providers/nutrition-data-provider";
 
 /**
  * Nutrition state synced via client cache + custom events (no extra fetch when home bundles nutrition).
  */
 export function useSyncedNutrition(initial?: NutritionDashboardPayload | null) {
+  const prefetched = usePrefetchedNutrition();
   const [dashboard, setDashboard] = useState<NutritionDashboardPayload>(() => {
     const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
     if (cached && isValidDashboardPayload(cached)) return cached;
-    if (initial && isValidDashboardPayload(initial)) return initial;
+    if (prefetched && isValidDashboardPayload(prefetched)) {
+      publishNutritionDashboard(prefetched);
+      return prefetched;
+    }
+    if (initial && isValidDashboardPayload(initial)) {
+      publishNutritionDashboard(initial);
+      return initial;
+    }
     return createEmptyNutritionDashboard();
   });
 

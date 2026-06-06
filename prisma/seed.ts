@@ -14,7 +14,12 @@ async function main() {
   await seedAchievementsAndLevels(prisma);
   await seedExtendedChallenges(prisma);
 
-  console.log("Food catalog: run npm run db:seed:foods for 20k+ items.");
+  if (process.env.SEED_FOODS !== "0") {
+    const { seedFoods } = await import("./seed-foods");
+    await seedFoods(prisma);
+  } else {
+    console.log("Food catalog skipped (SEED_FOODS=0). Run: npm run db:seed:foods");
+  }
 
   const adminEmail = "admin@aifitness.local";
   const adminPasswordHash = await bcrypt.hash("Admin123!", 12);

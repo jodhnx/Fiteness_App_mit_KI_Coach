@@ -25,6 +25,7 @@ export type EquipmentType =
   | "NONE";
 
 import { EXTENDED_EXERCISES } from "./exercise-library-extended";
+import { BULK_EXERCISES } from "./exercise-library-bulk";
 
 export type ExerciseSeed = {
   slug: string;
@@ -2832,4 +2833,5 @@ export const EXERCISE_LIBRARY: ExerciseSeed[] = [
     isCompound: true,
   },
   ...EXTENDED_EXERCISES,
+  ...BULK_EXERCISES,
 ];

@@ -88,7 +88,9 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
       where: { meal: { userId, date: { gte: since30 } } },
       select: {
         quantityG: true,
-        foodItem: { select: { proteinG: true, calories: true, servingG: true } },
+        foodItem: {
+          select: { proteinG: true, calories: true, servingG: true, fiberG: true },
+        },
         meal: { select: { date: true } },
       },
     }),
@@ -99,6 +101,11 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
 
   const proteinByDay = macroDaysOnTarget(mealItems30, proteinTarget, "protein");
   const calorieByDay = macroDaysOnTarget(mealItems30, calorieTarget, "calories");
+  const fiberTargetG =
+    calorieTarget > 0
+      ? Math.max(25, Math.min(50, Math.round(calorieTarget / 1000) * 14))
+      : 30;
+  const fiberByDay = fiberDaysOnTarget(mealItems30, fiberTargetG);
 
   const proteinByDayGrams = proteinGramsByDay(mealItems30);
   const proteinSingleDayMax = proteinByDayGrams.length
@@ -138,7 +145,7 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
     coach_messages: coachMessages,
     training_volume_kg: Math.floor(Number(volumeSum[0]?.vol ?? 0)),
     training_minutes: Math.floor((durationAgg._sum.durationSec ?? 0) / 60),
-    fiber_goal_days: 0,
+    fiber_goal_days: countDayFlags(fiberByDay),
     steps_total: stepsAgg._sum.steps ?? 0,
     steps_single_day: stepsAgg._max.steps ?? 0,
     steps_week_max: stepsWeekMax,
@@ -189,6 +196,27 @@ function maxStreakFromDistinctMealDays(
     } else cur = 1;
   }
   return Math.max(best, items.length > 0 && days.length === 1 ? 1 : best);
+}
+
+function fiberDaysOnTarget(
+  items: {
+    quantityG: number;
+    foodItem: { fiberG: number | null; servingG: number };
+    meal: { date: Date };
+  }[],
+  targetG: number
+): boolean[] {
+  const byDay = new Map<string, number>();
+  for (const i of items) {
+    const f = i.foodItem.fiberG;
+    if (f == null) continue;
+    const key = i.meal.date.toISOString().slice(0, 10);
+    const s = i.foodItem.servingG || 100;
+    const factor = i.quantityG / s;
+    byDay.set(key, (byDay.get(key) ?? 0) + f * factor);
+  }
+  const sorted = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  return sorted.map(([, v]) => v >= targetG * 0.9);
 }
 
 function macroDaysOnTarget(

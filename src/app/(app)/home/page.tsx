@@ -6,6 +6,7 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useSyncedNutrition } from "@/hooks/use-synced-nutrition";
+import { usePrefetchedNutrition } from "@/components/providers/nutrition-data-provider";
 import { getCached } from "@/lib/client-cache";
 import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
 import {
@@ -52,9 +53,16 @@ export default function HomePage() {
     if (rawData) hydrateHomeSectionCaches(normalizeHomeData(rawData));
   }, [rawData]);
 
-  const { dashboard: nutrition } = useSyncedNutrition(data.nutrition);
+  const prefetched = usePrefetchedNutrition();
+  const { dashboard: nutrition } = useSyncedNutrition(
+    prefetched ?? data.nutrition
+  );
 
-  const heuteNutrition = nutrition ?? data.nutrition ?? createEmptyNutritionDashboard();
+  const heuteNutrition =
+    nutrition ??
+    prefetched ??
+    data.nutrition ??
+    createEmptyNutritionDashboard();
   const steps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10000;
   const caloriesBurned =

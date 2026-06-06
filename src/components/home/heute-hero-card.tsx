@@ -25,7 +25,7 @@ export const HeuteHeroCard = memo(function HeuteHeroCard({
   const { consumed, targets, remaining } = nutrition;
   const eaten = Math.round(consumed.calories);
   const goal = Math.round(targets.calories);
-  const hasGoal = goal > 0 && nutrition.profileComplete;
+  const hasGoal = goal > 0;
   const left = hasGoal ? Math.max(0, Math.round(remaining.calories)) : 0;
   const overGoal = hasGoal && eaten >= goal;
   const stepPct = stepGoal > 0 ? Math.min(100, Math.round((steps / stepGoal) * 100)) : 0;

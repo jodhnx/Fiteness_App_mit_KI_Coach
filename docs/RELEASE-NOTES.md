@@ -2,9 +2,11 @@
 
 ## Zusammenfassung
 
-Großes Update mit Fokus auf **Kalorienziel-Konsistenz**, **Trainingsplan-Editor**, **Ernährungs-Sync**, **Home „Verbrannt“**, **Profilbild**, **Gamification (136 Erfolge)** und **Build-Stabilität**.
+Großes Update mit Fokus auf **Kalorienziel sofort beim ersten Render**, **DACH-Ernährung**, **Trainingsplan-Übungssuche (395 Übungen)**, **Trophäenraum mit Suche/Filter**, **Optimistic Updates** und **Build-Stabilität**.
 
-`npm run build` — **erfolgreich** (TypeScript + Next.js 15).
+`npm run build` — **erfolgreich** (TypeScript + Next.js 15.5).
+
+Details zum letzten kritischen Update: [`docs/KRITISCHES-UPDATE-BERICHT.md`](./KRITISCHES-UPDATE-BERICHT.md).
 
 ---
 

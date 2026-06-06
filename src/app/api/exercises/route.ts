@@ -4,11 +4,14 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import type { EquipmentType, MuscleGroup } from "@prisma/client";
+import { ensureExerciseLibrarySeeded } from "@/lib/exercise-seed-runtime";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
+
+    await ensureExerciseLibrarySeeded(prisma);
 
     const q = req.nextUrl.searchParams.get("q") ?? "";
     const muscle = req.nextUrl.searchParams.get("muscle") as MuscleGroup | null;

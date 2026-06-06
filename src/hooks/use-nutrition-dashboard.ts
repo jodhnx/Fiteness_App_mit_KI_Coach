@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
+import { usePrefetchedNutrition } from "@/components/providers/nutrition-data-provider";
+import { getCached } from "@/lib/client-cache";
 import {
   NUTRITION_DASHBOARD_CACHE_KEY,
   NUTRITION_DASHBOARD_EVENT,
@@ -21,6 +23,7 @@ const DASHBOARD_URL = "/api/nutrition/dashboard";
  * Updates instantly via publishNutritionDashboard() after add/delete.
  */
 export function useNutritionDashboard(ttlMs = 60_000) {
+  const prefetched = usePrefetchedNutrition();
   const {
     data: fetched,
     loading,
@@ -54,9 +57,16 @@ export function useNutritionDashboard(ttlMs = 60_000) {
     }
   }, [fetched]);
 
+  const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
   const dashboard: NutritionDashboardPayload =
     live ??
-    (fetched && isValidDashboardPayload(fetched) ? fetched : createEmptyNutritionDashboard());
+    (fetched && isValidDashboardPayload(fetched)
+      ? fetched
+      : cached && isValidDashboardPayload(cached)
+        ? cached
+        : prefetched && isValidDashboardPayload(prefetched)
+          ? prefetched
+          : createEmptyNutritionDashboard());
 
   const reload = useCallback(() => {
     invalidateAllNutritionCaches();

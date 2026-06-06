@@ -34,6 +34,34 @@ const AT_BRAND_KEYWORDS = [
   "fage",
   "mühlviertel",
   "muhlviertel",
+  "dm",
+  "müller",
+  "mueller",
+];
+
+const DE_BRAND_KEYWORDS = [
+  "rewe",
+  "edeka",
+  "lidl",
+  "kaufland",
+  "aldi",
+  "netto",
+  "real",
+  "tegut",
+  "norma",
+  "ja!",
+  "gut&günstig",
+  "gut und guenstig",
+  "milbona",
+  "dulano",
+  "k-take",
+  "k classic",
+  "ja! natürlich",
+  "dm",
+  "müller",
+  "mueller",
+  "alnatura",
+  "bio",
 ];
 
 type OffNutriments = Record<string, number | string | undefined>;
@@ -89,20 +117,39 @@ function parseServingG(product: OffProductRaw): { grams: number; label: string |
 }
 
 export function scoreAustriaProduct(raw: OffProductRaw, brand: string | null): number {
+  return scoreDachProduct(raw, brand);
+}
+
+/** DACH ranking: Austria + Germany + common retail brands (Billa, Rewe, Lidl, DM, …). */
+export function scoreDachProduct(raw: OffProductRaw, brand: string | null): number {
   let score = 0;
   const tags = [...(raw.countries_tags ?? []), ...(raw.origins_tags ?? [])]
     .join(" ")
     .toLowerCase();
   const brands = `${Array.isArray(raw.brands) ? raw.brands.join(" ") : raw.brands ?? ""} ${brand ?? ""}`.toLowerCase();
-  if (tags.includes("austria") || tags.includes("en:austria") || tags.includes("österreich")) {
-    score += 60;
+  if (
+    tags.includes("austria") ||
+    tags.includes("en:austria") ||
+    tags.includes("österreich") ||
+    tags.includes("germany") ||
+    tags.includes("en:germany") ||
+    tags.includes("deutschland")
+  ) {
+    score += 55;
   }
   for (const kw of AT_BRAND_KEYWORDS) {
     if (brands.includes(kw)) {
-      score += 40;
+      score += 35;
       break;
     }
   }
+  for (const kw of DE_BRAND_KEYWORDS) {
+    if (brands.includes(kw)) {
+      score += 30;
+      break;
+    }
+  }
+  if (raw.product_name_de?.trim()) score += 15;
   return score;
 }
 

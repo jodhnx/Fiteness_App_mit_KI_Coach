@@ -6,13 +6,13 @@ import { FOOD_CATALOG } from "../src/data/food-catalog";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-async function seedFoods() {
+export async function seedFoods(prismaClient = prisma) {
   console.log(`Seeding ${FOOD_CATALOG.length} foods...`);
   const batchSize = 500;
   let inserted = 0;
   for (let i = 0; i < FOOD_CATALOG.length; i += batchSize) {
     const batch = FOOD_CATALOG.slice(i, i + batchSize);
-    const result = await prisma.foodItem.createMany({
+    const result = await prismaClient.foodItem.createMany({
       data: batch.map((f) => ({
         slug: f.slug,
         name: f.name,
@@ -35,9 +35,11 @@ async function seedFoods() {
   console.log(`Food catalog: ${inserted} new rows (duplicates skipped).`);
 }
 
-seedFoods()
-  .catch(console.error)
-  .finally(async () => {
-    await prisma.$disconnect();
-    await pool.end();
-  });
+if (require.main === module) {
+  seedFoods()
+    .catch(console.error)
+    .finally(async () => {
+      await prisma.$disconnect();
+      await pool.end();
+    });
+}

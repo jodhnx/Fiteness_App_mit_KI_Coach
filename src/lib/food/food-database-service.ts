@@ -99,16 +99,28 @@ export async function searchLocalFoods(
 ): Promise<FoodProduct[]> {
   const q = query.trim();
   if (!q) return [];
+  const tokens = q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length >= 2);
+  const tokenClauses =
+    tokens.length > 0
+      ? tokens.map((t) => ({
+          OR: [
+            { name: { contains: t, mode: "insensitive" as const } },
+            { brand: { contains: t, mode: "insensitive" as const } },
+          ],
+        }))
+      : [
+          {
+            OR: [
+              { name: { contains: q, mode: "insensitive" as const } },
+              { brand: { contains: q, mode: "insensitive" as const } },
+            ],
+          },
+        ];
   const where = {
-    AND: [
-      { OR: [{ userId: null }, { userId }] },
-      {
-        OR: [
-          { name: { contains: q, mode: "insensitive" as const } },
-          { brand: { contains: q, mode: "insensitive" as const } },
-        ],
-      },
-    ],
+    AND: [{ OR: [{ userId: null }, { userId }] }, ...tokenClauses],
   };
 
   try {

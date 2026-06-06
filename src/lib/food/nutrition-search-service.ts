@@ -35,7 +35,7 @@ function mergeAndRank(
   );
   const offFiltered = off.filter((o) => !o.offCode || !offCodes.has(o.offCode));
   const merged = dedupeProducts([...local, ...offFiltered]);
-  return rankOffProducts(merged, query).slice(0, 30);
+  return rankOffProducts(merged, query).slice(0, 45);
 }
 
 export async function searchFoodProducts(
@@ -72,12 +72,12 @@ export async function searchFoodProducts(
   let localResult: FoodProduct[] = [];
   let localError: string | null = null;
   const [localSettled, offResult] = await Promise.all([
-    searchLocalFoods(userId, q, 15).catch((e) => {
+    searchLocalFoods(userId, q, 28).catch((e) => {
       localError = e instanceof Error ? e.message : "Lokale DB Fehler";
       console.error("[nutrition-search] local DB", e);
       return [] as FoodProduct[];
     }),
-    searchOpenFoodFacts(q, 24),
+    searchOpenFoodFacts(q, 40),
   ]);
   localResult = localSettled;
 
