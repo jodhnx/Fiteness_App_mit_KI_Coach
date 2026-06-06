@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { LazyStatChart } from "@/components/charts/lazy-stat-chart";
 import { Trophy, Dumbbell, Flame, Beef, TrendingUp } from "lucide-react";
@@ -46,7 +47,7 @@ type Props = {
   };
 };
 
-export function ProgressDashboardSections({
+export const ProgressDashboardSections = memo(function ProgressDashboardSections({
   nutritionTrend,
   calorieTarget,
   proteinTargetG,
@@ -209,4 +210,4 @@ export function ProgressDashboardSections({
       </div>
     </div>
   );
-}
+});

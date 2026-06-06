@@ -8,7 +8,7 @@ const StatChartInner = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[220px] items-center justify-center text-zinc-600 text-xs" />
+      <div className="h-[220px] rounded-xl bg-zinc-800/50 animate-pulse border border-white/5" />
     ),
   }
 );

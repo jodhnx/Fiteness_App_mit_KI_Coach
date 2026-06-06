@@ -1,48 +1,49 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   isValidDashboardPayload,
   type NutritionDashboardPayload,
 } from "@/lib/nutrition-defaults";
 import {
-  HOME_DATA_CACHE_KEY,
   NUTRITION_DASHBOARD_CACHE_KEY,
+  NUTRITION_DASHBOARD_EVENT,
   publishNutritionDashboard,
   ensureNutritionCacheIsToday,
 } from "@/lib/nutrition-sync";
 import { isNutritionDashboardToday } from "@/lib/nutrition-day";
-import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
-import { getCached, setCached } from "@/lib/client-cache";
-import type { HomeDataPayload } from "@/lib/home-defaults";
-import { createEmptyHomeData } from "@/lib/home-defaults";
+import { getCached } from "@/lib/client-cache";
+import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
+import { nutritionDayKey } from "@/lib/nutrition-day";
 
-const NutritionDataContext = createContext<NutritionDashboardPayload | null>(
+export type NutritionContextValue = {
+  dashboard: NutritionDashboardPayload;
+  applyDashboard: (next: NutritionDashboardPayload) => void;
+};
+
+export const NutritionDataContext = createContext<NutritionContextValue | null>(
   null
 );
 
-function seedCachesFromDashboard(dashboard: NutritionDashboardPayload) {
-  publishNutritionDashboard(dashboard);
-  const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
-  setCached(
-    HOME_DATA_CACHE_KEY,
-    {
-      ...(prevHome ?? createEmptyHomeData()),
-      ...nutritionDashboardToHomeMacros(dashboard),
-      nutrition: dashboard,
-    },
-    120_000
-  );
-}
-
 function resolveInitialDashboard(
   initialDashboard: NutritionDashboardPayload | null
-): NutritionDashboardPayload | null {
+): NutritionDashboardPayload {
+  ensureNutritionCacheIsToday();
   const cached = getCached<NutritionDashboardPayload>(
     NUTRITION_DASHBOARD_CACHE_KEY
   );
-  ensureNutritionCacheIsToday();
-  if (cached && isValidDashboardPayload(cached) && isNutritionDashboardToday(cached.date)) {
+  if (
+    cached &&
+    isValidDashboardPayload(cached) &&
+    isNutritionDashboardToday(cached.date)
+  ) {
     return cached;
   }
   if (
@@ -50,10 +51,9 @@ function resolveInitialDashboard(
     isValidDashboardPayload(initialDashboard) &&
     isNutritionDashboardToday(initialDashboard.date)
   ) {
-    seedCachesFromDashboard(initialDashboard);
     return initialDashboard;
   }
-  return null;
+  return { ...createEmptyNutritionDashboard(), date: nutritionDayKey() };
 }
 
 export function NutritionDataProvider({
@@ -63,15 +63,45 @@ export function NutritionDataProvider({
   initialDashboard: NutritionDashboardPayload | null;
   children: ReactNode;
 }) {
-  const [dashboard] = useState(() => resolveInitialDashboard(initialDashboard));
+  const [dashboard, setDashboard] = useState<NutritionDashboardPayload>(() =>
+    resolveInitialDashboard(initialDashboard)
+  );
+
+  useEffect(() => {
+    const resolved = resolveInitialDashboard(initialDashboard);
+    publishNutritionDashboard(resolved);
+    setDashboard(resolved);
+  }, [initialDashboard]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<NutritionDashboardPayload>).detail;
+      if (
+        detail &&
+        isValidDashboardPayload(detail) &&
+        isNutritionDashboardToday(detail.date)
+      ) {
+        setDashboard(detail);
+      }
+    };
+    window.addEventListener(NUTRITION_DASHBOARD_EVENT, handler);
+    return () => window.removeEventListener(NUTRITION_DASHBOARD_EVENT, handler);
+  }, []);
+
+  const applyDashboard = useCallback((next: NutritionDashboardPayload) => {
+    publishNutritionDashboard(next);
+    setDashboard(next);
+  }, []);
 
   return (
-    <NutritionDataContext.Provider value={dashboard}>
+    <NutritionDataContext.Provider value={{ dashboard, applyDashboard }}>
       {children}
     </NutritionDataContext.Provider>
   );
 }
 
+/** @deprecated Use useCentralNutrition() */
 export function usePrefetchedNutrition(): NutritionDashboardPayload | null {
-  return useContext(NutritionDataContext);
+  const ctx = useContext(NutritionDataContext);
+  return ctx?.dashboard ?? null;
 }

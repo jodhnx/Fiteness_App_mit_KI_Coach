@@ -28,9 +28,9 @@ const ACTIONS = [
     icon: Apple,
   },
   {
-    label: "Protein optimieren",
+    label: "Protein analysieren",
     prompt:
-      "Wie viel Protein fehlt mir heute noch? Schlage 3 konkrete Lebensmittel/Meals vor.",
+      "Analysiere mein Protein heute — wie viel fehlt noch und welche 3 Lebensmittel empfiehlst du?",
     icon: Beef,
   },
   {

@@ -1,87 +1,51 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
-import { usePrefetchedNutrition } from "@/components/providers/nutrition-data-provider";
-import { getCached } from "@/lib/client-cache";
+import { useCentralNutrition } from "@/hooks/use-central-nutrition";
 import {
   NUTRITION_DASHBOARD_CACHE_KEY,
-  NUTRITION_DASHBOARD_EVENT,
-  publishNutritionDashboard,
   invalidateAllNutritionCaches,
 } from "@/lib/nutrition-sync";
-import {
-  createEmptyNutritionDashboard,
-  isValidDashboardPayload,
-  type NutritionDashboardPayload,
-} from "@/lib/nutrition-defaults";
+import { getCached } from "@/lib/client-cache";
+import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
 
 const DASHBOARD_URL = "/api/nutrition/dashboard";
 
 /**
- * Shared nutrition day state — used by Ernährung + Home (macros).
- * Updates instantly via publishNutritionDashboard() after add/delete.
+ * Ernährung page — reads from central nutrition store; API only for background refresh.
  */
-export function useNutritionDashboard(ttlMs = 60_000) {
-  const prefetched = usePrefetchedNutrition();
+export function useNutritionDashboard(ttlMs = 120_000) {
+  const { dashboard, applyDashboard } = useCentralNutrition();
+
   const {
     data: fetched,
     loading,
     error,
     timedOut,
     reload: refetch,
-  } = useCachedFetch<NutritionDashboardPayload>(
+  } = useCachedFetch(
     NUTRITION_DASHBOARD_CACHE_KEY,
     DASHBOARD_URL,
     ttlMs,
     8_000,
-    { revalidateOnMount: false, staleRatio: 0.95 }
+    { revalidateOnMount: false, staleRatio: 0.98 }
   );
-
-  const [live, setLive] = useState<NutritionDashboardPayload | null>(null);
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<NutritionDashboardPayload>).detail;
-      if (detail && isValidDashboardPayload(detail)) {
-        setLive(detail);
-      }
-    };
-    window.addEventListener(NUTRITION_DASHBOARD_EVENT, handler);
-    return () => window.removeEventListener(NUTRITION_DASHBOARD_EVENT, handler);
-  }, []);
 
   useEffect(() => {
     if (fetched && isValidDashboardPayload(fetched)) {
-      setLive(null);
+      applyDashboard(fetched);
     }
-  }, [fetched]);
-
-  const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
-  const dashboard: NutritionDashboardPayload =
-    live ??
-    (fetched && isValidDashboardPayload(fetched)
-      ? fetched
-      : cached && isValidDashboardPayload(cached)
-        ? cached
-        : prefetched && isValidDashboardPayload(prefetched)
-          ? prefetched
-          : createEmptyNutritionDashboard());
+  }, [fetched, applyDashboard]);
 
   const reload = useCallback(() => {
     invalidateAllNutritionCaches();
-    setLive(null);
     refetch();
   }, [refetch]);
 
-  const applyDashboard = useCallback((next: NutritionDashboardPayload) => {
-    publishNutritionDashboard(next);
-    setLive(next);
-  }, []);
-
   return {
     dashboard,
-    loading,
+    loading: loading && !getCached(NUTRITION_DASHBOARD_CACHE_KEY),
     error,
     timedOut,
     reload,

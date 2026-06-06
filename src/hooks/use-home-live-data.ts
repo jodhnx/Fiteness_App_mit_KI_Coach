@@ -5,6 +5,7 @@ import {
   HOME_DATA_CACHE_KEY,
   HOME_DATA_EVENT,
   NUTRITION_DASHBOARD_EVENT,
+  NUTRITION_DASHBOARD_CACHE_KEY,
   ensureNutritionCacheIsToday,
 } from "@/lib/nutrition-sync";
 import {
@@ -16,6 +17,7 @@ import { getCached } from "@/lib/client-cache";
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
+import { isNutritionDashboardToday } from "@/lib/nutrition-day";
 
 function mergeHomeWithNutrition(
   home: HomeDataPayload,
@@ -28,23 +30,42 @@ function mergeHomeWithNutrition(
   });
 }
 
+function resolveInitialHome(fetched: HomeDataPayload | null): HomeDataPayload {
+  ensureNutritionCacheIsToday();
+  const nutrition = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
+  const cached = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
+
+  if (
+    nutrition &&
+    isValidDashboardPayload(nutrition) &&
+    isNutritionDashboardToday(nutrition.date)
+  ) {
+    const base = normalizeHomeData(cached ?? fetched ?? createEmptyHomeData());
+    return mergeHomeWithNutrition(base, nutrition);
+  }
+  if (cached) return normalizeHomeData(cached);
+  return normalizeHomeData(fetched ?? createEmptyHomeData());
+}
+
 /**
- * Home payload that stays in sync with nutrition mutations (no stale /api/home wait).
+ * Home payload synced with central nutrition store (single kcal source).
  */
 export function useHomeLiveData(fetched: HomeDataPayload | null) {
-  const [home, setHome] = useState<HomeDataPayload>(() => {
-    ensureNutritionCacheIsToday();
-    const cached = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
-    if (cached) return normalizeHomeData(cached);
-    return normalizeHomeData(fetched ?? createEmptyHomeData());
-  });
+  const [home, setHome] = useState<HomeDataPayload>(() => resolveInitialHome(fetched));
 
   useEffect(() => {
     if (!fetched) return;
-    const cached = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
-    if (!cached) {
-      setHome(normalizeHomeData(fetched));
+    const nutrition = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
+    if (
+      nutrition &&
+      isValidDashboardPayload(nutrition) &&
+      isNutritionDashboardToday(nutrition.date)
+    ) {
+      setHome(mergeHomeWithNutrition(normalizeHomeData(fetched), nutrition));
+      return;
     }
+    const cached = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
+    setHome(cached ? normalizeHomeData(cached) : normalizeHomeData(fetched));
   }, [fetched]);
 
   useEffect(() => {

@@ -79,6 +79,8 @@ function patchProgressNutritionToday(nutrition: NutritionDashboardPayload) {
       ...progress,
       dashboard: {
         ...progress.dashboard,
+        calorieTarget: nutrition.targets.calories,
+        proteinTargetG: nutrition.targets.proteinG,
         nutritionTrend: trend.sort((a, b) => a.date.localeCompare(b.date)),
       },
     },

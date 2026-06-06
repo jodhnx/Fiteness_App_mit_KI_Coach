@@ -30,14 +30,13 @@ import {
 import { invalidateCache } from "@/lib/client-cache";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { signOut } from "next-auth/react";
-import { AvatarUpload } from "@/components/user/avatar-upload";
 import { usePreferences } from "@/components/providers/preferences-provider";
 import { APP_THEMES, UI_DENSITY_OPTIONS, COLOR_MODE_OPTIONS } from "@/lib/themes";
 import {
   SettingsCategoryNav,
   type SettingsCategoryId,
 } from "@/components/settings/settings-category-nav";
-import { SettingsPersonalSummary } from "@/components/settings/settings-personal-summary";
+import { SettingsProfileHero } from "@/components/settings/settings-profile-hero";
 import { cn } from "@/lib/utils";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { getCached, setCached } from "@/lib/client-cache";
@@ -390,26 +389,18 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {!editingPersonal ? (
+      <SettingsProfileHero
+        form={form}
+        userImage={userImage}
+        calorieTarget={preview?.calorieTarget ?? null}
+        editing={editingPersonal}
+        onEdit={() => setEditingPersonal(true)}
+        onImageUpdated={(url) => setUserImage(url)}
+      />
+
+      {editingPersonal && (
         <>
-          <section id="settings-profil" className="scroll-mt-24">
-            <AvatarUpload
-              imageUrl={userImage}
-              name={form.name}
-              onUpdated={(url) => {
-                setUserImage(url);
-              }}
-            />
-          </section>
-          <SettingsPersonalSummary
-            form={form}
-            calorieTarget={preview?.calorieTarget ?? null}
-            onEdit={() => setEditingPersonal(true)}
-          />
-        </>
-      ) : (
-        <>
-          <section id="settings-profil" className="card-premium p-4 space-y-4 scroll-mt-24">
+          <section className="card-premium p-4 space-y-4 scroll-mt-24">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-white text-lg">Persönliche Daten bearbeiten</h2>
               <Button
@@ -424,13 +415,6 @@ export default function SettingsPage() {
                 Abbrechen
               </Button>
             </div>
-            <AvatarUpload
-              imageUrl={userImage}
-              name={form.name}
-              onUpdated={(url) => {
-                setUserImage(url);
-              }}
-            />
             <div>
               <Label>Name</Label>
               <Input

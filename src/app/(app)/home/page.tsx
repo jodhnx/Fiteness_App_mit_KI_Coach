@@ -5,8 +5,7 @@ import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
-import { useSyncedNutrition } from "@/hooks/use-synced-nutrition";
-import { usePrefetchedNutrition } from "@/components/providers/nutrition-data-provider";
+import { useCentralNutrition } from "@/hooks/use-central-nutrition";
 import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
 import { type HomeDataPayload } from "@/lib/home-defaults";
 import { useHomeLiveData } from "@/hooks/use-home-live-data";
@@ -41,8 +40,7 @@ export default function HomePage() {
 
   const data = useHomeLiveData(rawData);
 
-  const prefetched = usePrefetchedNutrition();
-  const { dashboard: nutrition } = useSyncedNutrition(prefetched ?? data.nutrition);
+  const { dashboard: nutrition } = useCentralNutrition();
 
   const heuteNutrition = nutrition;
   const steps = data.healthToday?.steps ?? 0;

@@ -23,8 +23,10 @@ import type { BodyTransformation } from "@/lib/body-transformation";
 import type { WeeklyReport } from "@/lib/weekly-report";
 import { Sparkles, Camera } from "lucide-react";
 import { ProgressDashboardSections } from "@/components/progress/progress-dashboard-sections";
+import { ProgressPageSkeleton } from "@/components/progress/progress-page-skeleton";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useCentralNutrition } from "@/hooks/use-central-nutrition";
 
 type ProgressInsights = {
   summaryLines: string[];
@@ -102,16 +104,19 @@ export default function ProgressPage() {
   const logRef = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<WeightPeriod>("30d");
 
-  const { data: progressData, reload } = useCachedFetch<ProgressPayload>(
+  const { dashboard: centralNutrition } = useCentralNutrition();
+
+  const { data: progressData, reload, loading } = useCachedFetch<ProgressPayload>(
     PROGRESS_CACHE_KEY,
     "/api/progress",
-    120_000,
-    8_000,
-    { revalidateOnMount: false, staleRatio: 0.95 }
+    180_000,
+    10_000,
+    { revalidateOnMount: false, staleRatio: 0.98 }
   );
 
   const cachedProgress = getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
   const displayData = progressData ?? cachedProgress;
+  const showSkeleton = loading && !cachedProgress;
 
   const entries = displayData?.entries ?? [];
   const photos = displayData?.photos ?? [];
@@ -136,6 +141,40 @@ export default function ProgressPage() {
       window.removeEventListener(HOME_DATA_EVENT, refresh);
     };
   }, []);
+
+  useEffect(() => {
+    if (!centralNutrition?.targets.calories) return;
+    setDashboard((prev) =>
+      prev
+        ? {
+            ...prev,
+            calorieTarget: centralNutrition.targets.calories,
+            proteinTargetG: centralNutrition.targets.proteinG,
+            nutritionTrend: (() => {
+              const today = centralNutrition.date;
+              const label = `${today.slice(8, 10)}.${today.slice(5, 7)}`;
+              const point = {
+                date: today,
+                label,
+                calories: Math.round(centralNutrition.consumed.calories),
+                proteinG: Math.round(centralNutrition.consumed.proteinG),
+              };
+              const trend = [...(prev.nutritionTrend ?? [])];
+              const idx = trend.findIndex((p) => p.date === today);
+              if (idx >= 0) trend[idx] = point;
+              else trend.push(point);
+              return trend.sort((a, b) => a.date.localeCompare(b.date));
+            })(),
+          }
+        : prev
+    );
+  }, [
+    centralNutrition.date,
+    centralNutrition.consumed.calories,
+    centralNutrition.consumed.proteinG,
+    centralNutrition.targets.calories,
+    centralNutrition.targets.proteinG,
+  ]);
 
   const transformation = displayData?.transformation ?? null;
   const weeklyReport = displayData?.weeklyReport ?? null;
@@ -203,7 +242,9 @@ export default function ProgressPage() {
     reload();
   }
 
-  const goal = analytics.goal;
+  if (showSkeleton) {
+    return <ProgressPageSkeleton />;
+  }
 
   return (
     <div className="space-y-5 max-w-2xl mx-auto pb-28">
