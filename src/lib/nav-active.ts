@@ -6,6 +6,9 @@ export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/workouts") {
     return pathname === "/workouts" || pathname.startsWith("/workouts/");
   }
+  if (href === "/progress") {
+    return pathname === "/progress" || pathname.startsWith("/progress/");
+  }
   if (href === "/activities") {
     return pathname === "/activities" || pathname.startsWith("/activities/");
   }

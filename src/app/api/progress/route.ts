@@ -9,6 +9,7 @@ import { buildBodyTransformation } from "@/lib/body-transformation";
 import { buildWeeklyReport } from "@/lib/weekly-report";
 import { invalidateCache } from "@/lib/client-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
+import { loadProgressDashboardExtras } from "@/lib/progress-dashboard";
 
 export async function GET() {
   try {
@@ -16,7 +17,8 @@ export async function GET() {
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
     const userId = session.user.id;
 
-    const [entries, photos, insights, profile, firstWeight, weeklyReport] = await Promise.all([
+    const [entries, photos, insights, profile, firstWeight, weeklyReport, dashboard] =
+      await Promise.all([
       prisma.progressEntry.findMany({
         where: { userId },
         orderBy: { date: "desc" },
@@ -46,6 +48,7 @@ export async function GET() {
         select: { weightKg: true },
       }),
       buildWeeklyReport(userId).catch(() => null),
+      loadProgressDashboardExtras(userId).catch(() => null),
     ]);
 
     const entriesMapped = entries.map((e) => ({
@@ -69,6 +72,7 @@ export async function GET() {
       startWeightKg: firstWeight?.weightKg ?? null,
       transformation,
       weeklyReport,
+      dashboard,
     });
     res.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
     return res;

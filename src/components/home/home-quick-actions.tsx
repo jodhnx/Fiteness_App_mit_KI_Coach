@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Dumbbell, Apple, Activity, Scale } from "lucide-react";
+import { Dumbbell, Apple, TrendingUp, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const OTHER_ACTIONS = [
@@ -14,9 +14,9 @@ const OTHER_ACTIONS = [
     bg: "from-orange-950/50 to-zinc-900/90 border-orange-500/25",
   },
   {
-    href: "/activities",
-    label: "Aktivität hinzufügen",
-    icon: Activity,
+    href: "/progress",
+    label: "Fortschritt",
+    icon: TrendingUp,
     accent: "text-emerald-400",
     bg: "from-emerald-950/50 to-zinc-900/90 border-emerald-500/25",
   },

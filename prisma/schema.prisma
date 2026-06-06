@@ -223,6 +223,7 @@ model WorkoutExercise {
   targetSets        Int             @default(3)
   targetReps        String?         @default("8-12")
   restSeconds       Int             @default(90)
+  setTargets        Json?
   notes             String?
   exercise          ExerciseLibrary @relation(fields: [exerciseLibraryId], references: [id])
   day               WorkoutDay      @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)

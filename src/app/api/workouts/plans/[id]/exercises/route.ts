@@ -3,6 +3,18 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import {
+  defaultPlanSets,
+  repsSummaryFromSets,
+  serializePlanSetTargets,
+  type PlanSetTarget,
+} from "@/lib/plan-exercise-sets";
+import type { Prisma } from "@prisma/client";
+
+const setTargetSchema = z.object({
+  weightKg: z.number().nullable().optional(),
+  reps: z.number().int().positive().nullable().optional(),
+});
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -12,6 +24,7 @@ const addSchema = z.object({
   targetSets: z.number().int().positive().optional(),
   targetReps: z.string().optional(),
   restSeconds: z.number().int().positive().optional(),
+  setTargets: z.array(setTargetSchema).optional(),
 });
 
 const replaceSchema = z.object({
@@ -24,8 +37,14 @@ const updateSchema = z.object({
   targetSets: z.number().int().positive().optional(),
   targetReps: z.string().optional(),
   restSeconds: z.number().int().positive().optional(),
+  setTargets: z.array(setTargetSchema).optional(),
   notes: z.string().optional(),
 });
+
+function normalizeSetTargets(input?: PlanSetTarget[]): PlanSetTarget[] {
+  const sets = serializePlanSetTargets(input?.length ? input : defaultPlanSets());
+  return sets;
+}
 
 export async function POST(req: NextRequest, { params }: Params) {
   try {
@@ -65,14 +84,18 @@ export async function POST(req: NextRequest, { params }: Params) {
       _max: { orderIndex: true },
     });
 
+    const setTargets = normalizeSetTargets(
+      parsed.data.setTargets as PlanSetTarget[] | undefined
+    );
     const ex = await prisma.workoutExercise.create({
       data: {
         workoutDayId: day.id,
         exerciseLibraryId: parsed.data.exerciseLibraryId,
         orderIndex: (maxOrder._max.orderIndex ?? -1) + 1,
-        targetSets: parsed.data.targetSets ?? 3,
-        targetReps: parsed.data.targetReps ?? "8-12",
+        targetSets: parsed.data.targetSets ?? setTargets.length,
+        targetReps: parsed.data.targetReps ?? repsSummaryFromSets(setTargets),
         restSeconds: parsed.data.restSeconds ?? 90,
+        setTargets: setTargets as Prisma.InputJsonValue,
       },
       include: { exercise: true },
     });
@@ -92,15 +115,24 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const parsed = updateSchema.safeParse(body);
     if (!parsed.success) return jsonError("Ungültige Eingabe");
 
+    const setTargets = parsed.data.setTargets
+      ? normalizeSetTargets(parsed.data.setTargets as PlanSetTarget[])
+      : undefined;
+
     await prisma.workoutExercise.updateMany({
       where: {
         id: parsed.data.workoutExerciseId,
         day: { workoutPlanId: planId, plan: { userId: session.user.id } },
       },
       data: {
-        targetSets: parsed.data.targetSets,
-        targetReps: parsed.data.targetReps,
+        targetSets: setTargets?.length ?? parsed.data.targetSets,
+        targetReps:
+          setTargets != null
+            ? repsSummaryFromSets(setTargets)
+            : parsed.data.targetReps,
         restSeconds: parsed.data.restSeconds,
+        setTargets:
+          setTargets != null ? (setTargets as Prisma.InputJsonValue) : undefined,
         notes: parsed.data.notes,
       },
     });

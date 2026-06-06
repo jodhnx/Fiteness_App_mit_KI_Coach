@@ -18,6 +18,8 @@ import { WeeklyReportCard } from "@/components/progress/weekly-report-card";
 import type { BodyTransformation } from "@/lib/body-transformation";
 import type { WeeklyReport } from "@/lib/weekly-report";
 import { Sparkles, Camera } from "lucide-react";
+import { ProgressDashboardSections } from "@/components/progress/progress-dashboard-sections";
+import { getCached } from "@/lib/client-cache";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +48,36 @@ type ProgressPayload = {
   startWeightKg?: number | null;
   transformation?: BodyTransformation | null;
   weeklyReport?: WeeklyReport | null;
+  dashboard?: {
+    nutritionTrend: { date: string; label: string; calories: number; proteinG: number }[];
+    calorieTarget: number;
+    proteinTargetG: number;
+    trainingHistory: {
+      id: string;
+      name: string;
+      dayName: string | null;
+      completedAt: string | null;
+      durationMin: number | null;
+      caloriesBurned: number | null;
+    }[];
+    streaks: {
+      training: { currentDays: number; longestDays: number } | null;
+      active: { currentDays: number; longestDays: number } | null;
+    };
+    personalRecords: {
+      id: string;
+      exerciseName: string;
+      recordType: string;
+      value: number;
+      reps: number | null;
+      achievedAt: string;
+    }[];
+    achievements: {
+      unlocked: number;
+      total: number;
+      recent: { name: string; icon: string; tier: string; xpReward: number; earnedAt: string }[];
+    };
+  } | null;
 };
 
 const PERIODS: { id: WeightPeriod; label: string }[] = [
@@ -70,17 +102,23 @@ export default function ProgressPage() {
   const { data: progressData, reload } = useCachedFetch<ProgressPayload>(
     PROGRESS_CACHE_KEY,
     "/api/progress",
-    90_000
+    120_000,
+    8_000,
+    { revalidateOnMount: false, staleRatio: 0.95 }
   );
 
-  const entries = progressData?.entries ?? [];
-  const photos = progressData?.photos ?? [];
-  const insights = progressData?.insights;
-  const profile = progressData?.profile ?? null;
-  const startWeightKg = progressData?.startWeightKg ?? null;
+  const cachedProgress = getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
+  const displayData = progressData ?? cachedProgress;
 
-  const transformation = progressData?.transformation ?? null;
-  const weeklyReport = progressData?.weeklyReport ?? null;
+  const entries = displayData?.entries ?? [];
+  const photos = displayData?.photos ?? [];
+  const insights = displayData?.insights;
+  const profile = displayData?.profile ?? null;
+  const startWeightKg = displayData?.startWeightKg ?? null;
+  const dashboard = displayData?.dashboard ?? null;
+
+  const transformation = displayData?.transformation ?? null;
+  const weeklyReport = displayData?.weeklyReport ?? null;
 
   const analytics = useMemo(
     () =>
@@ -149,7 +187,22 @@ export default function ProgressPage() {
 
   return (
     <div className="space-y-5 max-w-2xl mx-auto pb-28">
-      <PageHeader title="Fortschritt" subtitle="Body Transformation · Wochenbericht · Gewicht" />
+      <PageHeader
+        title="Fortschritt"
+        subtitle="Gewicht · Ernährung · Training · Rekorde · Erfolge"
+      />
+
+      {dashboard && (
+        <ProgressDashboardSections
+          nutritionTrend={dashboard.nutritionTrend}
+          calorieTarget={dashboard.calorieTarget}
+          proteinTargetG={dashboard.proteinTargetG}
+          trainingHistory={dashboard.trainingHistory}
+          streaks={dashboard.streaks}
+          personalRecords={dashboard.personalRecords}
+          achievements={dashboard.achievements}
+        />
+      )}
 
       {transformation && <BodyTransformationCard data={transformation} />}
 

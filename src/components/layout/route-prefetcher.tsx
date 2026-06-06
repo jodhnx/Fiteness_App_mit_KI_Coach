@@ -3,9 +3,16 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-/** Next.js-Routen vorladen — keine API-Calls (verhindert DB-Stau beim Start). */
-const IMMEDIATE = ["/home", "/workouts", "/nutrition"] as const;
-const DEFERRED = ["/activities", "/coach", "/progress", "/erfolge", "/settings"] as const;
+/** Hauptnavigation sofort vorladen — keine API-Calls. */
+const ALL_MAIN = [
+  "/home",
+  "/workouts",
+  "/progress",
+  "/nutrition",
+  "/coach",
+  "/erfolge",
+  "/settings",
+] as const;
 
 export function RoutePrefetcher() {
   const router = useRouter();
@@ -15,17 +22,17 @@ export function RoutePrefetcher() {
     if (done.current) return;
     done.current = true;
 
-    for (const href of IMMEDIATE) {
+    for (const href of ALL_MAIN.slice(0, 5)) {
       router.prefetch(href);
     }
 
     const idle =
       typeof requestIdleCallback !== "undefined"
         ? requestIdleCallback
-        : (cb: () => void) => setTimeout(cb, 200);
+        : (cb: () => void) => setTimeout(cb, 150);
 
     idle(() => {
-      for (const href of DEFERRED) {
+      for (const href of ALL_MAIN.slice(5)) {
         router.prefetch(href);
       }
     });

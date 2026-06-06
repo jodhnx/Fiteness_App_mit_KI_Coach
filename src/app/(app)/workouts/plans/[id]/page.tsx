@@ -19,18 +19,18 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { GripVertical, Play, Plus, Trash2, ArrowLeft, RefreshCw } from "lucide-react";
+import { Play, Plus, ArrowLeft } from "lucide-react";
 import { WorkoutNav } from "@/components/workout/workout-nav";
 import { PlanScoreCard } from "@/components/workout/plan-score-card";
+import { PlanExerciseSetsCard, createDefaultSetTargets } from "@/components/workout/plan-exercise-sets-card";
 import type { PlanScores } from "@/lib/plan-science-engine";
+import type { PlanSetTarget } from "@/lib/plan-exercise-sets";
 
 type PlanExercise = {
   id: string;
@@ -38,6 +38,7 @@ type PlanExercise = {
   targetSets: number;
   targetReps: string;
   restSeconds: number;
+  setTargets?: unknown;
   exercise: { id: string; name: string; muscleGroup: string };
 };
 
@@ -74,72 +75,6 @@ type PlanDay = {
   dayOrder: number;
   exercises: PlanExercise[];
 };
-
-function SortableExercise({
-  ex,
-  onRemove,
-  onReplace,
-  onUpdate,
-}: {
-  ex: PlanExercise;
-  onRemove: () => void;
-  onReplace: () => void;
-  onUpdate: (patch: { targetSets?: number; targetReps?: string; restSeconds?: number }) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id: ex.id,
-  });
-  const style = { transform: CSS.Transform.toString(transform), transition };
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 mb-2"
-    >
-      <button type="button" className="touch-none text-zinc-500" {...attributes} {...listeners}>
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <div className="flex-1 min-w-0 space-y-1">
-        <p className="text-white text-sm truncate">{ex.exercise.name}</p>
-        <p className="text-xs text-zinc-500">{ex.exercise.muscleGroup}</p>
-        <div className="flex flex-wrap gap-1">
-          <Input
-            type="number"
-            min={1}
-            max={20}
-            className="h-7 w-14 text-xs"
-            defaultValue={ex.targetSets}
-            onBlur={(e) =>
-              onUpdate({ targetSets: Math.max(1, Number(e.target.value) || ex.targetSets) })
-            }
-          />
-          <Input
-            className="h-7 w-20 text-xs"
-            defaultValue={ex.targetReps}
-            onBlur={(e) => onUpdate({ targetReps: e.target.value || ex.targetReps })}
-            placeholder="Wdh"
-          />
-          <Input
-            type="number"
-            min={0}
-            className="h-7 w-14 text-xs"
-            defaultValue={ex.restSeconds}
-            onBlur={(e) =>
-              onUpdate({ restSeconds: Math.max(0, Number(e.target.value) || ex.restSeconds) })
-            }
-            title="Pause (s)"
-          />
-        </div>
-      </div>
-      <Button variant="ghost" size="icon" onClick={onReplace} title="Ersetzen">
-        <RefreshCw className="h-4 w-4 text-cyan-400" />
-      </Button>
-      <Button variant="ghost" size="icon" onClick={onRemove}>
-        <Trash2 className="h-4 w-4 text-red-400" />
-      </Button>
-    </div>
-  );
-}
 
 export default function PlanEditorPage() {
   const params = useParams();
@@ -369,10 +304,16 @@ export default function PlanEditorPage() {
       toast.error("Bitte zuerst einen Trainingstag auswählen");
       return;
     }
+    const defaultSets = createDefaultSetTargets();
     const res = await fetch(`/api/workouts/plans/${planId}/exercises`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workoutDayId: activeDayId, exerciseLibraryId }),
+      body: JSON.stringify({
+        workoutDayId: activeDayId,
+        exerciseLibraryId,
+        targetSets: defaultSets.length,
+        setTargets: defaultSets,
+      }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -397,19 +338,22 @@ export default function PlanEditorPage() {
     toast.success("Übung hinzugefügt");
   }
 
-  async function updateExerciseMeta(
-    workoutExerciseId: string,
-    patch: { targetSets?: number; targetReps?: string; restSeconds?: number }
-  ) {
+  async function saveExerciseSets(workoutExerciseId: string, setTargets: PlanSetTarget[]) {
     const res = await fetch(`/api/workouts/plans/${planId}/exercises`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workoutExerciseId, ...patch }),
+      body: JSON.stringify({
+        workoutExerciseId,
+        setTargets,
+        targetSets: setTargets.length,
+      }),
     });
     if (!res.ok) {
-      toast.error("Speichern fehlgeschlagen");
+      toast.error("Sätze konnten nicht gespeichert werden");
       return;
     }
+    const data = await res.json();
+    const saved = data.exercise as PlanExercise | undefined;
     setPlan((p) => {
       if (!p) return p;
       return {
@@ -417,7 +361,14 @@ export default function PlanEditorPage() {
         days: p.days.map((d) => ({
           ...d,
           exercises: d.exercises.map((e) =>
-            e.id === workoutExerciseId ? { ...e, ...patch } : e
+            e.id === workoutExerciseId
+              ? {
+                  ...e,
+                  setTargets: saved?.setTargets ?? setTargets,
+                  targetSets: setTargets.length,
+                  targetReps: saved?.targetReps ?? e.targetReps,
+                }
+              : e
           ),
         })),
       };
@@ -638,12 +589,17 @@ export default function PlanEditorPage() {
                   strategy={verticalListSortingStrategy}
                 >
                   {activeDay.exercises.map((ex) => (
-                    <SortableExercise
+                    <PlanExerciseSetsCard
                       key={ex.id}
-                      ex={ex}
+                      id={ex.id}
+                      name={ex.exercise.name}
+                      muscleGroup={ex.exercise.muscleGroup}
+                      targetSets={ex.targetSets}
+                      targetReps={ex.targetReps}
+                      setTargets={ex.setTargets}
                       onRemove={() => removeExercise(ex.id)}
                       onReplace={() => openReplace(ex.id, ex.exercise.id)}
-                      onUpdate={(patch) => updateExerciseMeta(ex.id, patch)}
+                      onSaveSets={(sets) => saveExerciseSets(ex.id, sets)}
                     />
                   ))}
                 </SortableContext>

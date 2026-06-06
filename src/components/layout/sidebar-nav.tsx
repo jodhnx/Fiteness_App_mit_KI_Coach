@@ -24,8 +24,8 @@ import { useSidebar } from "@/components/layout/sidebar-provider";
 const PRIMARY_NAV = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/workouts", label: "Training", icon: Dumbbell },
+  { href: "/progress", label: "Fortschritt", icon: TrendingUp },
   { href: "/nutrition", label: "Ernährung", icon: Apple },
-  { href: "/activities", label: "Aktivität", icon: Footprints },
   { href: "/coach", label: "KI Coach", icon: Bot },
   { href: "/profile", label: "Profil", icon: User },
 ] as const;
@@ -33,7 +33,7 @@ const PRIMARY_NAV = [
 const SECONDARY_NAV = [
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
   { href: "/settings", label: "Einstellungen", icon: Settings },
-  { href: "/progress", label: "Fortschritt", icon: TrendingUp },
+  { href: "/activities", label: "Aktivität & Schritte", icon: Footprints },
   { href: "/goals", label: "Ziele", icon: Target },
 ] as const;
 

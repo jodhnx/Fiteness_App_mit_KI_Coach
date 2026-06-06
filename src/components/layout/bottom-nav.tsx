@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { memo } from "react";
-import { Home, Dumbbell, Apple, Footprints, Bot } from "lucide-react";
+import { Home, Dumbbell, TrendingUp, Apple, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isNavActive } from "@/lib/nav-active";
 
 const ITEMS = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/workouts", label: "Training", icon: Dumbbell },
+  { href: "/progress", label: "Fortschritt", icon: TrendingUp },
   { href: "/nutrition", label: "Ernährung", icon: Apple },
-  { href: "/activities", label: "Aktivität", icon: Footprints },
   { href: "/coach", label: "Coach", icon: Bot },
 ] as const;
 
