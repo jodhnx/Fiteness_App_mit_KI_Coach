@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const OTHER_ACTIONS = [
   {
-    href: "/nutrition/add/LUNCH",
+    href: "/nutrition?add=LUNCH",
     label: "Lebensmittel hinzufügen",
     icon: Apple,
     accent: "text-orange-400",

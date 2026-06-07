@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
-import { useFoodFavorites } from "@/hooks/use-food-favorites";
 import { useFoodQuickAdd } from "@/hooks/use-food-quick-add";
 import {
   invalidateAllNutritionCaches,
@@ -14,7 +14,8 @@ import { getCached } from "@/lib/client-cache";
 import { RemainingMacrosHero } from "@/components/nutrition/remaining-macros-hero";
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
-import { AddFoodSheet } from "@/components/nutrition/add-food-sheet";
+import { FoodAddPopup } from "@/components/nutrition/food-add-popup";
+import { MEAL_TYPE_ORDER } from "@/lib/meal-types";
 import type { MealType } from "@prisma/client";
 import { toast } from "sonner";
 import { RefreshCw, AlertCircle, Settings2 } from "lucide-react";
@@ -22,9 +23,20 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
 
+const VALID_MEALS = new Set<string>(MEAL_TYPE_ORDER);
+
 export default function NutritionPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [expandedMeal, setExpandedMeal] = useState<MealType | null>(null);
   const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
+
+  useEffect(() => {
+    const add = searchParams.get("add");
+    if (add && VALID_MEALS.has(add)) {
+      setAddSheetMeal(add as MealType);
+    }
+  }, [searchParams]);
 
   const {
     dashboard,
@@ -34,8 +46,6 @@ export default function NutritionPage() {
     reload,
     applyDashboard,
   } = useNutritionDashboard(120_000);
-
-  const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites();
 
   const { quickAdd } = useFoodQuickAdd({
     dashboard,
@@ -121,24 +131,12 @@ export default function NutritionPage() {
     [applyDashboard, refreshAll]
   );
 
-  const handleToggleFavorite = useCallback(
-    async (foodItemId: string) => {
-      const food = favoriteFoods.find((f) => f.id === foodItemId) ?? {
-        id: foodItemId,
-        name: "",
-        brand: null,
-        calories: 0,
-        proteinG: 0,
-        carbsG: 0,
-        fatG: 0,
-        fiberG: null,
-        servingG: 100,
-        source: "local" as const,
-      };
-      await toggleFavorite(food);
-    },
-    [favoriteFoods, toggleFavorite]
-  );
+  const closeAddPopup = useCallback(() => {
+    setAddSheetMeal(null);
+    if (searchParams.get("add")) {
+      router.replace("/nutrition");
+    }
+  }, [router, searchParams]);
 
   return (
     <div className="nutrition-mobile-page space-y-5 pb-28">
@@ -235,14 +233,11 @@ export default function NutritionPage() {
       />
 
       {addSheetMeal && (
-        <AddFoodSheet
+        <FoodAddPopup
           open
           mealType={addSheetMeal}
-          favoriteIds={favoriteIds}
-          quickFoods={favoriteFoods}
-          onClose={() => setAddSheetMeal(null)}
+          onClose={closeAddPopup}
           onQuickAddFood={quickAdd}
-          onToggleFavorite={handleToggleFavorite}
         />
       )}
     </div>

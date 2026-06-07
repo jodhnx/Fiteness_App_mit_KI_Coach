@@ -81,8 +81,8 @@ export const MealTrackList = memo(function MealTrackList({
               <button
                 type="button"
                 onClick={() => onAddClick?.(slot.mealType)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl btn-accent active:scale-95 transition-transform duration-100"
-                aria-label={`${MEAL_TYPE_LABELS[slot.mealType]} hinzufügen`}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl btn-accent active:opacity-90"
+                aria-label={`+ Lebensmittel zu ${MEAL_TYPE_LABELS[slot.mealType]}`}
               >
                 <Plus className="h-5 w-5 stroke-[2.5]" />
               </button>
@@ -134,9 +134,16 @@ export const MealTrackList = memo(function MealTrackList({
               </div>
             )}
             {expanded && slot.items.length === 0 && (
-              <p className="border-t border-zinc-800 px-4 py-3 text-sm text-zinc-500">
-                Noch leer — tippe + um ein Lebensmittel hinzuzufügen.
-              </p>
+              <div className="border-t border-zinc-800 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => onAddClick?.(slot.mealType)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 py-3 text-sm font-medium text-zinc-400 active:text-cyan-400"
+                >
+                  <Plus className="h-4 w-4" />
+                  Lebensmittel
+                </button>
+              </div>
             )}
           </div>
         );

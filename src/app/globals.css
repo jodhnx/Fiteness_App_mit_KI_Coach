@@ -361,10 +361,155 @@ html[data-density="large"] .hub-card-pad { padding: 1.35rem; min-height: 88px; }
   margin-right: auto;
 }
 
-body[data-mobileSheet] .app-bottom-nav {
+body[data-mobileSheet] .app-bottom-nav,
+body[data-foodAddPopup] .app-bottom-nav {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+}
+
+/* ── Food add popup (fullscreen mobile search) ── */
+.food-add-popup-root {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #09090b;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.food-add-popup-inner {
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.food-add-popup-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.food-add-popup-input {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  padding: 0 1rem;
+  font-size: 1rem;
+  color: #fafafa;
+  background: rgba(24, 24, 27, 0.9);
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  border-radius: 1rem;
+  outline: none;
+}
+
+.food-add-popup-input:focus {
+  border-color: rgba(34, 211, 238, 0.5);
+}
+
+.food-add-popup-input::placeholder {
+  color: rgb(113 113 122);
+}
+
+.food-add-popup-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  color: rgb(161 161 170);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.food-add-popup-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.5rem 1rem 1.5rem;
+}
+
+.food-add-popup-section {
+  margin-bottom: 1.25rem;
+}
+
+.food-add-popup-section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgb(113 113 122);
+  margin-bottom: 0.35rem;
+  padding-left: 0.125rem;
+}
+
+.food-add-popup-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.food-add-popup-results > * + * {
+  border-top: 1px solid rgba(39, 39, 42, 0.8);
+}
+
+/* Food detail overlay (optional tap) */
+.food-detail-popup-root {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-top: env(safe-area-inset-top, 0px);
+  pointer-events: none;
+}
+
+.food-detail-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.65);
+  pointer-events: auto;
+}
+
+.food-detail-popup-panel {
+  position: relative;
+  pointer-events: auto;
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  background: #18181b;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem 1.25rem 0 0;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+.food-detail-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.food-detail-popup-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .nutrition-glass-card {

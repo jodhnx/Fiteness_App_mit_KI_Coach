@@ -61,7 +61,6 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
       const updated = await applyNutritionMutationResponse(res);
       if (!updated) applyDashboard(dashboard);
       else {
-        toast.success(`${product.name} hinzugefügt`);
         onSuccess?.();
       }
     },
