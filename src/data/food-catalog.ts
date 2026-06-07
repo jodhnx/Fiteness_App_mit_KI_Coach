@@ -1,4 +1,5 @@
 import type { FoodCategory } from "@prisma/client";
+import type { FoodProduct } from "@/lib/food/food-product-types";
 
 export type FoodCatalogEntry = {
   slug: string;
@@ -395,3 +396,40 @@ function buildCatalog(): FoodCatalogEntry[] {
 }
 
 export const FOOD_CATALOG: FoodCatalogEntry[] = buildCatalog();
+
+/** In-Memory-Suche über ~5000 Basis-Lebensmittel (ohne Barcode). */
+export function searchFoodCatalog(query: string, limit = 24): FoodProduct[] {
+  const q = query.trim().toLowerCase();
+  if (q.length < 2) return [];
+  const tokens = q.split(/\s+/).filter(Boolean);
+
+  const scored: { item: FoodCatalogEntry; score: number }[] = [];
+  for (const item of FOOD_CATALOG) {
+    const hay = `${item.name} ${item.brand ?? ""}`.toLowerCase();
+    if (!tokens.every((t) => hay.includes(t))) continue;
+    let score = 0;
+    const name = item.name.toLowerCase();
+    if (name === q) score += 50;
+    else if (name.startsWith(q)) score += 30;
+    else if (name.includes(q)) score += 15;
+    scored.push({ item, score });
+  }
+
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ item }) => ({
+      name: item.name,
+      brand: item.brand ?? null,
+      calories: item.calories,
+      proteinG: item.proteinG,
+      carbsG: item.carbsG,
+      fatG: item.fatG,
+      fiberG: null,
+      servingG: item.servingG,
+      category: item.category,
+      source: "local" as const,
+    }));
+}
+
+export const FOOD_CATALOG_COUNT = FOOD_CATALOG.length;

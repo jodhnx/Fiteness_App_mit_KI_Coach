@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
+import { useFoodFavorites } from "@/hooks/use-food-favorites";
 import { useFoodQuickAdd } from "@/hooks/use-food-quick-add";
 import {
   invalidateAllNutritionCaches,
@@ -46,6 +47,8 @@ export default function NutritionPage() {
     reload,
     applyDashboard,
   } = useNutritionDashboard(120_000);
+
+  const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites();
 
   const { quickAdd } = useFoodQuickAdd({
     dashboard,
@@ -129,6 +132,25 @@ export default function NutritionPage() {
       else refreshAll();
     },
     [applyDashboard, refreshAll]
+  );
+
+  const handleToggleFavorite = useCallback(
+    async (foodItemId: string) => {
+      const food = favoriteFoods.find((f) => f.id === foodItemId) ?? {
+        id: foodItemId,
+        name: "",
+        brand: null,
+        calories: 0,
+        proteinG: 0,
+        carbsG: 0,
+        fatG: 0,
+        fiberG: null,
+        servingG: 100,
+        source: "local" as const,
+      };
+      await toggleFavorite(food);
+    },
+    [favoriteFoods, toggleFavorite]
   );
 
   const closeAddPopup = useCallback(() => {
@@ -236,8 +258,10 @@ export default function NutritionPage() {
         <FoodAddPopup
           open
           mealType={addSheetMeal}
+          favoriteIds={favoriteIds}
           onClose={closeAddPopup}
           onQuickAddFood={quickAdd}
+          onToggleFavorite={handleToggleFavorite}
         />
       )}
     </div>

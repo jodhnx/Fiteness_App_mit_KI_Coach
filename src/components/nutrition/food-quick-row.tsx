@@ -1,27 +1,30 @@
 "use client";
 
 import { memo } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Star } from "lucide-react";
 import type { FoodProduct } from "@/lib/food/food-product-types";
-import { getQuickAddDisplay } from "@/lib/food/quick-add-display";
 
 type Props = {
   food: FoodProduct;
+  isFavorite?: boolean;
   onQuickAdd: () => void;
   onOpenDetail: () => void;
+  onToggleFavorite?: () => void;
   quickAdding?: boolean;
 };
 
 export const FoodQuickRow = memo(function FoodQuickRow({
   food,
+  isFavorite,
   onQuickAdd,
   onOpenDetail,
+  onToggleFavorite,
   quickAdding,
 }: Props) {
-  const { kcal, portionSuffix } = getQuickAddDisplay(food);
+  const kcal100 = Math.round(food.calories);
 
   return (
-    <div className="flex items-center gap-2 min-h-[56px]">
+    <div className="flex items-center gap-1.5 min-h-[56px]">
       <button
         type="button"
         onClick={onOpenDetail}
@@ -31,9 +34,25 @@ export const FoodQuickRow = memo(function FoodQuickRow({
           {food.name}
         </p>
         <p className="text-xs text-zinc-500 mt-0.5 tabular-nums">
-          ({kcal} kcal {portionSuffix})
+          {kcal100} kcal pro 100g
         </p>
       </button>
+
+      {onToggleFavorite && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center text-zinc-500 active:opacity-80"
+          aria-label="Favorit"
+        >
+          <Star
+            className={`h-5 w-5 ${isFavorite ? "fill-amber-400 text-amber-400" : ""}`}
+          />
+        </button>
+      )}
 
       <button
         type="button"

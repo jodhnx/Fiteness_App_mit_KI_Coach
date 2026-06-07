@@ -121,7 +121,25 @@ export function getPortionPresets(food: FoodProduct): PortionPreset[] {
     ];
   }
 
-  if (matchName(food, "reis", "rice", "haferflocken", "müsli", "joghurt")) {
+  if (matchName(food, "skyr", "magerquark", "quark", "joghurt", "pudding")) {
+    const g = serving >= 100 ? serving : 150;
+    return [
+      { label: "1 Becher", grams: g, default: true },
+      { label: "1/2 Becher", grams: Math.round(g / 2) },
+      { label: "100 g", grams: 100 },
+    ];
+  }
+
+  if (matchName(food, "whey", "protein pulver", "casein")) {
+    return [
+      { label: "1 Portion (30 g)", grams: 30, default: true },
+      { label: "1 Messlöffel (25 g)", grams: 25 },
+      { label: "50 g", grams: 50 },
+      { label: "100 g", grams: 100 },
+    ];
+  }
+
+  if (matchName(food, "reis", "rice", "haferflocken", "müsli")) {
     return [
       { label: "1 Portion", grams: serving, default: true },
       { label: "100 g", grams: 100 },

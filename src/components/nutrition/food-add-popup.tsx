@@ -23,12 +23,14 @@ import { FoodDetailPopup } from "@/components/nutrition/food-detail-popup";
 type Props = {
   open: boolean;
   mealType: MealType;
+  favoriteIds: Set<string>;
   onClose: () => void;
   onQuickAddFood: (
     product: FoodProduct,
     quantityG: number,
     meal: MealType
   ) => Promise<void>;
+  onToggleFavorite: (foodItemId: string) => Promise<void>;
 };
 
 const SEARCH_CACHE_TTL = 300_000;
@@ -99,7 +101,7 @@ const FALLBACK_RECENT: FoodProduct[] = [
     carbsG: 30,
     fatG: 14,
     fiberG: 2,
-    servingG: 350,
+    servingG: 100,
     source: "local",
   },
   {
@@ -110,7 +112,7 @@ const FALLBACK_RECENT: FoodProduct[] = [
     carbsG: 6,
     fatG: 1,
     fiberG: 0,
-    servingG: 150,
+    servingG: 100,
     source: "local",
   },
   {
@@ -121,7 +123,7 @@ const FALLBACK_RECENT: FoodProduct[] = [
     carbsG: 4,
     fatG: 0.2,
     fiberG: 0,
-    servingG: 150,
+    servingG: 100,
     source: "local",
   },
   {
@@ -160,8 +162,10 @@ function dedupeFoods(foods: FoodProduct[]): FoodProduct[] {
 export const FoodAddPopup = memo(function FoodAddPopup({
   open,
   mealType,
+  favoriteIds,
   onClose,
   onQuickAddFood,
+  onToggleFavorite,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -242,24 +246,14 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     const gen = ++requestGen.current;
 
     try {
-      const localRes = await fetch(
-        `/api/food/search?q=${encodeURIComponent(trimmed)}&localOnly=1`,
-        { signal: ac.signal }
-      );
-      const localData = (await localRes.json()) as FoodSearchResponse;
-      if (!ac.signal.aborted && gen === requestGen.current) {
-        setResult(localData);
-        setLoading(false);
-      }
-
-      const fullRes = await fetch(
+      const res = await fetch(
         `/api/food/search?q=${encodeURIComponent(trimmed)}`,
         { signal: ac.signal }
       );
-      const fullData = (await fullRes.json()) as FoodSearchResponse;
+      const data = (await res.json()) as FoodSearchResponse;
       if (!ac.signal.aborted && gen === requestGen.current) {
-        setCached(key, fullData, SEARCH_CACHE_TTL);
-        setResult(fullData);
+        setCached(key, data, SEARCH_CACHE_TTL);
+        setResult(data);
       }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
@@ -276,19 +270,25 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
   const isSearching = q.trim().length > 0;
 
-  const searchResults = useMemo(() => {
+  const instantResults = useMemo(() => {
     if (!isSearching) return [];
     const trimmed = q.trim();
     if (trimmed.length < 2) {
-      const local = [
+      return dedupeFoods([
         ...filterFoods(historyFoods.frequent, trimmed),
         ...filterFoods(historyFoods.recents, trimmed),
-        ...searchStandardDishes(trimmed, 8),
-      ];
-      return dedupeFoods(local);
+        ...searchStandardDishes(trimmed, 12),
+      ]);
     }
-    return result?.products ?? [];
-  }, [isSearching, q, historyFoods, result]);
+    return searchStandardDishes(trimmed, 12);
+  }, [isSearching, q, historyFoods]);
+
+  const searchResults = useMemo(() => {
+    if (!isSearching) return [];
+    const api = result?.products ?? [];
+    if (api.length > 0) return api;
+    return instantResults;
+  }, [isSearching, result, instantResults]);
 
   const quickAdd = useCallback(
     async (product: FoodProduct) => {
@@ -317,6 +317,23 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     },
     [detailProduct, onQuickAddFood]
   );
+
+  const renderRow = (food: FoodProduct) => {
+    const rowKey = food.offCode ?? food.id ?? food.name;
+    return (
+      <FoodQuickRow
+        key={rowKey}
+        food={food}
+        isFavorite={Boolean(food.id && favoriteIds.has(food.id))}
+        onQuickAdd={() => void quickAdd(food)}
+        onOpenDetail={() => setDetailProduct(food)}
+        onToggleFavorite={
+          food.id ? () => onToggleFavorite(food.id as string) : undefined
+        }
+        quickAdding={quickAddingId === rowKey}
+      />
+    );
+  };
 
   if (!mounted || !open) return null;
 
@@ -351,27 +368,11 @@ export const FoodAddPopup = memo(function FoodAddPopup({
               {!isSearching && (
                 <>
                   <FoodSection title="Häufig verwendet">
-                    {historyFoods.frequent.map((food) => (
-                      <FoodQuickRow
-                        key={food.id ?? food.name}
-                        food={food}
-                        onQuickAdd={() => void quickAdd(food)}
-                        onOpenDetail={() => setDetailProduct(food)}
-                        quickAdding={quickAddingId === (food.id ?? food.name)}
-                      />
-                    ))}
+                    {historyFoods.frequent.map((food) => renderRow(food))}
                   </FoodSection>
 
                   <FoodSection title="Zuletzt verwendet">
-                    {historyFoods.recents.map((food) => (
-                      <FoodQuickRow
-                        key={food.id ?? food.name}
-                        food={food}
-                        onQuickAdd={() => void quickAdd(food)}
-                        onOpenDetail={() => setDetailProduct(food)}
-                        quickAdding={quickAddingId === (food.id ?? food.name)}
-                      />
-                    ))}
+                    {historyFoods.recents.map((food) => renderRow(food))}
                   </FoodSection>
                 </>
               )}
@@ -384,18 +385,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                   {!loading && searchResults.length === 0 && (
                     <p className="text-sm text-zinc-500 py-6 text-center">Keine Treffer</p>
                   )}
-                  {searchResults.map((food) => {
-                    const rowKey = food.offCode ?? food.id ?? food.name;
-                    return (
-                      <FoodQuickRow
-                        key={rowKey}
-                        food={food}
-                        onQuickAdd={() => void quickAdd(food)}
-                        onOpenDetail={() => setDetailProduct(food)}
-                        quickAdding={quickAddingId === rowKey}
-                      />
-                    );
-                  })}
+                  {searchResults.map((food) => renderRow(food))}
                 </div>
               )}
             </div>

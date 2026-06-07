@@ -214,7 +214,8 @@ export async function upsertFoodFromProduct(product: FoodProduct): Promise<FoodP
       imageUrl: product.imageUrl,
       offCode,
       barcode: offCode,
-      dataSource: "openfoodfacts",
+      dataSource:
+        product.source === "openfoodfacts" && offCode ? "openfoodfacts" : "local",
     },
     select: foodSelect,
   });

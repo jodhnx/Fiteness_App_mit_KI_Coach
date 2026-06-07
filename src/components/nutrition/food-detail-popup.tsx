@@ -4,6 +4,7 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { macrosForQuantity } from "@/lib/food-macros";
 import { fmtG, fmtKcal } from "@/lib/format-macros";
 import type { FoodProduct } from "@/lib/food/food-product-types";
@@ -32,6 +33,8 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
   const [selectedGrams, setSelectedGrams] = useState(() =>
     getDefaultPortionGrams(product)
   );
+  const [customMode, setCustomMode] = useState(false);
+  const [customGrams, setCustomGrams] = useState("100");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -39,7 +42,10 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
   }, []);
 
   useEffect(() => {
-    setSelectedGrams(getDefaultPortionGrams(product));
+    const defaultG = getDefaultPortionGrams(product);
+    setSelectedGrams(defaultG);
+    setCustomMode(false);
+    setCustomGrams(String(defaultG));
   }, [product]);
 
   useEffect(() => {
@@ -50,8 +56,12 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
     };
   }, []);
 
+  const activeGrams = customMode
+    ? Math.max(0, Number(customGrams.replace(",", ".")) || 0)
+    : selectedGrams;
+
   const scaled = useMemo(() => {
-    if (selectedGrams <= 0) {
+    if (activeGrams <= 0) {
       return { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 };
     }
     return macrosForQuantity(
@@ -62,9 +72,9 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
         fatG: product.fatG,
         servingG: product.servingG || 100,
       },
-      selectedGrams
+      activeGrams
     );
-  }, [product, selectedGrams]);
+  }, [product, activeGrams]);
 
   if (!mounted) return null;
 
@@ -106,14 +116,17 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
             <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
               Portion
             </p>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
               {presets.map((p) => (
                 <button
                   key={p.label}
                   type="button"
-                  onClick={() => setSelectedGrams(p.grams)}
+                  onClick={() => {
+                    setCustomMode(false);
+                    setSelectedGrams(p.grams);
+                  }}
                   className={`shrink-0 rounded-xl px-3.5 py-2.5 text-sm font-medium border ${
-                    selectedGrams === p.grams
+                    !customMode && selectedGrams === p.grams
                       ? "bg-cyan-500/25 border-cyan-400/50 text-cyan-50"
                       : "bg-zinc-900/80 border-zinc-700 text-zinc-300"
                   }`}
@@ -121,16 +134,47 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
                   {p.label}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setCustomMode(true)}
+                className={`shrink-0 rounded-xl px-3.5 py-2.5 text-sm font-medium border ${
+                  customMode
+                    ? "bg-cyan-500/25 border-cyan-400/50 text-cyan-50"
+                    : "bg-zinc-900/80 border-zinc-700 text-zinc-300"
+                }`}
+              >
+                Eigene Gramm
+              </button>
             </div>
           </div>
 
+          {customMode && (
+            <div>
+              <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2 block">
+                Gramm eingeben
+              </label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={1}
+                max={5000}
+                step={1}
+                value={customGrams}
+                onChange={(e) => setCustomGrams(e.target.value)}
+                className="h-12 text-base rounded-xl bg-zinc-900 border-zinc-700"
+                placeholder="z.B. 125"
+                autoFocus
+              />
+            </div>
+          )}
+
           <Button
             className="w-full h-14 text-base font-bold btn-accent rounded-2xl"
-            disabled={adding || selectedGrams <= 0}
-            onClick={() => onAdd(selectedGrams, mealType)}
+            disabled={adding || activeGrams <= 0}
+            onClick={() => onAdd(activeGrams, mealType)}
           >
             <Plus className="h-5 w-5 mr-2 stroke-[2.5]" />
-            Hinzufügen · {selectedGrams} g
+            Hinzufügen · {activeGrams} g
           </Button>
         </div>
       </div>

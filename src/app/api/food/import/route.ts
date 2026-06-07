@@ -12,8 +12,8 @@ const schema = z.object({
   offCode: z.string().min(8).optional(),
   product: z
     .object({
-      offCode: z.string(),
-      name: z.string(),
+      offCode: z.string().optional(),
+      name: z.string().min(1),
       brand: z.string().nullable().optional(),
       calories: z.number(),
       proteinG: z.number(),
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         ...parsed.data.product,
         brand: parsed.data.product.brand ?? null,
         fiberG: parsed.data.product.fiberG ?? null,
-        source: "openfoodfacts",
+        source: parsed.data.product.offCode ? "openfoodfacts" : "local",
       };
       const saved = await upsertFoodFromProduct(p);
       return jsonOk({ food: saved });
