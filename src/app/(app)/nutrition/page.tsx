@@ -141,7 +141,7 @@ export default function NutritionPage() {
   );
 
   return (
-    <div className="space-y-5 pb-28 max-w-2xl mx-auto">
+    <div className="nutrition-mobile-page space-y-5 pb-28">
       <PageHeader
         title="Ernährung"
         subtitle="Schnell tracken · DACH-Produkte · Standardgerichte"

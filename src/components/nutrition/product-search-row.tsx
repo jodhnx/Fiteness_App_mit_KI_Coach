@@ -26,7 +26,7 @@ export const ProductSearchRow = memo(function ProductSearchRow({
   const defaultG = getDefaultQuickAddGrams(food);
 
   return (
-    <div className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-2 hover:border-zinc-600 transition-colors">
+    <div className="flex items-center gap-1.5 rounded-2xl nutrition-glass-card px-2 py-2 active:scale-[0.99] transition-transform">
       <button
         type="button"
         onClick={onDetails}

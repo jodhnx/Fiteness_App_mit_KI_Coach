@@ -53,7 +53,7 @@ export const MealTrackList = memo(function MealTrackList({
         return (
           <div
             key={slot.mealType}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/60 overflow-hidden"
+            className="rounded-2xl nutrition-glass-card overflow-hidden"
           >
             <div className="flex items-center gap-2 p-3 sm:p-4">
               <button
