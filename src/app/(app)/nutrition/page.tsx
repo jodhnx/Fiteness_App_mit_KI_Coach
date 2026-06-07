@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
+import { useFoodFavorites } from "@/hooks/use-food-favorites";
+import { useFoodQuickAdd } from "@/hooks/use-food-quick-add";
 import {
   invalidateAllNutritionCaches,
   applyNutritionMutationResponse,
@@ -12,6 +14,7 @@ import { getCached } from "@/lib/client-cache";
 import { RemainingMacrosHero } from "@/components/nutrition/remaining-macros-hero";
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
+import { AddFoodSheet } from "@/components/nutrition/add-food-sheet";
 import type { MealType } from "@prisma/client";
 import { toast } from "sonner";
 import { RefreshCw, AlertCircle, Settings2 } from "lucide-react";
@@ -21,6 +24,7 @@ import Link from "next/link";
 
 export default function NutritionPage() {
   const [expandedMeal, setExpandedMeal] = useState<MealType | null>(null);
+  const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
 
   const {
     dashboard,
@@ -29,7 +33,14 @@ export default function NutritionPage() {
     timedOut,
     reload,
     applyDashboard,
-  } = useNutritionDashboard(15_000);
+  } = useNutritionDashboard(120_000);
+
+  const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites();
+
+  const { quickAdd } = useFoodQuickAdd({
+    dashboard,
+    applyDashboard,
+  });
 
   const refreshAll = useCallback(() => {
     invalidateAllNutritionCaches();
@@ -110,11 +121,30 @@ export default function NutritionPage() {
     [applyDashboard, refreshAll]
   );
 
+  const handleToggleFavorite = useCallback(
+    async (foodItemId: string) => {
+      const food = favoriteFoods.find((f) => f.id === foodItemId) ?? {
+        id: foodItemId,
+        name: "",
+        brand: null,
+        calories: 0,
+        proteinG: 0,
+        carbsG: 0,
+        fatG: 0,
+        fiberG: null,
+        servingG: 100,
+        source: "local" as const,
+      };
+      await toggleFavorite(food);
+    },
+    [favoriteFoods, toggleFavorite]
+  );
+
   return (
     <div className="space-y-5 pb-28 max-w-2xl mx-auto">
       <PageHeader
         title="Ernährung"
-        subtitle="Tagesübersicht · 2 Klicks zum Tracken"
+        subtitle="Schnell tracken · DACH-Produkte · Standardgerichte"
         action={
           <Link
             href="/settings"
@@ -194,6 +224,7 @@ export default function NutritionPage() {
           onRemove={removeItem}
           onEdit={editItemQuantity}
           onDeleteMeal={deleteMeal}
+          onAddClick={(mealType) => setAddSheetMeal(mealType)}
         />
       </section>
 
@@ -202,6 +233,18 @@ export default function NutritionPage() {
         targetMl={dashboard.water.targetMl}
         onAdd={addWater}
       />
+
+      {addSheetMeal && (
+        <AddFoodSheet
+          open
+          mealType={addSheetMeal}
+          favoriteIds={favoriteIds}
+          quickFoods={favoriteFoods}
+          onClose={() => setAddSheetMeal(null)}
+          onQuickAddFood={quickAdd}
+          onToggleFavorite={handleToggleFavorite}
+        />
+      )}
     </div>
   );
 }

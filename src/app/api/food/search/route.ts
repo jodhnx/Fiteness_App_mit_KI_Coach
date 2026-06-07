@@ -13,11 +13,12 @@ export async function GET(req: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
 
-    const suggestions = req.nextUrl.searchParams.get("suggestions") !== "0";
+    const localOnly = req.nextUrl.searchParams.get("localOnly") === "1";
 
     const result = await searchFoodProducts(session.user.id, q.trim(), {
-      suggestions,
-      recordHistory: q.trim().length >= 2,
+      suggestions: false,
+      recordHistory: q.trim().length >= 2 && !localOnly,
+      localOnly,
     });
 
     console.log("[api/food/search] OK", {

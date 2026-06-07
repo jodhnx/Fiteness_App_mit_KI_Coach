@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,41 +8,55 @@ import { ScanLine, AlertCircle, Clock, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { FoodProduct, FoodSearchResponse } from "@/lib/food/food-product-types";
 import type { MealType } from "@prisma/client";
-import { MEAL_TYPE_LABELS } from "@/lib/nutrition";
 import { getCached, setCached } from "@/lib/client-cache";
-import { ensureFoodItemId } from "@/lib/ensure-food-id";
 import { ProductSearchRow } from "@/components/nutrition/product-search-row";
 import { ProductDetailModal } from "@/components/nutrition/product-detail-modal";
 import { QuickFoodStrip } from "@/components/nutrition/quick-food-strip";
+import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
+const DISH_CHIPS = [
+  "Pizza",
+  "Döner",
+  "Schnitzel",
+  "Burger",
+  "Pasta",
+  "Sushi",
+  "Salat",
+  "Banane",
+];
 
 type Props = {
   mealType: MealType;
   favoriteIds: Set<string>;
-  onAdd: (
-    foodItemId: string,
+  onQuickAddFood: (
+    product: FoodProduct,
     quantityG: number,
-    options?: { offCode?: string; mealType?: MealType }
+    meal: MealType
   ) => Promise<void>;
   onToggleFavorite: (foodItemId: string) => Promise<void>;
   quickFoods?: FoodProduct[];
 };
 
-const SEARCH_CACHE_TTL = 120_000;
+const SEARCH_CACHE_TTL = 300_000;
+const POPULAR_PRELOAD = ["banane", "haferflocken", "hähnchen", "reis", "joghurt", "pizza"];
+
+function cacheKey(q: string) {
+  return `food-search:${q.toLowerCase()}`;
+}
 
 export const ProductSearchPanel = memo(function ProductSearchPanel({
   mealType,
   favoriteIds,
-  onAdd,
+  onQuickAddFood,
   onToggleFavorite,
   quickFoods = [],
 }: Props) {
   const [q, setQ] = useState("");
-  const debouncedQ = useDebounce(q, 150);
+  const debouncedQ = useDebounce(q, 80);
   const [result, setResult] = useState<FoodSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingOff, setLoadingOff] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<FoodProduct | null>(null);
-  const [grams, setGrams] = useState("100");
   const [addMeal, setAddMeal] = useState<MealType>(mealType);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [historyFoods, setHistoryFoods] = useState<{
@@ -50,9 +64,10 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
     recents: FoodProduct[];
     frequent: FoodProduct[];
   }>({ favorites: [], recents: [], frequent: [] });
-  const [adding, setAdding] = useState(false);
   const [quickAddingId, setQuickAddingId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const requestGen = useRef(0);
 
   useEffect(() => {
     setAddMeal(mealType);
@@ -71,10 +86,19 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
         setHistoryFoods({
           favorites: [...pinned, ...unpinned],
           recents: rec,
-          frequent: frequent.slice(0, 8),
+          frequent: frequent.slice(0, 10),
         });
       })
       .catch(() => {});
+
+    for (const term of POPULAR_PRELOAD) {
+      if (!getCached<FoodSearchResponse>(cacheKey(term))) {
+        fetch(`/api/food/search?q=${encodeURIComponent(term)}&localOnly=1`)
+          .then((r) => r.json())
+          .then((data) => setCached(cacheKey(term), data, SEARCH_CACHE_TTL))
+          .catch(() => {});
+      }
+    }
   }, []);
 
   const search = useCallback(async (query: string) => {
@@ -82,16 +106,18 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
     if (trimmed.length < 2) {
       setResult(null);
       setLoading(false);
+      setLoadingOff(false);
       setError(null);
       return;
     }
 
-    const cacheKey = `food-search:${trimmed.toLowerCase()}`;
-    const cached = getCached<FoodSearchResponse>(cacheKey);
+    const key = cacheKey(trimmed);
+    const cached = getCached<FoodSearchResponse>(key);
     if (cached) {
       setResult(cached);
       setError(cached.offError ?? null);
       setLoading(false);
+      setLoadingOff(false);
     } else {
       setLoading(true);
     }
@@ -99,40 +125,45 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
+    const gen = ++requestGen.current;
 
     try {
-      const params = new URLSearchParams({ q: trimmed, suggestions: "1" });
-      const res = await fetch(`/api/food/search?${params}`, {
-        signal: ac.signal,
-      });
-      const data = (await res.json()) as FoodSearchResponse;
-      if (!res.ok) {
-        const errBody = data as { error?: string };
-        throw new Error(errBody.error ?? `Suche fehlgeschlagen (${res.status})`);
-      }
-      setCached(cacheKey, data, SEARCH_CACHE_TTL);
-      setResult(data);
-      setError(
-        data.offError && (data.products?.length ?? 0) === 0 ? data.offError : data.offError ?? null
+      const localRes = await fetch(
+        `/api/food/search?q=${encodeURIComponent(trimmed)}&localOnly=1`,
+        { signal: ac.signal }
       );
+      const localData = (await localRes.json()) as FoodSearchResponse;
+      if (!ac.signal.aborted && gen === requestGen.current) {
+        setResult(localData);
+        setLoading(false);
+        setLoadingOff(true);
+      }
+
+      const fullRes = await fetch(
+        `/api/food/search?q=${encodeURIComponent(trimmed)}`,
+        { signal: ac.signal }
+      );
+      const fullData = (await fullRes.json()) as FoodSearchResponse;
+      if (!ac.signal.aborted && gen === requestGen.current) {
+        setCached(key, fullData, SEARCH_CACHE_TTL);
+        setResult(fullData);
+        setError(
+          fullData.offError && (fullData.products?.length ?? 0) === 0
+            ? fullData.offError
+            : fullData.offError ?? null
+        );
+        setLoadingOff(false);
+      }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
-      const msg = e instanceof Error ? e.message : "Produktsuche nicht erreichbar";
-      if (!cached) {
-        setError(msg);
-        setResult({
-          products: [],
-          suggestions: [],
-          query: trimmed,
-          source: "local",
-          offAvailable: false,
-          offError: msg,
-          localCount: 0,
-          offCount: 0,
-        });
+      if (!cached && gen === requestGen.current) {
+        setError(e instanceof Error ? e.message : "Suche fehlgeschlagen");
       }
     } finally {
-      if (!ac.signal.aborted) setLoading(false);
+      if (!ac.signal.aborted && gen === requestGen.current) {
+        setLoading(false);
+        setLoadingOff(false);
+      }
     }
   }, []);
 
@@ -141,49 +172,34 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
   }, [debouncedQ, search]);
 
   const products = result?.products ?? [];
-  const suggestions = useMemo(() => {
-    const s = result?.suggestions ?? [];
-    return s.filter((x) => x.toLowerCase() !== debouncedQ.toLowerCase());
-  }, [result?.suggestions, debouncedQ]);
+
+  const dishChips = DISH_CHIPS.map((label) => ({ label, query: label }));
 
   function openProduct(p: FoodProduct) {
     setSelected(p);
-    setGrams("100");
     setAddMeal(mealType);
   }
 
-  async function addProduct(
-    product: FoodProduct,
-    quantityG: number,
-    targetMeal: MealType = mealType
-  ) {
-    if (!quantityG || quantityG <= 0) {
-      toast.error("Bitte gültige Gramm-Menge eingeben");
-      return;
-    }
-    setAdding(true);
+  async function quickAdd(product: FoodProduct) {
+    const key = product.id ?? product.offCode ?? product.name;
+    const grams = getDefaultQuickAddGrams(product);
+    setQuickAddingId(key);
     try {
-      const resolved = await ensureFoodItemId(product);
-      if ("error" in resolved) {
-        toast.error(resolved.error);
-        return;
-      }
-      await onAdd(resolved.id, quantityG, {
-        offCode: product.offCode,
-        mealType: targetMeal,
-      });
-      toast.success(`${product.name} zu ${MEAL_TYPE_LABELS[targetMeal]} hinzugefügt`);
-      setSelected(null);
+      await onQuickAddFood(product, grams, mealType);
     } finally {
-      setAdding(false);
       setQuickAddingId(null);
     }
   }
 
-  async function quickAdd100g(product: FoodProduct) {
-    const key = product.id ?? product.offCode ?? product.name;
-    setQuickAddingId(key);
-    await addProduct(product, 100, mealType);
+  async function addFromModal(quantityG: number, m: MealType) {
+    if (!selected) return;
+    setAdding(true);
+    try {
+      await onQuickAddFood(selected, quantityG, m);
+      setSelected(null);
+    } finally {
+      setAdding(false);
+    }
   }
 
   const stripFavorites =
@@ -200,24 +216,26 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
             placeholder="Lebensmittel suchen…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="pl-10 bg-zinc-900/80 border-zinc-700"
+            className="pl-10 h-12 text-base bg-zinc-900/80 border-zinc-700"
             autoComplete="off"
+            autoFocus
           />
         </div>
         <Button
           type="button"
           variant="outline"
           size="icon"
-          title="Barcode eingeben"
+          className="h-12 w-12 shrink-0"
+          title="Barcode"
           onClick={async () => {
-            const code = window.prompt("EAN / Barcode eingeben:");
+            const code = window.prompt("EAN / Barcode:");
             if (!code) return;
             setLoading(true);
             try {
               const res = await fetch(`/api/food/barcode/${code.replace(/\D/g, "")}`);
               const d = await res.json();
               if (d.found && d.food) openProduct(d.food);
-              else toast.error(d.message ?? "Produkt nicht gefunden");
+              else toast.error(d.message ?? "Nicht gefunden");
             } catch {
               toast.error("Barcode-Suche fehlgeschlagen");
             } finally {
@@ -229,15 +247,25 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
         </Button>
       </div>
 
+      {!debouncedQ && (
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+          {dishChips.map((c) => (
+            <button
+              key={c.label}
+              type="button"
+              onClick={() => setQ(c.query)}
+              className="shrink-0 text-xs rounded-full bg-zinc-800 border border-zinc-700 px-3 py-1.5 text-zinc-300 hover:border-cyan-500/40"
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {error && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>
-            {error}
-            {(result?.localCount ?? 0) > 0
-              ? ` (${result?.localCount ?? 0} lokale Treffer)`
-              : ""}
-          </span>
+          <span>{error}</span>
         </div>
       )}
 
@@ -247,38 +275,23 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
             title="Favoriten"
             icon="favorites"
             foods={stripFavorites.slice(0, 10)}
-            onQuickAdd={quickAdd100g}
+            onQuickAdd={quickAdd}
             onOpen={openProduct}
           />
           <QuickFoodStrip
-            title="Häufig verwendet"
+            title="Häufig"
             icon="frequent"
             foods={historyFoods.frequent}
-            onQuickAdd={quickAdd100g}
+            onQuickAdd={quickAdd}
             onOpen={openProduct}
           />
           <QuickFoodStrip
-            title="Zuletzt verwendet"
+            title="Zuletzt"
             icon="recent"
             foods={historyFoods.recents.slice(0, 8)}
-            onQuickAdd={quickAdd100g}
+            onQuickAdd={quickAdd}
             onOpen={openProduct}
           />
-        </div>
-      )}
-
-      {suggestions.length > 0 && debouncedQ.length < 2 && (
-        <div className="flex flex-wrap gap-1.5">
-          {suggestions.slice(0, 6).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setQ(s)}
-              className="text-xs rounded-full bg-zinc-800 border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:border-cyan-500/40"
-            >
-              {s}
-            </button>
-          ))}
         </div>
       )}
 
@@ -298,27 +311,15 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
         </div>
       )}
 
-      {suggestions.length > 0 && debouncedQ.length >= 2 && (
-        <div className="flex flex-wrap gap-1.5">
-          {suggestions.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setQ(s)}
-              className="text-xs rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 text-cyan-200"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+      <div className="space-y-2">
         {loading && debouncedQ.length >= 2 && (
-          <p className="text-sm text-cyan-400/80">Suche…</p>
+          <p className="text-sm text-cyan-400/80 animate-pulse">Suche lokal…</p>
+        )}
+        {loadingOff && debouncedQ.length >= 2 && (
+          <p className="text-xs text-zinc-600">Erweitere mit Open Food Facts (DACH)…</p>
         )}
         {!loading && debouncedQ.length >= 2 && products.length === 0 && !error && (
-          <p className="text-sm text-zinc-500">Keine Produkte gefunden.</p>
+          <p className="text-sm text-zinc-500 py-2">Keine Treffer — anderes Stichwort probieren.</p>
         )}
         {products.map((food) => {
           const rowKey = food.offCode ?? food.id ?? food.name;
@@ -327,7 +328,7 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
               key={rowKey}
               food={food}
               isFavorite={Boolean(food.id && favoriteIds.has(food.id))}
-              onQuickAdd={() => quickAdd100g(food)}
+              onQuickAdd={() => void quickAdd(food)}
               onDetails={() => openProduct(food)}
               onToggleFavorite={
                 food.id ? () => onToggleFavorite(food.id as string) : undefined
@@ -341,20 +342,18 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
       {selected && (
         <ProductDetailModal
           product={selected}
-          grams={grams}
-          onGramsChange={setGrams}
           mealType={addMeal}
           onMealTypeChange={setAddMeal}
           favoriteIds={favoriteIds}
           onToggleFavorite={onToggleFavorite}
           onClose={() => setSelected(null)}
-          onAdd={(quantityG, m) => addProduct(selected, quantityG, m)}
+          onAdd={addFromModal}
           adding={adding}
         />
       )}
 
-      <p className="text-[10px] text-zinc-600 text-center">
-        + = 100 g zu {MEAL_TYPE_LABELS[mealType]} · Open Food Facts
+      <p className="text-[10px] text-zinc-600 text-center pt-1">
+        ★ Favorit · + Schnell hinzufügen (Standardportion) · DACH-Priorität
       </p>
     </div>
   );

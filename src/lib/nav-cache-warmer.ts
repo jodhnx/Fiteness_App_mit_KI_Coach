@@ -32,5 +32,13 @@ export function warmNavDataCaches() {
       () => fetchJson("/api/profile"),
       120_000
     ).catch(() => {});
+
+    for (const term of ["banane", "haferflocken", "pizza", "hähnchen"]) {
+      void fetchCached(
+        `food-search:${term}`,
+        () => fetchJson(`/api/food/search?q=${encodeURIComponent(term)}&localOnly=1`),
+        300_000
+      ).catch(() => {});
+    }
   });
 }

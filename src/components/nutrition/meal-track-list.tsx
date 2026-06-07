@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import Link from "next/link";
 import { Plus, Trash2, Pencil, Coffee, Sun, Moon, Cookie } from "lucide-react";
 import { MEAL_TYPE_LABELS } from "@/lib/meal-types";
 import type { MealType } from "@prisma/client";
@@ -34,6 +33,7 @@ type Props = {
   onRemove: (itemId: string) => void;
   onEdit?: (itemId: string, quantityG: number) => void;
   onDeleteMeal?: (mealId: string) => void;
+  onAddClick?: (mealType: MealType) => void;
 };
 
 export const MealTrackList = memo(function MealTrackList({
@@ -43,6 +43,7 @@ export const MealTrackList = memo(function MealTrackList({
   onRemove,
   onEdit,
   onDeleteMeal,
+  onAddClick,
 }: Props) {
   return (
     <div className="space-y-2">
@@ -77,14 +78,14 @@ export const MealTrackList = memo(function MealTrackList({
                   {expanded ? "▲" : "▼"}
                 </span>
               </button>
-              <Link
-                href={`/nutrition/add/${slot.mealType}`}
-                prefetch
+              <button
+                type="button"
+                onClick={() => onAddClick?.(slot.mealType)}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl btn-accent active:scale-95 transition-transform duration-100"
                 aria-label={`${MEAL_TYPE_LABELS[slot.mealType]} hinzufügen`}
               >
                 <Plus className="h-5 w-5 stroke-[2.5]" />
-              </Link>
+              </button>
             </div>
             {expanded && slot.items.length > 0 && (
               <div className="border-t border-zinc-800">

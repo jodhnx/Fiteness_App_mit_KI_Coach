@@ -1,161 +1,64 @@
 "use client";
 
-import { use, useCallback, useState } from "react";
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import type { MealType } from "@prisma/client";
-import { MEAL_TYPE_LABELS } from "@/lib/meal-types";
-import { FullscreenPage } from "@/components/ui/fullscreen-page";
-import { FoodSearchScreen } from "@/components/nutrition/food-search-screen";
-import { FoodDetailScreen } from "@/components/nutrition/food-detail-screen";
+import { MEAL_TYPE_ORDER } from "@/lib/meal-types";
+import { ProductSearchPanel } from "@/components/nutrition/product-search-panel";
+import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
 import { useFoodFavorites } from "@/hooks/use-food-favorites";
-import { ensureFoodItemId } from "@/lib/ensure-food-id";
-import type { FoodProduct } from "@/lib/food/food-product-types";
-import { applyNutritionMutationResponse } from "@/lib/nutrition-sync";
-import { toast } from "sonner";
+import { useFoodQuickAdd } from "@/hooks/use-food-quick-add";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
-const VALID_MEALS = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const;
+const VALID = new Set(MEAL_TYPE_ORDER);
 
-export default function NutritionAddPage({
+export default function AddFoodPage({
   params,
 }: {
   params: Promise<{ mealType: string }>;
 }) {
-  const { mealType: mealTypeParam } = use(params);
-  const mealType = (
-    VALID_MEALS.includes(mealTypeParam as (typeof VALID_MEALS)[number])
-      ? mealTypeParam
-      : "BREAKFAST"
-  ) as MealType;
+  const { mealType: raw } = use(params);
   const router = useRouter();
-  const [step, setStep] = useState<"search" | "confirm">("search");
-  const [selected, setSelected] = useState<FoodProduct | null>(null);
-  const [adding, setAdding] = useState(false);
-  const { isFavorite, toggleFavorite, favoriteFoods } = useFoodFavorites();
+  const mealType = VALID.has(raw as MealType) ? (raw as MealType) : "SNACK";
 
-  const goBack = useCallback(() => {
-    if (step === "confirm") {
-      setStep("search");
-      setSelected(null);
-    } else {
-      router.back();
-    }
-  }, [step, router]);
-
-  const addFood = useCallback(
-    async (quantityG: number) => {
-      if (!selected) return;
-      setAdding(true);
-      try {
-        const resolved = await ensureFoodItemId(selected);
-        if ("error" in resolved) {
-          toast.error(resolved.error);
-          return;
-        }
-        const res = await fetch("/api/nutrition/quick-add", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            foodItemId: resolved.id,
-            offCode: selected.offCode,
-            quantityG,
-            mealType,
-          }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          toast.error((err as { error?: string }).error ?? "Fehler");
-          return;
-        }
-        await applyNutritionMutationResponse(res);
-        toast.success("Hinzugefügt");
-        router.back();
-      } catch {
-        toast.error("Hinzufügen fehlgeschlagen");
-      } finally {
-        setAdding(false);
-      }
-    },
-    [selected, mealType, router]
-  );
-
-  const logSavedMeal = useCallback(
-    async (recipeId: string, name: string) => {
-      setAdding(true);
-      try {
-        const res = await fetch(`/api/nutrition/recipes/${recipeId}/log`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mealType }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          toast.error(data.error ?? "Fehler");
-          return;
-        }
-        if (data.dashboard) {
-          const { publishNutritionDashboard } = await import("@/lib/nutrition-sync");
-          publishNutritionDashboard(data.dashboard);
-        }
-        toast.success(`${name} hinzugefügt`);
-        router.back();
-      } catch {
-        toast.error("Mahlzeit konnte nicht geladen werden");
-      } finally {
-        setAdding(false);
-      }
-    },
-    [mealType, router]
-  );
+  const { dashboard, applyDashboard } = useNutritionDashboard();
+  const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites();
+  const { quickAdd } = useFoodQuickAdd({
+    dashboard,
+    applyDashboard,
+    onSuccess: () => router.push("/nutrition"),
+  });
 
   return (
-    <FullscreenPage
-      title={step === "search" ? MEAL_TYPE_LABELS[mealType] : "Menge"}
-      subtitle={step === "search" ? "Lebensmittel wählen" : selected?.name}
-      onBack={goBack}
-    >
-      {step === "search" ? (
-        <FoodSearchScreen
-          favoriteFoods={favoriteFoods}
-          onSelectFood={(food) => {
-            setSelected(food);
-            setStep("confirm");
-          }}
-          onLogSavedMeal={logSavedMeal}
-          isFavorite={isFavorite}
-          onToggleFavorite={async (food) => {
-            let item = food;
-            if (!food.id) {
-              const resolved = await ensureFoodItemId(food);
-              if ("error" in resolved) {
-                toast.error(resolved.error);
-                return;
-              }
-              item = { ...food, id: resolved.id };
-            }
-            await toggleFavorite(item);
-          }}
-        />
-      ) : selected ? (
-        <FoodDetailScreen
-          product={selected}
-          isFavorite={isFavorite(selected)}
-          onToggleFavorite={async () => {
-            let item = selected;
-            if (!selected.id) {
-              const resolved = await ensureFoodItemId(selected);
-              if ("error" in resolved) {
-                toast.error(resolved.error);
-                return;
-              }
-              item = { ...selected, id: resolved.id };
-              setSelected(item);
-            }
-            await toggleFavorite(item);
-          }}
-          onAdd={addFood}
-          adding={adding}
-        />
-      ) : null}
-    </FullscreenPage>
+    <div className="max-w-lg mx-auto pb-8">
+      <div className="flex items-center gap-2 mb-4">
+        <Button type="button" variant="ghost" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-lg font-bold text-white">Lebensmittel hinzufügen</h1>
+      </div>
+      <ProductSearchPanel
+        mealType={mealType}
+        favoriteIds={favoriteIds}
+        onQuickAddFood={quickAdd}
+        onToggleFavorite={async (id) => {
+          const food = favoriteFoods.find((f) => f.id === id) ?? {
+            id,
+            name: "",
+            brand: null,
+            calories: 0,
+            proteinG: 0,
+            carbsG: 0,
+            fatG: 0,
+            fiberG: null,
+            servingG: 100,
+            source: "local" as const,
+          };
+          await toggleFavorite(food);
+        }}
+        quickFoods={favoriteFoods}
+      />
+    </div>
   );
 }

@@ -2,12 +2,14 @@ import type { FoodProduct } from "@/lib/food/food-product-types";
 import { logOffRequest } from "@/lib/food/off-logger";
 
 const OFF_USER_AGENT =
-  "AI-Fitness-Coach-Pro/1.0 - Nutrition App - https://github.com - contact: nutrition@local.dev";
+  "NEXFORM/1.0 - Nutrition App DACH - contact: nutrition@local.dev";
 
 /** Primary: Search-a-licious (JSON, fast). Fallback: legacy CGI (often 503/HTML). */
 const SEARCH_A_LICIOUS = "https://search.openfoodfacts.org/search";
 const OFF_WORLD = "https://world.openfoodfacts.org";
 const OFF_AT = "https://at.openfoodfacts.org";
+const OFF_DE = "https://de.openfoodfacts.org";
+const OFF_CH = "https://ch.openfoodfacts.org";
 
 const TIMEOUT_MS = 5000;
 const MAX_RETRIES = 2;
@@ -37,6 +39,17 @@ const AT_BRAND_KEYWORDS = [
   "dm",
   "müller",
   "mueller",
+];
+
+const CH_BRAND_KEYWORDS = [
+  "migros",
+  "coop",
+  "denner",
+  "aldi suisse",
+  "lidl schweiz",
+  "manor",
+  "ottos",
+  "volg",
 ];
 
 const DE_BRAND_KEYWORDS = [
@@ -133,9 +146,15 @@ export function scoreDachProduct(raw: OffProductRaw, brand: string | null): numb
     tags.includes("österreich") ||
     tags.includes("germany") ||
     tags.includes("en:germany") ||
-    tags.includes("deutschland")
+    tags.includes("deutschland") ||
+    tags.includes("switzerland") ||
+    tags.includes("en:switzerland") ||
+    tags.includes("schweiz")
   ) {
     score += 55;
+  }
+  if (tags.includes("switzerland") || tags.includes("schweiz")) {
+    score += 10;
   }
   for (const kw of AT_BRAND_KEYWORDS) {
     if (brands.includes(kw)) {
@@ -149,8 +168,45 @@ export function scoreDachProduct(raw: OffProductRaw, brand: string | null): numb
       break;
     }
   }
-  if (raw.product_name_de?.trim()) score += 15;
+  for (const kw of CH_BRAND_KEYWORDS) {
+    if (brands.includes(kw)) {
+      score += 32;
+      break;
+    }
+  }
+  if (raw.product_name_de?.trim()) score += 20;
+  if (
+    tags.includes("united-states") ||
+    tags.includes("en:united-states") ||
+    tags.includes("usa")
+  ) {
+    score -= 40;
+  }
   return score;
+}
+
+/** Hide US-only products without German label from DACH search results */
+export function filterNonDachProducts(products: FoodProduct[]): FoodProduct[] {
+  return products.filter((p) => {
+    const score = p.austriaScore ?? 0;
+    const countries = (p.countries ?? []).join(" ").toLowerCase();
+    const hasDach =
+      score >= 25 ||
+      countries.includes("austria") ||
+      countries.includes("germany") ||
+      countries.includes("switzerland") ||
+      countries.includes("österreich") ||
+      countries.includes("deutschland") ||
+      countries.includes("schweiz");
+    const usOnly =
+      (countries.includes("united-states") || countries.includes("en:united-states")) &&
+      !countries.includes("germany") &&
+      !countries.includes("austria") &&
+      !countries.includes("switzerland");
+    if (usOnly && score < 15) return false;
+    if (!hasDach && score < 5 && p.source === "openfoodfacts") return false;
+    return true;
+  });
 }
 
 export function mapOffProduct(raw: OffProductRaw): FoodProduct | null {
@@ -380,7 +436,7 @@ export async function searchOpenFoodFacts(
     console.error("[open-food-facts] search-a-licious failed:", msg);
   }
 
-  for (const base of [OFF_AT, OFF_WORLD]) {
+  for (const base of [OFF_AT, OFF_DE, OFF_CH, OFF_WORLD]) {
     try {
       const legacy = await runWithRetry(
         () => searchLegacyCgi(base, q, pageSize),

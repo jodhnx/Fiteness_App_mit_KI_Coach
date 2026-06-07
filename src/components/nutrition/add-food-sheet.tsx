@@ -13,10 +13,10 @@ type Props = {
   favoriteIds: Set<string>;
   quickFoods: FoodProduct[];
   onClose: () => void;
-  onAdd: (
-    foodItemId: string,
+  onQuickAddFood: (
+    product: FoodProduct,
     quantityG: number,
-    options?: { offCode?: string; mealType?: MealType }
+    meal: MealType
   ) => Promise<void>;
   onToggleFavorite: (foodItemId: string) => Promise<void>;
 };
@@ -27,7 +27,7 @@ export const AddFoodSheet = memo(function AddFoodSheet({
   favoriteIds,
   quickFoods,
   onClose,
-  onAdd,
+  onQuickAddFood,
   onToggleFavorite,
 }: Props) {
   useEffect(() => {
@@ -45,11 +45,11 @@ export const AddFoodSheet = memo(function AddFoodSheet({
     <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center sm:p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/70"
+        className="absolute inset-0 bg-black/75"
         aria-label="Schließen"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-lg max-h-[92vh] sm:max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl">
+      <div className="relative z-10 w-full max-w-lg max-h-[94dvh] flex flex-col rounded-t-2xl sm:rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
           <div>
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Lebensmittel</p>
@@ -65,14 +65,11 @@ export const AddFoodSheet = memo(function AddFoodSheet({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 pb-8">
+        <div className="flex-1 overflow-y-auto p-4 pb-8 min-h-0">
           <ProductSearchPanel
             mealType={mealType}
             favoriteIds={favoriteIds}
-            onAdd={async (id, g, opts) => {
-              await onAdd(id, g, { ...opts, mealType });
-              onClose();
-            }}
+            onQuickAddFood={onQuickAddFood}
             onToggleFavorite={onToggleFavorite}
             quickFoods={quickFoods}
           />

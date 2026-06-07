@@ -1,5 +1,7 @@
 import { setCached, invalidateCache, getCached } from "@/lib/client-cache";
-import { roundMacros } from "@/lib/food-macros";
+import { roundMacros, macrosForQuantity } from "@/lib/food-macros";
+import type { MealType } from "@prisma/client";
+import type { FoodProduct } from "@/lib/food/food-product-types";
 import {
   type NutritionDashboardPayload,
   isValidDashboardPayload,
@@ -131,6 +133,83 @@ export function buildSummaryFromDashboard(
     nutrition: isValidDashboardPayload(dashboard)
       ? dashboard
       : createEmptyNutritionDashboard(),
+  };
+}
+
+/** Optimistic UI while quick-add is in flight */
+export function optimisticAddMealItem(
+  dashboard: NutritionDashboardPayload,
+  food: Pick<
+    FoodProduct,
+    "name" | "calories" | "proteinG" | "carbsG" | "fatG" | "fiberG" | "servingG"
+  >,
+  quantityG: number,
+  mealType: MealType
+): NutritionDashboardPayload | null {
+  if (quantityG <= 0) return null;
+
+  const macros = macrosForQuantity(
+    {
+      calories: food.calories,
+      proteinG: food.proteinG,
+      carbsG: food.carbsG,
+      fatG: food.fatG,
+      servingG: food.servingG || 100,
+    },
+    quantityG
+  );
+  const fiberG =
+    food.fiberG != null
+      ? Math.round(food.fiberG * (quantityG / 100) * 10) / 10
+      : 0;
+
+  const tempId = `opt-${Date.now()}`;
+  const newItem = {
+    id: tempId,
+    quantityG,
+    food: { name: food.name },
+    calories: macros.calories,
+    proteinG: macros.proteinG,
+    carbsG: macros.carbsG,
+    fatG: macros.fatG,
+  };
+
+  let mealId: string | null = null;
+  const mealsByType = dashboard.mealsByType.map((slot) => {
+    if (slot.mealType !== mealType) return slot;
+    mealId = slot.mealId ?? `opt-meal-${mealType}`;
+    const items = [...slot.items, newItem];
+    const totals = {
+      calories: slot.totals.calories + macros.calories,
+      proteinG: slot.totals.proteinG + macros.proteinG,
+      carbsG: slot.totals.carbsG + macros.carbsG,
+      fatG: slot.totals.fatG + macros.fatG,
+    };
+    return { ...slot, mealId, items, totals };
+  });
+
+  const consumed = roundMacros({
+    calories: dashboard.consumed.calories + macros.calories,
+    proteinG: dashboard.consumed.proteinG + macros.proteinG,
+    carbsG: dashboard.consumed.carbsG + macros.carbsG,
+    fatG: dashboard.consumed.fatG + macros.fatG,
+  });
+
+  return {
+    ...dashboard,
+    date: nutritionDayKey(),
+    consumed: {
+      ...dashboard.consumed,
+      ...consumed,
+      fiberG: (dashboard.consumed.fiberG ?? 0) + fiberG,
+    },
+    remaining: {
+      calories: Math.max(0, dashboard.targets.calories - consumed.calories),
+      proteinG: Math.max(0, dashboard.targets.proteinG - consumed.proteinG),
+      carbsG: Math.max(0, dashboard.targets.carbsG - consumed.carbsG),
+      fatG: Math.max(0, dashboard.targets.fatG - consumed.fatG),
+    },
+    mealsByType,
   };
 }
 
