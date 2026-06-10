@@ -19,6 +19,7 @@
     "db:test-achievements": "npx tsx scripts/test-achievement-apis.ts",
     "check": "npx tsx scripts/check-services.ts",
     "auth:test": "npx tsx scripts/test-auth.ts",
+    "support:test": "npx tsx scripts/test-support.ts",
     "perf:measure": "npx tsx scripts/measure-api-performance.ts",
     "db:test": "npx tsx scripts/test-database.ts",
     "db:apply-migrations": "npx tsx scripts/apply-migrations.ts",

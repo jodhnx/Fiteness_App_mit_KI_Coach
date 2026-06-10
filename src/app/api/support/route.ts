@@ -1,10 +1,23 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import { jsonOk, jsonError } from "@/lib/api-response";
 import { supportRequestSchema } from "@/lib/validations";
 import { rateLimit } from "@/lib/security/rate-limit";
-import { sendSupportEmails, isSupportEmailConfigured } from "@/lib/support-email";
+import { sendSupportEmails } from "@/lib/support-email";
+import { getSupportEnvIssueMessage } from "@/lib/support-config";
+import { apiErrorStatus, formatApiErrorMessage } from "@/lib/format-api-error";
+import { tableExists } from "@/lib/prisma-safe";
+
+export async function GET() {
+  const envIssue = getSupportEnvIssueMessage();
+  const hasTable = await tableExists("SupportRequest");
+  return jsonOk({
+    ready: !envIssue && hasTable,
+    envIssue,
+    tableReady: hasTable,
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,21 +33,29 @@ export async function POST(req: NextRequest) {
       return jsonError("Zu viele Anfragen. Bitte in einer Stunde erneut versuchen.", 429);
     }
 
+    const envIssue = getSupportEnvIssueMessage();
+    if (envIssue) {
+      return jsonError(envIssue, 503);
+    }
+
+    if (!(await tableExists("SupportRequest"))) {
+      return jsonError(
+        'Datenbanktabelle „SupportRequest" fehlt. Bitte ausführen: npx prisma db push',
+        503
+      );
+    }
+
     const body = await req.json();
     const parsed = supportRequestSchema.safeParse(body);
     if (!parsed.success) {
-      return jsonError("Bitte alle Pflichtfelder korrekt ausfüllen.");
+      const fields = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
+      return jsonError(
+        fields ? `Ungültige Eingabe (${fields}).` : "Bitte alle Pflichtfelder korrekt ausfüllen."
+      );
     }
 
     if (parsed.data.website?.trim()) {
       return jsonOk({ ok: true });
-    }
-
-    if (!isSupportEmailConfigured()) {
-      return jsonError(
-        "Support ist vorübergehend nicht verfügbar. Bitte später erneut versuchen.",
-        503
-      );
     }
 
     const createdAt = new Date();
@@ -60,14 +81,15 @@ export async function POST(req: NextRequest) {
     } catch (emailErr) {
       console.error("[support] email failed", emailErr);
       await prisma.supportRequest.delete({ where: { id: record.id } }).catch(() => {});
-      return jsonError(
-        "E-Mail konnte nicht gesendet werden. Bitte später erneut versuchen.",
-        502
-      );
+      const detail =
+        emailErr instanceof Error ? emailErr.message : "Unbekannter E-Mail-Fehler";
+      return jsonError(`E-Mail konnte nicht gesendet werden: ${detail}`, 502);
     }
 
     return jsonOk({ ok: true, id: record.id }, 201);
   } catch (e) {
-    return handleApiError(e);
+    console.error("[support] POST failed", e);
+    const message = formatApiErrorMessage(e);
+    return jsonError(message, apiErrorStatus(e));
   }
 }

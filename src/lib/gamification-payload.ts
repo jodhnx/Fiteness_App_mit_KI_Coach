@@ -49,7 +49,7 @@ export async function loadGamificationPayload(
     loadAchievementsWithProgress(userId).catch((e) => {
       console.error("[gamification] achievements", e);
       if (isSchemaMismatchError(e)) {
-        errors.push("Achievement-Schema veraltet (migrate deploy)");
+        errors.push("Achievement-Tabelle/Spalte fehlt (db push)");
       } else {
         errors.push("Erfolge");
       }
@@ -58,7 +58,7 @@ export async function loadGamificationPayload(
     loadChallengesWithProgress(userId, { syncDb: true }).catch((e) => {
       console.error("[gamification] challenges", e);
       if (isSchemaMismatchError(e)) {
-        errors.push("Challenge-Schema veraltet");
+        errors.push("Challenge-Tabelle/Spalte fehlt (db push)");
       } else {
         errors.push("Challenges");
       }

@@ -61,3 +61,33 @@ export function getAppName() {
 export function getSupportEmail() {
   return process.env.SUPPORT_EMAIL?.trim() || "";
 }
+
+export function getSupportEnvIssues(): string[] {
+  const issues: string[] = [];
+  if (!getSupportEmail()) {
+    issues.push("SUPPORT_EMAIL fehlt");
+  }
+  const hasResend = Boolean(process.env.RESEND_API_KEY?.trim());
+  const hasSmtp = Boolean(process.env.SMTP_HOST?.trim());
+  if (!hasResend && !hasSmtp) {
+    issues.push("RESEND_API_KEY oder SMTP_HOST fehlt");
+  }
+  return issues;
+}
+
+export function getSupportEnvIssueMessage(): string | null {
+  const issues = getSupportEnvIssues();
+  if (issues.length === 0) return null;
+  return `E-Mail-Konfiguration unvollständig: ${issues.join(", ")}.`;
+}
+
+export function getSupportEnvStatus() {
+  return {
+    supportEmail: Boolean(getSupportEmail()),
+    resendKey: Boolean(process.env.RESEND_API_KEY?.trim()),
+    smtpHost: Boolean(process.env.SMTP_HOST?.trim()),
+    emailFrom: Boolean(process.env.EMAIL_FROM?.trim()),
+    appName: getAppName(),
+    ready: getSupportEnvIssues().length === 0,
+  };
+}

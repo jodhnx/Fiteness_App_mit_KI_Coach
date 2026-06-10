@@ -1,27 +1,20 @@
 import { Prisma } from "@prisma/client";
 
-/** Prisma P2021 / P2022 / raw PG: relation does not exist */
+/** Prisma P2021 — table does not exist (strict, no regex). */
 export function isMissingTableError(error: unknown): boolean {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === "P2021" || error.code === "P2022") return true;
-  }
-  const msg = error instanceof Error ? error.message : String(error);
   return (
-    /does not exist/i.test(msg) ||
-    /relation.*not found/i.test(msg) ||
-    /table.*not found/i.test(msg) ||
-    /Unknown table/i.test(msg)
+    error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021"
   );
 }
 
+/** Prisma P2022 — column does not exist (strict, no regex). */
 export function isMissingColumnError(error: unknown): boolean {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === "P2022") return true;
-  }
-  const msg = error instanceof Error ? error.message : String(error);
-  return /column.*does not exist/i.test(msg) || /unknown column/i.test(msg);
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2022"
+  );
 }
 
+/** @deprecated Prefer formatApiErrorMessage — only true Prisma P2021/P2022 codes. */
 export function isSchemaMismatchError(error: unknown): boolean {
   return isMissingTableError(error) || isMissingColumnError(error);
 }

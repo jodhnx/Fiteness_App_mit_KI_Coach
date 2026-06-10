@@ -12,6 +12,7 @@ import {
   isDatabaseConnectionError,
   isSchemaMismatchError,
 } from "@/lib/prisma-errors";
+import { formatApiErrorMessage } from "@/lib/format-api-error";
 
 export type RegisterInput = {
   name: string;
@@ -45,7 +46,7 @@ function mapPrismaError(error: unknown): RegisterResult | null {
     return {
       ok: false,
       status: 503,
-      error: "Datenbank-Schema veraltet. Bitte ausführen: npx prisma migrate deploy",
+      error: formatApiErrorMessage(error),
     };
   }
 

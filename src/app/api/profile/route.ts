@@ -16,6 +16,7 @@ import {
 import { buildProfileUpsertData } from "@/lib/profile-patch";
 import { startOfDay, isValid } from "date-fns";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import { formatApiErrorMessage } from "@/lib/format-api-error";
 import { isSchemaMismatchError } from "@/lib/prisma-errors";
 
 function logProfile(step: string, detail?: Record<string, unknown>) {
@@ -197,10 +198,7 @@ export async function PATCH(req: NextRequest) {
     });
     if (isSchemaMismatchError(e)) {
       console.error("[api/profile] schema mismatch", e);
-      return jsonError(
-        "Datenbank-Schema veraltet. Bitte ausführen: npx prisma migrate deploy",
-        503
-      );
+      return jsonError(formatApiErrorMessage(e), 503);
     }
     console.error("[api/profile] PATCH error", e);
     return handleApiError(e);

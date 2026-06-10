@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const dateParam = req.nextUrl.searchParams.get("date");
     const date = dateParam ? startOfDay(new Date(dateParam)) : startOfDay(new Date());
     if (!(await tableExists("WaterLog"))) {
-      return jsonOk({ logs: [], totalMl: 0, schemaWarning: "WaterLog-Tabelle fehlt — Migration ausführen" });
+      return jsonOk({ logs: [], totalMl: 0, schemaWarning: "WaterLog-Tabelle fehlt — npx prisma db push" });
     }
     const logs = await prisma.waterLog.findMany({
       where: { userId: session.user.id, date },
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     );
     if (!(await tableExists("WaterLog"))) {
       return jsonError(
-        "Wasser-Tracking nicht verfügbar. Bitte Datenbank migrieren: npx prisma migrate deploy",
+        "Wasser-Tracking nicht verfügbar. Tabelle fehlt — npx prisma db push",
         503
       );
     }
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (e) {
     if (isSchemaMismatchError(e)) {
-      return jsonError("Wasser-Tracking: Tabelle fehlt. Migration ausführen.", 503);
+      return jsonError("Wasser-Tracking: Tabelle oder Spalte fehlt — npx prisma db push", 503);
     }
     return handleApiError(e);
   }
