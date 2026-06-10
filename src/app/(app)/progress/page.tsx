@@ -12,7 +12,7 @@ import {
 } from "@/lib/nutrition-sync";
 import { buildWeightAnalytics, type WeightPeriod } from "@/lib/weight-analytics";
 import { WeightQuickEntry } from "@/components/progress/weight-quick-entry";
-import { WeightTrendChart } from "@/components/progress/weight-trend-chart";
+import { LazyWeightTrendChart } from "@/components/progress/lazy-weight-trend-chart";
 import { LazyStatChart } from "@/components/charts/lazy-stat-chart";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -318,7 +318,7 @@ export default function ProgressPage() {
           ))}
         </div>
 
-        <WeightTrendChart data={analytics.chartPoints} />
+        <LazyWeightTrendChart data={analytics.chartPoints} />
 
         {analytics.weeklyAverages.length > 0 && (
           <div className="mt-4">

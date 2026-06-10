@@ -281,6 +281,7 @@ export const goalSchema = z.object({
 export const chatMessageSchema = z.object({
   chatId: z.string().optional(),
   message: z.string().min(1).max(4000),
+  stream: z.boolean().optional(),
 });
 
 export const friendRequestSchema = z.object({

@@ -119,9 +119,28 @@ export async function buildCoachUserContext(userId: string): Promise<string> {
     lines.push(`Aktive Ziele: ${goals.map((g) => g.title).join(", ")}`);
   }
 
-  if (metrics) {
-    lines.push(`BMR geschätzt: ${Math.round(10 * metrics.weightKg + 6.25 * metrics.heightCm - 5 * metrics.age)} (Richtwert)`);
+  if (metrics && profile) {
+    const bmr =
+      profile.gender === "FEMALE"
+        ? Math.round(10 * metrics.weightKg + 6.25 * metrics.heightCm - 5 * metrics.age - 161)
+        : Math.round(10 * metrics.weightKg + 6.25 * metrics.heightCm - 5 * metrics.age + 5);
+    const activityMult =
+      profile.activityLevel === "VERY_ACTIVE"
+        ? 1.725
+        : profile.activityLevel === "ACTIVE"
+          ? 1.55
+          : profile.activityLevel === "MODERATE"
+            ? 1.375
+            : profile.activityLevel === "LIGHT"
+              ? 1.2
+              : 1.2;
+    lines.push(`BMR geschätzt (Mifflin-St Jeor): ${bmr} kcal`);
+    lines.push(`TDEE-Richtwert: ${Math.round(bmr * activityMult)} kcal`);
   }
+
+  lines.push(
+    "Hinweis Coach: Bei Kalorien-/Makrofragen immer Profil + heutige Ernährung + Zielgewicht einbeziehen."
+  );
 
   return lines.join("\n");
 }

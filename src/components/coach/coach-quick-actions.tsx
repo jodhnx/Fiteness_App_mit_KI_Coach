@@ -5,44 +5,46 @@ import {
   Apple,
   Calculator,
   Beef,
-  Scale,
-  ClipboardList,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 
 const ACTIONS = [
   {
     label: "Trainingsplan erstellen",
     prompt:
-      "Erstelle mir einen strukturierten Trainingsplan basierend auf meinen Zielen, meiner Erfahrung und verfügbaren Trainingstagen.",
-    icon: ClipboardList,
+      "Erstelle mir einen individuellen Trainingsplan basierend auf meinem Ziel, meiner Erfahrung, Trainingstagen pro Woche und Regenerationsstatus. Gib Wochenstruktur mit Übungen, Sätzen und Wdh.",
+    icon: Dumbbell,
   },
   {
-    label: "Kalorien analysieren",
+    label: "Kalorien berechnen",
     prompt:
-      "Analysiere meine heutigen Kalorien und sag mir, ob ich auf Kurs bin — inkl. verbleibender kcal.",
+      "Wie viele Kalorien soll ich täglich essen? Berechne individuell aus meinem Gewicht, Größe, Alter, Geschlecht, Aktivität und Ziel (Bulk/Cut/Maintain). Gib konkrete kcal.",
     icon: Calculator,
   },
   {
-    label: "Makros prüfen",
-    prompt: "Prüfe meine Makros heute (Protein, Carbs, Fett) und gib mir konkrete Empfehlungen.",
+    label: "Makros berechnen",
+    prompt:
+      "Berechne meine optimalen Makros (Protein, Kohlenhydrate, Fett) für mein aktuelles Ziel. Nutze meine Profildaten und gib Gramm pro Tag.",
     icon: Apple,
   },
   {
-    label: "Protein analysieren",
+    label: "Protein berechnen",
     prompt:
-      "Analysiere mein Protein heute — wie viel fehlt noch und welche 3 Lebensmittel empfiehlst du?",
+      "Wie viel Protein brauche ich täglich? Berechne aus Gewicht und Ziel, vergleiche mit meinem heutigen Verzehr und nenne 3 konkrete Proteinquellen.",
     icon: Beef,
   },
   {
-    label: "Gewicht analysieren",
+    label: "Bulk analysieren",
     prompt:
-      "Analysiere meine Gewichtsentwicklung und ob mein Tempo zum Zielgewicht passt.",
-    icon: Scale,
+      "Analysiere ob mein aktueller Bulk optimal läuft: Kalorienüberschuss, Protein, Gewichtstrend, Training. Gib 3 Verbesserungen.",
+    icon: TrendingUp,
   },
   {
-    label: "Training optimieren",
-    prompt: "Analysiere mein Training der letzten Wochen und nenne 3 Verbesserungen.",
-    icon: Dumbbell,
+    label: "Cut analysieren",
+    prompt:
+      "Analysiere meinen Cut: Kaloriendefizit, Makros, Gewichtstrend, Muskel-Erhalt. Rate Defizit-Stärke und gib 3 Tipps.",
+    icon: TrendingDown,
   },
 ] as const;
 
@@ -69,7 +71,7 @@ export function CoachQuickActions({
             onClick={() => onAsk(prompt)}
             className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-zinc-900/80 px-3 py-2.5 text-left text-sm text-zinc-200 active:bg-zinc-800 disabled:opacity-50 min-h-[44px]"
           >
-            <Icon className="h-4 w-4 text-cyan-400 shrink-0" />
+            <Icon className="h-4 w-4 text-cyan-400 shrink-0" aria-hidden />
             <span className="leading-tight">{label}</span>
           </button>
         ))}
