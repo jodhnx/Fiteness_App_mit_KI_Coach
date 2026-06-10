@@ -1,0 +1,63 @@
+import type { SupportCategory } from "@prisma/client";
+
+export const SUPPORT_CATEGORIES: {
+  value: SupportCategory;
+  label: string;
+}[] = [
+  { value: "PROBLEM", label: "Problem melden" },
+  { value: "IMPROVEMENT", label: "Verbesserungsvorschlag" },
+  { value: "FEATURE", label: "Feature-Wunsch" },
+  { value: "BUG", label: "Fehler melden" },
+  { value: "ACCOUNT", label: "Account Problem" },
+  { value: "OTHER", label: "Sonstiges" },
+];
+
+export const SUPPORT_QUICK_TOPICS: {
+  title: string;
+  description: string;
+  category: SupportCategory;
+}[] = [
+  {
+    title: "Kontakt aufnehmen",
+    description: "Allgemeine Fragen an unser Team",
+    category: "OTHER",
+  },
+  {
+    title: "Verbesserungsvorschlag senden",
+    description: "Ideen zur App-Optimierung",
+    category: "IMPROVEMENT",
+  },
+  {
+    title: "Problem melden",
+    description: "Etwas funktioniert nicht wie erwartet",
+    category: "PROBLEM",
+  },
+  {
+    title: "Feature-Wunsch senden",
+    description: "Neue Funktionen vorschlagen",
+    category: "FEATURE",
+  },
+  {
+    title: "Sonstiges",
+    description: "Alles andere — wir helfen gerne",
+    category: "OTHER",
+  },
+];
+
+export function supportCategoryLabel(category: SupportCategory): string {
+  return SUPPORT_CATEGORIES.find((c) => c.value === category)?.label ?? category;
+}
+
+export const SUPPORT_STATUS_LABELS: Record<string, string> = {
+  OPEN: "Offen",
+  IN_PROGRESS: "In Bearbeitung",
+  RESOLVED: "Erledigt",
+};
+
+export function getAppName() {
+  return process.env.APP_NAME?.trim() || "NEXFORM";
+}
+
+export function getSupportEmail() {
+  return process.env.SUPPORT_EMAIL?.trim() || "";
+}

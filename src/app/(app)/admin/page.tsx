@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminSupportPanel } from "@/components/admin/admin-support-panel";
 
 type AdminStats = {
   userCount: number;
@@ -59,6 +60,8 @@ export default function AdminPage() {
           <CardContent className="text-3xl font-bold">{stats.aiRequests}</CardContent>
         </Card>
       </div>
+
+      <AdminSupportPanel />
 
       <Card>
         <CardHeader>

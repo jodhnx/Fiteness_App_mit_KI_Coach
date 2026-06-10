@@ -287,3 +287,12 @@ export const chatMessageSchema = z.object({
 export const friendRequestSchema = z.object({
   email: z.string().email(),
 });
+
+export const supportRequestSchema = z.object({
+  name: z.string().min(2).max(120),
+  email: z.string().email().max(254),
+  category: z.enum(["PROBLEM", "IMPROVEMENT", "FEATURE", "BUG", "ACCOUNT", "OTHER"]),
+  message: z.string().min(10).max(5000),
+  /** Honeypot — must stay empty */
+  website: z.string().max(100).optional(),
+});

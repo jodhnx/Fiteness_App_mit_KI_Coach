@@ -38,6 +38,8 @@ import {
 } from "@/components/settings/settings-category-nav";
 import { SettingsProfileHero } from "@/components/settings/settings-profile-hero";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { LifeBuoy } from "lucide-react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { getCached, setCached } from "@/lib/client-cache";
 
@@ -795,6 +797,24 @@ export default function SettingsPage() {
           Erinnerungen für Training, Wasser und Ziele folgen in einem späteren Update. Aktuell
           erhältst du Hinweise über den KI Coach auf dem Dashboard.
         </p>
+      </section>
+
+      <section className="card-premium p-4 scroll-mt-24">
+        <Link
+          href="/settings/support"
+          className="flex items-center gap-3 rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-3.5 active:opacity-90"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-400">
+            <LifeBuoy className="h-5 w-5" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-white">Support</p>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Kontakt, Feedback, Probleme & Feature-Wünsche
+            </p>
+          </div>
+          <span className="text-zinc-500 text-sm">→</span>
+        </Link>
       </section>
 
       <Button
