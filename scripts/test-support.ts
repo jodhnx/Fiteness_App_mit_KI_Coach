@@ -66,21 +66,24 @@ async function main() {
     recordId = record.id;
     console.log(`✓ Datenbankeintrag erstellt (id: ${record.id})`);
 
-    if (SEND_EMAILS) {
-      if (envIssues.length) {
-        console.error(`\n✗ E-Mail-Test übersprungen: ${envIssues.join(", ")}`);
-        console.error("  Setze SUPPORT_EMAIL und RESEND_API_KEY (oder SMTP) in .env");
-        process.exit(1);
+    if (SEND_EMAILS && !envIssues.length) {
+      try {
+        await sendSupportEmails({
+          name: record.name,
+          email: record.email,
+          category: record.category,
+          message: record.message,
+          createdAt: record.createdAt,
+        });
+        console.log("✓ Support-E-Mail gesendet");
+        console.log("✓ Bestätigungsmail gesendet");
+      } catch (emailErr) {
+        const detail =
+          emailErr instanceof Error ? emailErr.message : "Unbekannter E-Mail-Fehler";
+        console.warn(`⚠ E-Mail-Versand fehlgeschlagen (Anfrage wäre trotzdem gespeichert): ${detail}`);
       }
-      await sendSupportEmails({
-        name: record.name,
-        email: record.email,
-        category: record.category,
-        message: record.message,
-        createdAt: record.createdAt,
-      });
-      console.log("✓ Support-E-Mail gesendet");
-      console.log("✓ Bestätigungsmail gesendet");
+    } else if (SEND_EMAILS) {
+      console.warn(`⚠ E-Mail-Test übersprungen: ${envIssues.join(", ")}`);
     } else {
       console.log("\nℹ E-Mail-Versand nicht getestet (nutze --send zum Senden)");
     }

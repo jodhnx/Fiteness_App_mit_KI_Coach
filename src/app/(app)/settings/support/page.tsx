@@ -37,6 +37,7 @@ export default function SupportPage() {
   const [website, setWebsite] = useState("");
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [emailSent, setEmailSent] = useState(true);
 
   useEffect(() => {
     if (profile?.user?.name && !name) setName(profile.user.name);
@@ -68,6 +69,7 @@ export default function SupportPage() {
         return;
       }
       setSuccess(true);
+      setEmailSent((data as { emailSent?: boolean }).emailSent !== false);
       setMessage("");
     } catch {
       toast.error("Verbindungsfehler. Bitte erneut versuchen.");
@@ -83,8 +85,10 @@ export default function SupportPage() {
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center space-y-3">
           <CheckCircle2 className="h-12 w-12 text-emerald-400 mx-auto" aria-hidden />
           <p className="text-emerald-100 font-medium leading-relaxed">
-            Deine Anfrage wurde erfolgreich gesendet. Du erhältst in Kürze eine
-            Bestätigungs-E-Mail.
+            Deine Anfrage wurde erfolgreich gesendet.
+            {emailSent
+              ? " Du erhältst in Kürze eine Bestätigungs-E-Mail."
+              : " Unser Team wird deine Nachricht prüfen."}
           </p>
           <div className="flex flex-col gap-2 pt-2">
             <Button

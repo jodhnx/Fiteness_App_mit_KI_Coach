@@ -33,8 +33,8 @@ Die Meldung **„Datenbank-Schema veraltet. Bitte ausführen: npx prisma migrate
 2. **ENV-Check** — fehlende `SUPPORT_EMAIL` / `RESEND_API_KEY` → klare Meldung
 3. **Tabellen-Check** — `SupportRequest` fehlt → Hinweis `npx prisma db push`
 4. **Speicherung** — `prisma.supportRequest.create()`
-5. **E-Mails** — Team + Bestätigung via Resend/SMTP; bei Fehler: echte Meldung (z. B. Resend-Domain)
-6. **Erfolg** — `{ ok: true }` → Bestätigungs-UI
+5. **E-Mails** — Team + Bestätigung via Resend/SMTP; bei Fehler nur **Server-Log-Warnung**, Anfrage bleibt gespeichert
+6. **Erfolg** — `{ ok: true, emailSent: boolean }` → Bestätigungs-UI (ohne E-Mail-Versprechen wenn `emailSent: false`)
 
 ## Erkannte ENV-Variablen (Testlauf)
 

@@ -13,9 +13,10 @@ export async function GET() {
   const envIssue = getSupportEnvIssueMessage();
   const hasTable = await tableExists("SupportRequest");
   return jsonOk({
-    ready: !envIssue && hasTable,
-    envIssue,
+    ready: hasTable,
     tableReady: hasTable,
+    emailConfigured: !envIssue,
+    envIssue,
   });
 }
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     const envIssue = getSupportEnvIssueMessage();
     if (envIssue) {
-      return jsonError(envIssue, 503);
+      console.warn("[support] E-Mail nicht konfiguriert — Anfrage wird nur gespeichert:", envIssue);
     }
 
     if (!(await tableExists("SupportRequest"))) {
@@ -69,24 +70,26 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    try {
-      await sendSupportEmails({
-        name: record.name,
-        email: record.email,
-        category: record.category,
-        message: record.message,
-        userId: record.userId,
-        createdAt,
-      });
-    } catch (emailErr) {
-      console.error("[support] email failed", emailErr);
-      await prisma.supportRequest.delete({ where: { id: record.id } }).catch(() => {});
-      const detail =
-        emailErr instanceof Error ? emailErr.message : "Unbekannter E-Mail-Fehler";
-      return jsonError(`E-Mail konnte nicht gesendet werden: ${detail}`, 502);
+    let emailSent = false;
+    if (!envIssue) {
+      try {
+        await sendSupportEmails({
+          name: record.name,
+          email: record.email,
+          category: record.category,
+          message: record.message,
+          userId: record.userId,
+          createdAt,
+        });
+        emailSent = true;
+      } catch (emailErr) {
+        const detail =
+          emailErr instanceof Error ? emailErr.message : "Unbekannter E-Mail-Fehler";
+        console.warn("[support] E-Mail-Versand fehlgeschlagen — Anfrage gespeichert:", detail);
+      }
     }
 
-    return jsonOk({ ok: true, id: record.id }, 201);
+    return jsonOk({ ok: true, id: record.id, emailSent }, 201);
   } catch (e) {
     console.error("[support] POST failed", e);
     const message = formatApiErrorMessage(e);
