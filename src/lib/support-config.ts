@@ -62,6 +62,16 @@ export function getSupportEmail() {
   return process.env.SUPPORT_EMAIL?.trim() || "";
 }
 
+export const SUPPORT_EMAIL_STATUS_LABELS: Record<string, string> = {
+  SAVED: "Gespeichert",
+  EMAIL_SENT: "Email versendet",
+  EMAIL_FAILED: "Email fehlgeschlagen",
+};
+
+export function supportEmailStatusLabel(status: string): string {
+  return SUPPORT_EMAIL_STATUS_LABELS[status] ?? status;
+}
+
 export function getSupportEnvIssues(): string[] {
   const issues: string[] = [];
   if (!getSupportEmail()) {

@@ -4,9 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { SUPPORT_STATUS_LABELS, supportCategoryLabel } from "@/lib/support-config";
-import type { SupportCategory, SupportRequestStatus } from "@prisma/client";
+import {
+  SUPPORT_STATUS_LABELS,
+  supportCategoryLabel,
+  supportEmailStatusLabel,
+} from "@/lib/support-config";
+import type {
+  SupportCategory,
+  SupportEmailStatus,
+  SupportRequestStatus,
+} from "@prisma/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type SupportRow = {
   id: string;
@@ -15,6 +24,8 @@ type SupportRow = {
   category: SupportCategory;
   message: string;
   status: SupportRequestStatus;
+  emailStatus: SupportEmailStatus;
+  emailError: string | null;
   createdAt: string;
   userId: string | null;
   user: { id: string; name: string | null; email: string } | null;
@@ -23,9 +34,16 @@ type SupportRow = {
 type SupportPayload = {
   requests: SupportRow[];
   statusCounts: Record<SupportRequestStatus, number>;
+  emailStatusCounts: Record<SupportEmailStatus, number>;
 };
 
 const STATUS_TABS: SupportRequestStatus[] = ["OPEN", "IN_PROGRESS", "RESOLVED"];
+
+const EMAIL_STATUS_STYLES: Record<SupportEmailStatus, string> = {
+  SAVED: "bg-zinc-800 text-zinc-300 border-zinc-700",
+  EMAIL_SENT: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  EMAIL_FAILED: "bg-red-500/15 text-red-300 border-red-500/30",
+};
 
 export function AdminSupportPanel() {
   const [data, setData] = useState<SupportPayload | null>(null);
@@ -77,9 +95,25 @@ export function AdminSupportPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Support-Anfragen</CardTitle>
+        <CardTitle>Support-Anfragen (letzte 20)</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {data?.emailStatusCounts && (
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(data.emailStatusCounts) as SupportEmailStatus[]).map((key) => (
+              <span
+                key={key}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-medium",
+                  EMAIL_STATUS_STYLES[key]
+                )}
+              >
+                {supportEmailStatusLabel(key)} ({data.emailStatusCounts[key] ?? 0})
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -127,11 +161,24 @@ export function AdminSupportPanel() {
                   <p className="font-semibold text-white">{r.name}</p>
                   <p className="text-zinc-500 text-xs">{r.email}</p>
                 </div>
-                <span className="text-xs rounded-full bg-zinc-800 px-2 py-1 text-zinc-300">
-                  {supportCategoryLabel(r.category)}
-                </span>
+                <div className="flex flex-wrap gap-2">
+                  <span
+                    className={cn(
+                      "text-xs rounded-full border px-2 py-1 font-medium",
+                      EMAIL_STATUS_STYLES[r.emailStatus]
+                    )}
+                  >
+                    {supportEmailStatusLabel(r.emailStatus)}
+                  </span>
+                  <span className="text-xs rounded-full bg-zinc-800 px-2 py-1 text-zinc-300">
+                    {supportCategoryLabel(r.category)}
+                  </span>
+                </div>
               </div>
               <p className="text-zinc-300 whitespace-pre-wrap line-clamp-4">{r.message}</p>
+              {r.emailError && (
+                <p className="text-xs text-red-400/90 break-words">{r.emailError}</p>
+              )}
               <p className="text-[10px] text-zinc-600">
                 {new Date(r.createdAt).toLocaleString("de-DE")}
                 {r.userId ? ` · User ${r.userId.slice(0, 8)}…` : ""}

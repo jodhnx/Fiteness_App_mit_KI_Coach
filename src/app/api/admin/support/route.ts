@@ -34,17 +34,21 @@ export async function GET(req: NextRequest) {
         : {}),
     };
 
-    const [requests, counts] = await Promise.all([
+    const [requests, counts, emailCounts] = await Promise.all([
       prisma.supportRequest.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        take: 100,
+        take: 20,
         include: {
           user: { select: { id: true, name: true, email: true } },
         },
       }),
       prisma.supportRequest.groupBy({
         by: ["status"],
+        _count: { _all: true },
+      }),
+      prisma.supportRequest.groupBy({
+        by: ["emailStatus"],
         _count: { _all: true },
       }),
     ]);
@@ -58,7 +62,16 @@ export async function GET(req: NextRequest) {
       statusCounts[row.status] = row._count._all;
     }
 
-    return jsonOk({ requests, statusCounts });
+    const emailStatusCounts = {
+      SAVED: 0,
+      EMAIL_SENT: 0,
+      EMAIL_FAILED: 0,
+    };
+    for (const row of emailCounts) {
+      emailStatusCounts[row.emailStatus] = row._count._all;
+    }
+
+    return jsonOk({ requests, statusCounts, emailStatusCounts });
   } catch (e) {
     return handleApiError(e);
   }

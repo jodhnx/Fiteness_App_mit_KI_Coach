@@ -67,8 +67,10 @@ export async function POST(req: NextRequest) {
         email: parsed.data.email.trim().toLowerCase(),
         category: parsed.data.category,
         message: parsed.data.message.trim(),
+        emailStatus: "SAVED",
       },
     });
+    console.log("Support Anfrage gespeichert");
 
     let emailSent = false;
     if (!envIssue) {
@@ -81,11 +83,19 @@ export async function POST(req: NextRequest) {
           userId: record.userId,
           createdAt,
         });
+        await prisma.supportRequest.update({
+          where: { id: record.id },
+          data: { emailStatus: "EMAIL_SENT", emailError: null },
+        });
         emailSent = true;
       } catch (emailErr) {
         const detail =
           emailErr instanceof Error ? emailErr.message : "Unbekannter E-Mail-Fehler";
-        console.warn("[support] E-Mail-Versand fehlgeschlagen — Anfrage gespeichert:", detail);
+        console.error("Resend Fehler:", emailErr);
+        await prisma.supportRequest.update({
+          where: { id: record.id },
+          data: { emailStatus: "EMAIL_FAILED", emailError: detail },
+        });
       }
     }
 

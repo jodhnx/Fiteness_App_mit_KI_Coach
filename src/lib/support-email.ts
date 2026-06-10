@@ -13,7 +13,10 @@ async function dispatchEmail(to: string, subject: string, html: string) {
   if (resendKey) {
     const resend = new Resend(resendKey);
     const { error } = await resend.emails.send({ from, to, subject, html });
-    if (error) throw new Error(`Resend: ${error.message}`);
+    if (error) {
+      console.error("Resend Fehler:", error);
+      throw new Error(`Resend: ${error.message}`);
+    }
     return;
   }
   const smtpHost = process.env.SMTP_HOST?.trim();
@@ -106,12 +109,14 @@ export async function sendSupportEmails(input: {
     "[Fitness App Support] Neue Anfrage",
     buildSupportTeamHtml(input)
   );
+  console.log("Email an Support versendet");
 
   await dispatchEmail(
     input.email,
     "Wir haben deine Anfrage erhalten",
     buildConfirmationHtml(input.name, input.category)
   );
+  console.log("Bestätigungsmail versendet");
 }
 
 export function isSupportEmailConfigured() {

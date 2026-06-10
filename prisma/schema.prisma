@@ -696,20 +696,29 @@ model AIUsageLog {
 }
 
 model SupportRequest {
-  id        String              @id @default(cuid())
-  userId    String?
-  name      String
-  email     String
-  category  SupportCategory
-  message   String
-  status    SupportRequestStatus @default(OPEN)
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
-  user      User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id          String               @id @default(cuid())
+  userId      String?
+  name        String
+  email       String
+  category    SupportCategory
+  message     String
+  status      SupportRequestStatus @default(OPEN)
+  emailStatus SupportEmailStatus   @default(SAVED)
+  emailError  String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  user        User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status])
+  @@index([emailStatus])
   @@index([createdAt])
   @@index([email])
+}
+
+enum SupportEmailStatus {
+  SAVED
+  EMAIL_SENT
+  EMAIL_FAILED
 }
 
 enum SupportCategory {
