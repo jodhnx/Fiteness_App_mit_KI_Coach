@@ -10,6 +10,7 @@ import {
   type PlanSetTarget,
 } from "@/lib/plan-exercise-sets";
 import type { Prisma } from "@prisma/client";
+import { recordExerciseUsage } from "@/lib/workout-plans";
 
 const setTargetSchema = z.object({
   weightKg: z.number().nullable().optional(),
@@ -79,6 +80,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
     if (!day) return jsonError("Trainingstag nicht gefunden", 404);
 
+    const duplicate = await prisma.workoutExercise.findFirst({
+      where: {
+        workoutDayId: day.id,
+        exerciseLibraryId: parsed.data.exerciseLibraryId,
+      },
+    });
+    if (duplicate) return jsonError("Diese Übung ist bereits im Workout", 409);
+
     const maxOrder = await prisma.workoutExercise.aggregate({
       where: { workoutDayId: day.id },
       _max: { orderIndex: true },
@@ -99,6 +108,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       },
       include: { exercise: true },
     });
+
+    void recordExerciseUsage(session.user.id, [parsed.data.exerciseLibraryId]);
 
     return jsonOk({ exercise: ex }, 201);
   } catch (e) {

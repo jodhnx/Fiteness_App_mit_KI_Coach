@@ -5,6 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import type { EquipmentType, MuscleGroup } from "@prisma/client";
 import { ensureExerciseLibrarySeeded } from "@/lib/exercise-seed-runtime";
+import {
+  exerciseCacheKey,
+  getExerciseCache,
+  setExerciseCache,
+} from "@/lib/exercise-search-cache";
 
 export const maxDuration = 60;
 
@@ -38,6 +43,15 @@ export async function GET(req: NextRequest) {
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
 
     const dbCount = await ensureExerciseLibrarySeeded(prisma);
+
+    const cacheKey = exerciseCacheKey(req.nextUrl.searchParams);
+    const cached = getExerciseCache<{
+      exercises: unknown[];
+      total: number;
+      libraryCount: number;
+      seeded: boolean;
+    }>(cacheKey);
+    if (cached) return jsonOk(cached);
 
     const q = req.nextUrl.searchParams.get("q") ?? "";
     const muscle = req.nextUrl.searchParams.get("muscle") as MuscleGroup | null;
@@ -111,12 +125,14 @@ export async function GET(req: NextRequest) {
       isFavorite: favSet.has(ex.id),
     }));
 
-    return jsonOk({
+    const payload = {
       exercises: enriched,
       total: enriched.length,
       libraryCount: dbCount,
       seeded: dbCount >= 50,
-    });
+    };
+    setExerciseCache(cacheKey, payload);
+    return jsonOk(payload);
   } catch (e) {
     return handleApiError(e);
   }

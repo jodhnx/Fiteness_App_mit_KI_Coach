@@ -129,7 +129,7 @@ export default function WorkoutsHubPage() {
       <Link href="/workouts/create" prefetch className="block">
         <Button className="w-full h-14 text-base rounded-xl gap-2">
           <Plus className="h-5 w-5" />
-          Neuen Plan erstellen
+          + Workout erstellen
         </Button>
       </Link>
 

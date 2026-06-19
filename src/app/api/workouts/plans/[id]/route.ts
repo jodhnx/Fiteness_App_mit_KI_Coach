@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import { sessionDurationSec, setVolume } from "@/lib/workout-metrics";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,7 +28,36 @@ export async function GET(_req: NextRequest, { params }: Params) {
       include: planInclude,
     });
     if (!plan) return jsonError("Plan nicht gefunden", 404);
-    return jsonOk({ plan });
+
+    const lastSessions = await prisma.workoutSession.findMany({
+      where: {
+        workoutPlanId: id,
+        userId: session.user.id,
+        status: "COMPLETED",
+      },
+      orderBy: { completedAt: "desc" },
+      take: 30,
+      include: { sets: true },
+    });
+
+    const dayStats: Record<
+      string,
+      { lastSessionAt: string; volumeKg: number; durationSec: number }
+    > = {};
+    for (const ws of lastSessions) {
+      if (!ws.workoutDayId || dayStats[ws.workoutDayId]) continue;
+      const volumeKg = ws.sets.reduce(
+        (acc, s) => acc + setVolume(s.reps, s.weightKg),
+        0
+      );
+      dayStats[ws.workoutDayId] = {
+        lastSessionAt: (ws.completedAt ?? ws.startedAt).toISOString(),
+        volumeKg,
+        durationSec: sessionDurationSec(ws.startedAt, ws.completedAt),
+      };
+    }
+
+    return jsonOk({ plan, dayStats });
   } catch (e) {
     return handleApiError(e);
   }

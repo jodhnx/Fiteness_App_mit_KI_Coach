@@ -5,6 +5,7 @@ import { z } from "zod";
 import { awardXP, checkAndAwardAchievements } from "@/lib/gamification";
 import { updateTrainingStreak } from "@/lib/workout-plans";
 import { computePRUpdates, sessionDurationSec, setVolume } from "@/lib/workout-metrics";
+import { parsePlanSetTargets } from "@/lib/plan-exercise-sets";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 
 const startSchema = z.object({
@@ -107,34 +108,45 @@ export async function POST(req: NextRequest) {
         });
         if (day) {
           for (const ex of day.exercises) {
-            const lastSets = await prisma.workoutSet.findMany({
+            const planSets = parsePlanSetTargets(
+              ex.setTargets,
+              ex.targetSets,
+              ex.targetReps
+            );
+            const setCount = Math.max(planSets.length, ex.targetSets, 1);
+
+            const lastSessionSets = await prisma.workoutSet.findMany({
               where: {
                 exerciseLibraryId: ex.exerciseLibraryId,
                 session: { userId: session.user.id, status: "COMPLETED" },
               },
-              orderBy: { session: { completedAt: "desc" } },
-              take: ex.targetSets,
+              orderBy: [{ session: { completedAt: "desc" } }, { setNumber: "asc" }],
+              take: setCount,
             });
-            if (lastSets.length > 0) {
-              for (const ls of lastSets) {
+
+            if (lastSessionSets.length > 0) {
+              for (let i = 0; i < setCount; i++) {
+                const ls = lastSessionSets[i];
+                const planRow = planSets[i];
                 initialSets.push({
                   exerciseLibraryId: ex.exerciseLibraryId,
                   exerciseName: ex.exercise.name,
-                  setNumber: ls.setNumber,
-                  reps: ls.reps ?? undefined,
-                  weightKg: ls.weightKg ?? undefined,
+                  setNumber: i + 1,
+                  reps: ls?.reps ?? planRow?.reps ?? 10,
+                  weightKg: ls?.weightKg ?? planRow?.weightKg ?? 0,
                   restSeconds: ex.restSeconds,
                   completed: false,
                 });
               }
             } else {
-              for (let i = 1; i <= ex.targetSets; i++) {
+              for (let i = 0; i < setCount; i++) {
+                const planRow = planSets[i];
                 initialSets.push({
                   exerciseLibraryId: ex.exerciseLibraryId,
                   exerciseName: ex.exercise.name,
-                  setNumber: i,
-                  reps: 10,
-                  weightKg: 0,
+                  setNumber: i + 1,
+                  reps: planRow?.reps ?? 10,
+                  weightKg: planRow?.weightKg ?? 0,
                   restSeconds: ex.restSeconds,
                   completed: false,
                 });

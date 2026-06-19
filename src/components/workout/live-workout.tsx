@@ -81,6 +81,14 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
 
   const completedSets = session?.sets.filter((s) => s.completed).length ?? 0;
   const totalSets = session?.sets.length ?? 0;
+  const totalVolume = useMemo(
+    () =>
+      session?.sets.reduce(
+        (acc, s) => acc + (s.weightKg ?? 0) * (s.reps ?? 0),
+        0
+      ) ?? 0,
+    [session]
+  );
 
   async function patchSet(setId: string, data: Partial<SetRow>) {
     const prev = session;
@@ -194,7 +202,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
               {formatTime(elapsed)}
             </p>
             <p className="text-xs text-zinc-500">
-              Sätze {completedSets}/{totalSets}
+              Sätze {completedSets}/{totalSets} · {Math.round(totalVolume).toLocaleString("de-DE")} kg
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

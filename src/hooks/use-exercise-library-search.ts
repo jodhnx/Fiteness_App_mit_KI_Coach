@@ -16,6 +16,7 @@ export type LibraryExercise = {
 type Options = {
   limit?: number;
   enabled?: boolean;
+  debounceMs?: number;
 };
 
 export function useExerciseLibrarySearch(
@@ -23,8 +24,8 @@ export function useExerciseLibrarySearch(
   filters: { muscle?: string; equipment?: string; difficulty?: string },
   options: Options = {}
 ) {
-  const { limit = 120, enabled = true } = options;
-  const debouncedQ = useDebounce(search.trim(), 250);
+  const { limit = 120, enabled = true, debounceMs = 150 } = options;
+  const debouncedQ = useDebounce(search.trim(), debounceMs);
   const [exercises, setExercises] = useState<LibraryExercise[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

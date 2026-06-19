@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Plus, RefreshCw, Trash2 } from "lucide-react";
@@ -48,11 +48,24 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
     setSets(parsePlanSetTargets(setTargets, targetSets, targetReps));
   }, [setTargets, targetSets, targetReps]);
 
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
+
   const persist = useCallback(
-    (next: PlanSetTarget[]) => {
+    (next: PlanSetTarget[], immediate = false) => {
       const clean = serializePlanSetTargets(next);
       setSets(clean);
-      onSaveSets(clean);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (immediate) {
+        onSaveSets(clean);
+        return;
+      }
+      saveTimer.current = setTimeout(() => onSaveSets(clean), 400);
     },
     [onSaveSets]
   );
@@ -68,7 +81,7 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
 
   const removeSet = (index: number) => {
     if (sets.length <= 1) return;
-    persist(sets.filter((_, i) => i !== index));
+    persist(sets.filter((_, i) => i !== index), true);
   };
 
   const style = {
