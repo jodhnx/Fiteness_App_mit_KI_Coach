@@ -13,6 +13,11 @@ import {
   isSchemaMismatchError,
 } from "@/lib/prisma-errors";
 import { formatApiErrorMessage } from "@/lib/format-api-error";
+import {
+  validateSupabaseDatabaseEnv,
+  explainSupabasePoolerError,
+  flattenErrorMessage,
+} from "@/lib/database-url";
 
 export type RegisterInput = {
   name: string;
@@ -34,11 +39,19 @@ export type RegisterResult =
 
 function mapPrismaError(error: unknown): RegisterResult | null {
   if (isDatabaseConnectionError(error)) {
+    const flat = flattenErrorMessage(error);
+    const poolerHint = explainSupabasePoolerError(flat);
+    if (poolerHint) {
+      return { ok: false, status: 503, error: poolerHint };
+    }
+    const env = validateSupabaseDatabaseEnv();
+    const detail = env.ok
+      ? "Supabase-Host nicht erreichbar — Passwort oder Projekt-Status prüfen."
+      : env.issues.join(" ");
     return {
       ok: false,
       status: 503,
-      error:
-        "Datenbank nicht erreichbar. Prüfe Supabase DATABASE_URL in .env und npm run db:verify-supabase",
+      error: `Datenbank nicht erreichbar: ${detail}`,
     };
   }
 

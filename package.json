@@ -25,6 +25,7 @@
     "db:apply-migrations": "npx tsx scripts/apply-migrations.ts",
     "db:supabase:setup": "npx tsx scripts/setup-supabase.ts",
     "db:verify-supabase": "npx tsx scripts/verify-supabase.ts",
+    "db:test-connection": "npx tsx scripts/test-prisma-connection.ts",
     "db:docker": "docker compose up -d",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"

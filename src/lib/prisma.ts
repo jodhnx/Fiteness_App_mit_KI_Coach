@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool, type PoolConfig } from "pg";
+import { validateSupabaseDatabaseEnv, maskDatabaseUrl } from "@/lib/database-url";
 import { isDatabaseConnectionError } from "@/lib/prisma-errors";
 import {
   logDatabaseConnected,
@@ -18,23 +19,11 @@ let pool: Pool | undefined = globalForPrisma.pool;
 let client: PrismaClient | undefined = globalForPrisma.prisma;
 
 function getConnectionString(): string {
-  const raw = process.env.DATABASE_URL?.trim();
-  if (!raw) {
-    throw new Error(
-      "DATABASE_URL fehlt. Supabase: Settings → Database → Transaction pooler (6543)."
-    );
+  const validation = validateSupabaseDatabaseEnv();
+  if (!validation.ok) {
+    throw new Error(validation.issues.join(" "));
   }
-  if (/localhost|127\.0\.0\.1|:5121[789]\b/.test(raw)) {
-    throw new Error(
-      "DATABASE_URL zeigt auf localhost. Bitte Supabase Transaction-URL in .env setzen."
-    );
-  }
-  if (/:6543\b/.test(raw) && !/[?&]pgbouncer=true/i.test(raw)) {
-    throw new Error(
-      "DATABASE_URL (Port 6543) benötigt ?pgbouncer=true — sonst: prepared statement Fehler mit Supavisor."
-    );
-  }
-  return raw;
+  return validation.databaseUrl;
 }
 
 function poolConfig(connectionString: string): PoolConfig {
@@ -140,8 +129,9 @@ export async function pingDatabase(): Promise<boolean> {
   }
 
   if (!(await tryPgPing(connectionString))) {
+    const masked = maskDatabaseUrl(connectionString);
     logDatabaseError(
-      "Supabase nicht erreichbar. Prüfe DATABASE_URL, Passwort und ob das Projekt aktiv ist."
+      `Supabase nicht erreichbar (${masked}). Prüfe Host, Passwort und ob das Projekt aktiv ist.`
     );
     await resetPrismaClient();
     return false;
