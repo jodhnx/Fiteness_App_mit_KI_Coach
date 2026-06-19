@@ -27,7 +27,7 @@ function getConnectionString(): string {
 }
 
 function poolConfig(connectionString: string): PoolConfig {
-  const isSupabase = /supabase\.co/i.test(connectionString);
+  const isSupabase = /supabase\.(co|com)/i.test(connectionString);
   const isVercel = Boolean(process.env.VERCEL);
 
   return {

@@ -19,7 +19,10 @@ export function getLoginErrorMessage(code: string | undefined): string {
     case "invalid_credentials":
       return "E-Mail oder Passwort ist falsch.";
     case "database_connection":
-      return "Datenbank nicht erreichbar. Prüfe Supabase DATABASE_URL / DIRECT_URL in .env.";
+      return (
+        "Datenbank nicht erreichbar. Supabase-Projekt in .env prüfen " +
+        "(DATABASE_URL + DIRECT_URL aus dem Dashboard → Connect → Prisma)."
+      );
     case "CredentialsSignin":
     case "credentials":
       return "E-Mail oder Passwort ist falsch.";

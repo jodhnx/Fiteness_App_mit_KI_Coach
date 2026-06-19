@@ -26,6 +26,7 @@
     "db:supabase:setup": "npx tsx scripts/setup-supabase.ts",
     "db:verify-supabase": "npx tsx scripts/verify-supabase.ts",
     "db:test-connection": "npx tsx scripts/test-prisma-connection.ts",
+    "db:diagnose-env": "npx tsx scripts/diagnose-supabase-env.ts",
     "db:docker": "docker compose up -d",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"

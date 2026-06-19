@@ -4,6 +4,7 @@ import { rateLimit } from "@/lib/security/rate-limit";
 import { jsonOk, jsonError } from "@/lib/api-response";
 import { registerUser } from "@/lib/register-service";
 import { isEmailVerificationEnabled } from "@/lib/verification";
+import { formatApiErrorMessage } from "@/lib/format-api-error";
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,7 +63,6 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("REGISTRATION ERROR (unexpected):", error);
-    const message = error instanceof Error ? error.message : "Unbekannter Fehler";
-    return jsonError(`Serverfehler bei der Registrierung: ${message}`, 500);
+    return jsonError(formatApiErrorMessage(error), 500);
   }
 }

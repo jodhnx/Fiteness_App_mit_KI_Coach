@@ -42,6 +42,12 @@ export function isDatabaseConnectionError(error: unknown): boolean {
   }
 
   const msg = error instanceof Error ? error.message : String(error);
+  if (
+    /tenant\/user\s+postgres\.[a-z0-9]+\s+not found/i.test(msg) ||
+    /ENOTFOUND.*tenant\/user/i.test(msg)
+  ) {
+    return true;
+  }
   return (
     /ECONNREFUSED/i.test(msg) ||
     /ECONNRESET/i.test(msg) ||
