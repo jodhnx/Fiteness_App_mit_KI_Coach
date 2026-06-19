@@ -4,7 +4,7 @@ import { memo } from "react";
 import Link from "next/link";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { cn } from "@/lib/utils";
-import { Droplets, Footprints, Beef } from "lucide-react";
+import { Droplets, Footprints, Beef, Target } from "lucide-react";
 
 type Props = {
   nutrition: NutritionDashboardPayload;
@@ -49,13 +49,20 @@ export const HomeTodayProgressCard = memo(function HomeTodayProgressCard({
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <MiniStat
           icon={Beef}
           label="Protein"
           value={`${proteinLeft}g`}
           sub={`/${Math.round(targets.proteinG)}g`}
           accent="text-rose-400"
+        />
+        <MiniStat
+          icon={Droplets}
+          label="Wasser"
+          value={`${(water.consumedMl / 1000).toFixed(1)}L`}
+          sub={`${waterPct}%`}
+          accent="text-cyan-400"
         />
         <MiniStat
           icon={Footprints}
@@ -65,11 +72,11 @@ export const HomeTodayProgressCard = memo(function HomeTodayProgressCard({
           accent="text-emerald-400"
         />
         <MiniStat
-          icon={Droplets}
-          label="Wasser"
-          value={`${(water.consumedMl / 1000).toFixed(1)}L`}
-          sub={`${waterPct}%`}
-          accent="text-cyan-400"
+          icon={Target}
+          label="Kalorien"
+          value={`${Math.round(consumed.calories)}`}
+          sub={`/${Math.round(targets.calories)}`}
+          accent="text-violet-400"
         />
       </div>
     </Link>

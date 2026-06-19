@@ -235,7 +235,7 @@ export default function CoachPage() {
             m.content ? (
               <ChatBubble key={i} role={m.role} content={m.content} />
             ) : (
-              <p key={i} className="text-xs text-zinc-500 animate-pulse px-1 mr-auto">
+              <p key={i} className="text-xs text-zinc-500 px-1 mr-auto">
                 Coach schreibt…
               </p>
             )

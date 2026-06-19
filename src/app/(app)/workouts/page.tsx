@@ -2,7 +2,6 @@
 
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useRouter } from "next/navigation";
-import { PageHeader } from "@/components/layout/page-header";
 import { TrainingChoiceCard } from "@/components/workout/training-choice-card";
 import { MuscleRecoveryPanel } from "@/components/workout/muscle-recovery-panel";
 import { Button } from "@/components/ui/button";
@@ -56,11 +55,9 @@ export default function WorkoutsHubPage() {
   const recoveryMuscles = filterDisplayMuscles(recoveryData?.recovery ?? []);
 
   return (
-    <div className="space-y-6 pb-24 max-w-lg mx-auto">
-      <PageHeader title="Training" subtitle="Starten · Fortschritt · Übungen" />
-
+    <div className="space-y-3 pb-24 max-w-lg mx-auto -mt-1">
       {activeSession && (
-        <div className="rounded-3xl border border-cyan-500/30 bg-cyan-500/10 p-4">
+        <div className="rounded-3xl border border-cyan-500/30 bg-cyan-500/10 p-4 mb-1">
           <p className="text-xs text-cyan-300/80 uppercase tracking-wide font-medium">Läuft gerade</p>
           <p className="text-lg font-bold text-white mt-1">{activeSession.name ?? "Training"}</p>
           <Button
@@ -73,63 +70,56 @@ export default function WorkoutsHubPage() {
         </div>
       )}
 
-      <MuscleRecoveryPanel muscles={recoveryMuscles} showLink />
+      <TrainingChoiceCard
+        href="/workouts/my-plans"
+        title="Meine Pläne"
+        description="Eigene Trainingspläne · Schnell starten"
+        icon={FolderOpen}
+        iconClassName="bg-violet-500/15 text-violet-400"
+        meta={lastPlanLabel}
+      />
+      <TrainingChoiceCard
+        href="/workouts/catalog"
+        title="Vorgefertigte Pläne"
+        description="Push/Pull · Ober/Unter · Ganzkörper · Anfänger · Muskelaufbau"
+        icon={BookOpen}
+        iconClassName="bg-cyan-500/15 text-cyan-400"
+      />
+      <TrainingChoiceCard
+        href="/workouts/quick"
+        title="Quick Workout"
+        description="Sofort starten · Übungen auswählen · Kein Plan nötig"
+        icon={Zap}
+        iconClassName="bg-amber-500/15 text-amber-400"
+      />
+      <TrainingChoiceCard
+        href="/workouts/journey"
+        title="Fitness Journey"
+        description="Historie · Kalender · Check-Ins · Streak · Volumen"
+        icon={Map}
+        iconClassName="bg-emerald-500/15 text-emerald-400"
+        meta={
+          streak > 0
+            ? `${streak} Tage Streak · ${sessions30} Trainings (30T)`
+            : `${sessions30} Trainings in 30 Tagen`
+        }
+      />
+      <TrainingChoiceCard
+        href="/workouts/records"
+        title="Rekorde"
+        description="Bankdrücken · Kniebeuge · Kreuzheben · Highlights"
+        icon={Trophy}
+        iconClassName="bg-yellow-500/15 text-yellow-400"
+      />
+      <TrainingChoiceCard
+        href="/workouts/exercises"
+        title="Übungen"
+        description="Exercise Hub · Suche · Muskelgruppen · Favoriten"
+        icon={Dumbbell}
+        iconClassName="bg-rose-500/15 text-rose-400"
+      />
 
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 px-1">Trainieren</p>
-        <TrainingChoiceCard
-          href="/workouts/my-plans"
-          title="Meine Pläne"
-          description="Eigene Trainingspläne · Schnell starten"
-          icon={FolderOpen}
-          iconClassName="bg-violet-500/15 text-violet-400"
-          meta={lastPlanLabel}
-        />
-        <TrainingChoiceCard
-          href="/workouts/catalog"
-          title="Vorgefertigte Pläne"
-          description="Push/Pull · Ober/Unter · Ganzkörper · Anfänger · Muskelaufbau"
-          icon={BookOpen}
-          iconClassName="bg-cyan-500/15 text-cyan-400"
-        />
-        <TrainingChoiceCard
-          href="/workouts/quick"
-          title="Quick Workout"
-          description="Sofort starten · Übungen auswählen · Kein Plan nötig"
-          icon={Zap}
-          iconClassName="bg-amber-500/15 text-amber-400"
-        />
-      </div>
-
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 px-1">Mehr</p>
-        <TrainingChoiceCard
-          href="/workouts/journey"
-          title="Fitness Journey"
-          description="Historie · Kalender · Check-Ins · Streak · Volumen"
-          icon={Map}
-          iconClassName="bg-emerald-500/15 text-emerald-400"
-          meta={
-            streak > 0
-              ? `${streak} Tage Streak · ${sessions30} Trainings (30T)`
-              : `${sessions30} Trainings in 30 Tagen`
-          }
-        />
-        <TrainingChoiceCard
-          href="/workouts/records"
-          title="Rekorde"
-          description="Bankdrücken · Kniebeuge · Kreuzheben · Highlights"
-          icon={Trophy}
-          iconClassName="bg-yellow-500/15 text-yellow-400"
-        />
-        <TrainingChoiceCard
-          href="/workouts/exercises"
-          title="Übungen"
-          description="Exercise Hub · Suche · Muskelgruppen · Favoriten"
-          icon={Dumbbell}
-          iconClassName="bg-rose-500/15 text-rose-400"
-        />
-      </div>
+      <MuscleRecoveryPanel muscles={recoveryMuscles} variant="section" />
     </div>
   );
 }

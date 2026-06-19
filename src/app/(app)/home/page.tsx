@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
@@ -8,23 +9,19 @@ import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
 import { type HomeDataPayload } from "@/lib/home-defaults";
 import { useHomeLiveData } from "@/hooks/use-home-live-data";
 import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
-import { RefreshCw, AlertCircle } from "lucide-react";
+import { RefreshCw, AlertCircle, Play, Flame, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HomeLoadingSkeleton } from "@/components/home/home-loading-skeleton";
-import { HomeHeaderBar } from "@/components/home/home-header-bar";
 import { HomeTodayProgressCard } from "@/components/home/home-today-progress-card";
 import { HomeNextTrainingCard } from "@/components/home/home-next-training-card";
+import { HomeWeekProgressCard } from "@/components/home/home-week-progress-card";
 import { HomeKiTipCard } from "@/components/home/home-ki-tip-card";
-import { MuscleRecoveryPanel } from "@/components/workout/muscle-recovery-panel";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { refreshCached, isCacheStale } from "@/lib/client-cache";
-import { usePrefetchedProfile } from "@/components/providers/profile-data-provider";
 
 export default function HomePage() {
   const { status: sessionStatus } = useSession();
-  const profile = usePrefetchedProfile();
-  const { data: rawData, loading, error, timedOut, reload } = useCachedFetch<HomeDataPayload>(
+  const { data: rawData, error, timedOut, reload } = useCachedFetch<HomeDataPayload>(
     HOME_DATA_CACHE_KEY,
     "/api/home",
     120_000,
@@ -72,8 +69,7 @@ export default function HomePage() {
     data.trainingStreak?.currentDays ?? data.streak?.currentDays ?? 0;
   const level = data.gamification?.level ?? 0;
   const levelName = data.gamification?.levelName;
-  const userName = data.userName ?? profile?.user?.name;
-  const userImage = data.userImage ?? profile?.user?.image;
+  const activeSessionId = data.activeSession?.id;
 
   const recoveryMuscles: MuscleRecovery[] = filterDisplayMuscles(
     (data.recovery?.muscles ?? []) as MuscleRecovery[]
@@ -91,52 +87,61 @@ export default function HomePage() {
     );
   }
 
-  if (loading && !rawData) {
-    return <HomeLoadingSkeleton />;
-  }
-
   return (
-    <div className="space-y-5 pb-4 max-w-lg mx-auto">
-      <div className="flex items-start justify-between gap-2">
-        <HomeHeaderBar
-          name={userName}
-          image={userImage}
-          streakDays={trainingStreakDays}
-          level={level}
-          levelName={levelName}
-        />
-        {error && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 mt-2"
-            onClick={reload}
-            aria-label="Neu laden"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
+    <div className="space-y-4 pb-2 max-w-lg mx-auto -mt-1">
       {(error || timedOut) && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          {error ?? "Aktualisierung im Hintergrund…"}
+          <span className="flex-1">{error ?? "Aktualisierung im Hintergrund…"}</span>
+          {error && (
+            <button type="button" onClick={reload} aria-label="Neu laden">
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
+      )}
+
+      {(trainingStreakDays > 0 || level > 0) && (
+        <div className="flex items-center gap-2 flex-wrap px-0.5">
+          {trainingStreakDays > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 border border-orange-500/20 px-2.5 py-1 text-[11px] font-medium text-orange-400">
+              <Flame className="h-3 w-3" />
+              {trainingStreakDays} Tage Streak
+            </span>
+          )}
+          {level > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 border border-violet-500/20 px-2.5 py-1 text-[11px] font-medium text-violet-400">
+              <Sparkles className="h-3 w-3" />
+              Level {level}
+              {levelName ? ` · ${levelName}` : ""}
+            </span>
+          )}
+        </div>
+      )}
+
+      {activeSessionId && (
+        <Link href={`/workouts/live/${activeSessionId}`}>
+          <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 flex items-center justify-between gap-3 active:scale-[0.99] transition-transform">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wide text-cyan-300/80 font-medium">
+                Training läuft
+              </p>
+              <p className="text-sm font-semibold text-white truncate">Jetzt fortsetzen</p>
+            </div>
+            <Play className="h-5 w-5 text-cyan-400 shrink-0" />
+          </div>
+        </Link>
       )}
 
       <HomeTodayProgressCard nutrition={nutrition} steps={steps} stepGoal={stepGoal} />
 
       <HomeNextTrainingCard
         nextWorkout={data.nextWorkout ?? null}
-        activeSessionId={data.activeSession?.id}
+        activeSessionId={activeSessionId}
         recoveryMuscles={recoveryMuscles}
       />
 
-      {recoveryMuscles.length > 0 && (
-        <MuscleRecoveryPanel muscles={recoveryMuscles} compact showLink />
-      )}
+      <HomeWeekProgressCard home={data} streakDays={trainingStreakDays} />
 
       <HomeKiTipCard coach={data.coach} />
     </div>

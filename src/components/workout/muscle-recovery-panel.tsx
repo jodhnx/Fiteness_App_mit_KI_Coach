@@ -12,6 +12,7 @@ type Props = {
   compact?: boolean;
   showLink?: boolean;
   title?: string;
+  variant?: "default" | "section";
 };
 
 function barColor(percent: number) {
@@ -20,29 +21,58 @@ function barColor(percent: number) {
   return "bg-amber-500";
 }
 
-function RecoveryRow({ row, live }: { row: MuscleRecovery; live: number }) {
+function RecoveryRow({
+  row,
+  live,
+  premium,
+}: {
+  row: MuscleRecovery;
+  live: number;
+  premium?: boolean;
+}) {
   const filled = Math.round((live / 100) * 10);
   const blocks = "█".repeat(filled) + "░".repeat(10 - filled);
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2 text-sm">
-        <span className="text-zinc-300 font-medium w-24 shrink-0">{row.label}</span>
-        <span className="font-mono text-[11px] text-zinc-500 tracking-tight truncate flex-1">
-          {blocks}
-        </span>
+    <div className={cn("space-y-1.5", premium && "space-y-2")}>
+      <div className="flex items-center justify-between gap-2">
         <span
           className={cn(
-            "tabular-nums font-bold text-xs w-10 text-right",
+            "text-zinc-300 font-medium shrink-0",
+            premium ? "text-sm w-20" : "text-sm w-24"
+          )}
+        >
+          {row.label}
+        </span>
+        {!premium && (
+          <span className="font-mono text-[11px] text-zinc-500 tracking-tight truncate flex-1">
+            {blocks}
+          </span>
+        )}
+        <span
+          className={cn(
+            "tabular-nums font-bold text-right shrink-0",
+            premium ? "text-sm w-12" : "text-xs w-10",
             live >= 85 ? "text-emerald-400" : live >= 50 ? "text-cyan-400" : "text-amber-400"
           )}
         >
           {live}%
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+      <div
+        className={cn(
+          "rounded-full bg-zinc-800/90 overflow-hidden",
+          premium ? "h-2.5" : "h-1.5"
+        )}
+      >
         <div
-          className={cn("h-full rounded-full transition-all duration-700", barColor(live))}
+          className={cn(
+            "h-full rounded-full transition-all duration-700",
+            barColor(live),
+            premium && live >= 85 && "bg-gradient-to-r from-emerald-600 to-emerald-400",
+            premium && live >= 50 && live < 85 && "bg-gradient-to-r from-cyan-600 to-cyan-400",
+            premium && live < 50 && "bg-gradient-to-r from-amber-600 to-amber-400"
+          )}
           style={{ width: `${live}%` }}
         />
       </div>
@@ -55,7 +85,9 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
   compact = false,
   showLink = false,
   title = "Muskel-Regeneration",
+  variant = "default",
 }: Props) {
+  const isSection = variant === "section";
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -69,19 +101,27 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
         ...m,
         live: liveRecoveryPercent(m.lastTrainedAt, m.recoveryHoursRequired),
       })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick triggers live % refresh
     [muscles, tick]
   );
 
   return (
     <div
       className={cn(
-        "rounded-2xl border border-zinc-800 bg-zinc-900/60",
-        compact ? "p-3" : "p-4"
+        isSection
+          ? "rounded-3xl border border-zinc-700/50 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 p-5 mt-2"
+          : "rounded-2xl border border-zinc-800 bg-zinc-900/60",
+        !isSection && (compact ? "p-3" : "p-4")
       )}
     >
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 flex items-center gap-1.5">
-          <Activity className="h-3.5 w-3.5 text-cyan-400" />
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <p
+          className={cn(
+            "font-semibold uppercase tracking-wide flex items-center gap-1.5",
+            isSection ? "text-sm text-zinc-300" : "text-xs text-zinc-400"
+          )}
+        >
+          <Activity className={cn("text-cyan-400", isSection ? "h-4 w-4" : "h-3.5 w-3.5")} />
           {title}
         </p>
         {showLink && (
@@ -90,9 +130,9 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
           </Link>
         )}
       </div>
-      <div className={cn("space-y-3", compact && "space-y-2.5")}>
+      <div className={cn("space-y-3", compact && !isSection && "space-y-2.5", isSection && "space-y-3.5")}>
         {liveMuscles.map((row) => (
-          <RecoveryRow key={row.muscle} row={row} live={row.live} />
+          <RecoveryRow key={row.muscle} row={row} live={row.live} premium={isSection} />
         ))}
       </div>
     </div>

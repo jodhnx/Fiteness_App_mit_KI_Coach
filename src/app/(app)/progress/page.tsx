@@ -23,7 +23,6 @@ import type { BodyTransformation } from "@/lib/body-transformation";
 import type { WeeklyReport } from "@/lib/weekly-report";
 import { Sparkles, Camera } from "lucide-react";
 import { ProgressDashboardSections } from "@/components/progress/progress-dashboard-sections";
-import { ProgressPageSkeleton } from "@/components/progress/progress-page-skeleton";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
@@ -106,7 +105,7 @@ export default function ProgressPage() {
 
   const { dashboard: centralNutrition } = useCentralNutrition();
 
-  const { data: progressData, reload, loading } = useCachedFetch<ProgressPayload>(
+  const { data: progressData, reload } = useCachedFetch<ProgressPayload>(
     PROGRESS_CACHE_KEY,
     "/api/progress",
     180_000,
@@ -116,7 +115,6 @@ export default function ProgressPage() {
 
   const cachedProgress = getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
   const displayData = progressData ?? cachedProgress;
-  const showSkeleton = loading && !cachedProgress;
 
   const entries = displayData?.entries ?? [];
   const photos = displayData?.photos ?? [];
@@ -240,10 +238,6 @@ export default function ProgressPage() {
     toast.success("Fortschrittsbild gespeichert");
     invalidateCache(PROGRESS_CACHE_KEY);
     reload();
-  }
-
-  if (showSkeleton) {
-    return <ProgressPageSkeleton />;
   }
 
   return (

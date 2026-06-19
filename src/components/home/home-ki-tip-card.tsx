@@ -16,7 +16,7 @@ export function HomeKiTipCard({ coach }: { coach: HomeCoach }) {
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-violet-300 flex items-center gap-1.5 mb-2">
         <Sparkles className="h-3.5 w-3.5" />
-        KI Empfehlung
+        KI Coach Empfehlung
       </p>
       <p className="text-sm text-zinc-200 leading-relaxed line-clamp-3">{tip}</p>
     </Link>
