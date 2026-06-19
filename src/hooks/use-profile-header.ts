@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { getCached, setCached } from "@/lib/client-cache";
+import { getCached, isCacheStale, setCached } from "@/lib/client-cache";
 import { usePrefetchedProfile } from "@/components/providers/profile-data-provider";
 import { PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
 
@@ -11,7 +11,7 @@ type ProfileCache = {
 };
 
 /**
- * Avatar/name from API cache — never from JWT (avoids huge session cookies).
+ * Avatar/name from cache or SSR prefetch — avoids duplicate /api/profile when cache is fresh.
  */
 export function useProfileHeader() {
   const { data: session, status } = useSession();
@@ -41,6 +41,8 @@ export function useProfileHeader() {
       setImage(cached.user.image ?? null);
     }
 
+    if (!isCacheStale(PROFILE_CACHE_KEY, 0.92)) return;
+
     let cancelled = false;
     void fetch("/api/profile", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
@@ -48,14 +50,12 @@ export function useProfileHeader() {
         if (cancelled || !data?.user) return;
         if (data.user.name) setName(data.user.name);
         setImage(data.user.image ?? null);
-        if (data.user.name || data.user.image) {
-          const prev = getCached<ProfileCache>(PROFILE_CACHE_KEY);
-          setCached(
-            PROFILE_CACHE_KEY,
-            { ...prev, user: { ...prev?.user, ...data.user } },
-            120_000
-          );
-        }
+        const prev = getCached<ProfileCache>(PROFILE_CACHE_KEY);
+        setCached(
+          PROFILE_CACHE_KEY,
+          { ...prev, user: { ...prev?.user, ...data.user } },
+          120_000
+        );
       })
       .catch(() => undefined);
 

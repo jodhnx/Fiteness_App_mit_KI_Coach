@@ -23,6 +23,7 @@ import { RefreshCw, AlertCircle, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
+import { warmNutritionSearchCaches } from "@/lib/nav-cache-warmer";
 
 const VALID_MEALS = new Set<string>(MEAL_TYPE_ORDER);
 
@@ -31,6 +32,10 @@ export default function NutritionPage() {
   const searchParams = useSearchParams();
   const [expandedMeal, setExpandedMeal] = useState<MealType | null>(null);
   const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
+
+  useEffect(() => {
+    warmNutritionSearchCaches();
+  }, []);
 
   useEffect(() => {
     const add = searchParams.get("add");

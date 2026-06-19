@@ -7,6 +7,7 @@ import { recalculateProfileTargets } from "@/lib/profile-calculations";
 import {
   trainingGoalFromMainGoalKey,
   defaultNutritionGoalForMainGoal,
+  estimateGoalWeeks,
   type MainGoalKey,
 } from "@/lib/onboarding-options";
 
@@ -93,7 +94,10 @@ export async function POST(req: NextRequest) {
 
     await prisma.user.update({
       where: { id: session.user.id },
-      data: { onboardingCompletedAt: new Date() },
+      data: {
+        onboardingCompletedAt: new Date(),
+        ...(d.name ? { name: d.name.trim() } : {}),
+      },
     });
 
     return jsonOk({
@@ -106,6 +110,7 @@ export async function POST(req: NextRequest) {
         carbsTargetG: calc.carbsTargetG,
         fatTargetG: calc.fatTargetG,
         recommendedTrainingDays: calc.recommendedTrainingDays,
+        estimatedGoalWeeks: estimateGoalWeeks(d.mainGoalKey as MainGoalKey),
       },
     });
   } catch (e) {

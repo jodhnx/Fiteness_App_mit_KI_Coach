@@ -1,10 +1,15 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
-import { HeartPulse, BarChart3, ChevronRight } from "lucide-react";
+import { HeartPulse, BarChart3 } from "lucide-react";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 
-export function HomeInsightCards({ home }: { home: HomeDataPayload }) {
+export const HomeInsightCards = memo(function HomeInsightCards({
+  home,
+}: {
+  home: HomeDataPayload;
+}) {
   const recovery = home.recovery?.highlights ?? [];
   const weekly = home.weeklyReport;
   const hasRecovery = recovery.length > 0;
@@ -16,15 +21,16 @@ export function HomeInsightCards({ home }: { home: HomeDataPayload }) {
       {hasRecovery && (
         <Link
           href="/workouts/analytics"
-          className="rounded-lg border border-emerald-500/20 bg-emerald-950/20 p-2.5 min-h-[88px] h-full hover:border-emerald-400/35 active:opacity-90"
+          prefetch
+          className="rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-3 min-h-[5.5rem] active:scale-[0.98] transition-transform"
         >
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-emerald-300/90 flex items-center gap-1 mb-2">
-            <HeartPulse className="h-3 w-3" />
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300/90 flex items-center gap-1 mb-2">
+            <HeartPulse className="h-3.5 w-3.5" />
             Regeneration
           </p>
           <div className="space-y-1">
             {recovery.slice(0, 3).map((m) => (
-              <div key={m.label} className="flex justify-between gap-1 text-[11px]">
+              <div key={m.label} className="flex justify-between gap-1 text-xs">
                 <span className="text-zinc-500 truncate">{m.label}</span>
                 <span className="font-semibold text-white tabular-nums shrink-0">
                   {m.recoveryPercent}%
@@ -37,13 +43,14 @@ export function HomeInsightCards({ home }: { home: HomeDataPayload }) {
       {hasWeekly && weekly && (
         <Link
           href="/progress"
-          className="rounded-lg border border-violet-500/20 bg-violet-950/20 p-2.5 min-h-[88px] h-full hover:border-violet-400/35 active:opacity-90"
+          prefetch
+          className="rounded-2xl border border-violet-500/20 bg-violet-950/20 p-3 min-h-[5.5rem] active:scale-[0.98] transition-transform"
         >
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-violet-300/90 flex items-center gap-1 mb-1">
-            <BarChart3 className="h-3 w-3" />
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-300/90 flex items-center gap-1 mb-1">
+            <BarChart3 className="h-3.5 w-3.5" />
             Wochenbericht
           </p>
-          <p className="text-sm font-bold text-white tabular-nums">{weekly.workouts}× Training</p>
+          <p className="text-base font-bold text-white tabular-nums">{weekly.workouts}× Training</p>
           <p className="text-[10px] text-zinc-500 tabular-nums line-clamp-2">
             {weekly.weightChangeKg != null && (
               <>
@@ -52,13 +59,9 @@ export function HomeInsightCards({ home }: { home: HomeDataPayload }) {
               </>
             )}
             {weekly.totalSteps.toLocaleString("de-AT")} Schritte
-            {weekly.avgSleepHours != null && ` · Ø ${weekly.avgSleepHours}h Schlaf`}
-          </p>
-          <p className="text-[10px] text-accent mt-0.5 truncate">
-            {weekly.goalReached ? "Ziel erreicht" : weekly.summaryLine}
           </p>
         </Link>
       )}
     </div>
   );
-}
+});

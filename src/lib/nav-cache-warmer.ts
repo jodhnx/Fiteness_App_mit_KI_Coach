@@ -1,4 +1,4 @@
-import { fetchCached } from "@/lib/client-cache";
+import { fetchCached, getCached, isCacheStale } from "@/lib/client-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
 
@@ -10,7 +10,7 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** Background prefetch for instant tab switches (no duplicate work). */
+/** Background prefetch for instant tab switches — skips work when cache is fresh. */
 export function warmNavDataCaches() {
   if (warmed || typeof window === "undefined") return;
   warmed = true;
@@ -18,22 +18,38 @@ export function warmNavDataCaches() {
   const idle =
     typeof requestIdleCallback !== "undefined"
       ? requestIdleCallback
-      : (cb: () => void) => setTimeout(cb, 80);
+      : (cb: () => void) => setTimeout(cb, 1500);
 
   idle(() => {
-    void fetchCached(
-      PROGRESS_CACHE_KEY,
-      () => fetchJson("/api/progress"),
-      120_000
-    ).catch(() => {});
+    if (isCacheStale(PROGRESS_CACHE_KEY, 0.85)) {
+      void fetchCached(
+        PROGRESS_CACHE_KEY,
+        () => fetchJson("/api/progress"),
+        120_000
+      ).catch(() => {});
+    }
 
-    void fetchCached(
-      PROFILE_CACHE_KEY,
-      () => fetchJson("/api/profile"),
-      120_000
-    ).catch(() => {});
+    if (isCacheStale(PROFILE_CACHE_KEY, 0.92)) {
+      void fetchCached(
+        PROFILE_CACHE_KEY,
+        () => fetchJson("/api/profile"),
+        120_000
+      ).catch(() => {});
+    }
+  });
+}
 
-    for (const term of ["banane", "haferflocken", "pizza", "hähnchen"]) {
+/** Warm food search only when user opens nutrition (avoids 4 API calls on app start). */
+export function warmNutritionSearchCaches() {
+  if (typeof window === "undefined") return;
+  const idle =
+    typeof requestIdleCallback !== "undefined"
+      ? requestIdleCallback
+      : (cb: () => void) => setTimeout(cb, 100);
+
+  idle(() => {
+    if (getCached("food-search:banane")) return;
+    for (const term of ["banane", "haferflocken"]) {
       void fetchCached(
         `food-search:${term}`,
         () => fetchJson(`/api/food/search?q=${encodeURIComponent(term)}&localOnly=1`),

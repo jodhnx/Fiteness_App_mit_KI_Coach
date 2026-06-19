@@ -113,6 +113,7 @@ export const profileSchema = z.object({
 });
 
 export const onboardingSchema = z.object({
+  name: z.string().trim().min(2).max(80).optional(),
   gender: z.enum(["MALE", "FEMALE"]),
   age: z.coerce.number().int().min(14).max(100),
   heightCm: z.coerce.number().positive().max(250),

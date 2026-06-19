@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -9,6 +9,7 @@ import { useCentralNutrition } from "@/hooks/use-central-nutrition";
 import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
 import { type HomeDataPayload } from "@/lib/home-defaults";
 import { useHomeLiveData } from "@/hooks/use-home-live-data";
+import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
 import { RefreshCw, AlertCircle, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeuteHeroCard } from "@/components/home/heute-hero-card";
@@ -23,14 +24,17 @@ import { HomeGreeting } from "@/components/home/home-greeting";
 import { useDisplayName } from "@/hooks/use-display-name";
 import { HomePlannedWorkouts } from "@/components/home/home-planned-workouts";
 import { HomeCalorieTrend } from "@/components/home/home-calorie-trend";
-import { HomeActivityOverview } from "@/components/home/home-activity-overview";
 import { HomeWeightGoalCard } from "@/components/home/home-weight-goal-card";
 import { HomeMotivationCard } from "@/components/home/home-motivation-card";
+import { HomeDashboardGrid } from "@/components/home/home-dashboard-grid";
+import { HomeInsightCards } from "@/components/home/home-insight-cards";
+import { HomeLoadingSkeleton } from "@/components/home/home-loading-skeleton";
+import { refreshCached, isCacheStale } from "@/lib/client-cache";
 
 export default function HomePage() {
   const router = useRouter();
   const { status: sessionStatus } = useSession();
-  const { data: rawData, error, timedOut, reload } = useCachedFetch<HomeDataPayload>(
+  const { data: rawData, loading, error, timedOut, reload } = useCachedFetch<HomeDataPayload>(
     HOME_DATA_CACHE_KEY,
     "/api/home",
     120_000,
@@ -39,10 +43,39 @@ export default function HomePage() {
   );
 
   const data = useHomeLiveData(rawData);
-
   const { dashboard: nutrition } = useCentralNutrition();
 
-  const heuteNutrition = nutrition;
+  useEffect(() => {
+    if (rawData) hydrateHomeSectionCaches(rawData);
+  }, [rawData]);
+
+  useEffect(() => {
+    if (!rawData || !isCacheStale(HOME_DATA_CACHE_KEY, 0.98)) return;
+    const idle =
+      typeof requestIdleCallback !== "undefined"
+        ? requestIdleCallback
+        : (cb: () => void) => setTimeout(cb, 2000);
+    const handle = idle(() => {
+      refreshCached(
+        HOME_DATA_CACHE_KEY,
+        async () => {
+          const res = await fetch("/api/home", { credentials: "same-origin" });
+          if (!res.ok) throw new Error("refresh failed");
+          return res.json() as Promise<HomeDataPayload>;
+        },
+        120_000,
+        () => {},
+        () => {}
+      );
+    });
+    return () => {
+      if (typeof handle === "number") {
+        if (typeof cancelIdleCallback !== "undefined") cancelIdleCallback(handle);
+        else clearTimeout(handle);
+      }
+    };
+  }, [rawData]);
+
   const steps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10000;
   const caloriesBurned =
@@ -55,11 +88,29 @@ export default function HomePage() {
   const activeSessionId = data.activeSession?.id ?? null;
   const displayName = useDisplayName(data.userName);
 
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development" && error) {
-      console.error("Dashboard Error", error);
+  const onStartTraining = useCallback(async () => {
+    if (activeSessionId) {
+      router.push(`/workouts/live/${activeSessionId}`);
+      return;
     }
-  }, [error]);
+    if (nextWorkout?.dayId) {
+      const res = await fetch("/api/workouts/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "start",
+          workoutPlanId: nextWorkout.planId,
+          workoutDayId: nextWorkout.dayId,
+          name: `${nextWorkout.planName} – ${nextWorkout.dayName}`,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) router.push(`/workouts/live/${body.session.id}`);
+      else router.push("/workouts");
+      return;
+    }
+    router.push("/workouts");
+  }, [activeSessionId, nextWorkout, router]);
 
   if (sessionStatus === "unauthenticated") {
     return (
@@ -73,8 +124,12 @@ export default function HomePage() {
     );
   }
 
+  if (loading && !rawData) {
+    return <HomeLoadingSkeleton />;
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-2">
       <div className="flex items-start justify-between gap-2">
         <HomeGreeting name={displayName} />
         {error && (
@@ -99,12 +154,16 @@ export default function HomePage() {
       )}
 
       <HeuteHeroCard
-        nutrition={heuteNutrition}
+        nutrition={nutrition}
         steps={steps}
         stepGoal={stepGoal}
         caloriesBurned={caloriesBurned}
         trainingStreakDays={trainingStreakDays}
       />
+
+      <HomeDashboardGrid home={data} nutrition={nutrition} />
+
+      <HomeInsightCards home={data} />
 
       <HomeMotivationCard streakDays={trainingStreakDays} />
 
@@ -121,8 +180,6 @@ export default function HomePage() {
 
       <HomeWeekOverview home={data} />
 
-      <HomeActivityOverview home={data} />
-
       {data.challenges && data.challenges.length > 0 && (
         <HomeChallengesRow challenges={data.challenges} />
       )}
@@ -133,7 +190,7 @@ export default function HomePage() {
 
       {activeSessionId && (
         <Link href={`/workouts/live/${activeSessionId}`}>
-          <Button className="w-full btn-accent h-11">
+          <Button className="w-full btn-accent h-12 rounded-2xl">
             <Play className="h-4 w-4 mr-2" />
             Training fortsetzen
           </Button>
@@ -146,31 +203,7 @@ export default function HomePage() {
 
       <HomeCoachRecommendations coach={coach} />
 
-      <HomeQuickActions
-        onStartTraining={async () => {
-          if (activeSessionId) {
-            router.push(`/workouts/live/${activeSessionId}`);
-            return;
-          }
-          if (nextWorkout?.dayId) {
-            const res = await fetch("/api/workouts/sessions", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "start",
-                workoutPlanId: nextWorkout.planId,
-                workoutDayId: nextWorkout.dayId,
-                name: `${nextWorkout.planName} – ${nextWorkout.dayName}`,
-              }),
-            });
-            const body = await res.json().catch(() => ({}));
-            if (res.ok) router.push(`/workouts/live/${body.session.id}`);
-            else router.push("/workouts");
-            return;
-          }
-          router.push("/workouts");
-        }}
-      />
+      <HomeQuickActions onStartTraining={onStartTraining} />
     </div>
   );
 }

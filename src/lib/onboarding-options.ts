@@ -87,6 +87,52 @@ export const ONBOARDING_EXPERIENCE_OPTIONS: { value: PlanLevel; label: string }[
 
 export const ONBOARDING_TRAINING_DAYS = [2, 3, 4, 5, 6] as const;
 
+export const ONBOARDING_ACTIVITY_SIMPLE: {
+  value: ActivityLevel;
+  label: string;
+  hint: string;
+}[] = [
+  { value: "SEDENTARY", label: "Wenig aktiv", hint: "Büro, wenig Bewegung" },
+  { value: "LIGHT", label: "Leicht aktiv", hint: "1–2× Sport pro Woche" },
+  { value: "MODERATE", label: "Aktiv", hint: "3–4× Training pro Woche" },
+  { value: "ACTIVE", label: "Sehr aktiv", hint: "5×+ oder körperliche Arbeit" },
+];
+
+export const ONBOARDING_GOAL_SIMPLE: {
+  key: MainGoalKey;
+  label: string;
+  description: string;
+}[] = [
+  { key: "GAIN_MUSCLE", label: "Muskelaufbau", description: "Masse & Definition aufbauen" },
+  { key: "LOSE_WEIGHT", label: "Fettverlust", description: "Gewicht reduzieren & definieren" },
+  { key: "ENDURANCE", label: "Gewicht halten", description: "Aktuelles Gewicht stabil halten" },
+  { key: "STRENGTH", label: "Kraftsteigerung", description: "Maximalkraft & Leistung" },
+  { key: "GENERAL_FITNESS", label: "Allgemeine Fitness", description: "Gesund & fit bleiben" },
+];
+
+export const ONBOARDING_WELCOME_FEATURES = [
+  { icon: "brain", title: "KI Fitness Coach", desc: "Persönliche Tipps & Pläne" },
+  { icon: "utensils", title: "Ernährungstracker", desc: "Kalorien & Makros im Blick" },
+  { icon: "dumbbell", title: "Trainingspläne", desc: "Strukturiert trainieren" },
+  { icon: "chart", title: "Fortschrittsanalyse", desc: "Trends & Ziele verfolgen" },
+  { icon: "trophy", title: "Erfolge & Level", desc: "Motivation durch Gamification" },
+] as const;
+
+export function estimateGoalWeeks(key: MainGoalKey): number {
+  switch (key) {
+    case "LOSE_WEIGHT":
+      return 12;
+    case "GAIN_MUSCLE":
+      return 16;
+    case "STRENGTH":
+      return 10;
+    case "RECOMP":
+      return 14;
+    default:
+      return 8;
+  }
+}
+
 export const ONBOARDING_NUTRITION_GOAL_OPTIONS: {
   value: NutritionGoal;
   label: string;
