@@ -115,6 +115,12 @@ export type HomeDataPayload = {
     targetKg: number | null;
     progressPercent: number;
   } | null;
+  recentAchievements?: {
+    name: string;
+    icon: string;
+    tier: string;
+    earnedAt: string;
+  }[];
 };
 
 export function createEmptyHomeData(): HomeDataPayload {
@@ -259,6 +265,9 @@ export function normalizeHomeData(raw: unknown): HomeDataPayload {
         : d.bodyTransformation === null
           ? null
           : undefined,
+    recentAchievements: Array.isArray(d.recentAchievements)
+      ? (d.recentAchievements as HomeDataPayload["recentAchievements"])
+      : undefined,
   };
 }
 

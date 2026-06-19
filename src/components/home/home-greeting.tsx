@@ -4,7 +4,7 @@ import { memo } from "react";
 
 function greetingPart(): string {
   const h = new Date().getHours();
-  return h < 12 ? "Morgen" : h < 18 ? "Tag" : "Abend";
+  return h < 12 ? "Morgen" : h < 18 ? "Mittag" : "Abend";
 }
 
 export const HomeGreeting = memo(function HomeGreeting({

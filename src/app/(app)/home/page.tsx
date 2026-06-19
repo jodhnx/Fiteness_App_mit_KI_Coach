@@ -1,25 +1,31 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
+import { useCallback, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
 import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
 import { type HomeDataPayload } from "@/lib/home-defaults";
 import { useHomeLiveData } from "@/hooks/use-home-live-data";
 import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
-import { RefreshCw, AlertCircle, Play, Flame, Sparkles } from "lucide-react";
+import { useDisplayName } from "@/hooks/use-display-name";
+import { RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HomeGreeting } from "@/components/home/home-greeting";
 import { HomeTodayProgressCard } from "@/components/home/home-today-progress-card";
 import { HomeNextTrainingCard } from "@/components/home/home-next-training-card";
-import { HomeWeekProgressCard } from "@/components/home/home-week-progress-card";
+import { HomeWeekOverviewCard } from "@/components/home/home-week-overview-card";
+import { HomeQuickActionsBar } from "@/components/home/home-quick-actions-bar";
 import { HomeKiTipCard } from "@/components/home/home-ki-tip-card";
+import { HomeRecentAchievements } from "@/components/home/home-recent-achievements";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { refreshCached, isCacheStale } from "@/lib/client-cache";
+import { toast } from "sonner";
 
 export default function HomePage() {
+  const router = useRouter();
   const { status: sessionStatus } = useSession();
   const { data: rawData, error, timedOut, reload } = useCachedFetch<HomeDataPayload>(
     HOME_DATA_CACHE_KEY,
@@ -31,6 +37,7 @@ export default function HomePage() {
 
   const data = useHomeLiveData(rawData);
   const { dashboard: nutrition } = useCentralNutrition();
+  const displayName = useDisplayName(data.userName);
 
   useEffect(() => {
     if (rawData) hydrateHomeSectionCaches(rawData);
@@ -67,13 +74,39 @@ export default function HomePage() {
   const stepGoal = data.healthToday?.stepGoal ?? 10000;
   const trainingStreakDays =
     data.trainingStreak?.currentDays ?? data.streak?.currentDays ?? 0;
-  const level = data.gamification?.level ?? 0;
-  const levelName = data.gamification?.levelName;
   const activeSessionId = data.activeSession?.id;
+  const nextWorkout = data.nextWorkout ?? null;
 
   const recoveryMuscles: MuscleRecovery[] = filterDisplayMuscles(
     (data.recovery?.muscles ?? []) as MuscleRecovery[]
   );
+
+  const startWorkout = useCallback(async () => {
+    if (activeSessionId) {
+      router.push(`/workouts/live/${activeSessionId}`);
+      return;
+    }
+    if (nextWorkout?.dayId) {
+      const res = await fetch("/api/workouts/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "start",
+          workoutPlanId: nextWorkout.planId,
+          workoutDayId: nextWorkout.dayId,
+          name: `${nextWorkout.planName} – ${nextWorkout.dayName}`,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) router.push(`/workouts/live/${body.session.id}`);
+      else {
+        toast.error("Training konnte nicht gestartet werden");
+        router.push("/workouts");
+      }
+      return;
+    }
+    router.push("/workouts/quick");
+  }, [activeSessionId, nextWorkout, router]);
 
   if (sessionStatus === "unauthenticated") {
     return (
@@ -88,7 +121,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-4 pb-2 max-w-lg mx-auto -mt-1">
+    <div className="space-y-4 pb-2 max-w-lg mx-auto">
       {(error || timedOut) && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -101,49 +134,23 @@ export default function HomePage() {
         </div>
       )}
 
-      {(trainingStreakDays > 0 || level > 0) && (
-        <div className="flex items-center gap-2 flex-wrap px-0.5">
-          {trainingStreakDays > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 border border-orange-500/20 px-2.5 py-1 text-[11px] font-medium text-orange-400">
-              <Flame className="h-3 w-3" />
-              {trainingStreakDays} Tage Streak
-            </span>
-          )}
-          {level > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 border border-violet-500/20 px-2.5 py-1 text-[11px] font-medium text-violet-400">
-              <Sparkles className="h-3 w-3" />
-              Level {level}
-              {levelName ? ` · ${levelName}` : ""}
-            </span>
-          )}
-        </div>
-      )}
-
-      {activeSessionId && (
-        <Link href={`/workouts/live/${activeSessionId}`}>
-          <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 flex items-center justify-between gap-3 active:scale-[0.99] transition-transform">
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-wide text-cyan-300/80 font-medium">
-                Training läuft
-              </p>
-              <p className="text-sm font-semibold text-white truncate">Jetzt fortsetzen</p>
-            </div>
-            <Play className="h-5 w-5 text-cyan-400 shrink-0" />
-          </div>
-        </Link>
-      )}
+      <HomeGreeting name={displayName} />
 
       <HomeTodayProgressCard nutrition={nutrition} steps={steps} stepGoal={stepGoal} />
 
       <HomeNextTrainingCard
-        nextWorkout={data.nextWorkout ?? null}
+        nextWorkout={nextWorkout}
         activeSessionId={activeSessionId}
         recoveryMuscles={recoveryMuscles}
       />
 
-      <HomeWeekProgressCard home={data} streakDays={trainingStreakDays} />
+      <HomeWeekOverviewCard home={data} streakDays={trainingStreakDays} />
+
+      <HomeQuickActionsBar onStartWorkout={() => void startWorkout()} />
 
       <HomeKiTipCard coach={data.coach} />
+
+      <HomeRecentAchievements achievements={data.recentAchievements ?? []} />
     </div>
   );
 }

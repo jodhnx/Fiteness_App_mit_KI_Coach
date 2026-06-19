@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bell, Menu } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { useSidebar } from "@/components/layout/sidebar-provider";
+import { useNotifications } from "@/components/providers/notification-provider";
 import { cn } from "@/lib/utils";
 
 export function Header({
@@ -14,6 +15,7 @@ export function Header({
   userImage?: string | null;
 }) {
   const { toggle } = useSidebar();
+  const { setOpen, unreadCount } = useNotifications();
 
   return (
     <header className="mobile-app-header sticky top-0 z-30 border-b border-white/10 backdrop-blur-2xl transform-gpu">
@@ -41,17 +43,22 @@ export function Header({
           </span>
         </Link>
 
-        <Link
-          href="/settings#benachrichtigungen"
-          prefetch
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
           aria-label="Benachrichtigungen"
           className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+            "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
             "header-glass-btn text-zinc-200 active:scale-95 transition-transform duration-100"
           )}
         >
           <Bell className="h-5 w-5" strokeWidth={2} />
-        </Link>
+          {unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-500 px-1 text-[10px] font-bold text-zinc-950">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
       </div>
     </header>
   );

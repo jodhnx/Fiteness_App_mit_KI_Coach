@@ -62,6 +62,7 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
       gamificationRaw,
       challengesRaw,
       weightEntries,
+      recentAchievementsRaw,
     ] = await Promise.all([
         loadNutritionDashboard(userId, today).catch((e) => {
           console.error("[loadHomeData] nutrition", e);
@@ -119,6 +120,16 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
             orderBy: { date: "asc" },
             take: 120,
             select: { date: true, weightKg: true },
+          })
+          .catch(() => []),
+        prisma.userAchievement
+          .findMany({
+            where: { userId },
+            orderBy: { earnedAt: "desc" },
+            take: 3,
+            include: {
+              achievement: { select: { name: true, icon: true, tier: true } },
+            },
           })
           .catch(() => []),
       ]);
@@ -249,6 +260,12 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
       gamification: gamificationRaw ? gamificationToHome(gamificationRaw) : undefined,
       challenges: activeChallenges.length > 0 ? activeChallenges : undefined,
       bodyTransformation,
+      recentAchievements: (recentAchievementsRaw ?? []).map((row) => ({
+        name: row.achievement.name,
+        icon: row.achievement.icon,
+        tier: row.achievement.tier,
+        earnedAt: row.earnedAt.toISOString(),
+      })),
     });
   } catch (e) {
     console.error("[loadHomeData] fatal", e);
