@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { TrainingChoiceCard } from "@/components/workout/training-choice-card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FolderOpen, Play, Zap } from "lucide-react";
+import {
+  BookOpen,
+  Dumbbell,
+  FolderOpen,
+  Map,
+  Play,
+  Trophy,
+  Zap,
+} from "lucide-react";
 
 export default function WorkoutsHubPage() {
   const router = useRouter();
@@ -21,6 +29,9 @@ export default function WorkoutsHubPage() {
   const { data: plansData } = useCachedFetch<{
     plans: { id: string; name: string; lastSessionAt?: string | null }[];
   }>("workouts-my-plans-hub", "/api/workouts/plans", 120_000, 6_000, fetchOpts);
+  const { data: journeyData } = useCachedFetch<{
+    journey: { streak: { currentDays: number }; stats30d: { sessions: number } };
+  }>("workouts-journey-hub", "/api/workouts/journey", 120_000, 6_000, fetchOpts);
 
   const activeSession = sessionData?.session ?? null;
   const plans = plansData?.plans ?? [];
@@ -31,12 +42,15 @@ export default function WorkoutsHubPage() {
         month: "2-digit",
       })}`
     : plans.length > 0
-      ? `${plans.length} ${plans.length === 1 ? "Plan" : "Pläne"} bereit`
+      ? `${plans.length} ${plans.length === 1 ? "Plan" : "Pläne"}`
       : "Erstelle deinen ersten Plan";
 
+  const streak = journeyData?.journey?.streak?.currentDays ?? 0;
+  const sessions30 = journeyData?.journey?.stats30d?.sessions ?? 0;
+
   return (
-    <div className="space-y-5 pb-24 max-w-lg mx-auto">
-      <PageHeader title="Training" subtitle="Wähle, wie du trainieren willst" />
+    <div className="space-y-6 pb-24 max-w-lg mx-auto">
+      <PageHeader title="Training" subtitle="Starten · Fortschritt · Übungen" />
 
       {activeSession && (
         <div className="rounded-3xl border border-cyan-500/30 bg-cyan-500/10 p-4">
@@ -53,10 +67,11 @@ export default function WorkoutsHubPage() {
       )}
 
       <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 px-1">Trainieren</p>
         <TrainingChoiceCard
           href="/workouts/my-plans"
           title="Meine Pläne"
-          description="Eigene Workouts · Schnell starten"
+          description="Eigene Trainingspläne · Schnell starten"
           icon={FolderOpen}
           iconClassName="bg-violet-500/15 text-violet-400"
           meta={lastPlanLabel}
@@ -64,16 +79,46 @@ export default function WorkoutsHubPage() {
         <TrainingChoiceCard
           href="/workouts/catalog"
           title="Vorgefertigte Pläne"
-          description="Push/Pull, Ganzkörper, Anfänger & mehr"
+          description="Push/Pull · Ober/Unter · Ganzkörper · Anfänger · Muskelaufbau"
           icon={BookOpen}
           iconClassName="bg-cyan-500/15 text-cyan-400"
         />
         <TrainingChoiceCard
           href="/workouts/quick"
           title="Quick Workout"
-          description="Sofort starten · Übungen spontan wählen · Kein Plan nötig"
+          description="Sofort starten · Übungen auswählen · Kein Plan nötig"
           icon={Zap}
           iconClassName="bg-amber-500/15 text-amber-400"
+        />
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 px-1">Mehr</p>
+        <TrainingChoiceCard
+          href="/workouts/journey"
+          title="Fitness Journey"
+          description="Historie · Kalender · Check-Ins · Streak · Volumen"
+          icon={Map}
+          iconClassName="bg-emerald-500/15 text-emerald-400"
+          meta={
+            streak > 0
+              ? `${streak} Tage Streak · ${sessions30} Trainings (30T)`
+              : `${sessions30} Trainings in 30 Tagen`
+          }
+        />
+        <TrainingChoiceCard
+          href="/workouts/records"
+          title="Rekorde"
+          description="Bankdrücken · Kniebeuge · Kreuzheben · Highlights"
+          icon={Trophy}
+          iconClassName="bg-yellow-500/15 text-yellow-400"
+        />
+        <TrainingChoiceCard
+          href="/workouts/exercises"
+          title="Übungen"
+          description="Exercise Hub · Suche · Muskelgruppen · Favoriten"
+          icon={Dumbbell}
+          iconClassName="bg-rose-500/15 text-rose-400"
         />
       </div>
     </div>

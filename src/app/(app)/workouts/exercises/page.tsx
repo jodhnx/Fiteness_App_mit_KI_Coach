@@ -1,242 +1,236 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useDebounce } from "@/hooks/use-debounce";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ExerciseVisual } from "@/components/workout/exercise-visual";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WorkoutBackLink } from "@/components/workout/workout-back-link";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, BarChart2, Star } from "lucide-react";
-import { WorkoutNav } from "@/components/workout/workout-nav";
-import { toast } from "sonner";
+import { useExerciseLibrarySearch, type LibraryExercise } from "@/hooks/use-exercise-library-search";
+import { cn } from "@/lib/utils";
+import { ChevronRight, Dumbbell, Search, Star, Clock } from "lucide-react";
 
 const MUSCLES = [
-  "CHEST",
-  "BACK",
-  "SHOULDERS",
-  "BICEPS",
-  "TRICEPS",
-  "LEGS",
-  "ABS",
-  "FOREARMS",
-  "CALVES",
-  "CARDIO",
+  { id: "", label: "Alle" },
+  { id: "CHEST", label: "Brust" },
+  { id: "BACK", label: "Rücken" },
+  { id: "SHOULDERS", label: "Schultern" },
+  { id: "BICEPS", label: "Bizeps" },
+  { id: "TRICEPS", label: "Trizeps" },
+  { id: "LEGS", label: "Beine" },
+  { id: "ABS", label: "Bauch" },
 ] as const;
 
-const MUSCLE_DE: Record<string, string> = {
-  CHEST: "Brust",
-  BACK: "Rücken",
-  SHOULDERS: "Schultern",
-  BICEPS: "Bizeps",
-  TRICEPS: "Trizeps",
-  LEGS: "Beine",
-  ABS: "Bauch",
-  FOREARMS: "Unterarme",
-  CALVES: "Waden",
-  CARDIO: "Cardio",
+const DIFFICULTY_DE: Record<string, string> = {
+  BEGINNER: "Anfänger",
+  INTERMEDIATE: "Mittel",
+  ADVANCED: "Fortgeschritten",
 };
 
-type Exercise = {
-  id: string;
-  slug: string;
-  name: string;
-  muscleGroup: string;
-  difficulty: string;
-  description: string;
-  instructions: string;
-  imageUrl: string | null;
-  equipment: string;
-  primaryMuscles: string[];
-  isCompound: boolean;
-  ratingAvg?: number | null;
-  popularity?: number;
-  isFavorite?: boolean;
+const EQUIPMENT_DE: Record<string, string> = {
+  BARBELL: "Langhantel",
+  DUMBBELL: "Kurzhantel",
+  MACHINE: "Maschine",
+  CABLE: "Kabelzug",
+  BODYWEIGHT: "Körpergewicht",
+  KETTLEBELL: "Kettlebell",
+  BAND: "Band",
+  OTHER: "Sonstiges",
 };
+
+type Tab = "all" | "favorites" | "recent";
 
 export default function ExercisesPage() {
-  const [q, setQ] = useState("");
-  const debouncedQ = useDebounce(q, 250);
-  const [muscle, setMuscle] = useState<string>("");
-  const [equipment, setEquipment] = useState<string>("");
-  const [difficulty, setDifficulty] = useState<string>("");
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<Exercise | null>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [muscle, setMuscle] = useState("");
+  const [tab, setTab] = useState<Tab>("all");
+  const [recent, setRecent] = useState<LibraryExercise[]>([]);
+  const [favorites, setFavorites] = useState<LibraryExercise[]>([]);
+  const [listsLoading, setListsLoading] = useState(false);
+  const [selected, setSelected] = useState<LibraryExercise | null>(null);
 
-  const searchUrl = useMemo(() => {
-    const params = new URLSearchParams({ limit: "120", sort: "popularity" });
-    if (debouncedQ) params.set("q", debouncedQ);
-    if (muscle) params.set("muscle", muscle);
-    if (equipment) params.set("equipment", equipment);
-    if (difficulty) params.set("difficulty", difficulty);
-    return `/api/exercises?${params}`;
-  }, [debouncedQ, muscle, equipment, difficulty]);
+  const isSearching = search.trim().length > 0;
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(searchUrl)
-      .then((r) => r.json())
-      .then((d) => setExercises(d.exercises ?? []))
-      .finally(() => setLoading(false));
-  }, [searchUrl]);
+  const { exercises: searchResults, loading: searchLoading } = useExerciseLibrarySearch(
+    search,
+    { muscle: muscle || undefined },
+    { limit: 100, enabled: isSearching, debounceMs: 120 }
+  );
 
-  useEffect(() => {
-    fetch("/api/exercises?favorites=1")
-      .then((r) => r.json())
-      .then((d) => setFavorites(new Set((d.exercises ?? []).map((e: Exercise) => e.id))));
+  const { exercises: browseResults, loading: browseLoading } = useExerciseLibrarySearch(
+    "",
+    { muscle: muscle || undefined },
+    { limit: 80, enabled: tab === "all" && !isSearching, debounceMs: 0 }
+  );
+
+  const loadLists = useCallback(async () => {
+    setListsLoading(true);
+    try {
+      const [recentRes, favRes] = await Promise.all([
+        fetch("/api/exercises/recent", { credentials: "include" }),
+        fetch("/api/exercises?favorites=1", { credentials: "include" }),
+      ]);
+      const [recentData, favData] = await Promise.all([recentRes.json(), favRes.json()]);
+      setRecent((recentData.exercises ?? []) as LibraryExercise[]);
+      setFavorites((favData.exercises ?? []) as LibraryExercise[]);
+    } catch {
+      /* empty */
+    } finally {
+      setListsLoading(false);
+    }
   }, []);
 
-  async function toggleFavorite(id: string) {
-    if (favorites.has(id)) {
-      await fetch(`/api/exercises/favorites?exerciseLibraryId=${id}`, { method: "DELETE" });
-      setFavorites((f) => {
-        const n = new Set(f);
-        n.delete(id);
-        return n;
-      });
-    } else {
-      await fetch("/api/exercises/favorites", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ exerciseLibraryId: id }),
-      });
-      setFavorites((f) => new Set(f).add(id));
-      toast.success("Zu Favoriten hinzugefügt");
-    }
-  }
+  useEffect(() => {
+    void loadLists();
+  }, [loadLists]);
+
+  const list = useMemo(() => {
+    if (isSearching) return searchResults;
+    if (tab === "favorites") return favorites;
+    if (tab === "recent") return recent;
+    return browseResults;
+  }, [isSearching, searchResults, tab, favorites, recent, browseResults]);
+
+  const loading = isSearching ? searchLoading : tab === "all" ? browseLoading : listsLoading;
+
+  const tabs: { id: Tab; label: string; icon: typeof Star }[] = [
+    { id: "all", label: "Alle", icon: Dumbbell },
+    { id: "favorites", label: "Favoriten", icon: Star },
+    { id: "recent", label: "Zuletzt", icon: Clock },
+  ];
 
   return (
-    <div className="space-y-6">
-      <Link href="/workouts" className="text-cyan-400 text-sm flex items-center gap-1">
-        <ArrowLeft className="h-4 w-4" /> Training
-      </Link>
-      <WorkoutNav />
-      <h1 className="text-3xl font-bold text-white">Übungsdatenbank</h1>
-      <p className="text-zinc-400">230+ Übungen · Sofortsuche · Filter · Statistik</p>
-
-      <div className="flex flex-wrap gap-2 items-center">
-        <Input
-          placeholder="Sofortsuche..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="max-w-xs"
-        />
-        {loading && <span className="text-xs text-cyan-400">Suche...</span>}
+    <div className="space-y-4 max-w-lg mx-auto pb-28">
+      <WorkoutBackLink />
+      <div>
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <Dumbbell className="h-7 w-7 text-rose-400" />
+          Übungen
+        </h1>
+        <p className="text-sm text-zinc-400 mt-1">Exercise Hub · Bibliothek & Details</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button variant={!muscle ? "default" : "secondary"} size="sm" onClick={() => setMuscle("")}>
-          Alle
-        </Button>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+        <Input
+          placeholder="Übung suchen…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-12 pl-10 rounded-2xl bg-zinc-900 border-zinc-800"
+        />
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {MUSCLES.map((m) => (
-          <Button
-            key={m}
-            variant={muscle === m ? "default" : "secondary"}
-            size="sm"
-            onClick={() => setMuscle(m)}
+          <button
+            key={m.id || "all"}
+            type="button"
+            onClick={() => setMuscle(m.id)}
+            className={cn(
+              "rounded-full px-3 py-2 text-xs font-medium whitespace-nowrap shrink-0",
+              muscle === m.id
+                ? "bg-cyan-500 text-zinc-950"
+                : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+            )}
           >
-            {MUSCLE_DE[m]}
-          </Button>
+            {m.label}
+          </button>
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <select
-          className="rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm"
-          value={equipment}
-          onChange={(e) => setEquipment(e.target.value)}
-        >
-          <option value="">Equipment</option>
-          {["BARBELL", "DUMBBELL", "CABLE", "MACHINE", "BODYWEIGHT", "KETTLEBELL", "BAND"].map((e) => (
-            <option key={e} value={e}>{e}</option>
-          ))}
-        </select>
-        <select
-          className="rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm"
-          value={difficulty}
-          onChange={(e) => setDifficulty(e.target.value)}
-        >
-          <option value="">Schwierigkeit</option>
-          <option value="BEGINNER">Beginner</option>
-          <option value="INTERMEDIATE">Intermediate</option>
-          <option value="ADVANCED">Advanced</option>
-        </select>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-          {exercises.map((ex) => (
+      {!isSearching && (
+        <div className="flex gap-2">
+          {tabs.map((t) => (
             <button
-              key={ex.id}
+              key={t.id}
               type="button"
-              onClick={() => setSelected(ex)}
-              className={`w-full text-left rounded-xl border p-3 transition-colors ${
-                selected?.id === ex.id
-                  ? "border-cyan-500/50 bg-cyan-500/10"
-                  : "border-white/10 bg-white/5 hover:bg-white/10"
-              }`}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium",
+                tab === t.id
+                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                  : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+              )}
             >
-              <div className="flex justify-between">
-                <span className="font-medium text-white">{ex.name}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavorite(ex.id);
-                  }}
-                >
-                  <Star
-                    className={`h-4 w-4 ${favorites.has(ex.id) ? "fill-cyan-400 text-cyan-400" : ""}`}
-                  />
-                </Button>
-              </div>
-              <p className="text-xs text-zinc-500">
-                {MUSCLE_DE[ex.muscleGroup] ?? ex.muscleGroup} · {ex.difficulty} · {ex.equipment}
-                {ex.ratingAvg != null && ` · ★ ${ex.ratingAvg.toFixed(1)}`}
-                {ex.popularity != null && ` · ${ex.popularity}×`}
-              </p>
+              <t.icon className="h-3.5 w-3.5" />
+              {t.label}
             </button>
           ))}
         </div>
+      )}
 
-        {selected && (
-          <Card className="sticky top-24">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <CardTitle>{selected.name}</CardTitle>
-                <Link href={`/workouts/exercises/${selected.id}`}>
-                  <Button variant="outline" size="sm">
-                    <BarChart2 className="h-4 w-4 mr-1" /> Statistik
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-zinc-300">
-              <ExerciseVisual
-                name={selected.name}
-                muscleGroup={selected.muscleGroup}
-                imageUrl={selected.imageUrl}
-                equipment={selected.equipment}
-              />
-              <p>{selected.description}</p>
-              <div>
-                <p className="text-cyan-400 font-medium mb-1">Ausführung</p>
-                <pre className="whitespace-pre-wrap font-sans text-zinc-400">
-                  {selected.instructions}
-                </pre>
-              </div>
-              <p>
-                <span className="text-zinc-500">Primär:</span>{" "}
-                {selected.primaryMuscles.join(", ")}
-              </p>
-            </CardContent>
-          </Card>
+      {selected && (
+        <div className="rounded-2xl border border-cyan-500/30 bg-zinc-900/80 p-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-lg font-bold text-white">{selected.name}</p>
+              <p className="text-sm text-zinc-400">{selected.muscleGroup}</p>
+            </div>
+            <button
+              type="button"
+              className="text-zinc-500 text-sm"
+              onClick={() => setSelected(null)}
+            >
+              ✕
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <InfoRow label="Zielmuskel" value={selected.muscleGroup} />
+            <InfoRow
+              label="Schwierigkeit"
+              value={DIFFICULTY_DE[selected.difficulty] ?? selected.difficulty}
+            />
+            <InfoRow
+              label="Equipment"
+              value={EQUIPMENT_DE[selected.equipment] ?? selected.equipment}
+            />
+            <InfoRow label="Genutzt" value={`${selected.popularity}×`} />
+          </div>
+          <Link href={`/workouts/exercises/${selected.id}`}>
+            <span className="flex items-center justify-center gap-1 w-full h-11 rounded-xl bg-cyan-500/15 text-cyan-400 text-sm font-medium">
+              Ausführung & Statistik
+              <ChevronRight className="h-4 w-4" />
+            </span>
+          </Link>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {loading && list.length === 0 && (
+          <p className="text-sm text-zinc-500 text-center py-8">Lädt…</p>
         )}
+        {!loading && list.length === 0 && (
+          <p className="text-sm text-zinc-500 text-center py-8">Keine Übungen gefunden</p>
+        )}
+        {list.map((ex) => (
+          <button
+            key={ex.id}
+            type="button"
+            onClick={() => setSelected(ex)}
+            className={cn(
+              "w-full flex items-center justify-between rounded-2xl px-4 py-3.5 text-left border transition-colors active:scale-[0.98]",
+              selected?.id === ex.id
+                ? "border-cyan-500/40 bg-cyan-500/10"
+                : "border-zinc-800 bg-zinc-900/60 hover:border-zinc-700"
+            )}
+          >
+            <div className="min-w-0">
+              <p className="font-semibold text-white truncate">{ex.name}</p>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                {ex.muscleGroup} · {DIFFICULTY_DE[ex.difficulty] ?? ex.difficulty}
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-zinc-600 shrink-0" />
+          </button>
+        ))}
       </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-zinc-950/50 px-3 py-2">
+      <p className="text-[10px] text-zinc-500 uppercase">{label}</p>
+      <p className="text-white font-medium text-sm">{value}</p>
     </div>
   );
 }
