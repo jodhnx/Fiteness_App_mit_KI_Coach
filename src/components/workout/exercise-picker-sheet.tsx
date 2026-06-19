@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useExerciseLibrarySearch, type LibraryExercise } from "@/hooks/use-exercise-library-search";
 import { cn } from "@/lib/utils";
 
-type Tab = "search" | "frequent" | "recent" | "favorites";
+type Tab = "favorites" | "recent" | "frequent";
 
 type Props = {
   open: boolean;
@@ -49,7 +49,7 @@ function ExerciseRow({
 }
 
 export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: Props) {
-  const [tab, setTab] = useState<Tab>("search");
+  const [tab, setTab] = useState<Tab>("favorites");
   const [search, setSearch] = useState("");
   const [recent, setRecent] = useState<LibraryExercise[]>([]);
   const [favorites, setFavorites] = useState<LibraryExercise[]>([]);
@@ -61,7 +61,7 @@ export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: 
   const { exercises: searchResults, loading: searchLoading } = useExerciseLibrarySearch(
     search,
     {},
-    { limit: 80, enabled: open && tab === "search", debounceMs: 120 }
+    { limit: 80, enabled: open && search.trim().length > 0, debounceMs: 120 }
   );
 
   const loadLists = useCallback(async () => {
@@ -94,7 +94,7 @@ export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: 
   useEffect(() => {
     if (!open) {
       setSearch("");
-      setTab("search");
+      setTab("favorites");
     }
   }, [open]);
 
@@ -107,24 +107,23 @@ export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: 
     [exclude, onPick, onClose]
   );
 
-  const list =
-    tab === "search"
-      ? searchResults
+  const isSearching = search.trim().length > 0;
+  const list = isSearching
+    ? searchResults
+    : tab === "favorites"
+      ? favorites
       : tab === "recent"
         ? recent
-        : tab === "favorites"
-          ? favorites
-          : frequent;
+        : frequent;
 
-  const loading = tab === "search" ? searchLoading : listsLoading;
+  const loading = isSearching ? searchLoading : listsLoading;
 
   if (!open) return null;
 
-  const tabs: { id: Tab; label: string; icon: typeof Search }[] = [
-    { id: "search", label: "Suche", icon: Search },
-    { id: "frequent", label: "Häufig", icon: TrendingUp },
-    { id: "recent", label: "Zuletzt", icon: Clock },
+  const tabs: { id: Tab; label: string; icon: typeof Star }[] = [
     { id: "favorites", label: "Favoriten", icon: Star },
+    { id: "recent", label: "Zuletzt", icon: Clock },
+    { id: "frequent", label: "Häufig", icon: TrendingUp },
   ];
 
   return (
@@ -147,17 +146,15 @@ export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: 
           <Input
             placeholder="Übung suchen…"
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              if (e.target.value.trim()) setTab("search");
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             className="h-12 pl-10 text-base rounded-2xl bg-zinc-900 border-zinc-800"
             autoFocus
           />
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 shrink-0">
-          {tabs.map((t) => (
+          {!isSearching &&
+            tabs.map((t) => (
             <button
               key={t.id}
               type="button"
@@ -181,7 +178,7 @@ export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: 
           )}
           {!loading && list.length === 0 && (
             <p className="text-sm text-zinc-500 text-center py-8">
-              {tab === "search" ? "Keine Treffer — anderen Begriff versuchen" : "Noch keine Einträge"}
+              {isSearching ? "Keine Treffer — anderen Begriff versuchen" : "Noch keine Einträge"}
             </p>
           )}
           {list.map((ex) => (

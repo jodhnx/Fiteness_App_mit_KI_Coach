@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { getPlanRecoveryMessage, type MuscleRecovery } from "@/lib/recovery-shared";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   DndContext,
@@ -24,8 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Play, Plus, ArrowLeft } from "lucide-react";
-import { WorkoutNav } from "@/components/workout/workout-nav";
+import { Play, Plus } from "lucide-react";
+import { WorkoutBackLink } from "@/components/workout/workout-back-link";
 import { PlanScoreCard } from "@/components/workout/plan-score-card";
 import { PlanExerciseSetsCard, createDefaultSetTargets } from "@/components/workout/plan-exercise-sets-card";
 import { ExercisePickerSheet } from "@/components/workout/exercise-picker-sheet";
@@ -417,10 +416,7 @@ export default function PlanEditorPage() {
 
   return (
     <div className="space-y-5 pb-24 max-w-xl mx-auto">
-      <Link href="/workouts/my-plans" className="text-cyan-400 text-sm flex items-center gap-1">
-        <ArrowLeft className="h-4 w-4" /> Meine Workouts
-      </Link>
-      <WorkoutNav />
+      <WorkoutBackLink href="/workouts/my-plans" label="Meine Pläne" />
 
       {recoveryHint && (
         <div className="rounded-2xl p-3 border border-emerald-500/20 bg-emerald-500/5">

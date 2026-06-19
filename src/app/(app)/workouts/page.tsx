@@ -1,25 +1,16 @@
 "use client";
 
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
-import { HubCard } from "@/components/ui/hub-card";
+import { TrainingChoiceCard } from "@/components/workout/training-choice-card";
 import { Button } from "@/components/ui/button";
-import {
-  Dumbbell,
-  Play,
-  History,
-  Trophy,
-  BookOpen,
-  FolderOpen,
-  Plus,
-  Flame,
-} from "lucide-react";
+import { BookOpen, FolderOpen, Play, Zap } from "lucide-react";
 
 export default function WorkoutsHubPage() {
   const router = useRouter();
   const fetchOpts = { revalidateOnMount: false, staleRatio: 0.95 } as const;
+
   const { data: sessionData } = useCachedFetch<{ session: { id: string; name?: string } | null }>(
     "workouts-active",
     "/api/workouts/sessions?active=1",
@@ -27,49 +18,34 @@ export default function WorkoutsHubPage() {
     6_000,
     fetchOpts
   );
-  const { data: plans } = useCachedFetch<{ plans: { id: string; name: string }[] }>(
-    "workouts-my-plans-hub",
-    "/api/workouts/plans",
-    120_000,
-    6_000,
-    fetchOpts
-  );
-  const { data: analytics } = useCachedFetch<{
-    trainingStreak: { currentDays: number } | null;
-  }>("workouts-analytics-hub", "/api/workouts/analytics", 120_000, 6_000, fetchOpts);
+  const { data: plansData } = useCachedFetch<{
+    plans: { id: string; name: string; lastSessionAt?: string | null }[];
+  }>("workouts-my-plans-hub", "/api/workouts/plans", 120_000, 6_000, fetchOpts);
 
   const activeSession = sessionData?.session ?? null;
-  const planCount = plans?.plans?.length ?? 0;
-  const streak = analytics?.trainingStreak?.currentDays ?? 0;
-
-  async function continueWorkout() {
-    if (activeSession?.id) {
-      router.push(`/workouts/live/${activeSession.id}`);
-    }
-  }
+  const plans = plansData?.plans ?? [];
+  const lastPlan = plans.find((p) => p.lastSessionAt);
+  const lastPlanLabel = lastPlan
+    ? `${lastPlan.name} · ${new Date(lastPlan.lastSessionAt!).toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+      })}`
+    : plans.length > 0
+      ? `${plans.length} ${plans.length === 1 ? "Plan" : "Pläne"} bereit`
+      : "Erstelle deinen ersten Plan";
 
   return (
-    <div className="space-y-6 pb-24 max-w-2xl mx-auto">
-      <PageHeader
-        title="Training"
-        subtitle="Einfach starten · Pläne · Rekorde"
-        action={
-          streak > 0 ? (
-            <span className="flex items-center gap-1 text-sm text-orange-400 font-medium">
-              <Flame className="h-4 w-4" />
-              {streak} Tage
-            </span>
-          ) : undefined
-        }
-      />
+    <div className="space-y-5 pb-24 max-w-lg mx-auto">
+      <PageHeader title="Training" subtitle="Wähle, wie du trainieren willst" />
 
       {activeSession && (
-        <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4">
-          <p className="text-xs text-cyan-300/80 uppercase tracking-wide">Läuft gerade</p>
-          <p className="text-lg font-bold text-white mt-1">
-            {activeSession.name ?? "Training"}
-          </p>
-          <Button className="w-full mt-3 h-12 text-base" onClick={continueWorkout}>
+        <div className="rounded-3xl border border-cyan-500/30 bg-cyan-500/10 p-4">
+          <p className="text-xs text-cyan-300/80 uppercase tracking-wide font-medium">Läuft gerade</p>
+          <p className="text-lg font-bold text-white mt-1">{activeSession.name ?? "Training"}</p>
+          <Button
+            className="w-full mt-3 h-14 text-base rounded-2xl"
+            onClick={() => router.push(`/workouts/live/${activeSession.id}`)}
+          >
             <Play className="h-5 w-5 mr-2" />
             Fortsetzen
           </Button>
@@ -77,68 +53,29 @@ export default function WorkoutsHubPage() {
       )}
 
       <div className="space-y-3">
-        <HubCard
+        <TrainingChoiceCard
           href="/workouts/my-plans"
           title="Meine Pläne"
-          description={
-            planCount > 0 ? `${planCount} Pläne` : "Erstelle deinen ersten Plan"
-          }
+          description="Eigene Workouts · Schnell starten"
           icon={FolderOpen}
-          iconClassName="text-violet-400"
+          iconClassName="bg-violet-500/15 text-violet-400"
+          meta={lastPlanLabel}
         />
-        <HubCard
+        <TrainingChoiceCard
           href="/workouts/catalog"
           title="Vorgefertigte Pläne"
-          description="Push/Pull, Ganzkörper & mehr"
+          description="Push/Pull, Ganzkörper, Anfänger & mehr"
           icon={BookOpen}
-          iconClassName="text-cyan-400"
+          iconClassName="bg-cyan-500/15 text-cyan-400"
         />
-        <HubCard
-          href={activeSession ? `/workouts/live/${activeSession.id}` : "/workouts/my-plans"}
-          title="Aktives Training"
-          description={
-            activeSession ? "Workout fortsetzen" : "Plan wählen und starten"
-          }
-          icon={Play}
-          iconClassName="text-emerald-400"
-          badge={activeSession ? "Live" : undefined}
-        />
-        <HubCard
-          href="/workouts/history"
-          title="Historie"
-          description="Vergangene Workouts"
-          icon={History}
-          iconClassName="text-zinc-300"
-        />
-        <HubCard
-          href="/workouts/analytics"
-          title="Gym Check-in"
-          description="Kalender · Streak · Trainingsquote"
-          icon={Flame}
-          iconClassName="text-orange-400"
-        />
-        <HubCard
-          href="/workouts/records"
-          title="Rekorde"
-          description="Personal Records · Kraftverlauf"
-          icon={Trophy}
-          iconClassName="text-amber-400"
+        <TrainingChoiceCard
+          href="/workouts/quick"
+          title="Quick Workout"
+          description="Sofort starten · Übungen spontan wählen · Kein Plan nötig"
+          icon={Zap}
+          iconClassName="bg-amber-500/15 text-amber-400"
         />
       </div>
-
-      <Link href="/workouts/create" prefetch className="block">
-        <Button className="w-full h-14 text-base rounded-xl gap-2">
-          <Plus className="h-5 w-5" />
-          + Workout erstellen
-        </Button>
-      </Link>
-
-      <HubCard
-        href="/workouts/exercises/pick"
-        title="Übungen durchsuchen"
-        description="Bibliothek · Filter · Details"
-        icon={Dumbbell}
-      />
     </div>
   );
 }

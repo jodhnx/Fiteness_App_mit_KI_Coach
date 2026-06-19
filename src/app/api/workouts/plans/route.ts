@@ -67,7 +67,33 @@ export async function GET(req: NextRequest) {
       orderBy: { updatedAt: "desc" },
     });
 
-    return jsonOk({ plans, catalogCount: PLAN_CATALOG.length });
+    const planIds = plans.map((p) => p.id);
+    const lastSessions =
+      planIds.length > 0
+        ? await prisma.workoutSession.findMany({
+            where: {
+              userId: session.user.id,
+              workoutPlanId: { in: planIds },
+              status: "COMPLETED",
+            },
+            orderBy: { completedAt: "desc" },
+            select: { workoutPlanId: true, completedAt: true },
+          })
+        : [];
+
+    const lastByPlan = new Map<string, string>();
+    for (const s of lastSessions) {
+      if (s.workoutPlanId && !lastByPlan.has(s.workoutPlanId) && s.completedAt) {
+        lastByPlan.set(s.workoutPlanId, s.completedAt.toISOString());
+      }
+    }
+
+    const enriched = plans.map((p) => ({
+      ...p,
+      lastSessionAt: lastByPlan.get(p.id) ?? null,
+    }));
+
+    return jsonOk({ plans: enriched, catalogCount: PLAN_CATALOG.length });
   } catch (e) {
     return handleApiError(e);
   }

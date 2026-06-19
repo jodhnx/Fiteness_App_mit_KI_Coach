@@ -5,7 +5,8 @@ import { z } from "zod";
 import { awardXP, checkAndAwardAchievements } from "@/lib/gamification";
 import { updateTrainingStreak } from "@/lib/workout-plans";
 import { computePRUpdates, sessionDurationSec, setVolume } from "@/lib/workout-metrics";
-import { parsePlanSetTargets } from "@/lib/plan-exercise-sets";
+import { parsePlanSetTargets, DEFAULT_SET_COUNT } from "@/lib/plan-exercise-sets";
+import { recordExerciseUsage } from "@/lib/workout-plans";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 
 const startSchema = z.object({
@@ -13,6 +14,14 @@ const startSchema = z.object({
   workoutDayId: z.string().optional(),
   name: z.string().min(1),
   duplicateSessionId: z.string().optional(),
+  exercises: z
+    .array(
+      z.object({
+        exerciseLibraryId: z.string(),
+        exerciseName: z.string(),
+      })
+    )
+    .optional(),
 });
 
 const setSchema = z.object({
@@ -97,6 +106,33 @@ export async function POST(req: NextRequest) {
             restSeconds: s.restSeconds ?? 90,
             completed: false,
           }));
+        }
+      } else if (parsed.data.exercises?.length) {
+        const exerciseIds = parsed.data.exercises.map((e) => e.exerciseLibraryId);
+        void recordExerciseUsage(session.user.id, exerciseIds);
+
+        for (const ex of parsed.data.exercises) {
+          const lastSessionSets = await prisma.workoutSet.findMany({
+            where: {
+              exerciseLibraryId: ex.exerciseLibraryId,
+              session: { userId: session.user.id, status: "COMPLETED" },
+            },
+            orderBy: [{ session: { completedAt: "desc" } }, { setNumber: "asc" }],
+            take: DEFAULT_SET_COUNT,
+          });
+
+          for (let i = 0; i < DEFAULT_SET_COUNT; i++) {
+            const ls = lastSessionSets[i];
+            initialSets.push({
+              exerciseLibraryId: ex.exerciseLibraryId,
+              exerciseName: ex.exerciseName,
+              setNumber: i + 1,
+              reps: ls?.reps ?? 10,
+              weightKg: ls?.weightKg ?? 0,
+              restSeconds: 90,
+              completed: false,
+            });
+          }
         }
       } else if (parsed.data.workoutDayId) {
         const day = await prisma.workoutDay.findFirst({

@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Check, Copy, Plus, Timer, Trash2, Trophy } from "lucide-react";
+import { Check, Plus, Timer, Trash2, Trophy } from "lucide-react";
 
 type SetRow = {
   id: string;
@@ -33,7 +33,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
   const [previousByExercise, setPreviousByExercise] = useState<Record<string, SetRow[]>>({});
   const [elapsed, setElapsed] = useState(0);
   const [restLeft, setRestLeft] = useState(0);
-  const [expandedNotes, setExpandedNotes] = useState<string | null>(null);
+  const patchTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/workouts/sessions/${sessionId}`);
@@ -63,6 +63,14 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
     return () => clearInterval(t);
   }, [restLeft]);
 
+  useEffect(() => {
+    const timers = patchTimers.current;
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+      timers.clear();
+    };
+  }, []);
+
   const grouped = useMemo(() => {
     if (!session) return [];
     const map = new Map<string, SetRow[]>();
@@ -90,7 +98,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
     [session]
   );
 
-  async function patchSet(setId: string, data: Partial<SetRow>) {
+  async function patchSet(setId: string, data: Partial<SetRow>, immediate = false) {
     const prev = session;
     setSession((s) => {
       if (!s) return s;
@@ -99,64 +107,113 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         sets: s.sets.map((row) => (row.id === setId ? { ...row, ...data } : row)),
       };
     });
+
+    const send = async () => {
+      try {
+        const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "updateSet", setId, ...data }),
+        });
+        if (!res.ok) {
+          setSession(prev);
+          toast.error("Speichern fehlgeschlagen");
+        }
+      } catch {
+        setSession(prev);
+        toast.error("Speichern fehlgeschlagen");
+      }
+    };
+
+    if (immediate) {
+      await send();
+      return;
+    }
+
+    const existing = patchTimers.current.get(setId);
+    if (existing) clearTimeout(existing);
+    patchTimers.current.set(
+      setId,
+      setTimeout(() => {
+        patchTimers.current.delete(setId);
+        void send();
+      }, 400)
+    );
+  }
+
+  async function deleteSet(setId: string) {
+    const prev = session;
+    setSession((s) => {
+      if (!s) return s;
+      return { ...s, sets: s.sets.filter((row) => row.id !== setId) };
+    });
     try {
       const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "updateSet", setId, ...data }),
+        body: JSON.stringify({ action: "deleteSet", setId }),
       });
       if (!res.ok) {
         setSession(prev);
-        toast.error("Speichern fehlgeschlagen");
+        toast.error("Satz konnte nicht gelöscht werden");
       }
     } catch {
       setSession(prev);
-      toast.error("Speichern fehlgeschlagen");
     }
-  }
-
-  async function deleteSet(setId: string) {
-    await fetch(`/api/workouts/sessions/${sessionId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "deleteSet", setId }),
-    });
-    await load();
   }
 
   async function addSet(exerciseName: string, exerciseLibraryId: string | null, setNumber: number) {
     const lastSet = session?.sets
       .filter((s) => s.exerciseName === exerciseName)
       .sort((a, b) => b.setNumber - a.setNumber)[0];
-    await fetch(`/api/workouts/sessions/${sessionId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "addSet",
-        exerciseName,
-        exerciseLibraryId: exerciseLibraryId ?? undefined,
-        setNumber,
-        reps: lastSet?.reps ?? 10,
-        weightKg: lastSet?.weightKg ?? 0,
-        restSeconds: lastSet?.restSeconds ?? 90,
-      }),
-    });
-    await load();
-  }
 
-  async function copyLastSet(exerciseName: string, exerciseLibraryId: string | null) {
-    const sets = session?.sets.filter((s) => s.exerciseName === exerciseName) ?? [];
-    const last = sets[sets.length - 1];
-    if (!last) return;
-    await addSet(exerciseName, exerciseLibraryId, sets.length + 1);
-    const newSets = session?.sets.filter((s) => s.exerciseName === exerciseName) ?? [];
-    const newId = newSets[newSets.length - 1]?.id;
-    if (newId) {
-      await patchSet(newId, {
-        reps: last.reps ?? 0,
-        weightKg: last.weightKg ?? 0,
-        rpe: last.rpe ?? undefined,
-      } as Partial<SetRow>);
+    const tempId = `temp-set-${Date.now()}`;
+    const optimistic: SetRow = {
+      id: tempId,
+      exerciseLibraryId,
+      exerciseName,
+      setNumber,
+      reps: lastSet?.reps ?? 10,
+      weightKg: lastSet?.weightKg ?? 0,
+      rpe: null,
+      restSeconds: lastSet?.restSeconds ?? 90,
+      completed: false,
+      notes: null,
+    };
+
+    setSession((s) => (s ? { ...s, sets: [...s.sets, optimistic] } : s));
+
+    try {
+      const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "addSet",
+          exerciseName,
+          exerciseLibraryId: exerciseLibraryId ?? undefined,
+          setNumber,
+          reps: optimistic.reps ?? 10,
+          weightKg: optimistic.weightKg ?? 0,
+          restSeconds: optimistic.restSeconds ?? 90,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSession((s) =>
+          s ? { ...s, sets: s.sets.filter((row) => row.id !== tempId) } : s
+        );
+        return;
+      }
+      const created = data.set as SetRow;
+      setSession((s) =>
+        s
+          ? { ...s, sets: s.sets.map((row) => (row.id === tempId ? created : row)) }
+          : s
+      );
+    } catch {
+      setSession((s) =>
+        s ? { ...s, sets: s.sets.filter((row) => row.id !== tempId) } : s
+      );
     }
   }
 
@@ -189,170 +246,157 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
   };
 
   if (!session) {
-    return <p className="text-zinc-500 animate-pulse">Workout wird geladen...</p>;
+    return (
+      <div className="space-y-4 animate-pulse max-w-lg mx-auto">
+        <div className="h-24 rounded-2xl bg-zinc-800" />
+        <div className="h-40 rounded-2xl bg-zinc-800" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4 pb-28">
-      <div className="sticky top-0 z-20 -mx-1 px-1 py-3 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/50">
-        <div className="card-premium p-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-bold text-white">{session.name}</h1>
-            <p className="text-3xl font-bold text-cyan-400 font-mono tabular-nums">
-              {formatTime(elapsed)}
-            </p>
-            <p className="text-xs text-zinc-500">
-              Sätze {completedSets}/{totalSets} · {Math.round(totalVolume).toLocaleString("de-DE")} kg
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {restLeft > 0 && (
-              <div className="flex items-center gap-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 px-4 py-2">
-                <Timer className="h-5 w-5 text-cyan-400" />
-                <span className="text-xl font-bold text-cyan-400 tabular-nums">
-                  {formatTime(restLeft)}
-                </span>
-              </div>
-            )}
-            <Button
-              variant="secondary"
-              className="h-11"
-              onClick={() => setRestLeft(90)}
-            >
-              90s Pause
-            </Button>
-            <Button className="h-11" onClick={completeWorkout}>
+    <div className="space-y-4 pb-28 max-w-lg mx-auto">
+      <div className="sticky top-0 z-20 py-3 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/50 -mx-1 px-1">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-base font-semibold text-zinc-400">{session.name}</h1>
+              <p className="text-4xl font-bold text-cyan-400 font-mono tabular-nums mt-1">
+                {formatTime(elapsed)}
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">
+                {completedSets}/{totalSets} Sätze · {Math.round(totalVolume).toLocaleString("de-DE")} kg
+              </p>
+            </div>
+            <Button className="h-12 px-5 rounded-xl shrink-0" onClick={completeWorkout}>
               Beenden
             </Button>
           </div>
+          {restLeft > 0 && (
+            <div className="flex items-center gap-2 mt-3 rounded-xl bg-cyan-500/15 border border-cyan-500/30 px-4 py-3">
+              <Timer className="h-5 w-5 text-cyan-400" />
+              <span className="text-2xl font-bold text-cyan-400 tabular-nums">{formatTime(restLeft)}</span>
+              <span className="text-sm text-zinc-400 ml-1">Pause</span>
+            </div>
+          )}
+          {restLeft <= 0 && (
+            <Button
+              variant="secondary"
+              className="w-full h-12 mt-3 rounded-xl"
+              onClick={() => setRestLeft(90)}
+            >
+              90s Pause starten
+            </Button>
+          )}
         </div>
       </div>
 
       {grouped.map(({ key, name, exerciseLibraryId, sets }) => {
         const prev = previousByExercise[key]?.[0];
         return (
-          <div key={key} className="card-premium overflow-hidden">
-            <div className="p-4 border-b border-zinc-800/80 flex justify-between items-start gap-2">
-              <h2 className="text-lg font-bold text-white">{name}</h2>
+          <div key={key} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
+            <div className="px-4 py-3.5 border-b border-zinc-800/80">
+              <h2 className="text-xl font-bold text-white">{name}</h2>
               {prev && (
-                <p className="text-xs text-zinc-500 shrink-0">
+                <p className="text-xs text-zinc-500 mt-0.5">
                   Letzte: {prev.weightKg ?? 0} kg × {prev.reps ?? 0}
                 </p>
               )}
             </div>
             <div className="p-3 space-y-2">
-              <div className="grid grid-cols-[2.5rem_1fr_1fr_3rem_3rem] gap-2 text-xs text-zinc-500 px-1">
-                <span>#</span>
-                <span>kg</span>
+              <div className="grid grid-cols-[4.5rem_1fr_1fr_3.5rem_3.5rem] gap-2 text-[10px] uppercase tracking-wide text-zinc-500 px-0.5">
+                <span>Satz</span>
+                <span>Gewicht</span>
                 <span>Wdh</span>
-                <span className="text-center">✓</span>
-                <span></span>
+                <span />
+                <span />
               </div>
-              {sets.map((set) => (
-                <div key={set.id} className="space-y-1">
-                  <div
-                    className={`grid grid-cols-[2.5rem_1fr_1fr_3rem_3rem] gap-2 items-center rounded-xl p-2 ${
-                      set.completed
-                        ? "bg-cyan-500/15 border border-cyan-500/40"
-                        : "bg-zinc-800/40"
-                    }`}
+              {sets.map((set, index) => (
+                <div
+                  key={set.id}
+                  className={`grid grid-cols-[4.5rem_1fr_1fr_3.5rem_3.5rem] gap-2 items-center rounded-xl p-1.5 ${
+                    set.completed
+                      ? "bg-cyan-500/15 border border-cyan-500/35"
+                      : "bg-zinc-800/50"
+                  }`}
+                >
+                  <span className="text-base font-semibold text-zinc-300 pl-2 tabular-nums">
+                    {index + 1}
+                  </span>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="kg"
+                    className="h-14 text-xl text-center rounded-xl tabular-nums"
+                    value={set.weightKg ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSession((prev) => {
+                        if (!prev) return prev;
+                        return {
+                          ...prev,
+                          sets: prev.sets.map((s) =>
+                            s.id === set.id
+                              ? { ...s, weightKg: v === "" ? null : Number(v) }
+                              : s
+                          ),
+                        };
+                      });
+                    }}
+                    onBlur={() => patchSet(set.id, { weightKg: set.weightKg ?? 0 })}
+                  />
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Wdh"
+                    className="h-14 text-xl text-center rounded-xl tabular-nums"
+                    value={set.reps ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSession((prev) => {
+                        if (!prev) return prev;
+                        return {
+                          ...prev,
+                          sets: prev.sets.map((s) =>
+                            s.id === set.id
+                              ? { ...s, reps: v === "" ? null : Number(v) }
+                              : s
+                          ),
+                        };
+                      });
+                    }}
+                    onBlur={() => patchSet(set.id, { reps: set.reps ?? 0 })}
+                  />
+                  <Button
+                    size="icon"
+                    variant={set.completed ? "default" : "secondary"}
+                    className="h-14 w-14 rounded-xl"
+                    onClick={async () => {
+                      await patchSet(set.id, { completed: !set.completed }, true);
+                      if (!set.completed) setRestLeft(set.restSeconds ?? 90);
+                    }}
                   >
-                    <span className="text-zinc-400 text-center font-medium">
-                      {set.setNumber}
-                    </span>
-                    <Input
-                      type="number"
-                      className="h-12 text-lg text-center"
-                      value={set.weightKg ?? ""}
-                      onChange={(e) =>
-                        setSession((prev) => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            sets: prev.sets.map((s) =>
-                              s.id === set.id
-                                ? { ...s, weightKg: Number(e.target.value) }
-                                : s
-                            ),
-                          };
-                        })
-                      }
-                      onBlur={() => patchSet(set.id, { weightKg: set.weightKg ?? 0 })}
-                    />
-                    <Input
-                      type="number"
-                      className="h-12 text-lg text-center"
-                      value={set.reps ?? ""}
-                      onChange={(e) =>
-                        setSession((prev) => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            sets: prev.sets.map((s) =>
-                              s.id === set.id ? { ...s, reps: Number(e.target.value) } : s
-                            ),
-                          };
-                        })
-                      }
-                      onBlur={() => patchSet(set.id, { reps: set.reps ?? 0 })}
-                    />
-                    <Button
-                      size="icon"
-                      variant={set.completed ? "default" : "secondary"}
-                      className="h-12 w-12 rounded-xl"
-                      onClick={async () => {
-                        await patchSet(set.id, { completed: !set.completed });
-                        if (!set.completed) setRestLeft(set.restSeconds ?? 90);
-                      }}
-                    >
-                      <Check className="h-6 w-6" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-12 w-12"
-                      onClick={() => deleteSet(set.id)}
-                    >
-                      <Trash2 className="h-5 w-5 text-red-400" />
-                    </Button>
-                  </div>
-                  {expandedNotes === set.id && (
-                    <Input
-                      placeholder="Notiz zum Satz..."
-                      defaultValue={set.notes ?? ""}
-                      onBlur={(e) => patchSet(set.id, { notes: e.target.value })}
-                      className="text-sm"
-                    />
-                  )}
+                    <Check className="h-6 w-6" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-14 w-14 rounded-xl"
+                    disabled={sets.length <= 1}
+                    onClick={() => deleteSet(set.id)}
+                  >
+                    <Trash2 className="h-5 w-5 text-red-400" />
+                  </Button>
                 </div>
               ))}
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    addSet(name, exerciseLibraryId, sets.length + 1)
-                  }
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Satz
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyLastSet(name, exerciseLibraryId)}
-                >
-                  <Copy className="h-4 w-4 mr-1" /> Kopieren
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    setExpandedNotes(expandedNotes === sets[0]?.id ? null : sets[0]?.id ?? null)
-                  }
-                >
-                  Notiz
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                className="w-full h-12 mt-1 rounded-xl border-dashed border-zinc-700"
+                onClick={() => addSet(name, exerciseLibraryId, sets.length + 1)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Satz hinzufügen
+              </Button>
             </div>
           </div>
         );
