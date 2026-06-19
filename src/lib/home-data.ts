@@ -15,6 +15,7 @@ import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
 import { computeWeightGoalProgress } from "@/lib/smart-goals";
 import { buildWeeklyReport } from "@/lib/weekly-report";
 import { loadMuscleRecovery } from "@/lib/recovery-service";
+import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import { loadGamificationHomeCard } from "@/lib/gamification-home";
 import { loadChallengesWithProgress } from "@/lib/challenge-progress";
 import { buildBodyTransformation } from "@/lib/body-transformation";
@@ -225,7 +226,12 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
             daysRemaining: weightGoal.daysRemaining,
           }
         : null,
-      recovery: recovery ? { highlights: recovery.highlights } : undefined,
+      recovery: recovery
+        ? {
+            highlights: recovery.highlights,
+            muscles: filterDisplayMuscles(recovery.muscles),
+          }
+        : undefined,
       weeklyReport: weeklyReport
         ? {
             weekLabel: weeklyReport.weekLabel,

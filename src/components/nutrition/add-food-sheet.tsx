@@ -18,7 +18,7 @@ type Props = {
     product: FoodProduct,
     quantityG: number,
     meal: MealType
-  ) => Promise<void>;
+  ) => void;
   onToggleFavorite: (foodItemId: string) => Promise<void>;
 };
 
@@ -33,7 +33,6 @@ export const AddFoodSheet = memo(function AddFoodSheet({
 }: Props) {
   const [detailProduct, setDetailProduct] = useState<FoodProduct | null>(null);
   const [detailMeal, setDetailMeal] = useState<MealType>(mealType);
-  const [adding, setAdding] = useState(false);
 
   const closeAll = useCallback(() => {
     setDetailProduct(null);
@@ -49,15 +48,10 @@ export const AddFoodSheet = memo(function AddFoodSheet({
   );
 
   const addFromDetail = useCallback(
-    async (quantityG: number, m: MealType) => {
+    (quantityG: number, m: MealType) => {
       if (!detailProduct) return;
-      setAdding(true);
-      try {
-        await onQuickAddFood(detailProduct, quantityG, m);
-        setDetailProduct(null);
-      } finally {
-        setAdding(false);
-      }
+      onQuickAddFood(detailProduct, quantityG, m);
+      setDetailProduct(null);
     },
     [detailProduct, onQuickAddFood]
   );
@@ -93,7 +87,6 @@ export const AddFoodSheet = memo(function AddFoodSheet({
           onToggleFavorite={onToggleFavorite}
           onClose={() => setDetailProduct(null)}
           onAdd={addFromDetail}
-          adding={adding}
         />
       )}
     </>

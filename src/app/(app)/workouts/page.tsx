@@ -4,7 +4,10 @@ import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { TrainingChoiceCard } from "@/components/workout/training-choice-card";
+import { MuscleRecoveryPanel } from "@/components/workout/muscle-recovery-panel";
 import { Button } from "@/components/ui/button";
+import { filterDisplayMuscles } from "@/lib/recovery-shared";
+import type { MuscleRecovery } from "@/lib/recovery-shared";
 import {
   BookOpen,
   Dumbbell,
@@ -32,6 +35,9 @@ export default function WorkoutsHubPage() {
   const { data: journeyData } = useCachedFetch<{
     journey: { streak: { currentDays: number }; stats30d: { sessions: number } };
   }>("workouts-journey-hub", "/api/workouts/journey", 120_000, 6_000, fetchOpts);
+  const { data: recoveryData } = useCachedFetch<{
+    recovery: MuscleRecovery[];
+  }>("workouts-recovery-hub", "/api/workouts/recovery", 120_000, 6_000, fetchOpts);
 
   const activeSession = sessionData?.session ?? null;
   const plans = plansData?.plans ?? [];
@@ -47,6 +53,7 @@ export default function WorkoutsHubPage() {
 
   const streak = journeyData?.journey?.streak?.currentDays ?? 0;
   const sessions30 = journeyData?.journey?.stats30d?.sessions ?? 0;
+  const recoveryMuscles = filterDisplayMuscles(recoveryData?.recovery ?? []);
 
   return (
     <div className="space-y-6 pb-24 max-w-lg mx-auto">
@@ -65,6 +72,8 @@ export default function WorkoutsHubPage() {
           </Button>
         </div>
       )}
+
+      <MuscleRecoveryPanel muscles={recoveryMuscles} showLink />
 
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 px-1">Trainieren</p>

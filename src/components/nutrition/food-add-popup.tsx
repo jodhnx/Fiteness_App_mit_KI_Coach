@@ -29,7 +29,7 @@ type Props = {
     product: FoodProduct,
     quantityG: number,
     meal: MealType
-  ) => Promise<void>;
+  ) => void;
   onToggleFavorite: (foodItemId: string) => Promise<void>;
 };
 
@@ -178,8 +178,6 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     recents: FoodProduct[];
   }>({ frequent: [], recents: [] });
   const [detailProduct, setDetailProduct] = useState<FoodProduct | null>(null);
-  const [quickAddingId, setQuickAddingId] = useState<string | null>(null);
-  const [addingDetail, setAddingDetail] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const requestGen = useRef(0);
 
@@ -291,29 +289,18 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   }, [isSearching, result, instantResults]);
 
   const quickAdd = useCallback(
-    async (product: FoodProduct) => {
-      const key = product.id ?? product.offCode ?? product.name;
+    (product: FoodProduct) => {
       const grams = getDefaultQuickAddGrams(product);
-      setQuickAddingId(key);
-      try {
-        await onQuickAddFood(product, grams, mealType);
-      } finally {
-        setQuickAddingId(null);
-      }
+      onQuickAddFood(product, grams, mealType);
     },
     [mealType, onQuickAddFood]
   );
 
   const addFromDetail = useCallback(
-    async (quantityG: number, m: MealType) => {
+    (quantityG: number, m: MealType) => {
       if (!detailProduct) return;
-      setAddingDetail(true);
-      try {
-        await onQuickAddFood(detailProduct, quantityG, m);
-        setDetailProduct(null);
-      } finally {
-        setAddingDetail(false);
-      }
+      onQuickAddFood(detailProduct, quantityG, m);
+      setDetailProduct(null);
     },
     [detailProduct, onQuickAddFood]
   );
@@ -330,7 +317,6 @@ export const FoodAddPopup = memo(function FoodAddPopup({
         onToggleFavorite={
           food.id ? () => onToggleFavorite(food.id as string) : undefined
         }
-        quickAdding={quickAddingId === rowKey}
       />
     );
   };
@@ -400,7 +386,6 @@ export const FoodAddPopup = memo(function FoodAddPopup({
           mealType={mealType}
           onClose={() => setDetailProduct(null)}
           onAdd={addFromDetail}
-          adding={addingDetail}
         />
       )}
     </>

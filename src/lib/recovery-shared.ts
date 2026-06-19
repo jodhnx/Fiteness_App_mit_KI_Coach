@@ -1,3 +1,52 @@
+/** Primary muscle groups shown in UI */
+export const DISPLAY_MUSCLE_GROUPS = [
+  "CHEST",
+  "BACK",
+  "SHOULDERS",
+  "BICEPS",
+  "TRICEPS",
+  "LEGS",
+  "ABS",
+] as const;
+
+const RECOVERY_HOURS: Record<string, number> = {
+  CHEST: 48,
+  BACK: 48,
+  SHOULDERS: 48,
+  BICEPS: 36,
+  TRICEPS: 36,
+  LEGS: 72,
+  ABS: 24,
+  FOREARMS: 24,
+  CALVES: 36,
+  CARDIO: 24,
+};
+
+export function liveRecoveryPercent(
+  lastTrainedAt: string | null,
+  recoveryHoursRequired: number
+): number {
+  if (!lastTrainedAt || recoveryHoursRequired <= 0) return 100;
+  const hoursSince = (Date.now() - new Date(lastTrainedAt).getTime()) / 3_600_000;
+  return Math.min(100, Math.max(0, Math.round((hoursSince / recoveryHoursRequired) * 100)));
+}
+
+export function filterDisplayMuscles(muscles: MuscleRecovery[]): MuscleRecovery[] {
+  return DISPLAY_MUSCLE_GROUPS.map(
+    (id) =>
+      muscles.find((m) => m.muscle === id) ?? {
+        muscle: id,
+        label: MUSCLE_LABELS[id] ?? id,
+        recoveryPercent: 100,
+        status: "ready" as const,
+        volume7d: 0,
+        lastTrainedAt: null,
+        recoveryHoursRequired: RECOVERY_HOURS[id] ?? 48,
+        setsLastSession: 0,
+      }
+  );
+}
+
 export const MUSCLE_LABELS: Record<string, string> = {
   CHEST: "Brust",
   BACK: "Rücken",
@@ -18,6 +67,9 @@ export type MuscleRecovery = {
   status: "ready" | "recovering" | "fatigued";
   volume7d: number;
   lastTrainedAt: string | null;
+  /** Hours until 100% recovery (for live client tick) */
+  recoveryHoursRequired: number;
+  setsLastSession: number;
 };
 
 export type RecoverySnapshot = {

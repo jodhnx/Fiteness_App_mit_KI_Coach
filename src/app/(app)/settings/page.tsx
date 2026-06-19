@@ -358,7 +358,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl pb-24">
       <PageHeader
-        title="Einstellungen"
+        title="Account"
         subtitle="Profil, Ziele, Vitaldaten & Design — automatische Berechnung"
       />
 

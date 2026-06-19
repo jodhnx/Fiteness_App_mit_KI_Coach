@@ -19,8 +19,40 @@ type Options = {
 };
 
 export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Options) {
-  const quickAdd = useCallback(
+  const syncQuickAdd = useCallback(
     async (
+      snapshot: NutritionDashboardPayload,
+      foodItemId: string,
+      product: FoodProduct,
+      grams: number,
+      targetMeal: MealType
+    ) => {
+      const res = await fetch("/api/nutrition/quick-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          foodItemId,
+          offCode: product.offCode,
+          quantityG: grams,
+          mealType: targetMeal,
+        }),
+      });
+
+      if (!res.ok) {
+        applyDashboard(snapshot);
+        const err = await res.json().catch(() => ({}));
+        toast.error((err as { error?: string }).error ?? "Hinzufügen fehlgeschlagen");
+        return;
+      }
+
+      const updated = await applyNutritionMutationResponse(res);
+      if (!updated) applyDashboard(snapshot);
+    },
+    [applyDashboard]
+  );
+
+  const quickAdd = useCallback(
+    (
       product: FoodProduct,
       quantityG?: number,
       mealType?: MealType,
@@ -30,68 +62,59 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
       if (!targetMeal) return;
 
       const grams = quantityG ?? getDefaultQuickAddGrams(product);
-      const optimistic = optimisticAddMealItem(dashboard, product, grams, targetMeal);
+      const snapshot = dashboard;
+      const optimistic = optimisticAddMealItem(snapshot, product, grams, targetMeal);
       if (optimistic) applyDashboard(optimistic);
+      onSuccess?.();
 
-      const resolved = await ensureFoodItemId(product);
-      if ("error" in resolved) {
-        applyDashboard(dashboard);
-        toast.error(resolved.error);
-        return;
-      }
-
-      const res = await fetch("/api/nutrition/quick-add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          foodItemId: resolved.id,
-          offCode: product.offCode,
-          quantityG: grams,
-          mealType: targetMeal,
-        }),
-      });
-
-      if (!res.ok) {
-        applyDashboard(dashboard);
-        const err = await res.json().catch(() => ({}));
-        toast.error((err as { error?: string }).error ?? "Hinzufügen fehlgeschlagen");
-        return;
-      }
-
-      const updated = await applyNutritionMutationResponse(res);
-      if (!updated) applyDashboard(dashboard);
-      else {
-        onSuccess?.();
-      }
+      void (async () => {
+        if (product.id) {
+          await syncQuickAdd(snapshot, product.id, product, grams, targetMeal);
+          return;
+        }
+        const resolved = await ensureFoodItemId(product);
+        if ("error" in resolved) {
+          applyDashboard(snapshot);
+          toast.error(resolved.error);
+          return;
+        }
+        await syncQuickAdd(snapshot, resolved.id, product, grams, targetMeal);
+      })();
     },
-    [dashboard, applyDashboard, onSuccess]
+    [dashboard, applyDashboard, onSuccess, syncQuickAdd]
   );
 
   const quickAddById = useCallback(
-    async (
+    (
       foodItemId: string,
       quantityG: number,
-      opts?: { offCode?: string; mealType?: MealType }
+      opts?: { offCode?: string; mealType?: MealType; product?: FoodProduct }
     ) => {
       if (!opts?.mealType) return;
-      const res = await fetch("/api/nutrition/quick-add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          foodItemId,
-          offCode: opts.offCode,
-          quantityG,
-          mealType: opts.mealType,
-        }),
-      });
-      if (!res.ok) {
-        toast.error("Hinzufügen fehlgeschlagen");
-        return;
-      }
-      await applyNutritionMutationResponse(res);
+      const targetMeal = opts.mealType;
+      const product =
+        opts.product ??
+        ({
+          id: foodItemId,
+          name: "Lebensmittel",
+          brand: null,
+          calories: 0,
+          proteinG: 0,
+          carbsG: 0,
+          fatG: 0,
+          fiberG: 0,
+          servingG: 100,
+          source: "local",
+        } satisfies FoodProduct);
+
+      const snapshot = dashboard;
+      const optimistic = optimisticAddMealItem(snapshot, product, quantityG, targetMeal);
+      if (optimistic) applyDashboard(optimistic);
       onSuccess?.();
+
+      void syncQuickAdd(snapshot, foodItemId, product, quantityG, targetMeal);
     },
-    [onSuccess]
+    [dashboard, applyDashboard, onSuccess, syncQuickAdd]
   );
 
   return { quickAdd, quickAddById };

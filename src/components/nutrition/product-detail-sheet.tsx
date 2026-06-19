@@ -21,7 +21,7 @@ type Props = {
   favoriteIds: Set<string>;
   onToggleFavorite: (id: string) => void;
   onClose: () => void;
-  onAdd: (quantityG: number, meal: MealType) => Promise<void>;
+  onAdd: (quantityG: number, meal: MealType) => void;
   adding?: boolean;
 };
 

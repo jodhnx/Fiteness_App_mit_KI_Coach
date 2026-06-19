@@ -10,10 +10,10 @@ import {
   Bot,
   Trophy,
   Users,
-  User,
   Shield,
   Watch,
   Target,
+  Settings,
   Menu,
   X,
 } from "lucide-react";
@@ -30,7 +30,7 @@ const navItems = [
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
   { href: "/social", label: "Social", icon: Users },
   { href: "/wearables", label: "Wearables", icon: Watch },
-  { href: "/profile", label: "Profil", icon: User },
+  { href: "/settings", label: "Account", icon: Settings },
 ];
 
 export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {

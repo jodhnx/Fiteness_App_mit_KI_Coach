@@ -4,7 +4,6 @@ export const MAIN_NAV_ROUTES = [
   "/nutrition",
   "/progress",
   "/coach",
-  "/profile",
   "/erfolge",
   "/settings",
 ] as const;

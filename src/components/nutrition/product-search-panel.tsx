@@ -32,7 +32,7 @@ type Props = {
     product: FoodProduct,
     quantityG: number,
     meal: MealType
-  ) => Promise<void>;
+  ) => void;
   onToggleFavorite: (foodItemId: string) => Promise<void>;
   onOpenDetail: (product: FoodProduct) => void;
   quickFoods?: FoodProduct[];
@@ -68,7 +68,6 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
     recents: FoodProduct[];
     frequent: FoodProduct[];
   }>({ favorites: [], recents: [], frequent: [] });
-  const [quickAddingId, setQuickAddingId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const requestGen = useRef(0);
 
@@ -172,15 +171,9 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
 
   const products = result?.products ?? [];
 
-  async function quickAdd(product: FoodProduct) {
-    const key = product.id ?? product.offCode ?? product.name;
+  function quickAdd(product: FoodProduct) {
     const grams = getDefaultQuickAddGrams(product);
-    setQuickAddingId(key);
-    try {
-      await onQuickAddFood(product, grams, mealType);
-    } finally {
-      setQuickAddingId(null);
-    }
+    onQuickAddFood(product, grams, mealType);
   }
 
   const stripFavorites =
@@ -321,7 +314,6 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
               onToggleFavorite={
                 food.id ? () => onToggleFavorite(food.id as string) : undefined
               }
-              quickAdding={quickAddingId === rowKey}
             />
           );
         })}

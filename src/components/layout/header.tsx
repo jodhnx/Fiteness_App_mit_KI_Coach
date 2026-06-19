@@ -31,10 +31,10 @@ export function Header({
         </button>
 
         <Link
-          href="/profile"
+          href="/settings"
           prefetch
           className="flex flex-1 justify-center min-w-0 active:scale-[0.98] transition-transform"
-          aria-label="Profil öffnen"
+          aria-label="Account öffnen"
         >
           <span className="rounded-full ring-2 ring-accent/40 ring-offset-2 ring-offset-zinc-950 shadow-lg shadow-cyan-500/10">
             <UserAvatar src={userImage} name={userName} size="xl" />

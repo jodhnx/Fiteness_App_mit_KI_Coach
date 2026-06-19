@@ -9,7 +9,6 @@ import {
   Apple,
   Footprints,
   Bot,
-  User,
   Shield,
   X,
   TrendingUp,
@@ -27,12 +26,11 @@ const PRIMARY_NAV = [
   { href: "/nutrition", label: "Ernährung", icon: Apple },
   { href: "/progress", label: "Fortschritt", icon: TrendingUp },
   { href: "/coach", label: "NEXFORM Coach", icon: Bot },
-  { href: "/profile", label: "Profil", icon: User },
 ] as const;
 
 const SECONDARY_NAV = [
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
-  { href: "/settings", label: "Einstellungen", icon: Settings },
+  { href: "/settings", label: "Account", icon: Settings },
   { href: "/activities", label: "Aktivität & Schritte", icon: Footprints },
   { href: "/goals", label: "Ziele", icon: Target },
 ] as const;

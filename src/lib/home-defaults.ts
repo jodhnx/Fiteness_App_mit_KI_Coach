@@ -62,6 +62,16 @@ export type HomeDataPayload = {
   nutrition?: NutritionDashboardPayload;
   recovery?: {
     highlights: { label: string; recoveryPercent: number }[];
+    muscles?: {
+      muscle: string;
+      label: string;
+      recoveryPercent: number;
+      status: string;
+      volume7d: number;
+      lastTrainedAt: string | null;
+      recoveryHoursRequired: number;
+      setsLastSession: number;
+    }[];
   };
   weeklyReport?: {
     weekLabel: string;

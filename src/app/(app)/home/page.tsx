@@ -1,39 +1,29 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
-import Link from "next/link";
+import { useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
 import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
 import { type HomeDataPayload } from "@/lib/home-defaults";
 import { useHomeLiveData } from "@/hooks/use-home-live-data";
 import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
-import { RefreshCw, AlertCircle, Play } from "lucide-react";
+import { RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HeuteHeroCard } from "@/components/home/heute-hero-card";
-import { HomeQuickActions } from "@/components/home/home-quick-actions";
-import { HomeNextWorkoutCard } from "@/components/home/home-next-workout-card";
-import { HomeWeekOverview } from "@/components/home/home-week-overview";
-import { HomeChallengesRow } from "@/components/home/home-challenges-row";
-import { HomeBodyCard } from "@/components/home/home-body-card";
-import { HomeAchievementsCard } from "@/components/home/home-achievements-card";
-import { HomeCoachRecommendations } from "@/components/home/home-coach-recommendations";
-import { HomeGreeting } from "@/components/home/home-greeting";
-import { useDisplayName } from "@/hooks/use-display-name";
-import { HomePlannedWorkouts } from "@/components/home/home-planned-workouts";
-import { HomeCalorieTrend } from "@/components/home/home-calorie-trend";
-import { HomeWeightGoalCard } from "@/components/home/home-weight-goal-card";
-import { HomeMotivationCard } from "@/components/home/home-motivation-card";
-import { HomeDashboardGrid } from "@/components/home/home-dashboard-grid";
-import { HomeInsightCards } from "@/components/home/home-insight-cards";
 import { HomeLoadingSkeleton } from "@/components/home/home-loading-skeleton";
+import { HomeHeaderBar } from "@/components/home/home-header-bar";
+import { HomeTodayProgressCard } from "@/components/home/home-today-progress-card";
+import { HomeNextTrainingCard } from "@/components/home/home-next-training-card";
+import { HomeKiTipCard } from "@/components/home/home-ki-tip-card";
+import { MuscleRecoveryPanel } from "@/components/workout/muscle-recovery-panel";
+import { filterDisplayMuscles } from "@/lib/recovery-shared";
+import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { refreshCached, isCacheStale } from "@/lib/client-cache";
+import { usePrefetchedProfile } from "@/components/providers/profile-data-provider";
 
 export default function HomePage() {
-  const router = useRouter();
   const { status: sessionStatus } = useSession();
+  const profile = usePrefetchedProfile();
   const { data: rawData, loading, error, timedOut, reload } = useCachedFetch<HomeDataPayload>(
     HOME_DATA_CACHE_KEY,
     "/api/home",
@@ -78,39 +68,16 @@ export default function HomePage() {
 
   const steps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10000;
-  const caloriesBurned =
-    data.caloriesBurnedTotal ?? data.healthToday?.caloriesBurned ?? 0;
   const trainingStreakDays =
     data.trainingStreak?.currentDays ?? data.streak?.currentDays ?? 0;
+  const level = data.gamification?.level ?? 0;
+  const levelName = data.gamification?.levelName;
+  const userName = data.userName ?? profile?.user?.name;
+  const userImage = data.userImage ?? profile?.user?.image;
 
-  const coach = data.coach;
-  const nextWorkout = data.nextWorkout ?? null;
-  const activeSessionId = data.activeSession?.id ?? null;
-  const displayName = useDisplayName(data.userName);
-
-  const onStartTraining = useCallback(async () => {
-    if (activeSessionId) {
-      router.push(`/workouts/live/${activeSessionId}`);
-      return;
-    }
-    if (nextWorkout?.dayId) {
-      const res = await fetch("/api/workouts/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "start",
-          workoutPlanId: nextWorkout.planId,
-          workoutDayId: nextWorkout.dayId,
-          name: `${nextWorkout.planName} – ${nextWorkout.dayName}`,
-        }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (res.ok) router.push(`/workouts/live/${body.session.id}`);
-      else router.push("/workouts");
-      return;
-    }
-    router.push("/workouts");
-  }, [activeSessionId, nextWorkout, router]);
+  const recoveryMuscles: MuscleRecovery[] = filterDisplayMuscles(
+    (data.recovery?.muscles ?? []) as MuscleRecovery[]
+  );
 
   if (sessionStatus === "unauthenticated") {
     return (
@@ -129,9 +96,15 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-4 pb-2">
+    <div className="space-y-5 pb-4 max-w-lg mx-auto">
       <div className="flex items-start justify-between gap-2">
-        <HomeGreeting name={displayName} />
+        <HomeHeaderBar
+          name={userName}
+          image={userImage}
+          streakDays={trainingStreakDays}
+          level={level}
+          levelName={levelName}
+        />
         {error && (
           <Button
             type="button"
@@ -153,57 +126,19 @@ export default function HomePage() {
         </div>
       )}
 
-      <HeuteHeroCard
-        nutrition={nutrition}
-        steps={steps}
-        stepGoal={stepGoal}
-        caloriesBurned={caloriesBurned}
-        trainingStreakDays={trainingStreakDays}
+      <HomeTodayProgressCard nutrition={nutrition} steps={steps} stepGoal={stepGoal} />
+
+      <HomeNextTrainingCard
+        nextWorkout={data.nextWorkout ?? null}
+        activeSessionId={data.activeSession?.id}
+        recoveryMuscles={recoveryMuscles}
       />
 
-      <HomeDashboardGrid home={data} nutrition={nutrition} />
-
-      <HomeInsightCards home={data} />
-
-      <HomeMotivationCard streakDays={trainingStreakDays} />
-
-      <HomePlannedWorkouts home={data} />
-
-      <HomeCalorieTrend home={data} />
-
-      {data.weightGoal && (
-        <HomeWeightGoalCard
-          weightGoal={data.weightGoal}
-          calorieTarget={data.calorieTarget}
-        />
+      {recoveryMuscles.length > 0 && (
+        <MuscleRecoveryPanel muscles={recoveryMuscles} compact showLink />
       )}
 
-      <HomeWeekOverview home={data} />
-
-      {data.challenges && data.challenges.length > 0 && (
-        <HomeChallengesRow challenges={data.challenges} />
-      )}
-
-      {nextWorkout && (
-        <HomeNextWorkoutCard nextWorkout={nextWorkout} activeSessionId={activeSessionId} />
-      )}
-
-      {activeSessionId && (
-        <Link href={`/workouts/live/${activeSessionId}`}>
-          <Button className="w-full btn-accent h-12 rounded-2xl">
-            <Play className="h-4 w-4 mr-2" />
-            Training fortsetzen
-          </Button>
-        </Link>
-      )}
-
-      {data.bodyTransformation && <HomeBodyCard body={data.bodyTransformation} />}
-
-      {data.gamification && <HomeAchievementsCard g={data.gamification} />}
-
-      <HomeCoachRecommendations coach={coach} />
-
-      <HomeQuickActions onStartTraining={onStartTraining} />
+      <HomeKiTipCard coach={data.coach} />
     </div>
   );
 }

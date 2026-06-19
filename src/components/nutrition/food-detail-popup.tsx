@@ -18,7 +18,7 @@ type Props = {
   product: FoodProduct;
   mealType: MealType;
   onClose: () => void;
-  onAdd: (quantityG: number, meal: MealType) => Promise<void>;
+  onAdd: (quantityG: number, meal: MealType) => void;
   adding?: boolean;
 };
 
