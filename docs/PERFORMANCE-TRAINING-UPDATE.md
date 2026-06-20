@@ -1,6 +1,23 @@
 # Performance & Training Flow Update
 
-Instant navigation, cached data, green/gray day status — mapped from the Cursor spec to Next.js App Router.
+## Onboarding / Registrierung (8 Steps)
+
+| Step | Inhalt |
+|------|--------|
+| 1 | Name (Vor- + Nachname) |
+| 2 | Alter (Slider 18–80) & Geschlecht |
+| 3 | Größe & Gewicht |
+| 4 | Trainingsziel |
+| 5 | Erfahrungslevel |
+| 6 | Trainingstage/Woche (1–7) |
+| 7 | E-Mail, Passwort, AGB |
+| 8 | Zusammenfassung + Kalorienziel (Mifflin-St Jeor) |
+
+**Route:** `/register` → `src/components/onboarding/registration-flow.tsx`  
+**Utils:** `src/lib/calorie-calculator.ts`, `src/lib/storage-service.ts`  
+**Design:** Glasmorphism, animierte Progress-Bar, Slide-Übergänge (nur Onboarding)
+
+Nach Account-Erstellung: Auto-Login → `/api/onboarding` → Cache-Warmup → `/home`
 
 ## Screen mapping
 
@@ -30,7 +47,8 @@ Instant navigation, cached data, green/gray day status — mapped from the Curso
 - **No artificial delays**: no `setTimeout`, no `Animated.timing`, no `InteractionManager`, no `animate-pulse` on repeat visits.
 - **Skeleton only on first load**: `hasScreenLoaded()` / `markScreenLoaded()` in `storage-service.ts`.
 - **Cache-first**: `useCachedFetch` with `revalidateOnMount: false`, high `staleRatio`.
-- **Day status**: green `#4CAF50` = completed within 14 days; gray = open; rest = no exercises.
+- **Day status**: green `#4CAF50` = completed within 14 days; gray = open.
+- **Rest days**: nicht in Meine Pläne / Tag-Auswahl (nur Tage mit Übungen).
 
 ## User flows
 

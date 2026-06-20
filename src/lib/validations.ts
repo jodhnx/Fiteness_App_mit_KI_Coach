@@ -114,7 +114,7 @@ export const profileSchema = z.object({
 
 export const onboardingSchema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
-  gender: z.enum(["MALE", "FEMALE"]),
+  gender: z.enum(["MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY"]),
   age: z.coerce.number().int().min(14).max(100),
   heightCm: z.coerce.number().positive().max(250),
   weightKg: z.coerce.number().positive().max(300),
@@ -128,7 +128,7 @@ export const onboardingSchema = z.object({
     "GENERAL_FITNESS",
   ]),
   experienceLevel: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]),
-  workoutDaysPerWeek: z.coerce.number().int().min(2).max(6).optional(),
+  workoutDaysPerWeek: z.coerce.number().int().min(1).max(7).optional(),
   nutritionGoal: nutritionGoalEnum.optional(),
 });
 

@@ -35,7 +35,9 @@ export const ExerciseItem = memo(function ExerciseItem({
       <div className="px-4 py-3.5 space-y-1">
         <h3 className="text-base font-bold text-white uppercase tracking-wide">{name}</h3>
         <p className="text-sm text-zinc-400 tabular-nums">
-          {targetSets} Sätze × {reps} Wiederholungen
+          Sätze: {targetSets}
+          <span className="text-zinc-600"> · </span>
+          Wiederholungen: {reps}
           <span className="text-zinc-600"> · </span>
           Gewicht: {weight}
           <span className="text-zinc-600"> · </span>

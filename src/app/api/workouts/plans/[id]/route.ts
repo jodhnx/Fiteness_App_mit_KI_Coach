@@ -73,6 +73,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     const dayStatuses: Record<string, DayStatus> = {};
     for (const day of plan.days) {
+      if (day.exercises.length === 0) continue;
       dayStatuses[day.id] = resolveDayStatus(
         day.exercises.length,
         completedDayIds,

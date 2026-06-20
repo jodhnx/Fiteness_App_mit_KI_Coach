@@ -10,6 +10,7 @@ import {
   dayStatusRowClass,
 } from "@/components/workout/day-status-indicator";
 import type { DayStatus } from "@/lib/plan-day-status";
+import { filterTrainingDays, weekdayLabelForDay } from "@/lib/plan-training-days";
 import { ChevronRight, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,8 +33,6 @@ type PlanPayload = {
   dayStatuses?: Record<string, DayStatus>;
 };
 
-const WEEKDAY = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-
 const DayRow = memo(function DayRow({
   planId,
   day,
@@ -45,27 +44,6 @@ const DayRow = memo(function DayRow({
   status: DayStatus;
   weekday: string;
 }) {
-  if (status === "rest") {
-    return (
-      <li
-        className={cn(
-          "flex items-center justify-between gap-3 rounded-2xl border px-4 py-4",
-          dayStatusRowClass("rest")
-        )}
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <DayStatusIndicator status="rest" />
-          <div>
-            <p className="text-sm text-zinc-500">
-              {weekday}: Pause
-            </p>
-          </div>
-        </div>
-        <span className="text-zinc-600 text-sm">—</span>
-      </li>
-    );
-  }
-
   return (
     <li>
       <Link
@@ -97,7 +75,7 @@ const DayRow = memo(function DayRow({
   );
 });
 
-/** PlanDetailScreen — Tagauswahl mit Status */
+/** PlanDetailScreen — nur aktive Trainingstage, kein Rest Day */
 export default function PlanDaysPage() {
   const params = useParams();
   const planId = params.id as string;
@@ -115,7 +93,7 @@ export default function PlanDaysPage() {
   const dayStatuses = data?.dayStatuses ?? {};
 
   const days = useMemo(
-    () => [...(plan?.days ?? [])].sort((a, b) => a.dayOrder - b.dayOrder),
+    () => filterTrainingDays(plan?.days ?? []),
     [plan?.days]
   );
 
@@ -141,13 +119,13 @@ export default function PlanDaysPage() {
       </div>
 
       <ul className="space-y-2">
-        {days.map((day, index) => (
+        {days.map((day) => (
           <DayRow
             key={day.id}
             planId={planId}
             day={day}
-            status={dayStatuses[day.id] ?? (day.exercises.length === 0 ? "rest" : "open")}
-            weekday={WEEKDAY[index % 7]}
+            status={dayStatuses[day.id] ?? "open"}
+            weekday={weekdayLabelForDay(day.dayOrder)}
           />
         ))}
       </ul>

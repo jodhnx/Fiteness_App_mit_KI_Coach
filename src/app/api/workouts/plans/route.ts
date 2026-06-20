@@ -115,11 +115,13 @@ export async function GET(req: NextRequest) {
 
     const enriched = plans.map((p) => {
       const completedIds = completedByPlan.get(p.id) ?? new Set<string>();
-      const dayStatuses = p.days.map((d) => ({
-        id: d.id,
-        name: d.name,
-        status: resolveDayStatus(d.exercises.length, completedIds, d.id) as DayStatus,
-      }));
+      const dayStatuses = p.days
+        .filter((d) => d.exercises.length > 0)
+        .map((d) => ({
+          id: d.id,
+          name: d.name,
+          status: resolveDayStatus(d.exercises.length, completedIds, d.id) as DayStatus,
+        }));
       return {
         ...p,
         lastSessionAt: lastByPlan.get(p.id) ?? null,

@@ -36,9 +36,9 @@ function formatLastSession(iso: string | null | undefined) {
 }
 
 const PlanRow = memo(function PlanRow({ plan }: { plan: Plan }) {
-  const dayCount = plan.days.length;
   const exerciseCount = plan.days.reduce((s, d) => s + d.exercises.length, 0);
-  const statuses = plan.dayStatuses ?? [];
+  const statuses = (plan.dayStatuses ?? []).filter((d) => d.status !== "rest");
+  const trainingDayCount = plan.days.filter((d) => d.exercises.length > 0).length;
 
   return (
     <li>
@@ -51,7 +51,7 @@ const PlanRow = memo(function PlanRow({ plan }: { plan: Plan }) {
           <div className="min-w-0 flex-1">
             <p className="text-lg font-bold text-white truncate">{plan.name}</p>
             <p className="text-sm text-zinc-400 mt-0.5">
-              {dayCount} {dayCount === 1 ? "Tag" : "Tage"} · {exerciseCount}{" "}
+              {trainingDayCount} {trainingDayCount === 1 ? "Trainingstag" : "Trainingstage"} · {exerciseCount}{" "}
               {exerciseCount === 1 ? "Übung" : "Übungen"}
             </p>
             <p className="text-xs text-zinc-500 mt-1">

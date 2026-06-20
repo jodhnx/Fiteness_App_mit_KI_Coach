@@ -6,33 +6,20 @@ import { PageHeader } from "@/components/layout/page-header";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { invalidateCache, getCached } from "@/lib/client-cache";
-import {
-  HOME_DATA_EVENT,
-  NUTRITION_DASHBOARD_EVENT,
-} from "@/lib/nutrition-sync";
 import { buildWeightAnalytics, type WeightPeriod } from "@/lib/weight-analytics";
-import { WeightQuickEntry } from "@/components/progress/weight-quick-entry";
+import { WeightInput } from "@/components/progress/weight-input";
 import { LazyWeightTrendChart } from "@/components/progress/lazy-weight-trend-chart";
 import { LazyStatChart } from "@/components/charts/lazy-stat-chart";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import Image from "next/image";
 import { BodyTransformationCard } from "@/components/progress/body-transformation-card";
-import { WeeklyReportCard } from "@/components/progress/weekly-report-card";
 import type { BodyTransformation } from "@/lib/body-transformation";
-import type { WeeklyReport } from "@/lib/weekly-report";
-import { Sparkles, Camera } from "lucide-react";
-import { ProgressDashboardSections } from "@/components/progress/progress-dashboard-sections";
+import { TrainingHistorySection } from "@/components/progress/training-history-section";
+import { ProgressStatsSection } from "@/components/progress/progress-stats-section";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { useCentralNutrition } from "@/hooks/use-central-nutrition";
-
-type ProgressInsights = {
-  summaryLines: string[];
-  weightChangeMonthKg: number | null;
-  workoutsThisMonth: number;
-  workoutsLastMonth: number;
-};
+import { hasScreenLoaded } from "@/lib/storage-service";
 
 type ProgressPayload = {
   entries: { id: string; date: string; weightKg?: number; waistCm?: number }[];
@@ -43,7 +30,6 @@ type ProgressPayload = {
     aiProgress?: string;
     takenAt?: string;
   }[];
-  insights?: ProgressInsights;
   profile?: {
     weightKg: number | null;
     targetWeightKg: number | null;
@@ -51,11 +37,7 @@ type ProgressPayload = {
   };
   startWeightKg?: number | null;
   transformation?: BodyTransformation | null;
-  weeklyReport?: WeeklyReport | null;
   dashboard?: {
-    nutritionTrend: { date: string; label: string; calories: number; proteinG: number }[];
-    calorieTarget: number;
-    proteinTargetG: number;
     trainingHistory: {
       id: string;
       name: string;
@@ -76,16 +58,10 @@ type ProgressPayload = {
       reps: number | null;
       achievedAt: string;
     }[];
-    achievements: {
-      unlocked: number;
-      total: number;
-      recent: { name: string; icon: string; tier: string; xpReward: number; earnedAt: string }[];
-    };
   } | null;
 };
 
 const PERIODS: { id: WeightPeriod; label: string }[] = [
-  { id: "today", label: "Heute" },
   { id: "7d", label: "7 Tage" },
   { id: "30d", label: "30 Tage" },
   { id: "90d", label: "90 Tage" },
@@ -98,84 +74,32 @@ function formatDelta(kg: number | null) {
   return `${sign}${kg.toLocaleString("de-AT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
 }
 
+/** ProgressScreen — Body → Gewicht → Historie → Statistiken */
 export default function ProgressPage() {
   const searchParams = useSearchParams();
   const logRef = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<WeightPeriod>("30d");
 
-  const { dashboard: centralNutrition } = useCentralNutrition();
+  const hadCache = useMemo(
+    () => getCached<ProgressPayload>(PROGRESS_CACHE_KEY) != null || hasScreenLoaded("progress"),
+    []
+  );
 
-  const { data: progressData, reload } = useCachedFetch<ProgressPayload>(
+  const { data: progressData, loading, reload } = useCachedFetch<ProgressPayload>(
     PROGRESS_CACHE_KEY,
     "/api/progress",
     180_000,
     10_000,
-    { revalidateOnMount: false, staleRatio: 0.98 }
+    { revalidateOnMount: false, staleRatio: 0.99 }
   );
 
-  const cachedProgress = getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
-  const displayData = progressData ?? cachedProgress;
-
+  const displayData = progressData ?? getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
   const entries = displayData?.entries ?? [];
   const photos = displayData?.photos ?? [];
-  const insights = displayData?.insights;
   const profile = displayData?.profile ?? null;
   const startWeightKg = displayData?.startWeightKg ?? null;
-  const [dashboard, setDashboard] = useState(displayData?.dashboard ?? null);
-
-  useEffect(() => {
-    setDashboard(displayData?.dashboard ?? null);
-  }, [displayData?.dashboard]);
-
-  useEffect(() => {
-    const refresh = () => {
-      const cached = getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
-      if (cached?.dashboard) setDashboard(cached.dashboard);
-    };
-    window.addEventListener(NUTRITION_DASHBOARD_EVENT, refresh);
-    window.addEventListener(HOME_DATA_EVENT, refresh);
-    return () => {
-      window.removeEventListener(NUTRITION_DASHBOARD_EVENT, refresh);
-      window.removeEventListener(HOME_DATA_EVENT, refresh);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!centralNutrition?.targets.calories) return;
-    setDashboard((prev) =>
-      prev
-        ? {
-            ...prev,
-            calorieTarget: centralNutrition.targets.calories,
-            proteinTargetG: centralNutrition.targets.proteinG,
-            nutritionTrend: (() => {
-              const today = centralNutrition.date;
-              const label = `${today.slice(8, 10)}.${today.slice(5, 7)}`;
-              const point = {
-                date: today,
-                label,
-                calories: Math.round(centralNutrition.consumed.calories),
-                proteinG: Math.round(centralNutrition.consumed.proteinG),
-              };
-              const trend = [...(prev.nutritionTrend ?? [])];
-              const idx = trend.findIndex((p) => p.date === today);
-              if (idx >= 0) trend[idx] = point;
-              else trend.push(point);
-              return trend.sort((a, b) => a.date.localeCompare(b.date));
-            })(),
-          }
-        : prev
-    );
-  }, [
-    centralNutrition.date,
-    centralNutrition.consumed.calories,
-    centralNutrition.consumed.proteinG,
-    centralNutrition.targets.calories,
-    centralNutrition.targets.proteinG,
-  ]);
-
+  const dashboard = displayData?.dashboard ?? null;
   const transformation = displayData?.transformation ?? null;
-  const weeklyReport = displayData?.weeklyReport ?? null;
 
   const analytics = useMemo(
     () =>
@@ -197,10 +121,16 @@ export default function ProgressPage() {
   );
 
   useEffect(() => {
-    if (searchParams.get("log") === "1" && logRef.current) {
-      logRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (displayData) {
+      import("@/lib/storage-service").then(({ markScreenLoaded }) => markScreenLoaded("progress"));
     }
-  }, [searchParams, progressData]);
+  }, [displayData]);
+
+  useEffect(() => {
+    if (searchParams.get("log") === "1" && logRef.current) {
+      logRef.current.scrollIntoView({ block: "start" });
+    }
+  }, [searchParams]);
 
   const saveWeight = useCallback(
     async (weightKg: number, waistCm?: number) => {
@@ -240,141 +170,156 @@ export default function ProgressPage() {
     reload();
   }
 
+  const showSkeleton = loading && !displayData && !hadCache;
+  const lastWeight = analytics.currentKg ?? profile?.weightKg;
+
+  if (showSkeleton) {
+    return (
+      <div className="space-y-4 max-w-2xl mx-auto pb-28">
+        <div className="h-8 w-40 bg-zinc-900 rounded" />
+        <div className="h-48 bg-zinc-900 rounded-2xl border border-zinc-800" />
+        <div className="h-36 bg-zinc-900 rounded-2xl border border-zinc-800" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 max-w-2xl mx-auto pb-28">
-      <PageHeader
-        title="Fortschritt"
-        subtitle="Statistiken · Gewicht · Transformation · Historie"
-      />
+      <PageHeader title="Fortschritt" subtitle="Transformation · Gewicht · Historie · Statistiken" />
 
-      {dashboard && (
-        <>
-          <h2 className="text-sm font-semibold text-white">📊 Statistiken</h2>
-          <ProgressDashboardSections
-            nutritionTrend={dashboard.nutritionTrend}
-            calorieTarget={dashboard.calorieTarget}
-            proteinTargetG={dashboard.proteinTargetG}
-            trainingHistory={dashboard.trainingHistory}
-            streaks={dashboard.streaks}
-            personalRecords={dashboard.personalRecords}
-            achievements={dashboard.achievements}
-          />
-        </>
-      )}
+      {/* OBERER BEREICH */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold text-white">📸 Body Transformation</h2>
+        {transformation && <BodyTransformationCard data={transformation} />}
 
-      {transformation && (
-        <>
-          <h2 className="text-sm font-semibold text-white">📸 Body Transformation</h2>
-          <BodyTransformationCard data={transformation} />
-        </>
-      )}
-
-      {weeklyReport && <WeeklyReportCard report={weeklyReport} />}
-
-      <div ref={logRef} className="card-premium p-4 scroll-mt-4">
-        <h2 className="text-sm font-semibold text-white mb-3">⚖️ Gewicht eintragen</h2>
-        <WeightQuickEntry
-          initialKg={analytics.currentKg ?? profile?.weightKg}
-          onSave={saveWeight}
-        />
-      </div>
-
-      <div className="card-premium p-4">
-        <h2 className="text-sm font-semibold text-white mb-3">Gewichtsanalyse</h2>
-        <div className="grid grid-cols-3 gap-2 text-center mb-4">
-          <div className="rounded-lg bg-zinc-900/80 p-2">
-            <p className="text-[9px] text-zinc-500 uppercase">Diese Woche</p>
-            <p className="text-sm font-bold text-white tabular-nums mt-0.5">
-              {formatDelta(analytics.changeWeekKg)}
-            </p>
-          </div>
-          <div className="rounded-lg bg-zinc-900/80 p-2">
-            <p className="text-[9px] text-zinc-500 uppercase">Letzter Monat</p>
-            <p className="text-sm font-bold text-white tabular-nums mt-0.5">
-              {formatDelta(analytics.changeMonthKg)}
-            </p>
-          </div>
-          <div className="rounded-lg bg-zinc-900/80 p-2">
-            <p className="text-[9px] text-zinc-500 uppercase">Ø / Woche</p>
-            <p className="text-sm font-bold text-white tabular-nums mt-0.5">
-              {formatDelta(analytics.avgChangePerWeekKg)}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
-          {PERIODS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setPeriod(p.id)}
-              className={cn(
-                "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
-                period === p.id
-                  ? "bg-accent text-zinc-950"
-                  : "bg-zinc-800 text-zinc-400 hover:text-white"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        <LazyWeightTrendChart data={analytics.chartPoints} />
-
-        {analytics.weeklyAverages.length > 0 && (
-          <div className="mt-4">
-            <p className="text-[10px] text-zinc-500 uppercase mb-2">Wochen-Durchschnitt (kg)</p>
-            <LazyStatChart data={analytics.weeklyAverages} type="bar" color="#a78bfa" />
-          </div>
-        )}
-      </div>
-
-      {insights && insights.summaryLines.length > 0 && (
         <div className="card-premium p-4">
-          <div className="flex items-start gap-3">
-            <Sparkles className="h-5 w-5 text-violet-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs text-violet-300/90 font-semibold uppercase">KI Zusammenfassung</p>
-              <ul className="mt-2 space-y-1">
-                {insights.summaryLines.map((line) => (
-                  <li key={line} className="text-sm text-zinc-300">
-                    {line}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="card-premium p-4">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
-          <Camera className="h-4 w-4 text-accent" />
-          Fortschrittsbilder
-        </h2>
-        <Input type="file" accept="image/*" onChange={uploadPhoto} className="text-sm" />
-        {photos.length === 0 ? (
-          <p className="text-sm text-zinc-500 mt-3">Noch keine Bilder.</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            {photos.map((p) => (
-              <div key={p.id} className="rounded-xl overflow-hidden border border-zinc-800">
-                <Image
-                  src={p.imageUrl}
-                  alt="Fortschritt"
-                  width={300}
-                  height={300}
-                  className="w-full h-36 object-cover"
-                />
-                <div className="p-2 text-[11px] text-zinc-400">
-                  {p.aiProgress && <p className="text-zinc-300 font-medium">{p.aiProgress}</p>}
+          <Input type="file" accept="image/*" onChange={uploadPhoto} className="text-sm mb-3" />
+          {photos.length === 0 ? (
+            <p className="text-sm text-zinc-500">Noch keine Vorher/Nachher-Fotos.</p>
+          ) : (
+            <>
+              {photos.length >= 2 && (
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="rounded-xl overflow-hidden border border-zinc-700">
+                    <p className="text-[10px] text-zinc-500 px-2 py-1 bg-zinc-900">Vorher</p>
+                    <Image
+                      src={photos[photos.length - 1]!.imageUrl}
+                      alt="Vorher"
+                      width={200}
+                      height={200}
+                      className="w-full h-32 object-cover"
+                    />
+                    {photos[photos.length - 1]?.takenAt && (
+                      <p className="text-[10px] text-zinc-600 px-2 py-1">
+                        {format(new Date(photos[photos.length - 1]!.takenAt!), "dd.MM.yyyy")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-xl overflow-hidden border border-cyan-500/30">
+                    <p className="text-[10px] text-cyan-400 px-2 py-1 bg-zinc-900">Nachher</p>
+                    <Image
+                      src={photos[0]!.imageUrl}
+                      alt="Nachher"
+                      width={200}
+                      height={200}
+                      className="w-full h-32 object-cover"
+                    />
+                    {photos[0]?.takenAt && (
+                      <p className="text-[10px] text-zinc-600 px-2 py-1">
+                        {format(new Date(photos[0]!.takenAt!), "dd.MM.yyyy")}
+                      </p>
+                    )}
+                  </div>
                 </div>
+              )}
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {photos.map((p) => (
+                  <div key={p.id} className="flex gap-3 items-center rounded-lg bg-zinc-900/60 p-2">
+                    <Image
+                      src={p.imageUrl}
+                      alt=""
+                      width={48}
+                      height={48}
+                      className="h-12 w-12 rounded-lg object-cover shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs text-zinc-400">
+                        {p.takenAt ? format(new Date(p.takenAt), "dd.MM.yyyy") : "—"}
+                      </p>
+                      {p.aiProgress && (
+                        <p className="text-[11px] text-zinc-300 truncate">{p.aiProgress}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
+            </>
+          )}
+        </div>
+
+        <div ref={logRef} className="card-premium p-4 scroll-mt-4">
+          <h2 className="text-sm font-semibold text-white mb-1">⚖️ Gewicht eintragen</h2>
+          {lastWeight != null && (
+            <p className="text-2xl font-bold text-cyan-400 tabular-nums mb-3">
+              {lastWeight.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg
+              <span className="text-xs font-normal text-zinc-500 ml-2">zuletzt</span>
+            </p>
+          )}
+          <WeightInput initialKg={lastWeight} onSave={saveWeight} />
+        </div>
+
+        <div className="card-premium p-4">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-2 mb-3">
+            {PERIODS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPeriod(p.id)}
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
+                  period === p.id ? "bg-accent text-zinc-950" : "bg-zinc-800 text-zinc-400"
+                )}
+              >
+                {p.label}
+              </button>
             ))}
           </div>
+          <LazyWeightTrendChart data={analytics.chartPoints} />
+          <div className="grid grid-cols-3 gap-2 text-center mt-4">
+            <div className="rounded-lg bg-zinc-900/80 p-2">
+              <p className="text-[9px] text-zinc-500 uppercase">Woche</p>
+              <p className="text-sm font-bold text-white tabular-nums">{formatDelta(analytics.changeWeekKg)}</p>
+            </div>
+            <div className="rounded-lg bg-zinc-900/80 p-2">
+              <p className="text-[9px] text-zinc-500 uppercase">Monat</p>
+              <p className="text-sm font-bold text-white tabular-nums">{formatDelta(analytics.changeMonthKg)}</p>
+            </div>
+            <div className="rounded-lg bg-zinc-900/80 p-2">
+              <p className="text-[9px] text-zinc-500 uppercase">Ø / Woche</p>
+              <p className="text-sm font-bold text-white tabular-nums">{formatDelta(analytics.avgChangePerWeekKg)}</p>
+            </div>
+          </div>
+          {analytics.weeklyAverages.length > 0 && (
+            <div className="mt-4">
+              <LazyStatChart data={analytics.weeklyAverages} type="bar" color="#a78bfa" />
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* UNTERER BEREICH */}
+      <section className="space-y-4">
+        {dashboard && (
+          <>
+            <TrainingHistorySection sessions={dashboard.trainingHistory} />
+            <ProgressStatsSection
+              trainingHistory={dashboard.trainingHistory}
+              streaks={dashboard.streaks}
+              personalRecords={dashboard.personalRecords}
+            />
+          </>
         )}
-      </div>
+      </section>
     </div>
   );
 }
