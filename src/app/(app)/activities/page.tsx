@@ -288,7 +288,7 @@ export default function ActivitiesPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setStepsInput(String(dash.today.steps));
+                  setStepsInput(dash.today.steps > 0 ? String(dash.today.steps) : "");
                   setEditingSteps((e) => !e);
                 }}
                 className="text-xs text-accent hover:underline flex items-center gap-1"
@@ -300,10 +300,11 @@ export default function ActivitiesPage() {
             {editingSteps ? (
               <div className="flex gap-2">
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={stepsInput}
-                  onChange={(e) => setStepsInput(e.target.value)}
-                  placeholder="Schritte heute"
+                  onChange={(e) => setStepsInput(e.target.value.replace(/[^\d]/g, ""))}
+                  placeholder="10.000"
                   className="bg-zinc-900"
                 />
                 <Button onClick={saveSteps} disabled={saving} size="sm">
@@ -449,10 +450,11 @@ export default function ActivitiesPage() {
             <div>
               <label className="text-xs text-zinc-500">Kalorien</label>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 placeholder="optional"
                 value={calories}
-                onChange={(e) => setCalories(e.target.value)}
+                onChange={(e) => setCalories(e.target.value.replace(/[^\d]/g, ""))}
                 className="mt-1 bg-zinc-900 border-zinc-700"
               />
             </div>

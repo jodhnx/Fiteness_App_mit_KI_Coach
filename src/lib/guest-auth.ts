@@ -123,7 +123,9 @@ export async function convertGuestToAccount(
       passwordHash,
       isGuest: false,
       name: input.name?.trim() || undefined,
-      emailVerified: null,
+      emailVerified: new Date(),
+      verificationCode: null,
+      verificationExpires: null,
     },
   });
 

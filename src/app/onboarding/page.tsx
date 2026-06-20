@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PlaceholderNumberInput } from "@/components/ui/placeholder-number-input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -320,36 +321,35 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <Label htmlFor="age">Alter</Label>
-                  <Input
+                  <PlaceholderNumberInput
                     id="age"
-                    type="number"
-                    inputMode="numeric"
                     className="mt-1.5 h-12"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    placeholder="28"
+                    value={age ? Number(age) : null}
+                    onChange={(v) => setAge(v != null ? String(v) : "")}
+                    placeholder="18"
+                    inputMode="numeric"
                   />
                 </div>
                 <div>
                   <Label htmlFor="height">Größe</Label>
-                  <Input
+                  <PlaceholderNumberInput
                     id="height"
-                    type="number"
                     className="mt-1.5 h-12"
-                    value={heightCm}
-                    onChange={(e) => setHeightCm(e.target.value)}
-                    placeholder="175"
+                    value={heightCm ? Number(heightCm) : null}
+                    onChange={(v) => setHeightCm(v != null ? String(v) : "")}
+                    placeholder="180 cm"
+                    inputMode="numeric"
                   />
                 </div>
                 <div>
                   <Label htmlFor="weight">Gewicht</Label>
-                  <Input
+                  <PlaceholderNumberInput
                     id="weight"
-                    type="number"
                     className="mt-1.5 h-12"
-                    value={weightKg}
-                    onChange={(e) => setWeightKg(e.target.value)}
-                    placeholder="75"
+                    value={weightKg ? Number(weightKg) : null}
+                    onChange={(v) => setWeightKg(v != null ? String(v) : "")}
+                    placeholder="70 kg"
+                    inputMode="decimal"
                   />
                 </div>
               </div>

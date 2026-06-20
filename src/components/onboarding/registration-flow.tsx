@@ -34,12 +34,21 @@ import {
   GOAL_PACE_OPTIONS,
 } from "@/lib/onboarding-draft";
 import { CONFIG_LOCATIONS, type ConfigLocation } from "@/lib/plan-configurator";
+import { PlaceholderNumberInput } from "@/components/ui/placeholder-number-input";
+import { scrollInputIntoView } from "@/lib/mobile-input-scroll";
 import { ChevronLeft, ChevronRight, Sparkles, Minus, Plus } from "lucide-react";
 
 const PROFILE_STEPS = 12;
 const TOTAL = 14;
 
-type Draft = OnboardingDraft & {
+type FormDraft = Omit<OnboardingDraft, "age" | "heightCm" | "weightKg" | "targetWeightKg"> & {
+  age: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  targetWeightKg: number | null;
+};
+
+type Draft = FormDraft & {
   email: string;
   password: string;
   passwordConfirm: string;
@@ -48,11 +57,11 @@ type Draft = OnboardingDraft & {
 
 const DEFAULT: Draft = {
   name: "",
-  age: 28,
+  age: null,
   gender: "MALE",
-  heightCm: 175,
-  weightKg: 75,
-  targetWeightKg: 70,
+  heightCm: null,
+  weightKg: null,
+  targetWeightKg: null,
   mainGoalKey: "GAIN_MUSCLE",
   activityLevel: "MODERATE",
   location: "GYM",
@@ -111,6 +120,9 @@ export function RegistrationFlow() {
   const patch = useCallback((p: Partial<Draft>) => setDraft((prev) => ({ ...prev, ...p })), []);
 
   const plan = useMemo(() => {
+    if (draft.age == null || draft.heightCm == null || draft.weightKg == null) {
+      return null;
+    }
     const nutritionGoal = defaultNutritionGoalForMainGoal(draft.mainGoalKey);
     const trainingGoal = trainingGoalFromMainGoalKey(draft.mainGoalKey);
     const weeks = GOAL_PACE_OPTIONS.find((p) => p.id === draft.pace)?.weeks ?? 10;
@@ -138,12 +150,13 @@ export function RegistrationFlow() {
       case 1:
         return draft.name.trim().length >= 2;
       case 2:
-        return draft.age >= 14 && draft.age <= 100;
+        return draft.age != null && draft.age >= 14 && draft.age <= 100;
       case 3:
+        return true;
       case 4:
-        return draft.heightCm >= 100 && draft.heightCm <= 250;
+        return draft.heightCm != null && draft.heightCm >= 100 && draft.heightCm <= 250;
       case 5:
-        return draft.weightKg >= 30 && draft.weightKg <= 300;
+        return draft.weightKg != null && draft.weightKg >= 30 && draft.weightKg <= 300;
       case 6:
         return draft.targetWeightKg != null && draft.targetWeightKg >= 30 && draft.targetWeightKg <= 300;
       case 7:
@@ -154,7 +167,7 @@ export function RegistrationFlow() {
       case 12:
         return true;
       case 13:
-        return true;
+        return plan != null;
       case 14:
         if (authMode === "guest") return true;
         if (authMode === "email") {
@@ -169,7 +182,7 @@ export function RegistrationFlow() {
       default:
         return false;
     }
-  }, [step, draft, authMode]);
+  }, [step, draft, authMode, plan]);
 
   const onboardingPayload = useCallback((): OnboardingDraft => {
     const { email, password, passwordConfirm, acceptTerms, ...rest } = draft;
@@ -177,7 +190,12 @@ export function RegistrationFlow() {
     void password;
     void passwordConfirm;
     void acceptTerms;
-    return rest;
+    return {
+      ...rest,
+      age: rest.age!,
+      heightCm: rest.heightCm!,
+      weightKg: rest.weightKg!,
+    };
   }, [draft]);
 
   async function finishAsGuest() {
@@ -259,19 +277,14 @@ export function RegistrationFlow() {
           toast.error(regData.error ?? "Registrierung fehlgeschlagen");
           return;
         }
-        if (regData.skipVerifyPage) {
-          const login = await signIn("credentials", {
-            email: draft.email.trim(),
-            password: draft.password,
-            redirect: false,
-          });
-          if (login?.error) {
-            router.push("/login");
-            return;
-          }
-        } else {
-          toast.success("Bestätigungscode gesendet");
-          router.push(`/verify-email?email=${encodeURIComponent(regData.email ?? draft.email)}`);
+        const login = await signIn("credentials", {
+          email: draft.email.trim(),
+          password: draft.password,
+          redirect: false,
+        });
+        if (login?.error) {
+          toast.error("Konto erstellt — bitte anmelden");
+          router.push("/login");
           return;
         }
       }
@@ -333,14 +346,14 @@ export function RegistrationFlow() {
 
       {step === 2 && (
         <GlassCard>
-          <Label>Alter: {draft.age} Jahre</Label>
-          <input
-            type="range"
-            min={14}
-            max={80}
+          <Label>Alter</Label>
+          <PlaceholderNumberInput
+            className="mt-2 h-14 text-lg rounded-xl"
             value={draft.age}
-            onChange={(e) => patch({ age: Number(e.target.value) })}
-            className="w-full mt-4 accent-cyan-400"
+            onChange={(age) => patch({ age })}
+            placeholder="18"
+            inputMode="numeric"
+            autoFocus
           />
         </GlassCard>
       )}
@@ -361,26 +374,64 @@ export function RegistrationFlow() {
 
       {step === 4 && (
         <GlassCard>
-          <Label>Größe (cm)</Label>
-          <Input type="number" className="mt-2 h-14 text-lg rounded-xl" value={draft.heightCm} onChange={(e) => patch({ heightCm: Number(e.target.value) || 0 })} />
+          <Label>Größe</Label>
+          <PlaceholderNumberInput
+            className="mt-2 h-14 text-lg rounded-xl"
+            value={draft.heightCm}
+            onChange={(heightCm) => patch({ heightCm })}
+            placeholder="180 cm"
+            inputMode="numeric"
+            autoFocus
+          />
         </GlassCard>
       )}
 
       {step === 5 && (
         <GlassCard>
-          <Label>Aktuelles Gewicht (kg)</Label>
+          <Label>Aktuelles Gewicht</Label>
           <div className="flex items-center gap-2 mt-2">
-            <Button type="button" variant="outline" size="icon" onClick={() => patch({ weightKg: Math.max(30, draft.weightKg - 0.5) })}><Minus className="h-4 w-4" /></Button>
-            <Input type="number" step="0.1" className="h-14 text-lg text-center" value={draft.weightKg} onChange={(e) => patch({ weightKg: Number(e.target.value) || 0 })} />
-            <Button type="button" variant="outline" size="icon" onClick={() => patch({ weightKg: draft.weightKg + 0.5 })}><Plus className="h-4 w-4" /></Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                const base = draft.weightKg ?? 70;
+                patch({ weightKg: Math.max(30, Math.round((base - 0.5) * 10) / 10) });
+              }}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <PlaceholderNumberInput
+              className="h-14 text-lg text-center"
+              value={draft.weightKg}
+              onChange={(weightKg) => patch({ weightKg })}
+              placeholder="70 kg"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                const base = draft.weightKg ?? 70;
+                patch({ weightKg: Math.round((base + 0.5) * 10) / 10 });
+              }}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
         </GlassCard>
       )}
 
       {step === 6 && (
         <GlassCard>
-          <Label>Zielgewicht (kg)</Label>
-          <Input type="number" step="0.1" className="mt-2 h-14 text-lg rounded-xl" value={draft.targetWeightKg ?? ""} onChange={(e) => patch({ targetWeightKg: Number(e.target.value) || null })} />
+          <Label>Zielgewicht</Label>
+          <PlaceholderNumberInput
+            className="mt-2 h-14 text-lg rounded-xl"
+            value={draft.targetWeightKg}
+            onChange={(targetWeightKg) => patch({ targetWeightKg })}
+            placeholder="75 kg"
+            autoFocus
+          />
         </GlassCard>
       )}
 
@@ -444,7 +495,7 @@ export function RegistrationFlow() {
         </div>
       )}
 
-      {step === 13 && (
+      {step === 13 && plan && (
         <GlassCard className="space-y-4">
           <div className="flex items-center gap-2 text-cyan-400">
             <Sparkles className="h-5 w-5" />
@@ -487,11 +538,24 @@ export function RegistrationFlow() {
             <div className="space-y-3 pt-2">
               <div>
                 <Label>E-Mail</Label>
-                <Input type="email" className="mt-1.5 h-12 rounded-xl" value={draft.email} onChange={(e) => patch({ email: e.target.value })} />
+                <Input
+                  type="email"
+                  className="mt-1.5 h-12 rounded-xl"
+                  value={draft.email}
+                  onChange={(e) => patch({ email: e.target.value })}
+                  onFocus={(e) => scrollInputIntoView(e.target)}
+                  placeholder="deine@email.de"
+                />
               </div>
               <div>
                 <Label>Passwort</Label>
-                <Input type="password" className="mt-1.5 h-12 rounded-xl" value={draft.password} onChange={(e) => patch({ password: e.target.value })} />
+                <Input
+                  type="password"
+                  className="mt-1.5 h-12 rounded-xl"
+                  value={draft.password}
+                  onChange={(e) => patch({ password: e.target.value })}
+                  onFocus={(e) => scrollInputIntoView(e.target)}
+                />
                 <PasswordStrength password={draft.password} />
               </div>
               <div>
@@ -517,7 +581,7 @@ export function RegistrationFlow() {
           </Button>
         )}
         <Button className="flex-1 h-12 rounded-2xl btn-accent" disabled={!canContinue || submitting} onClick={handleNext}>
-          {submitting ? "Speichern…" : step === 14 ? "Fertig" : step === 13 ? "Weiter" : "Weiter"}
+          {submitting ? "Speichern…" : step === 14 ? "Registrieren" : "Weiter"}
           {step < 14 && <ChevronRight className="h-4 w-4 ml-1" />}
         </Button>
       </div>

@@ -1,13 +1,7 @@
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { dbQuery } from "@/lib/prisma";
-import {
-  generateVerificationCode,
-  verificationExpiresAt,
-  isEmailVerified,
-  isEmailVerificationEnabled,
-} from "@/lib/verification";
-import { sendVerificationEmail, isEmailConfigured } from "@/lib/email";
+import { isEmailVerified } from "@/lib/verification";
 import {
   isDatabaseConnectionError,
   isSchemaMismatchError,
@@ -29,11 +23,9 @@ export type RegisterResult =
   | {
       ok: true;
       email: string;
-      emailSent: boolean;
-      emailWarning?: string;
-      devVerificationCode?: string;
+      emailSent: false;
       message: string;
-      skipVerifyPage: boolean;
+      skipVerifyPage: true;
     }
   | { ok: false; status: number; error: string };
 
@@ -67,8 +59,7 @@ function mapPrismaError(error: unknown): RegisterResult | null {
     return {
       ok: false,
       status: 503,
-      error:
-        "Datenbank nicht initialisiert. Führe aus: npm run db:setup",
+      error: "Datenbank nicht initialisiert. Führe aus: npm run db:setup",
     };
   }
 
@@ -94,9 +85,6 @@ async function upsertUserWithStreak(
     name: string;
     email: string;
     passwordHash: string;
-    verificationCode: string | null;
-    verificationExpires: Date | null;
-    emailVerified: Date | null;
   },
   existingId?: string
 ) {
@@ -106,9 +94,9 @@ async function upsertUserWithStreak(
       data: {
         name: data.name,
         passwordHash: data.passwordHash,
-        verificationCode: data.verificationCode,
-        verificationExpires: data.verificationExpires,
-        emailVerified: data.emailVerified,
+        verificationCode: null,
+        verificationExpires: null,
+        emailVerified: new Date(),
       },
     });
     return existingId;
@@ -119,9 +107,9 @@ async function upsertUserWithStreak(
       name: data.name,
       email: data.email,
       passwordHash: data.passwordHash,
-      emailVerified: data.emailVerified,
-      verificationCode: data.verificationCode,
-      verificationExpires: data.verificationExpires,
+      emailVerified: new Date(),
+      verificationCode: null,
+      verificationExpires: null,
       profile: { create: {} },
     },
   });
@@ -137,40 +125,31 @@ async function upsertUserWithStreak(
 
 export async function registerUser(input: RegisterInput): Promise<RegisterResult> {
   const email = input.email.toLowerCase().trim();
-  const verificationEnabled = isEmailVerificationEnabled();
   let step = 0;
 
   try {
     return await dbQuery("registerUser", async (db) => {
-    step = 1;
-    const existing = await db.user.findUnique({ where: { email } });
+      step = 1;
+      const existing = await db.user.findUnique({ where: { email } });
 
-    if (existing && isEmailVerified(existing.emailVerified)) {
-      return { ok: false, status: 409, error: "Diese E-Mail ist bereits registriert." };
-    }
+      if (existing && isEmailVerified(existing.emailVerified)) {
+        return { ok: false, status: 409, error: "Diese E-Mail ist bereits registriert." };
+      }
 
-    step = 2;
-    const code = verificationEnabled ? generateVerificationCode() : null;
-    const expires = verificationEnabled ? verificationExpiresAt() : null;
+      step = 2;
+      const passwordHash = await bcrypt.hash(input.password, 12);
 
-    step = 3;
-    const passwordHash = await bcrypt.hash(input.password, 12);
+      step = 3;
+      await upsertUserWithStreak(
+        db,
+        {
+          name: input.name,
+          email,
+          passwordHash,
+        },
+        existing?.id
+      );
 
-    step = 4;
-    await upsertUserWithStreak(
-      db,
-      {
-        name: input.name,
-        email,
-        passwordHash,
-        verificationCode: code,
-        verificationExpires: expires,
-        emailVerified: verificationEnabled ? null : new Date(),
-      },
-      existing?.id
-    );
-
-    if (!verificationEnabled) {
       return {
         ok: true,
         email,
@@ -178,57 +157,6 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
         skipVerifyPage: true,
         message: "Konto erstellt. Du kannst dich jetzt anmelden.",
       };
-    }
-
-    step = 5;
-    let emailSent = false;
-    let emailWarning: string | undefined;
-    let devVerificationCode: string | undefined;
-
-    try {
-      await sendVerificationEmail(email, input.name, code!);
-      emailSent = true;
-    } catch (emailError) {
-      console.error("REGISTRATION EMAIL ERROR:", emailError);
-      emailWarning =
-        emailError instanceof Error
-          ? emailError.message
-          : "E-Mail konnte nicht gesendet werden";
-
-      if (process.env.NODE_ENV === "development") {
-        devVerificationCode = code!;
-        console.error(
-          `[DEV] Bestätigungscode für ${email}: ${code} (E-Mail: ${
-            isEmailConfigured() ? "konfiguriert, Versand fehlgeschlagen" : "nicht konfiguriert"
-          })`
-        );
-      } else if (!isEmailConfigured()) {
-        return {
-          ok: false,
-          status: 503,
-          error:
-            "E-Mail-Versand nicht konfiguriert. Administrator muss RESEND_API_KEY oder SMTP setzen.",
-        };
-      } else {
-        return {
-          ok: false,
-          status: 503,
-          error: `E-Mail konnte nicht gesendet werden: ${emailWarning}`,
-        };
-      }
-    }
-
-    return {
-      ok: true,
-      email,
-      emailSent,
-      emailWarning,
-      devVerificationCode,
-      skipVerifyPage: false,
-      message: emailSent
-        ? "Registrierung gestartet. Wir haben dir einen 6-stelligen Code per E-Mail gesendet."
-        : "Konto erstellt. E-Mail-Versand fehlgeschlagen – nutze den Dev-Code aus der Server-Konsole oder fordere einen neuen Code an.",
-    };
     });
   } catch (error) {
     console.error(`REGISTRATION FAILED AT STEP ${step}`);

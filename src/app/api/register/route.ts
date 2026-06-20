@@ -3,7 +3,6 @@ import { registerSchema, validationErrorMessage } from "@/lib/validations";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { jsonOk, jsonError } from "@/lib/api-response";
 import { registerUser } from "@/lib/register-service";
-import { isEmailVerificationEnabled } from "@/lib/verification";
 import { formatApiErrorMessage } from "@/lib/format-api-error";
 
 export async function POST(req: NextRequest) {
@@ -33,13 +32,6 @@ export async function POST(req: NextRequest) {
       return jsonError(message, 400);
     }
 
-    if (isEmailVerificationEnabled()) {
-      const emailCheck = registerSchema.shape.email.safeParse(parsed.data.email);
-      if (!emailCheck.success) {
-        return jsonError("Bitte eine gültige E-Mail-Adresse verwenden.", 400);
-      }
-    }
-
     const result = await registerUser({
       name: parsed.data.name.trim(),
       email: parsed.data.email,
@@ -54,10 +46,7 @@ export async function POST(req: NextRequest) {
       {
         message: result.message,
         email: result.email,
-        emailSent: result.emailSent,
-        emailWarning: result.emailWarning,
-        skipVerifyPage: result.skipVerifyPage,
-        ...(result.devVerificationCode ? { devVerificationCode: result.devVerificationCode } : {}),
+        skipVerifyPage: true,
       },
       201
     );

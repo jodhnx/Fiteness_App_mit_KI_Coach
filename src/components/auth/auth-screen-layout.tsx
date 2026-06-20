@@ -20,19 +20,19 @@ type Props = {
 
 export function AuthScreenLayout({ title, subtitle, children, footer }: Props) {
   return (
-    <div className="gradient-mesh min-h-[100dvh] flex flex-col">
-      <div className="flex-1 flex flex-col max-w-md mx-auto w-full px-5 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-        <Link href="/" className="text-xl font-extrabold text-white mb-8 inline-block">
+    <div className="gradient-mesh min-h-[100dvh] flex flex-col overflow-y-auto overscroll-contain">
+      <div className="flex flex-col max-w-md mx-auto w-full min-h-[100dvh] px-5 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] scroll-pb-32">
+        <Link href="/" className="text-xl font-extrabold text-white mb-8 inline-block shrink-0">
           NEX<span className="text-cyan-400">FORM</span>
         </Link>
-        <div className="mb-6">
+        <div className="mb-6 shrink-0">
           <h1 className="text-2xl font-bold text-white">{title}</h1>
           <p className="text-sm text-zinc-500 mt-1">{subtitle}</p>
         </div>
         <div className="rounded-3xl border border-white/10 bg-zinc-900/50 backdrop-blur-xl p-5 flex-1">
           {children}
         </div>
-        {footer && <div className="mt-6">{footer}</div>}
+        {footer && <div className="mt-6 shrink-0 pb-4">{footer}</div>}
       </div>
     </div>
   );

@@ -75,7 +75,7 @@ function LoginForm() {
       setLastError(message);
       toast.error(message);
       if (errCode === "email_not_verified") {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        toast.error("Bitte E-Mail bestätigen oder Support kontaktieren.");
       }
     } catch {
       toast.error("Anmeldung fehlgeschlagen");

@@ -24,7 +24,7 @@ export function WeightQuickEntry({ initialKg, onSave, compact }: Props) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (initialKg != null) setWeight(String(initialKg));
+    if (initialKg != null && initialKg > 0) setWeight(String(initialKg));
   }, [initialKg]);
 
   const adjust = useCallback((delta: number) => {
@@ -76,10 +76,10 @@ export function WeightQuickEntry({ initialKg, onSave, compact }: Props) {
           </Button>
           <Input
             value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            type="number"
-            step="0.1"
+            onChange={(e) => setWeight(e.target.value.replace(/[^\d,.]/g, ""))}
+            type="text"
             inputMode="decimal"
+            placeholder="70 kg"
             className="text-center text-lg font-semibold tabular-nums"
           />
           <Button

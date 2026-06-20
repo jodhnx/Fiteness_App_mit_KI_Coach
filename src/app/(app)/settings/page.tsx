@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { LifeBuoy } from "lucide-react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
+import { formatNumField } from "@/lib/mobile-input-scroll";
 import { getCached, setCached } from "@/lib/client-cache";
 
 type CalcPreview = {
@@ -63,9 +64,9 @@ function applyProfileToForm(d: ProfileApiResponse) {
   const p = d.profile as Record<string, unknown> | undefined;
   return {
     name: d.user?.name ?? "",
-    age: p?.age?.toString() ?? "",
-    weightKg: p?.weightKg?.toString() ?? "",
-    heightCm: p?.heightCm?.toString() ?? "",
+    age: formatNumField(p?.age),
+    weightKg: formatNumField(p?.weightKg),
+    heightCm: formatNumField(p?.heightCm),
     gender: (p?.gender as string) ?? "MALE",
     activityLevel: (p?.activityLevel as ActivityLevel) ?? "MODERATE",
     trainingGoal: (p?.trainingGoal as TrainingGoal) ?? "GENERAL_FITNESS",
@@ -77,7 +78,7 @@ function applyProfileToForm(d: ProfileApiResponse) {
     carbsTargetG: "",
     fatTargetG: "",
     waterTargetMl: p?.waterTargetMl?.toString() ?? "2500",
-    targetWeightKg: p?.targetWeightKg?.toString() ?? "",
+    targetWeightKg: formatNumField(p?.targetWeightKg),
     targetWeightDate: p?.targetWeightDate
       ? String(p.targetWeightDate).slice(0, 10)
       : "",
@@ -429,9 +430,11 @@ export default function SettingsPage() {
               <div>
                 <Label>Alter</Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="18"
                   value={form.age}
-                  onChange={(e) => setForm({ ...form, age: e.target.value })}
+                  onChange={(e) => setForm({ ...form, age: e.target.value.replace(/[^\d]/g, "") })}
                   className="mt-1"
                 />
               </div>
@@ -457,18 +460,22 @@ export default function SettingsPage() {
               <div>
                 <Label>Gewicht (kg)</Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="70 kg"
                   value={form.weightKg}
-                  onChange={(e) => setForm({ ...form, weightKg: e.target.value })}
+                  onChange={(e) => setForm({ ...form, weightKg: e.target.value.replace(/[^\d,.]/g, "") })}
                   className="mt-1"
                 />
               </div>
               <div>
                 <Label>Größe (cm)</Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="180 cm"
                   value={form.heightCm}
-                  onChange={(e) => setForm({ ...form, heightCm: e.target.value })}
+                  onChange={(e) => setForm({ ...form, heightCm: e.target.value.replace(/[^\d]/g, "") })}
                   className="mt-1"
                 />
               </div>
@@ -479,11 +486,11 @@ export default function SettingsPage() {
                 <div>
                   <Label>Zielgewicht (kg)</Label>
                   <Input
-                    type="number"
-                    step="0.1"
-                    placeholder="z. B. 85"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="75 kg"
                     value={form.targetWeightKg}
-                    onChange={(e) => setForm({ ...form, targetWeightKg: e.target.value })}
+                    onChange={(e) => setForm({ ...form, targetWeightKg: e.target.value.replace(/[^\d,.]/g, "") })}
                     className="mt-1"
                   />
                 </div>
@@ -668,10 +675,11 @@ export default function SettingsPage() {
           <div>
             <Label>Kalorien (manuell)</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              placeholder="z. B. 2200"
               value={form.calorieTarget}
-              onChange={(e) => setForm({ ...form, calorieTarget: e.target.value })}
-              placeholder={preview ? String(preview.calorieTarget) : "Auto"}
+              onChange={(e) => setForm({ ...form, calorieTarget: e.target.value.replace(/[^\d]/g, "") })}
               className="mt-1"
             />
           </div>
