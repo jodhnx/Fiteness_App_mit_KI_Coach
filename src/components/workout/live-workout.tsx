@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Check, Plus, Timer, Trash2, Trophy } from "lucide-react";
+import { Check, Plus, Timer, Trash2, Trophy, Dumbbell } from "lucide-react";
 import { EndWorkoutDialog } from "@/components/workout/end-workout-dialog";
+import { ExercisePickerSheet } from "@/components/workout/exercise-picker-sheet";
+import type { LibraryExercise } from "@/hooks/use-exercise-library-search";
 
 const WORKOUT_SEQ_KEY = "workout-save-seq";
 
@@ -51,6 +53,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
   const [endOpen, setEndOpen] = useState(false);
   const [endSaving, setEndSaving] = useState(false);
   const [defaultEndName, setDefaultEndName] = useState("Workout 001");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const patchTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const load = useCallback(async () => {
@@ -235,6 +238,18 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
     }
   }
 
+  async function addExerciseFromPicker(ex: LibraryExercise) {
+    const existing = session?.sets.filter(
+      (s) => s.exerciseLibraryId === ex.id || s.exerciseName === ex.name
+    );
+    if (existing && existing.length > 0) {
+      toast.message("Übung bereits im Workout");
+      return;
+    }
+    setPickerOpen(false);
+    await addSet(ex.name, ex.id, 1);
+  }
+
   async function saveCompletedWorkout(name: string) {
     setEndSaving(true);
     const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
@@ -290,7 +305,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         onSave={(name) => void saveCompletedWorkout(name)}
         onCancel={() => setEndOpen(false)}
       />
-    <div className="space-y-4 pb-28 max-w-lg mx-auto">
+    <div className="space-y-4 pb-36 max-w-lg mx-auto">
       <div className="sticky top-0 z-20 py-3 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/50 -mx-1 px-1">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
           <div className="flex items-start justify-between gap-3">
@@ -325,6 +340,20 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
           )}
         </div>
       </div>
+
+      {grouped.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-zinc-700 py-12 text-center px-4">
+          <Dumbbell className="h-10 w-10 text-zinc-600 mx-auto mb-3" />
+          <p className="text-zinc-400 text-sm">Noch keine Übungen — füge deine erste hinzu.</p>
+          <Button
+            className="mt-4 h-12 rounded-xl"
+            onClick={() => setPickerOpen(true)}
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Übung hinzufügen
+          </Button>
+        </div>
+      )}
 
       {grouped.map(({ key, name, exerciseLibraryId, sets }) => {
         const prev = previousByExercise[key]?.[0];
@@ -436,6 +465,30 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
           </div>
         );
       })}
+
+      <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-zinc-950/95 border-t border-zinc-800">
+        <div className="max-w-lg mx-auto">
+          <Button
+            variant="outline"
+            className="w-full h-14 rounded-2xl border-dashed border-cyan-500/40 text-cyan-300"
+            onClick={() => setPickerOpen(true)}
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Übung hinzufügen
+          </Button>
+        </div>
+      </div>
+
+      <ExercisePickerSheet
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={addExerciseFromPicker}
+        excludeIds={
+          grouped
+            .map((g) => g.exerciseLibraryId)
+            .filter((id): id is string => Boolean(id))
+        }
+      />
     </div>
     </>
   );

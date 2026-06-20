@@ -1,15 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { subDays, startOfDay, format } from "date-fns";
 import { de } from "date-fns/locale";
+import { setVolume } from "@/lib/workout-metrics";
 
 export async function loadProgressDashboardExtras(userId: string) {
   const today = startOfDay(new Date());
-  const since30 = subDays(today, 29);
+  const since90 = subDays(today, 89);
 
   const [
-    meals30,
+    meals90,
     profile,
-    sessions,
+    sessionsForCharts,
+    recentSessions,
     trainingStreak,
     activeStreak,
     prs,
@@ -18,7 +20,7 @@ export async function loadProgressDashboardExtras(userId: string) {
     unlockedCount,
   ] = await Promise.all([
     prisma.meal.findMany({
-      where: { userId, date: { gte: since30 } },
+      where: { userId, date: { gte: since90 } },
       select: {
         date: true,
         items: {
@@ -39,6 +41,19 @@ export async function loadProgressDashboardExtras(userId: string) {
     prisma.profile.findUnique({
       where: { userId },
       select: { calorieTarget: true, proteinTargetG: true },
+    }),
+    prisma.workoutSession.findMany({
+      where: { userId, status: "COMPLETED", completedAt: { gte: since90 } },
+      orderBy: { completedAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        completedAt: true,
+        durationSec: true,
+        caloriesBurned: true,
+        day: { select: { name: true } },
+        sets: { select: { reps: true, weightKg: true } },
+      },
     }),
     prisma.workoutSession.findMany({
       where: { userId, status: "COMPLETED" },
@@ -78,7 +93,7 @@ export async function loadProgressDashboardExtras(userId: string) {
   ]);
 
   const byDay = new Map<string, { calories: number; proteinG: number }>();
-  for (const meal of meals30) {
+  for (const meal of meals90) {
     const key = format(meal.date, "yyyy-MM-dd");
     let calories = 0;
     let proteinG = 0;
@@ -104,11 +119,30 @@ export async function loadProgressDashboardExtras(userId: string) {
       proteinG: Math.round(v.proteinG),
     }));
 
+  const trainingVolumeTrend = sessionsForCharts.map((s) => {
+    const date = s.completedAt!.toISOString().slice(0, 10);
+    let vol = 0;
+    for (const set of s.sets) vol += setVolume(set.reps, set.weightKg);
+    return {
+      date,
+      label: format(s.completedAt!, "dd.MM", { locale: de }),
+      value: Math.round(vol),
+    };
+  });
+
+  const trainingFrequencyTrend = sessionsForCharts.map((s) => ({
+    date: s.completedAt!.toISOString().slice(0, 10),
+    label: format(s.completedAt!, "dd.MM", { locale: de }),
+    value: 1,
+  }));
+
   return {
     nutritionTrend,
     calorieTarget: profile?.calorieTarget ?? 0,
     proteinTargetG: profile?.proteinTargetG ?? 0,
-    trainingHistory: sessions.map((s) => ({
+    trainingVolumeTrend,
+    trainingFrequencyTrend,
+    trainingHistory: recentSessions.map((s) => ({
       id: s.id,
       name: s.name,
       dayName: s.day?.name ?? null,

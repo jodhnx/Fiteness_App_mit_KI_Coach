@@ -8,8 +8,6 @@ import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { invalidateCache, getCached } from "@/lib/client-cache";
 import { buildWeightAnalytics, type WeightPeriod } from "@/lib/weight-analytics";
 import { WeightInput } from "@/components/progress/weight-input";
-import { LazyWeightTrendChart } from "@/components/progress/lazy-weight-trend-chart";
-import { LazyStatChart } from "@/components/charts/lazy-stat-chart";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import Image from "next/image";
@@ -17,8 +15,8 @@ import { BodyTransformationCard } from "@/components/progress/body-transformatio
 import type { BodyTransformation } from "@/lib/body-transformation";
 import { TrainingHistorySection } from "@/components/progress/training-history-section";
 import { ProgressStatsSection } from "@/components/progress/progress-stats-section";
+import { ProgressChartsSection } from "@/components/progress/progress-charts-section";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { hasScreenLoaded } from "@/lib/storage-service";
 
 type ProgressPayload = {
@@ -38,6 +36,11 @@ type ProgressPayload = {
   startWeightKg?: number | null;
   transformation?: BodyTransformation | null;
   dashboard?: {
+    nutritionTrend: { date: string; label: string; calories: number; proteinG: number }[];
+    calorieTarget: number;
+    proteinTargetG: number;
+    trainingVolumeTrend: { date: string; label: string; value: number }[];
+    trainingFrequencyTrend: { date: string; label: string; value: number }[];
     trainingHistory: {
       id: string;
       name: string;
@@ -61,20 +64,7 @@ type ProgressPayload = {
   } | null;
 };
 
-const PERIODS: { id: WeightPeriod; label: string }[] = [
-  { id: "7d", label: "7 Tage" },
-  { id: "30d", label: "30 Tage" },
-  { id: "90d", label: "90 Tage" },
-  { id: "all", label: "Gesamt" },
-];
-
-function formatDelta(kg: number | null) {
-  if (kg == null) return "—";
-  const sign = kg > 0 ? "+" : "";
-  return `${sign}${kg.toLocaleString("de-AT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
-}
-
-/** ProgressScreen — Body → Gewicht → Historie → Statistiken */
+/** ProgressScreen — Body → Gewicht → Charts → Historie → Statistiken */
 export default function ProgressPage() {
   const searchParams = useSearchParams();
   const logRef = useRef<HTMLDivElement>(null);
@@ -268,43 +258,18 @@ export default function ProgressPage() {
           <WeightInput initialKg={lastWeight} onSave={saveWeight} />
         </div>
 
-        <div className="card-premium p-4">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-2 mb-3">
-            {PERIODS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setPeriod(p.id)}
-                className={cn(
-                  "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
-                  period === p.id ? "bg-accent text-zinc-950" : "bg-zinc-800 text-zinc-400"
-                )}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <LazyWeightTrendChart data={analytics.chartPoints} />
-          <div className="grid grid-cols-3 gap-2 text-center mt-4">
-            <div className="rounded-lg bg-zinc-900/80 p-2">
-              <p className="text-[9px] text-zinc-500 uppercase">Woche</p>
-              <p className="text-sm font-bold text-white tabular-nums">{formatDelta(analytics.changeWeekKg)}</p>
-            </div>
-            <div className="rounded-lg bg-zinc-900/80 p-2">
-              <p className="text-[9px] text-zinc-500 uppercase">Monat</p>
-              <p className="text-sm font-bold text-white tabular-nums">{formatDelta(analytics.changeMonthKg)}</p>
-            </div>
-            <div className="rounded-lg bg-zinc-900/80 p-2">
-              <p className="text-[9px] text-zinc-500 uppercase">Ø / Woche</p>
-              <p className="text-sm font-bold text-white tabular-nums">{formatDelta(analytics.avgChangePerWeekKg)}</p>
-            </div>
-          </div>
-          {analytics.weeklyAverages.length > 0 && (
-            <div className="mt-4">
-              <LazyStatChart data={analytics.weeklyAverages} type="bar" color="#a78bfa" />
-            </div>
-          )}
-        </div>
+        {dashboard && (
+          <ProgressChartsSection
+            nutritionTrend={dashboard.nutritionTrend}
+            calorieTarget={dashboard.calorieTarget}
+            proteinTargetG={dashboard.proteinTargetG}
+            weightChartPoints={analytics.chartPoints}
+            weightPeriod={period}
+            onWeightPeriodChange={setPeriod}
+            trainingVolumeTrend={dashboard.trainingVolumeTrend ?? []}
+            trainingFrequencyTrend={dashboard.trainingFrequencyTrend ?? []}
+          />
+        )}
       </section>
 
       {/* UNTERER BEREICH */}
