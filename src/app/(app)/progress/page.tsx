@@ -6,6 +6,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { invalidateCache, getCached } from "@/lib/client-cache";
+import { NUTRITION_DASHBOARD_EVENT } from "@/lib/nutrition-sync";
+import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
+import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
 import { buildWeightAnalytics, type WeightPeriod } from "@/lib/weight-analytics";
 import { WeightInput } from "@/components/progress/weight-input";
 import { toast } from "sonner";
@@ -83,7 +86,23 @@ export default function ProgressPage() {
     { revalidateOnMount: false, staleRatio: 0.99 }
   );
 
-  const displayData = progressData ?? getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
+  const [nutritionRev, setNutritionRev] = useState(0);
+
+  useEffect(() => {
+    const onNutrition = (e: Event) => {
+      const detail = (e as CustomEvent<NutritionDashboardPayload>).detail;
+      if (!detail || !isValidDashboardPayload(detail)) return;
+      setNutritionRev((v) => v + 1);
+    };
+    window.addEventListener(NUTRITION_DASHBOARD_EVENT, onNutrition);
+    return () => window.removeEventListener(NUTRITION_DASHBOARD_EVENT, onNutrition);
+  }, []);
+
+  const displayData = useMemo(() => {
+    // nutritionRev bumps cache re-read after live food log events
+    return progressData ?? getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nutritionRev intentionally invalidates cache read
+  }, [progressData, nutritionRev]);
   const entries = displayData?.entries ?? [];
   const photos = displayData?.photos ?? [];
   const profile = displayData?.profile ?? null;

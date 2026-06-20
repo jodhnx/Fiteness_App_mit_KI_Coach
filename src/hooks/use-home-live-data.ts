@@ -15,6 +15,7 @@ import {
 } from "@/lib/home-defaults";
 import { getCached } from "@/lib/client-cache";
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
+import { buildHomeCoachFromNutrition } from "@/lib/nutrition-coach";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
 import { isNutritionDashboardToday } from "@/lib/nutrition-day";
@@ -27,6 +28,7 @@ function mergeHomeWithNutrition(
     ...home,
     ...nutritionDashboardToHomeMacros(nutrition),
     nutrition,
+    coach: buildHomeCoachFromNutrition(nutrition),
   });
 }
 

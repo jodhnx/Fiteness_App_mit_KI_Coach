@@ -69,6 +69,18 @@ export function NutritionDataProvider({
 
   useEffect(() => {
     const resolved = resolveInitialDashboard(initialDashboard);
+    const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
+    const sameAsCache =
+      cached &&
+      isValidDashboardPayload(cached) &&
+      cached.date === resolved.date &&
+      cached.targets.calories === resolved.targets.calories &&
+      cached.consumed.calories === resolved.consumed.calories;
+
+    if (sameAsCache) {
+      setDashboard(cached);
+      return;
+    }
     publishNutritionDashboard(resolved);
     setDashboard(resolved);
   }, [initialDashboard]);

@@ -19,6 +19,7 @@ import {
 } from "@/lib/home-section-cache";
 import { nutritionDayKey, isNutritionDashboardToday } from "@/lib/nutrition-day";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
+import { buildHomeCoachFromNutrition } from "@/lib/nutrition-coach";
 
 export { HOME_COACH_CACHE, HOME_INSIGHTS_CACHE, HOME_HEUTE_CACHE, HOME_WORKOUT_CACHE } from "@/lib/home-section-cache";
 
@@ -108,14 +109,17 @@ export function publishNutritionDashboard(dashboard: NutritionDashboardPayload) 
 
   const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
   const macroSlice = nutritionDashboardToHomeMacros(nutrition);
+  const coach = buildHomeCoachFromNutrition(nutrition);
   const nextHome: HomeDataPayload = {
     ...(prevHome ?? createEmptyHomeData()),
     ...macroSlice,
     nutrition,
+    coach,
   };
 
   setCached(HOME_DATA_CACHE_KEY, nextHome, ttl);
   hydrateHomeSectionCaches(nextHome);
+  setCached(HOME_COACH_CACHE, coach, ttl);
   patchProgressNutritionToday(nutrition);
 
   if (typeof window !== "undefined") {
@@ -240,6 +244,137 @@ export function optimisticRemoveMealItem(
       fatG: Math.max(0, slot.totals.fatG - (item.fatG ?? 0)),
     };
     return { ...slot, items, totals };
+  });
+
+  if (!found || !removed) return null;
+
+  const consumed = roundMacros({
+    calories: Math.max(0, dashboard.consumed.calories - removed.calories),
+    proteinG: Math.max(0, dashboard.consumed.proteinG - removed.proteinG),
+    carbsG: Math.max(0, dashboard.consumed.carbsG - removed.carbsG),
+    fatG: Math.max(0, dashboard.consumed.fatG - removed.fatG),
+  });
+
+  return {
+    ...dashboard,
+    date: nutritionDayKey(),
+    consumed: { ...dashboard.consumed, ...consumed },
+    remaining: {
+      calories: Math.max(0, dashboard.targets.calories - consumed.calories),
+      proteinG: Math.max(0, dashboard.targets.proteinG - consumed.proteinG),
+      carbsG: Math.max(0, dashboard.targets.carbsG - consumed.carbsG),
+      fatG: Math.max(0, dashboard.targets.fatG - consumed.fatG),
+    },
+    mealsByType,
+  };
+}
+
+/** Optimistic UI while water POST is in flight */
+export function optimisticAddWater(
+  dashboard: NutritionDashboardPayload,
+  amountMl: number
+): NutritionDashboardPayload | null {
+  if (amountMl <= 0) return null;
+  const consumedMl = dashboard.water.consumedMl + amountMl;
+  return {
+    ...dashboard,
+    date: nutritionDayKey(),
+    water: { ...dashboard.water, consumedMl },
+  };
+}
+
+/** Optimistic UI while PATCH quantity is in flight */
+export function optimisticPatchItemQuantity(
+  dashboard: NutritionDashboardPayload,
+  itemId: string,
+  quantityG: number
+): NutritionDashboardPayload | null {
+  if (quantityG <= 0) return null;
+
+  let targetItem: (typeof dashboard.mealsByType)[0]["items"][0] | null = null;
+  for (const slot of dashboard.mealsByType) {
+    const item = slot.items.find((i) => i.id === itemId);
+    if (item) {
+      targetItem = item;
+      break;
+    }
+  }
+  if (!targetItem) return null;
+
+  const ratio = quantityG / targetItem.quantityG;
+  const delta = {
+    calories: Math.round(targetItem.calories * ratio) - targetItem.calories,
+    proteinG: Math.round(targetItem.proteinG * ratio * 10) / 10 - targetItem.proteinG,
+    carbsG: Math.round((targetItem.carbsG ?? 0) * ratio * 10) / 10 - (targetItem.carbsG ?? 0),
+    fatG: Math.round((targetItem.fatG ?? 0) * ratio * 10) / 10 - (targetItem.fatG ?? 0),
+  };
+
+  const mealsByType = dashboard.mealsByType.map((slot) => {
+    const item = slot.items.find((i) => i.id === itemId);
+    if (!item) return slot;
+    const newItem = {
+      ...item,
+      quantityG,
+      calories: Math.round(item.calories * ratio),
+      proteinG: Math.round(item.proteinG * ratio * 10) / 10,
+      carbsG: Math.round((item.carbsG ?? 0) * ratio * 10) / 10,
+      fatG: Math.round((item.fatG ?? 0) * ratio * 10) / 10,
+    };
+    const items = slot.items.map((i) => (i.id === itemId ? newItem : i));
+    const totals = {
+      calories: Math.max(0, slot.totals.calories + delta.calories),
+      proteinG: Math.max(0, slot.totals.proteinG + delta.proteinG),
+      carbsG: Math.max(0, slot.totals.carbsG + delta.carbsG),
+      fatG: Math.max(0, slot.totals.fatG + delta.fatG),
+    };
+    return { ...slot, items, totals };
+  });
+
+  const consumed = roundMacros({
+    calories: Math.max(0, dashboard.consumed.calories + delta.calories),
+    proteinG: Math.max(0, dashboard.consumed.proteinG + delta.proteinG),
+    carbsG: Math.max(0, dashboard.consumed.carbsG + delta.carbsG),
+    fatG: Math.max(0, dashboard.consumed.fatG + delta.fatG),
+  });
+
+  return {
+    ...dashboard,
+    date: nutritionDayKey(),
+    consumed: { ...dashboard.consumed, ...consumed },
+    remaining: {
+      calories: Math.max(0, dashboard.targets.calories - consumed.calories),
+      proteinG: Math.max(0, dashboard.targets.proteinG - consumed.proteinG),
+      carbsG: Math.max(0, dashboard.targets.carbsG - consumed.carbsG),
+      fatG: Math.max(0, dashboard.targets.fatG - consumed.fatG),
+    },
+    mealsByType,
+  };
+}
+
+/** Optimistic UI while DELETE meal is in flight */
+export function optimisticRemoveMeal(
+  dashboard: NutritionDashboardPayload,
+  mealId: string
+): NutritionDashboardPayload | null {
+  type RemovedMacros = { calories: number; proteinG: number; carbsG: number; fatG: number };
+  let removed: RemovedMacros | undefined;
+  let found = false;
+
+  const mealsByType = dashboard.mealsByType.map((slot) => {
+    if (slot.mealId !== mealId) return slot;
+    found = true;
+    removed = {
+      calories: slot.totals.calories,
+      proteinG: slot.totals.proteinG,
+      carbsG: slot.totals.carbsG,
+      fatG: slot.totals.fatG,
+    };
+    return {
+      ...slot,
+      mealId: null,
+      items: [],
+      totals: { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+    };
   });
 
   if (!found || !removed) return null;

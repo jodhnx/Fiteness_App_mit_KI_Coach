@@ -9,9 +9,10 @@ import {
   invalidateAllNutritionCaches,
   applyNutritionMutationResponse,
   optimisticRemoveMealItem,
-  NUTRITION_DASHBOARD_CACHE_KEY,
+  optimisticRemoveMeal,
+  optimisticPatchItemQuantity,
+  optimisticAddWater,
 } from "@/lib/nutrition-sync";
-import { getCached } from "@/lib/client-cache";
 import { RemainingMacrosHero } from "@/components/nutrition/remaining-macros-hero";
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
@@ -46,7 +47,6 @@ export default function NutritionPage() {
 
   const {
     dashboard,
-    loading,
     error,
     timedOut,
     reload,
@@ -67,33 +67,38 @@ export default function NutritionPage() {
 
   const removeItem = useCallback(
     async (itemId: string) => {
-      const optimistic = optimisticRemoveMealItem(dashboard, itemId);
+      const snapshot = dashboard;
+      const optimistic = optimisticRemoveMealItem(snapshot, itemId);
       if (optimistic) applyDashboard(optimistic);
       const res = await fetch(`/api/nutrition/items/${itemId}`, { method: "DELETE" });
       if (!res.ok) {
+        applyDashboard(snapshot);
         toast.error("Löschen fehlgeschlagen");
-        refreshAll();
         return;
       }
       const updated = await applyNutritionMutationResponse(res);
-      if (!updated) refreshAll();
+      if (!updated) applyDashboard(snapshot);
     },
-    [dashboard, applyDashboard, refreshAll]
+    [dashboard, applyDashboard]
   );
 
   const deleteMeal = useCallback(
     async (mealId: string) => {
       if (!window.confirm("Diese Mahlzeit und alle Einträge löschen?")) return;
+      const snapshot = dashboard;
+      const optimistic = optimisticRemoveMeal(snapshot, mealId);
+      if (optimistic) applyDashboard(optimistic);
       const res = await fetch(`/api/nutrition/meals/${mealId}`, { method: "DELETE" });
       if (!res.ok) {
+        applyDashboard(snapshot);
         toast.error("Mahlzeit konnte nicht gelöscht werden");
         return;
       }
       const updated = await applyNutritionMutationResponse(res);
-      if (!updated) refreshAll();
+      if (!updated) applyDashboard(snapshot);
       else toast.success("Mahlzeit gelöscht");
     },
-    [refreshAll]
+    [dashboard, applyDashboard]
   );
 
   const editItemQuantity = useCallback(
@@ -105,38 +110,45 @@ export default function NutritionPage() {
         toast.error("Ungültige Menge");
         return;
       }
+      const snapshot = dashboard;
+      const optimistic = optimisticPatchItemQuantity(snapshot, itemId, quantityG);
+      if (optimistic) applyDashboard(optimistic);
       const res = await fetch(`/api/nutrition/items/${itemId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quantityG }),
       });
       if (!res.ok) {
+        applyDashboard(snapshot);
         toast.error("Speichern fehlgeschlagen");
         return;
       }
       const updated = await applyNutritionMutationResponse(res);
-      if (!updated) refreshAll();
+      if (!updated) applyDashboard(snapshot);
       else toast.success("Eintrag aktualisiert");
     },
-    [refreshAll]
+    [dashboard, applyDashboard]
   );
 
   const addWater = useCallback(
     async (amountMl: number) => {
+      const snapshot = dashboard;
+      const optimistic = optimisticAddWater(snapshot, amountMl);
+      if (optimistic) applyDashboard(optimistic);
       const res = await fetch("/api/nutrition/water", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amountMl }),
       });
       if (!res.ok) {
+        applyDashboard(snapshot);
         toast.error("Wasser konnte nicht gespeichert werden");
         return;
       }
-      const body = await res.json().catch(() => ({}));
-      if (body.dashboard) applyDashboard(body.dashboard);
-      else refreshAll();
+      const updated = await applyNutritionMutationResponse(res);
+      if (!updated) applyDashboard(snapshot);
     },
-    [applyDashboard, refreshAll]
+    [dashboard, applyDashboard]
   );
 
   const handleToggleFavorite = useCallback(
@@ -205,11 +217,7 @@ export default function NutritionPage() {
         </div>
       )}
 
-      <div
-        className={
-          loading && getCached(NUTRITION_DASHBOARD_CACHE_KEY) === null ? "opacity-80" : ""
-        }
-      >
+      <div>
         <RemainingMacrosHero
           calories={{
             consumed: dashboard.consumed.calories,

@@ -1,6 +1,12 @@
 import type { MacroTotals } from "@/lib/food-macros";
+import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 
 type Targets = { calories: number; proteinG: number; carbsG: number; fatG: number };
+
+export type HomeCoachPayload = {
+  summary: string;
+  tips: { type: string; message: string; priority: "high" | "medium" | "low" }[];
+};
 
 export function buildNutritionCoachTips(
   consumed: MacroTotals,
@@ -110,13 +116,22 @@ export function buildNutritionCoachTipsWithWater(
     if (proteinIdx >= 0) tips.splice(proteinIdx + 1, 0, waterTip);
     else tips.unshift(waterTip);
   }
-  if (tips.length === 0) {
-    tips.push({
-      type: "balance",
-      message: "Gute Balance heute – weiter so und regelmäßig tracken.",
-      priority: "low",
-    });
-  }
-
   return tips;
+}
+
+/** Live coach slice for Home — rebuilt on every nutrition sync */
+export function buildHomeCoachFromNutrition(
+  d: NutritionDashboardPayload
+): HomeCoachPayload {
+  const tips = buildNutritionCoachTipsWithWater(
+    d.consumed,
+    d.targets,
+    d.targets.nutritionGoal,
+    d.water.consumedMl,
+    d.water.targetMl
+  );
+  return {
+    summary: tips[0]?.message ?? "Gute Balance heute – weiter so und regelmäßig tracken.",
+    tips,
+  };
 }
