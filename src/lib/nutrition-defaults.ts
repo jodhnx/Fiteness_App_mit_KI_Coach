@@ -56,7 +56,11 @@ export type NutritionDashboardPayload = {
 };
 
 export function hasNutritionTargets(d: NutritionDashboardPayload): boolean {
-  return Boolean(d.profileComplete && d.targets.calories > 0 && d.targets.proteinG > 0);
+  return d.targets.calories > 0 && d.targets.proteinG > 0;
+}
+
+export function nutritionProfileIncomplete(d: NutritionDashboardPayload): boolean {
+  return !d.profileComplete && d.targets.calories <= 0;
 }
 
 export function createEmptyNutritionDashboard(

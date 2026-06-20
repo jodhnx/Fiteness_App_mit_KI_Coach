@@ -266,6 +266,12 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
         tier: row.achievement.tier,
         earnedAt: row.earnedAt.toISOString(),
       })),
+      lastCompletedWorkout: lastSession?.completedAt
+        ? {
+            name: lastSession.name ?? "Training",
+            completedAt: lastSession.completedAt.toISOString(),
+          }
+        : null,
     });
   } catch (e) {
     console.error("[loadHomeData] fatal", e);

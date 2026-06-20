@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
-import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
+import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
+import { WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
 import { type HomeDataPayload } from "@/lib/home-defaults";
 import { useHomeLiveData } from "@/hooks/use-home-live-data";
 import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
@@ -13,21 +13,22 @@ import { useDisplayName } from "@/hooks/use-display-name";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HomeGreeting } from "@/components/home/home-greeting";
-import { HomeTodayProgressCard } from "@/components/home/home-today-progress-card";
+import { HomeCalorieHeroCard } from "@/components/home/home-calorie-hero-card";
+import { HomeMacroOverviewCard } from "@/components/home/home-macro-overview-card";
 import { HomeNextTrainingCard } from "@/components/home/home-next-training-card";
-import { HomeWeekOverviewCard } from "@/components/home/home-week-overview-card";
-import { HomeQuickActionsBar } from "@/components/home/home-quick-actions-bar";
+import { HomeTrainingStreakCard } from "@/components/home/home-training-streak-card";
+import { HomeWeightTrendCard } from "@/components/home/home-weight-trend-card";
 import { HomeKiTipCard } from "@/components/home/home-ki-tip-card";
 import { HomeRecentAchievements } from "@/components/home/home-recent-achievements";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { refreshCached, isCacheStale, getCached } from "@/lib/client-cache";
 import { HomeLoadingSkeleton } from "@/components/home/home-loading-skeleton";
-import { toast } from "sonner";
 
 export default function HomePage() {
-  const router = useRouter();
   const { status: sessionStatus } = useSession();
+  const [workoutCleared, setWorkoutCleared] = useState(false);
+
   const { data: rawData, error, timedOut, reload } = useCachedFetch<HomeDataPayload>(
     HOME_DATA_CACHE_KEY,
     "/api/home",
@@ -43,6 +44,21 @@ export default function HomePage() {
   useEffect(() => {
     if (rawData) hydrateHomeSectionCaches(rawData);
   }, [rawData]);
+
+  useEffect(() => {
+    const onWorkout = () => setWorkoutCleared(true);
+    const onHome = () => setWorkoutCleared(true);
+    window.addEventListener(WORKOUT_ACTIVE_EVENT, onWorkout);
+    window.addEventListener(HOME_DATA_EVENT, onHome);
+    return () => {
+      window.removeEventListener(WORKOUT_ACTIVE_EVENT, onWorkout);
+      window.removeEventListener(HOME_DATA_EVENT, onHome);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (data.activeSession?.id) setWorkoutCleared(false);
+  }, [data.activeSession?.id]);
 
   useEffect(() => {
     if (!rawData || !isCacheStale(HOME_DATA_CACHE_KEY, 0.98)) return;
@@ -71,43 +87,14 @@ export default function HomePage() {
     };
   }, [rawData]);
 
-  const steps = data.healthToday?.steps ?? 0;
-  const stepGoal = data.healthToday?.stepGoal ?? 10000;
   const trainingStreakDays =
     data.trainingStreak?.currentDays ?? data.streak?.currentDays ?? 0;
-  const activeSessionId = data.activeSession?.id;
+  const activeSessionId = workoutCleared ? null : data.activeSession?.id;
   const nextWorkout = data.nextWorkout ?? null;
 
   const recoveryMuscles: MuscleRecovery[] = filterDisplayMuscles(
     (data.recovery?.muscles ?? []) as MuscleRecovery[]
   );
-
-  const startWorkout = useCallback(async () => {
-    if (activeSessionId) {
-      router.push(`/workouts/live/${activeSessionId}`);
-      return;
-    }
-    if (nextWorkout?.dayId) {
-      const res = await fetch("/api/workouts/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "start",
-          workoutPlanId: nextWorkout.planId,
-          workoutDayId: nextWorkout.dayId,
-          name: `${nextWorkout.planName} – ${nextWorkout.dayName}`,
-        }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (res.ok) router.push(`/workouts/live/${body.session.id}`);
-      else {
-        toast.error("Training konnte nicht gestartet werden");
-        router.push("/workouts");
-      }
-      return;
-    }
-    router.push("/workouts/quick");
-  }, [activeSessionId, nextWorkout, router]);
 
   if (sessionStatus === "loading" && !rawData && !getCached(HOME_DATA_CACHE_KEY)) {
     return <HomeLoadingSkeleton />;
@@ -126,7 +113,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-4 pb-2 max-w-lg mx-auto">
+    <div className="space-y-3 pb-2 max-w-lg mx-auto">
       {(error || timedOut) && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -141,19 +128,22 @@ export default function HomePage() {
 
       <HomeGreeting name={displayName} />
 
-      <HomeTodayProgressCard nutrition={nutrition} steps={steps} stepGoal={stepGoal} />
+      <HomeCalorieHeroCard nutrition={nutrition} />
+
+      <HomeMacroOverviewCard nutrition={nutrition} />
 
       <HomeNextTrainingCard
         nextWorkout={nextWorkout}
         activeSessionId={activeSessionId}
+        lastCompleted={data.lastCompletedWorkout}
         recoveryMuscles={recoveryMuscles}
       />
 
-      <HomeWeekOverviewCard home={data} streakDays={trainingStreakDays} />
+      <HomeTrainingStreakCard streakDays={trainingStreakDays} />
+
+      <HomeWeightTrendCard home={data} />
 
       <HomeKiTipCard coach={data.coach} />
-
-      <HomeQuickActionsBar onStartWorkout={() => void startWorkout()} />
 
       <HomeRecentAchievements achievements={data.recentAchievements ?? []} />
     </div>

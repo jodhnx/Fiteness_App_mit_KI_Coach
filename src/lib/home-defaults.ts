@@ -121,6 +121,10 @@ export type HomeDataPayload = {
     tier: string;
     earnedAt: string;
   }[];
+  lastCompletedWorkout?: {
+    name: string;
+    completedAt: string;
+  } | null;
 };
 
 export function createEmptyHomeData(): HomeDataPayload {
@@ -144,6 +148,7 @@ export function createEmptyHomeData(): HomeDataPayload {
     recentActivity: null,
     healthToday: null,
     userName: null,
+    lastCompletedWorkout: null,
   };
 }
 
@@ -268,6 +273,10 @@ export function normalizeHomeData(raw: unknown): HomeDataPayload {
     recentAchievements: Array.isArray(d.recentAchievements)
       ? (d.recentAchievements as HomeDataPayload["recentAchievements"])
       : undefined,
+    lastCompletedWorkout:
+      d.lastCompletedWorkout && typeof d.lastCompletedWorkout === "object"
+        ? (d.lastCompletedWorkout as HomeDataPayload["lastCompletedWorkout"])
+        : null,
   };
 }
 

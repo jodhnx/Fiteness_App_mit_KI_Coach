@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Check, Plus, Timer, Trash2, Trophy, Dumbbell } from "lucide-react";
 import { EndWorkoutDialog } from "@/components/workout/end-workout-dialog";
 import { ExercisePickerSheet } from "@/components/workout/exercise-picker-sheet";
+import { clearActiveWorkoutCaches } from "@/lib/workout-cache-sync";
 import type { LibraryExercise } from "@/hooks/use-exercise-library-search";
 
 const WORKOUT_SEQ_KEY = "workout-save-seq";
@@ -263,6 +264,11 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       toast.error("Fehler beim Abschließen");
       return;
     }
+    clearActiveWorkoutCaches({
+      name: data.session?.name ?? name,
+      completedAt:
+        data.session?.completedAt ?? new Date().toISOString(),
+    });
     bumpWorkoutSeq();
     setEndOpen(false);
     if (data.newPRs?.length) {

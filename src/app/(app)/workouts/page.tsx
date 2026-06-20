@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useRouter } from "next/navigation";
+import { WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
+import { HOME_DATA_EVENT } from "@/lib/nutrition-sync";
 import { TrainingChoiceCard } from "@/components/workout/training-choice-card";
 import { MuscleRecoveryPanel } from "@/components/workout/muscle-recovery-panel";
 import { Button } from "@/components/ui/button";
@@ -19,6 +22,7 @@ import {
 
 export default function WorkoutsHubPage() {
   const router = useRouter();
+  const [activeCleared, setActiveCleared] = useState(false);
   const fetchOpts = { revalidateOnMount: false, staleRatio: 0.95 } as const;
 
   const { data: sessionData } = useCachedFetch<{ session: { id: string; name?: string } | null }>(
@@ -38,7 +42,21 @@ export default function WorkoutsHubPage() {
     recovery: MuscleRecovery[];
   }>("workouts-recovery-hub", "/api/workouts/recovery", 120_000, 6_000, fetchOpts);
 
-  const activeSession = sessionData?.session ?? null;
+  useEffect(() => {
+    const clear = () => setActiveCleared(true);
+    window.addEventListener(WORKOUT_ACTIVE_EVENT, clear);
+    window.addEventListener(HOME_DATA_EVENT, clear);
+    return () => {
+      window.removeEventListener(WORKOUT_ACTIVE_EVENT, clear);
+      window.removeEventListener(HOME_DATA_EVENT, clear);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (sessionData?.session?.id) setActiveCleared(false);
+  }, [sessionData?.session?.id]);
+
+  const activeSession = activeCleared ? null : sessionData?.session ?? null;
   const plans = plansData?.plans ?? [];
   const lastPlan = plans.find((p) => p.lastSessionAt);
   const lastPlanLabel = lastPlan

@@ -57,6 +57,27 @@ export function resolveTargets(profile: Profile | null, context?: CaloriePlanCon
   };
 }
 
+async function ensureProfileTargetsPersisted(
+  userId: string,
+  profile: Profile | null,
+  context: CaloriePlanContext
+): Promise<Profile | null> {
+  if (!profile) return null;
+  const complete = Boolean(
+    profile.weightKg &&
+      profile.heightCm &&
+      profile.age &&
+      profile.gender &&
+      profile.activityLevel
+  );
+  if (!complete) return profile;
+  if (profile.calorieTarget != null && profile.proteinTargetG != null && profile.calorieTarget > 0) {
+    return profile;
+  }
+  const synced = await syncProfileTargetsToDb(userId, profile, context);
+  return synced?.profile ?? profile;
+}
+
 export function mealTotalsFromItems(
   items: {
     quantityG: number;
@@ -121,6 +142,8 @@ export async function loadNutritionDashboard(
   } catch (e) {
     console.error("[nutrition-dashboard] profile", e);
   }
+
+  profile = await ensureProfileTargetsPersisted(userId, profile, calorieContext);
 
   const profileComplete = Boolean(
     profile?.weightKg &&
