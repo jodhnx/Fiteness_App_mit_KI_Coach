@@ -11,6 +11,7 @@ import {
   isEmailVerified,
   isEmailVerificationEnabled,
 } from "@/lib/verification";
+import { isGuestEmail } from "@/lib/guest-auth";
 import {
   DatabaseConnectionError,
   InvalidCredentialsError,
@@ -188,7 +189,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             verified,
           });
 
-          if (verificationRequired && !verified) {
+          if (verificationRequired && !verified && !isGuestEmail(email)) {
             logAuthServer("login_failed", {
               email,
               reason: "email_not_verified",

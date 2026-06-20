@@ -9,6 +9,7 @@ import { NotificationProvider } from "@/components/providers/notification-provid
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { GamificationUnlockToast } from "@/components/gamification/gamification-unlock-toast";
 import { RoutePrefetcher } from "@/components/layout/route-prefetcher";
+import { GuestUpgradeBanner } from "@/components/auth/guest-upgrade-banner";
 import { SidebarProvider } from "@/components/layout/sidebar-provider";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -24,7 +25,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SidebarNav isAdmin={isAdmin} />
           <div className="mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
             <Header userName={headerName} userImage={headerImage} />
-            <main className="app-page-content flex-1 px-4 pb-4">{children}</main>
+            <main className="app-page-content flex-1 px-4 pb-4">
+              <GuestUpgradeBanner />
+              {children}
+            </main>
           </div>
           <BottomNav />
           <NotificationCenter />

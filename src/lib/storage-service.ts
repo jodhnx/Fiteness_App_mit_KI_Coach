@@ -39,3 +39,12 @@ export function markScreenLoaded(screenId: string) {
 export function hasScreenLoaded(screenId: string): boolean {
   return storageGet(`loaded:${screenId}`) === "1";
 }
+
+export function storageRemove(key: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(PREFIX + key);
+  } catch {
+    /* ignore */
+  }
+}

@@ -29,6 +29,7 @@ export default auth((req) => {
     isApiRegister ||
     isApiVerify ||
     isApiReset ||
+    path.startsWith("/api/auth/guest") ||
     path.startsWith("/api/health");
 
   if (path.startsWith("/api/") && !publicApi && !isLoggedIn) {
@@ -36,7 +37,12 @@ export default auth((req) => {
   }
 
   if (isLoggedIn && (path === "/login" || path === "/register")) {
-    return NextResponse.redirect(new URL("/home", nextUrl));
+    const isGuestConvert =
+      path === "/register" && nextUrl.searchParams.get("convert") === "1";
+    const email = req.auth?.user?.email ?? "";
+    if (!(isGuestConvert && email.endsWith("@nexform.guest"))) {
+      return NextResponse.redirect(new URL("/home", nextUrl));
+    }
   }
 
   if (!isPublic && !isLoggedIn && !path.startsWith("/api/")) {

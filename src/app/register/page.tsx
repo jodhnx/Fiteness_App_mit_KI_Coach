@@ -1,7 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import { RegistrationFlow } from "@/components/onboarding/registration-flow";
 
 export default function RegisterPage() {
-  return <RegistrationFlow />;
+  return (
+    <Suspense>
+      <RegistrationFlow />
+    </Suspense>
+  );
 }
