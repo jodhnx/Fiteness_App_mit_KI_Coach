@@ -32,6 +32,7 @@ import {
   type GoalPace,
   ONBOARDING_DRAFT_KEY,
   GOAL_PACE_OPTIONS,
+  paceToTargetDate,
 } from "@/lib/onboarding-draft";
 import { CONFIG_LOCATIONS, type ConfigLocation } from "@/lib/plan-configurator";
 import { PlaceholderNumberInput } from "@/components/ui/placeholder-number-input";
@@ -198,6 +199,28 @@ export function RegistrationFlow() {
     };
   }, [draft]);
 
+  const buildOnboardingApiBody = useCallback(
+    (ob: OnboardingDraft) => {
+      const targetDate = paceToTargetDate(ob.pace);
+      return {
+        name: ob.name,
+        gender: ob.gender,
+        age: ob.age,
+        heightCm: ob.heightCm,
+        weightKg: ob.weightKg,
+        activityLevel: ob.activityLevel,
+        mainGoalKey: ob.mainGoalKey,
+        experienceLevel: ob.experienceLevel,
+        workoutDaysPerWeek: ob.workoutDaysPerWeek,
+        targetWeightKg: ob.targetWeightKg,
+        targetWeightDate: targetDate.toISOString().slice(0, 10),
+        trainingLocation: ob.location,
+        nutritionGoal: defaultNutritionGoalForMainGoal(ob.mainGoalKey),
+      };
+    },
+    []
+  );
+
   async function finishAsGuest() {
     setSubmitting(true);
     const ob = onboardingPayload();
@@ -207,17 +230,7 @@ export function RegistrationFlow() {
       await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: ob.name,
-          gender: ob.gender,
-          age: ob.age,
-          heightCm: ob.heightCm,
-          weightKg: ob.weightKg,
-          activityLevel: ob.activityLevel,
-          mainGoalKey: ob.mainGoalKey,
-          experienceLevel: ob.experienceLevel,
-          workoutDaysPerWeek: ob.workoutDaysPerWeek,
-        }),
+        body: JSON.stringify(buildOnboardingApiBody(ob)),
       });
       toast.success("Profil gespeichert");
       router.replace("/home");
@@ -292,18 +305,7 @@ export function RegistrationFlow() {
       await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: ob.name,
-          gender: ob.gender,
-          age: ob.age,
-          heightCm: ob.heightCm,
-          weightKg: ob.weightKg,
-          activityLevel: ob.activityLevel,
-          mainGoalKey: ob.mainGoalKey,
-          experienceLevel: ob.experienceLevel,
-          workoutDaysPerWeek: ob.workoutDaysPerWeek,
-          nutritionGoal: defaultNutritionGoalForMainGoal(ob.mainGoalKey),
-        }),
+        body: JSON.stringify(buildOnboardingApiBody(ob)),
       });
 
       await update({ onboardingComplete: true });

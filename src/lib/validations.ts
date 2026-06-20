@@ -103,6 +103,7 @@ export const profileSchema = z.object({
     emptyToUndefined,
     z.string().optional()
   ),
+  trainingLocation: z.enum(["GYM", "HOME", "BOTH"]).optional(),
   bodyFatPct: optionalNum(3, 60),
   muscleMassKg: optionalNum(1, 200),
   neckCm: optionalNum(1, 80),
@@ -130,6 +131,9 @@ export const onboardingSchema = z.object({
   experienceLevel: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]),
   workoutDaysPerWeek: z.coerce.number().int().min(1).max(7).optional(),
   nutritionGoal: nutritionGoalEnum.optional(),
+  targetWeightKg: z.coerce.number().positive().max(300).optional(),
+  targetWeightDate: z.preprocess(emptyToUndefined, z.string().optional()),
+  trainingLocation: z.enum(["GYM", "HOME", "BOTH"]).optional(),
 });
 
 export const settingsSchema = profileSchema.extend({

@@ -42,6 +42,11 @@ import Link from "next/link";
 import { LifeBuoy } from "lucide-react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { formatNumField } from "@/lib/mobile-input-scroll";
+import {
+  GENDER_LABELS,
+  TRAINING_LOCATION_LABELS,
+} from "@/lib/profile-labels";
+import { ACTIVITY_LABELS } from "@/lib/profile-calculations";
 import { getCached, setCached } from "@/lib/client-cache";
 
 type CalcPreview = {
@@ -54,7 +59,7 @@ type CalcPreview = {
 };
 
 type ProfileApiResponse = {
-  user?: { name?: string; image?: string | null };
+  user?: { name?: string; email?: string; image?: string | null };
   profile?: Record<string, unknown>;
   calculations?: CalcPreview;
   smartGoal?: { weightProjection?: string };
@@ -64,6 +69,7 @@ function applyProfileToForm(d: ProfileApiResponse) {
   const p = d.profile as Record<string, unknown> | undefined;
   return {
     name: d.user?.name ?? "",
+    email: d.user?.email ?? "",
     age: formatNumField(p?.age),
     weightKg: formatNumField(p?.weightKg),
     heightCm: formatNumField(p?.heightCm),
@@ -82,7 +88,8 @@ function applyProfileToForm(d: ProfileApiResponse) {
     targetWeightDate: p?.targetWeightDate
       ? String(p.targetWeightDate).slice(0, 10)
       : "",
-    bodyFatPct: p?.bodyFatPct?.toString() ?? "",
+    trainingLocation: (p?.trainingLocation as string) ?? "GYM",
+    bodyFatPct: formatNumField(p?.bodyFatPct),
     muscleMassKg: p?.muscleMassKg?.toString() ?? "",
     neckCm: p?.neckCm?.toString() ?? "",
     chestCm: p?.chestCm?.toString() ?? "",
@@ -100,6 +107,7 @@ export default function SettingsPage() {
   const [preview, setPreview] = useState<CalcPreview | null>(null);
   const [form, setForm] = useState({
     name: "",
+    email: "",
     age: "",
     weightKg: "",
     heightCm: "",
@@ -116,6 +124,7 @@ export default function SettingsPage() {
     waterTargetMl: "2500",
     targetWeightKg: "",
     targetWeightDate: "",
+    trainingLocation: "GYM",
     bodyFatPct: "",
     muscleMassKg: "",
     neckCm: "",
@@ -157,26 +166,6 @@ export default function SettingsPage() {
       fatTargetG: livePreview.fatTargetG,
       recommendedTrainingDays: livePreview.recommendedTrainingDays,
     });
-
-    const dash = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
-    if (dash?.profileComplete) {
-      publishNutritionDashboard({
-        ...dash,
-        targets: {
-          ...dash.targets,
-          calories: livePreview.calorieTarget,
-          proteinG: livePreview.proteinTargetG,
-          carbsG: livePreview.carbsTargetG,
-          fatG: livePreview.fatTargetG,
-        },
-        remaining: {
-          calories: Math.max(0, livePreview.calorieTarget - dash.consumed.calories),
-          proteinG: Math.max(0, livePreview.proteinTargetG - dash.consumed.proteinG),
-          carbsG: Math.max(0, livePreview.carbsTargetG - dash.consumed.carbsG),
-          fatG: Math.max(0, livePreview.fatTargetG - dash.consumed.fatG),
-        },
-      });
-    }
   }, [livePreview]);
 
   async function save() {
@@ -230,6 +219,7 @@ export default function SettingsPage() {
         waterTargetMl: form.waterTargetMl ? Number(form.waterTargetMl) : undefined,
         targetWeightKg: form.targetWeightKg ? Number(form.targetWeightKg) : undefined,
         targetWeightDate: form.targetWeightDate || undefined,
+        trainingLocation: form.trainingLocation || undefined,
         bodyFatPct: form.bodyFatPct ? Number(form.bodyFatPct) : undefined,
         muscleMassKg: form.muscleMassKg ? Number(form.muscleMassKg) : undefined,
         neckCm: form.neckCm ? Number(form.neckCm) : undefined,
@@ -244,7 +234,7 @@ export default function SettingsPage() {
         profile?: Record<string, unknown>;
         calculations?: CalcPreview;
         smartGoal?: { weightProjection?: string };
-        user?: { name?: string; image?: string | null };
+        user?: { name?: string; email?: string; image?: string | null };
       }>("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -279,6 +269,7 @@ export default function SettingsPage() {
         );
       }
       if (data.user?.name) setForm((f) => ({ ...f, name: data.user!.name! }));
+      if (data.user?.email) setForm((f) => ({ ...f, email: data.user!.email! }));
 
       const prev = getCached<ProfileApiResponse>(PROFILE_CACHE_KEY);
       const nextProfile: ProfileApiResponse = {
@@ -289,6 +280,9 @@ export default function SettingsPage() {
         calculations: data.calculations ?? prev?.calculations,
       };
       setCached(PROFILE_CACHE_KEY, nextProfile, 120_000);
+
+      invalidateCache(NUTRITION_DASHBOARD_CACHE_KEY);
+      invalidateCache(HOME_DATA_CACHE_KEY);
 
       if (data.calculations) {
         const dash = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
@@ -663,6 +657,18 @@ export default function SettingsPage() {
               ))}
             </select>
           </div>
+          <div className="col-span-2">
+            <Label>Trainingsort</Label>
+            <select
+              className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
+              value={form.trainingLocation}
+              onChange={(e) => setForm({ ...form, trainingLocation: e.target.value })}
+            >
+              <option value="GYM">Gym</option>
+              <option value="HOME">Zuhause</option>
+              <option value="BOTH">Gym & Zuhause</option>
+            </select>
+          </div>
         </div>
       </section>
 
@@ -807,6 +813,85 @@ export default function SettingsPage() {
         </p>
       </section>
 
+      <section id="settings-konto" className="card-premium p-4 space-y-4 scroll-mt-24">
+        <h2 className="font-semibold text-white text-lg">Konto</h2>
+        <p className="text-xs text-zinc-500">Deine gespeicherten Profildaten</p>
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Name</dt>
+            <dd className="font-medium text-white mt-0.5">{form.name || "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">E-Mail</dt>
+            <dd className="font-medium text-white mt-0.5 break-all">{form.email || "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Alter</dt>
+            <dd className="font-medium text-white mt-0.5">{form.age ? `${form.age} Jahre` : "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Geschlecht</dt>
+            <dd className="font-medium text-white mt-0.5">{GENDER_LABELS[form.gender] ?? "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Größe</dt>
+            <dd className="font-medium text-white mt-0.5">{form.heightCm ? `${form.heightCm} cm` : "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Gewicht</dt>
+            <dd className="font-medium text-white mt-0.5">{form.weightKg ? `${form.weightKg} kg` : "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Zielgewicht</dt>
+            <dd className="font-medium text-white mt-0.5">{form.targetWeightKg ? `${form.targetWeightKg} kg` : "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Ziel</dt>
+            <dd className="font-medium text-white mt-0.5">{NUTRITION_GOAL_LABELS[form.nutritionGoal] ?? "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Aktivitätslevel</dt>
+            <dd className="font-medium text-white mt-0.5">{ACTIVITY_LABELS[form.activityLevel] ?? "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Trainingsort</dt>
+            <dd className="font-medium text-white mt-0.5">{TRAINING_LOCATION_LABELS[form.trainingLocation] ?? "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Training / Woche</dt>
+            <dd className="font-medium text-white mt-0.5">{form.workoutDaysPerWeek ? `${form.workoutDaysPerWeek}×` : "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Kalorienziel</dt>
+            <dd className="font-medium text-cyan-400 mt-0.5 tabular-nums">
+              {preview?.calorieTarget ? `${preview.calorieTarget} kcal` : "—"}
+            </dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3 sm:col-span-2">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Makros</dt>
+            <dd className="font-medium text-white mt-0.5 tabular-nums">
+              P {preview?.proteinTargetG ?? "—"}g · KH {preview?.carbsTargetG ?? "—"}g · F {preview?.fatTargetG ?? "—"}g
+            </dd>
+          </div>
+        </dl>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full border-red-500/40 text-red-300 hover:bg-red-500/10"
+          disabled={loggingOut}
+          onClick={async () => {
+            setLoggingOut(true);
+            try {
+              await signOut({ callbackUrl: "/login", redirect: true });
+            } finally {
+              setLoggingOut(false);
+            }
+          }}
+        >
+          {loggingOut ? "Abmelden…" : "Abmelden"}
+        </Button>
+      </section>
+
       <section className="card-premium p-4 scroll-mt-24">
         <Link
           href="/settings/support"
@@ -833,26 +918,6 @@ export default function SettingsPage() {
       >
         {saving ? "Speichern…" : "Speichern & neu berechnen"}
       </Button>
-
-      <section className="card-premium p-4 space-y-3 scroll-mt-24">
-        <h2 className="font-semibold text-white text-lg">Konto</h2>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full border-red-500/40 text-red-300 hover:bg-red-500/10"
-          disabled={loggingOut}
-          onClick={async () => {
-            setLoggingOut(true);
-            try {
-              await signOut({ callbackUrl: "/login", redirect: true });
-            } finally {
-              setLoggingOut(false);
-            }
-          }}
-        >
-          {loggingOut ? "Abmelden…" : "Abmelden"}
-        </Button>
-      </section>
     </div>
   );
 }

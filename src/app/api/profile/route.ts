@@ -5,6 +5,7 @@ import type { Profile } from "@prisma/client";
 import { settingsSchema, validationErrorMessage } from "@/lib/validations";
 import { trainingGoalFromNutritionGoal } from "@/lib/nutrition";
 import { profileToMetricsInput } from "@/lib/profile-calculations";
+import { readStoredProfileTargets } from "@/lib/profile-targets-sync";
 import { computeProfileTargets, type CaloriePlanContext } from "@/lib/calorie-target";
 import { loadCaloriePlanContext } from "@/lib/calorie-health-context";
 import { revalidateTag } from "next/cache";
@@ -86,9 +87,9 @@ export async function GET() {
       loadCaloriePlanContext(session.user.id),
     ]);
 
-    const calculations = profile
-      ? computeProfileTargets(profile, calorieContext)
-      : null;
+    const calculations =
+      readStoredProfileTargets(profile) ??
+      (profile ? computeProfileTargets(profile, calorieContext) : null);
 
     logProfile("GET ok");
     return jsonOk({
@@ -181,7 +182,9 @@ export async function PATCH(req: NextRequest) {
       console.warn("[api/profile] revalidateTag failed", revalidateErr);
     }
 
-    const calculations = computeProfileTargets(profile, calorieContext);
+    const calculations =
+      readStoredProfileTargets(profile) ??
+      computeProfileTargets(profile, calorieContext);
 
     logProfile("PATCH success", { ms: Date.now() - started });
 

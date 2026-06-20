@@ -52,6 +52,7 @@ function buildProfileFromDraft(draft: OnboardingDraft) {
     workoutDaysPerWeek: draft.workoutDaysPerWeek,
     targetWeightKg: draft.targetWeightKg,
     targetWeightDate: targetDate,
+    trainingLocation: draft.location ?? null,
     calorieTarget: calc.calorieTarget,
     proteinTargetG: calc.proteinTargetG,
     carbsTargetG: calc.carbsTargetG,

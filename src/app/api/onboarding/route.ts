@@ -3,13 +3,16 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { onboardingSchema, validationErrorMessage } from "@/lib/validations";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
-import { recalculateProfileTargets } from "@/lib/profile-calculations";
 import {
   trainingGoalFromMainGoalKey,
   defaultNutritionGoalForMainGoal,
   estimateGoalWeeks,
   type MainGoalKey,
 } from "@/lib/onboarding-options";
+import { loadCaloriePlanContext } from "@/lib/calorie-health-context";
+import { syncProfileTargetsToDb } from "@/lib/profile-targets-sync";
+import { startOfDay, isValid } from "date-fns";
+import { revalidateTag } from "next/cache";
 
 export async function GET() {
   try {
@@ -40,11 +43,19 @@ export async function POST(req: NextRequest) {
     }
 
     const d = parsed.data;
+    const userId = session.user.id;
     const trainingGoal = trainingGoalFromMainGoalKey(d.mainGoalKey as MainGoalKey);
     const nutritionGoal =
       d.nutritionGoal ?? defaultNutritionGoalForMainGoal(d.mainGoalKey as MainGoalKey);
     const workoutDaysPerWeek = d.workoutDaysPerWeek ?? 3;
-    const calc = recalculateProfileTargets({
+
+    let targetWeightDate: Date | null = null;
+    if (d.targetWeightDate) {
+      const parsedDate = startOfDay(new Date(d.targetWeightDate));
+      targetWeightDate = isValid(parsedDate) ? parsedDate : null;
+    }
+
+    const profileData = {
       age: d.age,
       weightKg: d.weightKg,
       heightCm: d.heightCm,
@@ -52,66 +63,52 @@ export async function POST(req: NextRequest) {
       activityLevel: d.activityLevel,
       trainingGoal,
       nutritionGoal,
+      experienceLevel: d.experienceLevel,
       workoutDaysPerWeek,
-    });
+      targetWeightKg: d.targetWeightKg ?? null,
+      targetWeightDate,
+      trainingLocation: d.trainingLocation ?? null,
+    };
 
     const profile = await prisma.profile.upsert({
-      where: { userId: session.user.id },
-      create: {
-        userId: session.user.id,
-        age: d.age,
-        weightKg: d.weightKg,
-        heightCm: d.heightCm,
-        gender: d.gender,
-        activityLevel: d.activityLevel,
-        trainingGoal,
-        nutritionGoal,
-        experienceLevel: d.experienceLevel,
-        workoutDaysPerWeek,
-        calorieTarget: calc.calorieTarget,
-        proteinTargetG: calc.proteinTargetG,
-        carbsTargetG: calc.carbsTargetG,
-        fatTargetG: calc.fatTargetG,
-        bmi: calc.bmi,
-      },
-      update: {
-        age: d.age,
-        weightKg: d.weightKg,
-        heightCm: d.heightCm,
-        gender: d.gender,
-        activityLevel: d.activityLevel,
-        trainingGoal,
-        nutritionGoal,
-        experienceLevel: d.experienceLevel,
-        workoutDaysPerWeek,
-        calorieTarget: calc.calorieTarget,
-        proteinTargetG: calc.proteinTargetG,
-        carbsTargetG: calc.carbsTargetG,
-        fatTargetG: calc.fatTargetG,
-        bmi: calc.bmi,
-      },
+      where: { userId },
+      create: { userId, ...profileData },
+      update: profileData,
     });
 
+    const calorieContext = await loadCaloriePlanContext(userId);
+    const synced = await syncProfileTargetsToDb(userId, profile, calorieContext);
+    const finalProfile = synced?.profile ?? profile;
+    const calc = synced?.calculations;
+
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: userId },
       data: {
         onboardingCompletedAt: new Date(),
         ...(d.name ? { name: d.name.trim() } : {}),
       },
     });
 
+    try {
+      revalidateTag(`home-${userId}`);
+    } catch {
+      /* ignore */
+    }
+
     return jsonOk({
-      profile,
-      calculations: {
-        bmi: calc.bmi,
-        bmr: calc.bmr,
-        calorieTarget: calc.calorieTarget,
-        proteinTargetG: calc.proteinTargetG,
-        carbsTargetG: calc.carbsTargetG,
-        fatTargetG: calc.fatTargetG,
-        recommendedTrainingDays: calc.recommendedTrainingDays,
-        estimatedGoalWeeks: estimateGoalWeeks(d.mainGoalKey as MainGoalKey),
-      },
+      profile: finalProfile,
+      calculations: calc
+        ? {
+            bmi: calc.bmi,
+            bmr: calc.bmr,
+            calorieTarget: calc.calorieTarget,
+            proteinTargetG: calc.proteinTargetG,
+            carbsTargetG: calc.carbsTargetG,
+            fatTargetG: calc.fatTargetG,
+            recommendedTrainingDays: calc.recommendedTrainingDays,
+            estimatedGoalWeeks: estimateGoalWeeks(d.mainGoalKey as MainGoalKey),
+          }
+        : null,
     });
   } catch (e) {
     return handleApiError(e);

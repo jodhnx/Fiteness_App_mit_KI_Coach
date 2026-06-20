@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 export const SETTINGS_CATEGORIES = [
   { id: "profil", label: "Profil" },
+  { id: "konto", label: "Konto" },
   { id: "ziele", label: "Ziele" },
   { id: "vitaldaten", label: "Vitaldaten" },
   { id: "ernaehrung", label: "Ernährung" },

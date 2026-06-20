@@ -301,7 +301,7 @@ export type NutritionTargets = {
 
 export function nutritionTargetsFromProfile(
   profile: Profile | null,
-  context?: CaloriePlanContext
+  _context?: CaloriePlanContext
 ): NutritionTargets {
   const profileComplete = Boolean(
     profile?.weightKg &&
@@ -323,7 +323,19 @@ export function nutritionTargetsFromProfile(
     };
   }
 
-  const computed = computeProfileTargets(profile, context);
+  if (profile.calorieTarget != null && profile.proteinTargetG != null) {
+    return {
+      calories: profile.calorieTarget,
+      proteinG: profile.proteinTargetG,
+      carbsG: profile.carbsTargetG ?? 0,
+      fatG: profile.fatTargetG ?? 0,
+      waterTargetMl: profile.waterTargetMl ?? 2500,
+      nutritionGoal: profile.nutritionGoal ?? null,
+      profileComplete: true,
+    };
+  }
+
+  const computed = computeProfileTargets(profile);
   if (!computed) {
     return {
       calories: 0,

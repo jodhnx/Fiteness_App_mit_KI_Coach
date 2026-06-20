@@ -3,12 +3,12 @@ import { MEAL_TYPE_LABELS, TRACK_MEAL_ORDER } from "@/lib/meal-types";
 import { prisma } from "@/lib/prisma";
 import { macrosForQuantity, sumMacros, roundMacros, type MacroTotals } from "@/lib/food-macros";
 import {
-  computeProfileTargets,
   nutritionTargetsFromProfile,
   type CaloriePlanContext,
 } from "@/lib/calorie-target";
-import { loadCaloriePlanContext } from "@/lib/calorie-health-context";
 import { trainingGoalFromNutritionGoal } from "@/lib/nutrition";
+import { loadCaloriePlanContext } from "@/lib/calorie-health-context";
+import { syncProfileTargetsToDb } from "@/lib/profile-targets-sync";
 import { startOfDay, subDays, format } from "date-fns";
 import { de } from "date-fns/locale";
 import {
@@ -389,24 +389,24 @@ export async function applyNutritionGoal(
 ) {
   const profile = await prisma.profile.findUnique({ where: { userId } });
   if (!profile) return null;
-  const merged = {
-    ...profile,
-    nutritionGoal,
-    trainingGoal: trainingGoalFromNutritionGoal(nutritionGoal),
-  };
-  const calc = computeProfileTargets(merged);
-  if (!calc) return null;
+
   await prisma.profile.update({
     where: { userId },
     data: {
       nutritionGoal,
-      trainingGoal: merged.trainingGoal,
-      calorieTarget: calc.calorieTarget,
-      proteinTargetG: calc.proteinTargetG,
-      carbsTargetG: calc.carbsTargetG,
-      fatTargetG: calc.fatTargetG,
-      bmi: calc.bmi,
+      trainingGoal: trainingGoalFromNutritionGoal(nutritionGoal),
     },
   });
-  return { nutritionGoal, calories: calc.calorieTarget, ...calc };
+
+  const updated = await prisma.profile.findUnique({ where: { userId } });
+  if (!updated) return null;
+
+  const synced = await syncProfileTargetsToDb(userId, updated);
+  if (!synced) return null;
+
+  return {
+    nutritionGoal,
+    calories: synced.calculations.calorieTarget,
+    ...synced.calculations,
+  };
 }
