@@ -6,6 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Check, Plus, Timer, Trash2, Trophy } from "lucide-react";
+import { EndWorkoutDialog } from "@/components/workout/end-workout-dialog";
+
+const WORKOUT_SEQ_KEY = "workout-save-seq";
+
+function nextDefaultWorkoutName() {
+  if (typeof window === "undefined") return "Workout 001";
+  const n = Number(localStorage.getItem(WORKOUT_SEQ_KEY) ?? "0") + 1;
+  return `Workout ${String(n).padStart(3, "0")}`;
+}
+
+function bumpWorkoutSeq() {
+  if (typeof window === "undefined") return;
+  const n = Number(localStorage.getItem(WORKOUT_SEQ_KEY) ?? "0") + 1;
+  localStorage.setItem(WORKOUT_SEQ_KEY, String(n));
+}
 
 type SetRow = {
   id: string;
@@ -33,6 +48,9 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
   const [previousByExercise, setPreviousByExercise] = useState<Record<string, SetRow[]>>({});
   const [elapsed, setElapsed] = useState(0);
   const [restLeft, setRestLeft] = useState(0);
+  const [endOpen, setEndOpen] = useState(false);
+  const [endSaving, setEndSaving] = useState(false);
+  const [defaultEndName, setDefaultEndName] = useState("Workout 001");
   const patchTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const load = useCallback(async () => {
@@ -217,26 +235,35 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
     }
   }
 
-  async function completeWorkout() {
+  async function saveCompletedWorkout(name: string) {
+    setEndSaving(true);
     const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "complete" }),
+      body: JSON.stringify({ action: "complete", name }),
     });
     const data = await res.json();
+    setEndSaving(false);
     if (!res.ok) {
       toast.error("Fehler beim Abschließen");
       return;
     }
+    bumpWorkoutSeq();
+    setEndOpen(false);
     if (data.newPRs?.length) {
       toast.success(`${data.newPRs.length} neue Personal Records!`, {
         icon: <Trophy className="h-4 w-4" />,
       });
     } else {
-      toast.success("Training gespeichert! +50 XP");
+      toast.success("Training gespeichert!");
     }
-    router.push(`/workouts/summary/${sessionId}`);
+    router.push(`/workouts/journey`);
     router.refresh();
+  }
+
+  function openEndDialog() {
+    setDefaultEndName(nextDefaultWorkoutName());
+    setEndOpen(true);
   }
 
   const formatTime = (s: number) => {
@@ -247,14 +274,22 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
 
   if (!session) {
     return (
-      <div className="space-y-4 animate-pulse max-w-lg mx-auto">
-        <div className="h-24 rounded-2xl bg-zinc-800" />
-        <div className="h-40 rounded-2xl bg-zinc-800" />
+      <div className="space-y-4 max-w-lg mx-auto">
+        <div className="h-24 rounded-2xl bg-zinc-900/80 border border-zinc-800" />
+        <div className="h-40 rounded-2xl bg-zinc-900/80 border border-zinc-800" />
       </div>
     );
   }
 
   return (
+    <>
+      <EndWorkoutDialog
+        open={endOpen}
+        defaultName={defaultEndName}
+        saving={endSaving}
+        onSave={(name) => void saveCompletedWorkout(name)}
+        onCancel={() => setEndOpen(false)}
+      />
     <div className="space-y-4 pb-28 max-w-lg mx-auto">
       <div className="sticky top-0 z-20 py-3 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/50 -mx-1 px-1">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
@@ -268,8 +303,8 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
                 {completedSets}/{totalSets} Sätze · {Math.round(totalVolume).toLocaleString("de-DE")} kg
               </p>
             </div>
-            <Button className="h-12 px-5 rounded-xl shrink-0" onClick={completeWorkout}>
-              Beenden
+            <Button className="h-12 px-5 rounded-xl shrink-0" onClick={openEndDialog}>
+              Training beenden
             </Button>
           </div>
           {restLeft > 0 && (
@@ -402,5 +437,6 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         );
       })}
     </div>
+    </>
   );
 }

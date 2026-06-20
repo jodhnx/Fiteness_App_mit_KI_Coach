@@ -129,6 +129,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           durationSec,
           caloriesBurned: body.caloriesBurned ?? Math.round(durationSec / 60 * 8),
           notes: body.notes,
+          ...(typeof body.name === "string" && body.name.trim()
+            ? { name: body.name.trim() }
+            : {}),
         },
         include: { sets: true },
       });
