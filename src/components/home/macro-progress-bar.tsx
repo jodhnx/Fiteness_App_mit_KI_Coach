@@ -22,13 +22,26 @@ export function MacroProgressBar({
   consumed,
   target,
   className,
+  variant = "default",
 }: {
   consumed: number;
   target: number;
   className?: string;
+  variant?: "default" | "neutral";
 }) {
   const pct = target > 0 ? Math.min(100, (consumed / target) * 100) : 0;
   const status = macroProgressStatus(consumed, target);
+
+  if (variant === "neutral") {
+    return (
+      <div className={cn("h-1 w-full rounded-full bg-zinc-800 overflow-hidden", className)}>
+        <div
+          className="h-full rounded-full bg-white/75 transition-[width] duration-200 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={cn("h-1.5 w-full rounded-full bg-white/10 overflow-hidden", className)}>

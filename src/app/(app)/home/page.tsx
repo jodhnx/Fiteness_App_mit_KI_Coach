@@ -14,7 +14,6 @@ import { RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HomeGreeting } from "@/components/home/home-greeting";
 import { HomeCalorieHeroCard } from "@/components/home/home-calorie-hero-card";
-import { HomeMacroOverviewCard } from "@/components/home/home-macro-overview-card";
 import { HomeNextTrainingCard } from "@/components/home/home-next-training-card";
 import { HomeTrainingStreakCard } from "@/components/home/home-training-streak-card";
 import { HomeWeightTrendCard } from "@/components/home/home-weight-trend-card";
@@ -129,8 +128,6 @@ export default function HomePage() {
       <HomeGreeting name={displayName} />
 
       <HomeCalorieHeroCard nutrition={nutrition} />
-
-      <HomeMacroOverviewCard nutrition={nutrition} />
 
       <HomeNextTrainingCard
         nextWorkout={nextWorkout}

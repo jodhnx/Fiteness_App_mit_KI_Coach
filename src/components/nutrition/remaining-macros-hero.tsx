@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { MacroProgressBar } from "@/components/home/macro-progress-bar";
+import { cn } from "@/lib/utils";
 
 type Macro = { consumed: number; target: number; remaining: number };
 
@@ -13,32 +14,35 @@ type Props = {
   fiber?: { consumed: number; target: number };
 };
 
-function MacroMiniCard({
-  emoji,
+function MacroRow({
   label,
   consumed,
   target,
+  remaining,
   unit,
 }: {
-  emoji: string;
   label: string;
   consumed: number;
   target: number;
+  remaining: number;
   unit: string;
 }) {
   return (
-    <div className="rounded-xl bg-zinc-800/60 border border-zinc-700/80 p-3 flex flex-col gap-1.5 min-w-0">
-      <p className="text-[11px] text-zinc-400 truncate">
-        <span className="mr-1">{emoji}</span>
-        {label}
-      </p>
-      <p className="text-lg font-bold text-white tabular-nums leading-none">
+    <div className="py-3.5 border-b border-zinc-800/80 last:border-0">
+      <div className="flex items-baseline justify-between gap-3 mb-2">
+        <span className="text-sm text-zinc-400">{label}</span>
+        <span className="text-sm text-zinc-500 tabular-nums shrink-0">
+          {Math.max(0, Math.round(remaining))}
+          {unit} übrig
+        </span>
+      </div>
+      <p className="text-base font-semibold text-white tabular-nums mb-2">
         {Math.round(consumed)}
-        <span className="text-zinc-500 font-semibold text-sm"> / </span>
+        <span className="text-zinc-600 font-normal"> / </span>
         {Math.round(target)}
-        <span className="text-xs text-zinc-500 font-medium">{unit}</span>
+        {unit}
       </p>
-      <MacroProgressBar consumed={consumed} target={target} className="h-1" />
+      <MacroProgressBar consumed={consumed} target={target} variant="neutral" className="h-1" />
     </div>
   );
 }
@@ -50,76 +54,61 @@ export const RemainingMacrosHero = memo(function RemainingMacrosHero({
   fat,
   fiber,
 }: Props) {
-  const calRemaining = Math.max(0, Math.round(calories.remaining));
-  const showRemainingPrimary = calRemaining > 0 && calories.consumed < calories.target;
+  const kcalLeft = Math.max(0, Math.round(calories.remaining));
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950 p-4 sm:p-5 space-y-4">
-      <div className="text-center pb-1">
-        <p className="text-xs uppercase tracking-widest text-zinc-500 flex items-center justify-center gap-1">
-          <span>🔥</span> Kalorien
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 overflow-hidden">
+      <div className="px-5 pt-6 pb-5 text-center border-b border-zinc-800/80">
+        <p className="text-5xl font-semibold text-white tabular-nums leading-none tracking-tight">
+          {kcalLeft.toLocaleString("de-DE")}
         </p>
-        {showRemainingPrimary ? (
-          <>
-            <p className="text-4xl sm:text-5xl font-bold text-white tabular-nums mt-2 leading-none">
-              {calRemaining}
-            </p>
-            <p className="text-sm text-zinc-400 mt-1">kcal übrig</p>
-            <p className="text-xs text-zinc-600 mt-1 tabular-nums">
-              {Math.round(calories.consumed)} / {calories.target} kcal
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-4xl sm:text-5xl font-bold text-white tabular-nums mt-2 leading-none">
-              {Math.round(calories.consumed)}
-              <span className="text-2xl text-zinc-500 font-semibold"> / </span>
-              {calories.target}
-            </p>
-            <p className="text-sm text-zinc-400 mt-1">kcal</p>
-          </>
-        )}
+        <p className="text-sm text-zinc-400 mt-2">kcal übrig</p>
+        <p className="text-sm text-zinc-500 mt-2 tabular-nums">
+          {Math.round(calories.consumed).toLocaleString("de-DE")} /{" "}
+          {Math.round(calories.target).toLocaleString("de-DE")} kcal
+        </p>
         <MacroProgressBar
           consumed={calories.consumed}
           target={calories.target}
-          className="mt-3 max-w-xs mx-auto h-1.5"
+          variant="neutral"
+          className="mt-4 max-w-xs mx-auto"
         />
       </div>
 
-      <div
-        className={`grid gap-2 pt-2 border-t border-zinc-800/80 ${
-          fiber ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"
-        }`}
-      >
-        <MacroMiniCard
-          emoji="🥩"
+      <div className="px-5 py-1">
+        <MacroRow
           label="Protein"
           consumed={protein.consumed}
           target={protein.target}
+          remaining={protein.remaining}
           unit="g"
         />
-        <MacroMiniCard
-          emoji="🍚"
+        <MacroRow
           label="Kohlenhydrate"
           consumed={carbs.consumed}
           target={carbs.target}
+          remaining={carbs.remaining}
           unit="g"
         />
-        <MacroMiniCard
-          emoji="🥑"
+        <MacroRow
           label="Fett"
           consumed={fat.consumed}
           target={fat.target}
+          remaining={fat.remaining}
           unit="g"
         />
         {fiber && (
-          <MacroMiniCard
-            emoji="🌾"
-            label="Ballaststoffe"
-            consumed={fiber.consumed}
-            target={fiber.target}
-            unit="g"
-          />
+          <div className={cn("py-3.5")}>
+            <div className="flex items-baseline justify-between gap-3 mb-2">
+              <span className="text-sm text-zinc-400">Ballaststoffe</span>
+            </div>
+            <p className="text-base font-semibold text-white tabular-nums mb-2">
+              {Math.round(fiber.consumed)}
+              <span className="text-zinc-600 font-normal"> / </span>
+              {Math.round(fiber.target)}g
+            </p>
+            <MacroProgressBar consumed={fiber.consumed} target={fiber.target} variant="neutral" className="h-1" />
+          </div>
         )}
       </div>
     </div>
