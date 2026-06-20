@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { sessionDurationSec, setVolume } from "@/lib/workout-metrics";
+import { subDays } from "date-fns";
+import { buildCompletedDayIds, resolveDayStatus, type DayStatus } from "@/lib/plan-day-status";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -57,7 +59,28 @@ export async function GET(_req: NextRequest, { params }: Params) {
       };
     }
 
-    return jsonOk({ plan, dayStats });
+    const since = subDays(new Date(), 14);
+    const cycleSessions = await prisma.workoutSession.findMany({
+      where: {
+        workoutPlanId: id,
+        userId: session.user.id,
+        status: "COMPLETED",
+        completedAt: { gte: since },
+      },
+      select: { workoutDayId: true, completedAt: true },
+    });
+    const completedDayIds = buildCompletedDayIds(cycleSessions, 14);
+
+    const dayStatuses: Record<string, DayStatus> = {};
+    for (const day of plan.days) {
+      dayStatuses[day.id] = resolveDayStatus(
+        day.exercises.length,
+        completedDayIds,
+        day.id
+      );
+    }
+
+    return jsonOk({ plan, dayStats, dayStatuses });
   } catch (e) {
     return handleApiError(e);
   }

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
+import { warmTrainingCaches } from "@/lib/cache-manager";
 
 /** Reihenfolge = Hauptmenü: Home → Training → Ernährung → Fortschritt → Coach */
 const NAV_ROUTES = [
@@ -27,6 +28,7 @@ export function RoutePrefetcher() {
       router.prefetch(href);
     }
     warmNavDataCaches();
+    warmTrainingCaches();
 
     const idle =
       typeof requestIdleCallback !== "undefined"

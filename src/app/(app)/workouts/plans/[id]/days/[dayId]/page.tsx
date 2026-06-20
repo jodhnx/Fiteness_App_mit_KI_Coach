@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useParams, useRouter } from "next/navigation";
 import { WorkoutBackLink } from "@/components/workout/workout-back-link";
-import { ExerciseListItem } from "@/components/workout/exercise-list-item";
+import { ExerciseItem } from "@/components/workout/exercise-item";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +14,8 @@ type PlanExercise = {
   orderIndex: number;
   targetSets: number;
   targetReps: string;
+  restSeconds: number;
+  setTargets?: unknown;
   exercise: { id: string; name: string };
 };
 
@@ -27,7 +29,7 @@ type PlanPayload = {
   plan: { id: string; name: string; days: PlanDay[] };
 };
 
-/** WorkoutDayScreen — Übungsliste + Start */
+/** WorkoutDayScreen — Gym Check-in Übersicht */
 export default function WorkoutDayPage() {
   const params = useParams();
   const router = useRouter();
@@ -40,12 +42,16 @@ export default function WorkoutDayPage() {
     `/api/workouts/plans/${planId}`,
     120_000,
     8000,
-    { revalidateOnMount: false, staleRatio: 0.95 }
+    { revalidateOnMount: false, staleRatio: 0.99 }
   );
 
   const plan = data?.plan;
   const day = plan?.days.find((d) => d.id === dayId);
-  const exercises = [...(day?.exercises ?? [])].sort((a, b) => a.orderIndex - b.orderIndex);
+
+  const exercises = useMemo(
+    () => [...(day?.exercises ?? [])].sort((a, b) => a.orderIndex - b.orderIndex),
+    [day?.exercises]
+  );
 
   const startTraining = useCallback(async () => {
     if (!plan || !day) return;
@@ -79,12 +85,15 @@ export default function WorkoutDayPage() {
       {exercises.length > 0 ? (
         <ul className="space-y-2">
           {exercises.map((ex) => (
-            <ExerciseListItem
-              key={ex.id}
-              name={ex.exercise.name}
-              sets={ex.targetSets}
-              reps={ex.targetReps}
-            />
+            <li key={ex.id}>
+              <ExerciseItem
+                name={ex.exercise.name}
+                targetSets={ex.targetSets}
+                targetReps={ex.targetReps}
+                restSeconds={ex.restSeconds}
+                setTargets={ex.setTargets}
+              />
+            </li>
           ))}
         </ul>
       ) : (

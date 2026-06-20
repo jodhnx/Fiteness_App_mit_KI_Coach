@@ -244,22 +244,30 @@ export default function ProgressPage() {
     <div className="space-y-5 max-w-2xl mx-auto pb-28">
       <PageHeader
         title="Fortschritt"
-        subtitle="Gewicht · Ernährung · Training · Rekorde · Erfolge"
+        subtitle="Statistiken · Gewicht · Transformation · Historie"
       />
 
       {dashboard && (
-        <ProgressDashboardSections
-          nutritionTrend={dashboard.nutritionTrend}
-          calorieTarget={dashboard.calorieTarget}
-          proteinTargetG={dashboard.proteinTargetG}
-          trainingHistory={dashboard.trainingHistory}
-          streaks={dashboard.streaks}
-          personalRecords={dashboard.personalRecords}
-          achievements={dashboard.achievements}
-        />
+        <>
+          <h2 className="text-sm font-semibold text-white">📊 Statistiken</h2>
+          <ProgressDashboardSections
+            nutritionTrend={dashboard.nutritionTrend}
+            calorieTarget={dashboard.calorieTarget}
+            proteinTargetG={dashboard.proteinTargetG}
+            trainingHistory={dashboard.trainingHistory}
+            streaks={dashboard.streaks}
+            personalRecords={dashboard.personalRecords}
+            achievements={dashboard.achievements}
+          />
+        </>
       )}
 
-      {transformation && <BodyTransformationCard data={transformation} />}
+      {transformation && (
+        <>
+          <h2 className="text-sm font-semibold text-white">📸 Body Transformation</h2>
+          <BodyTransformationCard data={transformation} />
+        </>
+      )}
 
       {weeklyReport && <WeeklyReportCard report={weeklyReport} />}
 

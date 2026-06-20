@@ -253,6 +253,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       const updated = await prisma.workoutSet.update({
         where: { id: parsed.data.setId },
         data: {
+          exerciseName: parsed.data.exerciseName,
           reps: parsed.data.reps,
           weightKg: parsed.data.weightKg,
           rpe: parsed.data.rpe,

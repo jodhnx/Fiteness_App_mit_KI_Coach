@@ -6,6 +6,8 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { createPlanFromTemplate, createPlanFromCatalog } from "@/lib/workout-plans";
 import { PLAN_CATALOG } from "@/lib/plan-catalog";
 import type { PlanTemplateType } from "@prisma/client";
+import { subDays } from "date-fns";
+import { buildCompletedDayIds, resolveDayStatus, type DayStatus } from "@/lib/plan-day-status";
 
 const createSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -81,6 +83,29 @@ export async function GET(req: NextRequest) {
           })
         : [];
 
+    const since = subDays(new Date(), 14);
+    const cycleSessions =
+      planIds.length > 0
+        ? await prisma.workoutSession.findMany({
+            where: {
+              userId: session.user.id,
+              workoutPlanId: { in: planIds },
+              status: "COMPLETED",
+              completedAt: { gte: since },
+            },
+            select: { workoutPlanId: true, workoutDayId: true, completedAt: true },
+          })
+        : [];
+
+    const completedByPlan = new Map<string, Set<string>>();
+    for (const s of cycleSessions) {
+      if (!s.workoutPlanId || !s.workoutDayId) continue;
+      if (!completedByPlan.has(s.workoutPlanId)) {
+        completedByPlan.set(s.workoutPlanId, new Set());
+      }
+      completedByPlan.get(s.workoutPlanId)!.add(s.workoutDayId);
+    }
+
     const lastByPlan = new Map<string, string>();
     for (const s of lastSessions) {
       if (s.workoutPlanId && !lastByPlan.has(s.workoutPlanId) && s.completedAt) {
@@ -88,10 +113,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const enriched = plans.map((p) => ({
-      ...p,
-      lastSessionAt: lastByPlan.get(p.id) ?? null,
-    }));
+    const enriched = plans.map((p) => {
+      const completedIds = completedByPlan.get(p.id) ?? new Set<string>();
+      const dayStatuses = p.days.map((d) => ({
+        id: d.id,
+        name: d.name,
+        status: resolveDayStatus(d.exercises.length, completedIds, d.id) as DayStatus,
+      }));
+      return {
+        ...p,
+        lastSessionAt: lastByPlan.get(p.id) ?? null,
+        dayStatuses,
+      };
+    });
 
     return jsonOk({ plans: enriched, catalogCount: PLAN_CATALOG.length });
   } catch (e) {

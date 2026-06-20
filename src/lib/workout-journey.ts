@@ -6,6 +6,7 @@ import { subDays } from "date-fns";
 export type JourneySession = {
   id: string;
   name: string;
+  dayName: string | null;
   completedAt: string;
   durationMin: number;
   volumeKg: number;
@@ -39,9 +40,9 @@ export async function buildWorkoutJourney(userId: string): Promise<WorkoutJourne
     }),
     prisma.workoutSession.findMany({
       where: { userId, status: "COMPLETED" },
-      include: { sets: true },
+      include: { sets: true, day: { select: { name: true } } },
       orderBy: { completedAt: "desc" },
-      take: 8,
+      take: 30,
     }),
     prisma.trainingStreak.findUnique({ where: { userId } }),
     buildGymCheckInStats(userId),
@@ -65,6 +66,7 @@ export async function buildWorkoutJourney(userId: string): Promise<WorkoutJourne
     return {
       id: s.id,
       name: s.name,
+      dayName: s.day?.name ?? null,
       completedAt: (s.completedAt ?? s.startedAt).toISOString(),
       durationMin: Math.round(sessionDurationSec(s.startedAt, s.completedAt) / 60),
       volumeKg: Math.round(vol),
