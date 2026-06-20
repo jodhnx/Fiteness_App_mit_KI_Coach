@@ -227,11 +227,17 @@ export function RegistrationFlow() {
     const isGuestUser = session?.user?.email && isGuestEmail(session.user.email);
 
     if (isGuestUser && session?.user?.id) {
-      await fetch("/api/onboarding", {
+      const obRes = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildOnboardingApiBody(ob)),
       });
+      const obData = await obRes.json().catch(() => ({}));
+      if (!obRes.ok) {
+        toast.error(obData.error ?? "Profil konnte nicht gespeichert werden");
+        setSubmitting(false);
+        return;
+      }
       toast.success("Profil gespeichert");
       router.replace("/home");
       setSubmitting(false);
@@ -302,11 +308,16 @@ export function RegistrationFlow() {
         }
       }
 
-      await fetch("/api/onboarding", {
+      const obRes = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildOnboardingApiBody(ob)),
       });
+      const obData = await obRes.json().catch(() => ({}));
+      if (!obRes.ok) {
+        toast.error(obData.error ?? "Profil konnte nicht gespeichert werden");
+        return;
+      }
 
       await update({ onboardingComplete: true });
       storageSetJson(ONBOARDING_DRAFT_KEY, null);

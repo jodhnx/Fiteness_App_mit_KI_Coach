@@ -21,7 +21,8 @@ import { HomeKiTipCard } from "@/components/home/home-ki-tip-card";
 import { HomeRecentAchievements } from "@/components/home/home-recent-achievements";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
-import { refreshCached, isCacheStale } from "@/lib/client-cache";
+import { refreshCached, isCacheStale, getCached } from "@/lib/client-cache";
+import { HomeLoadingSkeleton } from "@/components/home/home-loading-skeleton";
 import { toast } from "sonner";
 
 export default function HomePage() {
@@ -108,6 +109,10 @@ export default function HomePage() {
     router.push("/workouts/quick");
   }, [activeSessionId, nextWorkout, router]);
 
+  if (sessionStatus === "loading" && !rawData && !getCached(HOME_DATA_CACHE_KEY)) {
+    return <HomeLoadingSkeleton />;
+  }
+
   if (sessionStatus === "unauthenticated") {
     return (
       <div className="space-y-4 py-12 text-center">
@@ -146,9 +151,9 @@ export default function HomePage() {
 
       <HomeWeekOverviewCard home={data} streakDays={trainingStreakDays} />
 
-      <HomeQuickActionsBar onStartWorkout={() => void startWorkout()} />
-
       <HomeKiTipCard coach={data.coach} />
+
+      <HomeQuickActionsBar onStartWorkout={() => void startWorkout()} />
 
       <HomeRecentAchievements achievements={data.recentAchievements ?? []} />
     </div>

@@ -79,10 +79,10 @@ function applyProfileToForm(d: ProfileApiResponse) {
     nutritionGoal: (p?.nutritionGoal as NutritionGoal) ?? "MAINTENANCE",
     experienceLevel: (p?.experienceLevel as PlanLevel) ?? "BEGINNER",
     workoutDaysPerWeek: p?.workoutDaysPerWeek?.toString() ?? "3",
-    calorieTarget: "",
-    proteinTargetG: "",
-    carbsTargetG: "",
-    fatTargetG: "",
+    calorieTarget: formatNumField(p?.calorieTarget ?? d.calculations?.calorieTarget),
+    proteinTargetG: formatNumField(p?.proteinTargetG ?? d.calculations?.proteinTargetG),
+    carbsTargetG: formatNumField(p?.carbsTargetG ?? d.calculations?.carbsTargetG),
+    fatTargetG: formatNumField(p?.fatTargetG ?? d.calculations?.fatTargetG),
     waterTargetMl: p?.waterTargetMl?.toString() ?? "2500",
     targetWeightKg: formatNumField(p?.targetWeightKg),
     targetWeightDate: p?.targetWeightDate
@@ -133,6 +133,7 @@ export default function SettingsPage() {
     hipsCm: "",
   });
   const [userImage, setUserImage] = useState<string | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [smartGoalHint, setSmartGoalHint] = useState<string | null>(null);
 
@@ -147,6 +148,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!profileData) return;
     setForm(applyProfileToForm(profileData));
+    setProfileLoaded(true);
     if (profileData.calculations) setPreview(profileData.calculations);
     if (profileData.smartGoal?.weightProjection) {
       setSmartGoalHint(profileData.smartGoal.weightProjection);
@@ -169,7 +171,7 @@ export default function SettingsPage() {
   }, [livePreview]);
 
   async function save() {
-    if (saving) return;
+    if (saving || !profileLoaded) return;
 
     const manualMacros = Boolean(
       (form.calorieTarget ?? "").trim() ||
@@ -914,7 +916,7 @@ export default function SettingsPage() {
         type="button"
         className="w-full h-12 text-base"
         onClick={() => void save()}
-        disabled={saving}
+        disabled={saving || !profileLoaded}
       >
         {saving ? "Speichern…" : "Speichern & neu berechnen"}
       </Button>

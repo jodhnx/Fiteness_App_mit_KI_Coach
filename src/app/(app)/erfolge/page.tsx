@@ -23,7 +23,7 @@ import { Trophy, Medal, Target, Sparkles, AlertCircle, RefreshCw } from "lucide-
 import { Button } from "@/components/ui/button";
 
 const GAMIFICATION_URL = "/api/gamification";
-const FETCH_TIMEOUT_MS = 10_000;
+const FETCH_TIMEOUT_MS = 6_000;
 
 function ErfolgeSkeleton() {
   return (
@@ -49,7 +49,10 @@ export default function ErfolgePage() {
   >("overview");
 
   const data = useMemo(
-    () => rawData ?? (!loading && !error ? createEmptyGamificationPayload() : null),
+    () =>
+      rawData ??
+      getCached<GamificationApiPayload>("gamification-full") ??
+      (!loading && !error ? createEmptyGamificationPayload() : null),
     [rawData, loading, error]
   );
 

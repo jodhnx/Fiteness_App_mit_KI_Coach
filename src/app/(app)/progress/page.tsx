@@ -79,7 +79,7 @@ export default function ProgressPage() {
     PROGRESS_CACHE_KEY,
     "/api/progress",
     180_000,
-    10_000,
+    6_000,
     { revalidateOnMount: false, staleRatio: 0.99 }
   );
 

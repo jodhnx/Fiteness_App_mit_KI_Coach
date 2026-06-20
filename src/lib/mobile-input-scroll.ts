@@ -8,6 +8,6 @@ export function scrollInputIntoView(el: HTMLElement) {
 export function formatNumField(v: unknown): string {
   if (v == null || v === "") return "";
   const n = Number(v);
-  if (!Number.isFinite(n) || n === 0) return "";
+  if (!Number.isFinite(n)) return "";
   return String(v);
 }

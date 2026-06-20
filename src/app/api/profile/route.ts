@@ -34,16 +34,16 @@ function mergeProfile(
   const withSmart = applySmartGoalsToProfilePatch(existing, patch);
   const mergedSmart = { ...(existing ?? {}), ...withSmart } as Profile;
   const input = profileToMetricsInput(mergedSmart);
-  if (!input) return withSmart;
+  if (!input) return mergedSmart;
 
   const manual = patch.manualCalorieTarget === true;
   const recalc = shouldRecalculateCalories(patch);
   const computed = computeProfileTargets(mergedSmart, calorieContext);
 
-  if (!computed) return withSmart;
+  if (!computed) return mergedSmart;
 
   return {
-    ...withSmart,
+    ...mergedSmart,
     trainingGoal:
       mergedSmart.trainingGoal ?? trainingGoalFromNutritionGoal(input.nutritionGoal),
     nutritionGoal: input.nutritionGoal,

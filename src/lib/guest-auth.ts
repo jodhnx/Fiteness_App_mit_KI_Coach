@@ -78,7 +78,7 @@ export async function createGuestUser(draft?: OnboardingDraft | null) {
         passwordHash,
         isGuest: true,
         emailVerified: new Date(),
-        onboardingCompletedAt: new Date(),
+        onboardingCompletedAt: profileData ? new Date() : null,
         profile: profileData ? { create: profileData } : { create: {} },
       },
       select: { id: true, email: true, name: true, isGuest: true },

@@ -100,7 +100,8 @@ export default function ActivitiesPage() {
     { revalidateOnMount: false, staleRatio: 0.95 }
   );
 
-  const dash = data?.dashboard;
+  const displayData = data ?? getCached<DashboardResponse>("activities-dashboard");
+  const dash = displayData?.dashboard;
 
   const chartData = useMemo(() => {
     if (!dash) return [];
@@ -231,8 +232,8 @@ export default function ActivitiesPage() {
           <ActivityRings move={dash.rings.move} exercise={dash.rings.exercise} steps={dash.rings.steps} />
 
           <SleepTracker
-            avgHours={data?.sleepWeek?.avgHours ?? null}
-            lowNights={data?.sleepWeek?.lowNightsLast7 ?? 0}
+            avgHours={displayData?.sleepWeek?.avgHours ?? null}
+            lowNights={displayData?.sleepWeek?.lowNightsLast7 ?? 0}
             onSaved={() => {
               invalidateCache("activities-dashboard");
               invalidateCache("home-data");
@@ -478,7 +479,7 @@ export default function ActivitiesPage() {
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">
           Letzte Aktivitäten
         </h2>
-        {(data?.activities ?? []).map((a) => {
+        {(displayData?.activities ?? []).map((a) => {
           const pace =
             a.distanceM && a.distanceM >= 1000 && a.durationSec > 0
               ? a.durationSec / (a.distanceM / 1000)
@@ -496,7 +497,7 @@ export default function ActivitiesPage() {
             </div>
           );
         })}
-        {data && data.activities.length === 0 && !loading && (
+        {displayData && displayData.activities.length === 0 && !loading && (
           <p className="text-center text-sm text-zinc-500 py-8">
             Noch keine Aktivitäten – tippe auf „Neu“.
           </p>
