@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
-import { SafeAreaScript } from "@/components/layout/safe-area-script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -49,8 +48,6 @@ export const viewport = {
   maximumScale: 5,
   viewportFit: "cover",
   themeColor: "#09090b",
-  /** Keyboard overlays content — layout height stays fixed on iOS/Android */
-  interactiveWidget: "overlays-content" as const,
 };
 
 export default function RootLayout({
@@ -60,9 +57,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" className="dark" data-theme="turquoise" data-density="standard">
-      <head>
-        <SafeAreaScript />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased mobile-app-body overscroll-none`}
       >
