@@ -2,48 +2,67 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { PLAN_CATALOG, GOAL_LABELS } from "@/lib/plan-catalog";
+import { PLAN_CATALOG } from "@/lib/plan-catalog";
 import { cn } from "@/lib/utils";
 import { Dumbbell, ChevronRight } from "lucide-react";
 
-const GOAL_FILTERS = [
-  { id: "ALL", label: "Alle" },
-  { id: "MUSCLE_GAIN", label: "Muskelaufbau" },
-  { id: "FAT_LOSS", label: "Fettverlust" },
-  { id: "STRENGTH_GAIN", label: "Kraft" },
-  { id: "GENERAL_FITNESS", label: "Fitness" },
-  { id: "RECOMP", label: "Athletik" },
-] as const;
+export type QuickPlanFilter =
+  | "ALL"
+  | "PUSH_PULL_LEGS"
+  | "UPPER_LOWER"
+  | "FULL_BODY"
+  | "ARNOLD_SPLIT"
+  | "HYPERTROPHY"
+  | "STRENGTH"
+  | "BEGINNER"
+  | "HOME";
 
-type GoalFilter = (typeof GOAL_FILTERS)[number]["id"];
+export const QUICK_PLAN_FILTERS: {
+  id: QuickPlanFilter;
+  label: string;
+  keys: string[];
+}[] = [
+  { id: "ALL", label: "Alle", keys: [] },
+  { id: "PUSH_PULL_LEGS", label: "Push Pull Legs", keys: ["PUSH_PULL_LEGS", "SCIENCE_PPL"] },
+  { id: "UPPER_LOWER", label: "Upper Lower", keys: ["UPPER_LOWER", "SCIENCE_UPPER_LOWER"] },
+  { id: "FULL_BODY", label: "Ganzkörper", keys: ["FULL_BODY", "SCIENCE_FULL_BODY"] },
+  { id: "ARNOLD_SPLIT", label: "Arnold Split", keys: ["ARNOLD_SPLIT"] },
+  { id: "HYPERTROPHY", label: "Hypertrophie", keys: ["HYPERTROPHY", "HYPERTROPHY_FOCUS"] },
+  { id: "STRENGTH", label: "Krafttraining", keys: ["STRENGTH", "STRENGTH_FOCUS", "POWERLIFTING"] },
+  { id: "BEGINNER", label: "Anfänger", keys: ["BEGINNER", "BEGINNER_GYM", "HOME_BEGINNER"] },
+  { id: "HOME", label: "Home Workout", keys: ["HOME_DUMBBELL", "HOME_BEGINNER", "CALISTHENICS"] },
+];
 
 export const CatalogBrowseGrid = memo(function CatalogBrowseGrid({
-  goalFilter,
-  onGoalFilter,
+  quickFilter,
+  onQuickFilter,
 }: {
-  goalFilter: GoalFilter;
-  onGoalFilter: (g: GoalFilter) => void;
+  quickFilter: QuickPlanFilter;
+  onQuickFilter: (f: QuickPlanFilter) => void;
 }) {
+  const filterDef = QUICK_PLAN_FILTERS.find((f) => f.id === quickFilter) ?? QUICK_PLAN_FILTERS[0];
+
   const plans =
-    goalFilter === "ALL"
+    quickFilter === "ALL"
       ? PLAN_CATALOG
-      : PLAN_CATALOG.filter((p) => p.goal === goalFilter);
+      : PLAN_CATALOG.filter((p) => filterDef.keys.includes(p.catalogKey));
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="font-semibold text-white">Vorgefertigte Pläne</h2>
+        <h2 className="font-semibold text-white">Vorgefertigte Standardpläne</h2>
         <span className="text-xs text-zinc-500">{plans.length} Pläne</span>
       </div>
+      <p className="text-xs text-zinc-500">Schnellfilter — direkt einen Standardplan öffnen</p>
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-        {GOAL_FILTERS.map((f) => (
+        {QUICK_PLAN_FILTERS.map((f) => (
           <button
             key={f.id}
             type="button"
-            onClick={() => onGoalFilter(f.id)}
+            onClick={() => onQuickFilter(f.id)}
             className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium",
-              goalFilter === f.id
+              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap",
+              quickFilter === f.id
                 ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
                 : "bg-zinc-800 text-zinc-400 border border-transparent"
             )}
@@ -69,9 +88,6 @@ export const CatalogBrowseGrid = memo(function CatalogBrowseGrid({
                 <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{plan.description}</p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   <span className="text-[10px] rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-400">
-                    {GOAL_LABELS[plan.goal]}
-                  </span>
-                  <span className="text-[10px] rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-400">
                     {plan.daysPerWeek}× / Woche
                   </span>
                   <span className="text-[10px] rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-400">
@@ -87,5 +103,3 @@ export const CatalogBrowseGrid = memo(function CatalogBrowseGrid({
     </div>
   );
 });
-
-export type { GoalFilter };

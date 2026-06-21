@@ -15,10 +15,18 @@ export function warmNavDataCaches() {
   if (warmed || typeof window === "undefined") return;
   warmed = true;
 
+  if (isCacheStale(HOME_DATA_CACHE_KEY, 0.88)) {
+    void fetchCached(
+      HOME_DATA_CACHE_KEY,
+      () => fetchJson("/api/home"),
+      120_000
+    ).catch(() => {});
+  }
+
   const idle =
     typeof requestIdleCallback !== "undefined"
       ? requestIdleCallback
-      : (cb: () => void) => setTimeout(cb, 1500);
+      : (cb: () => void) => setTimeout(cb, 800);
 
   idle(() => {
     if (isCacheStale(PROGRESS_CACHE_KEY, 0.85)) {
@@ -29,18 +37,10 @@ export function warmNavDataCaches() {
       ).catch(() => {});
     }
 
-    if (isCacheStale(PROFILE_CACHE_KEY, 0.5)) {
+    if (isCacheStale(PROFILE_CACHE_KEY, 0.92)) {
       void fetchCached(
         PROFILE_CACHE_KEY,
         () => fetchJson("/api/profile"),
-        120_000
-      ).catch(() => {});
-    }
-
-    if (isCacheStale(HOME_DATA_CACHE_KEY, 0.75)) {
-      void fetchCached(
-        HOME_DATA_CACHE_KEY,
-        () => fetchJson("/api/home"),
         120_000
       ).catch(() => {});
     }

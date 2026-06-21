@@ -26,11 +26,7 @@ export function useProfileHeader() {
   });
 
   useEffect(() => {
-    if (status !== "authenticated" || !session?.user?.id) {
-      setName(null);
-      setImage(null);
-      return;
-    }
+    if (status !== "authenticated" || !session?.user?.id) return;
 
     if (prefetched?.user?.name) setName(prefetched.user.name);
     if (prefetched?.user?.image) setImage(prefetched.user.image);

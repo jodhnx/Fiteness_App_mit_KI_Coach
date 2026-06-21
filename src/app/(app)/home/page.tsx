@@ -21,23 +21,21 @@ import { HomeProgressGrid } from "@/components/home/home-progress-grid";
 import { HomeRecentAchievements } from "@/components/home/home-recent-achievements";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
-import {
-  computeHomeHighlight,
-  buildDayFocusItems,
-} from "@/lib/home-smart-layout";
+import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { getCached } from "@/lib/client-cache";
 import { isSameDay } from "date-fns";
 
 export default function HomePage() {
   const { status: sessionStatus } = useSession();
   const [workoutCleared, setWorkoutCleared] = useState(false);
+  const hasInitialCache = useMemo(() => getCached(HOME_DATA_CACHE_KEY) != null, []);
 
   const { data: rawData } = useCachedFetch<HomeDataPayload>(
     HOME_DATA_CACHE_KEY,
     "/api/home",
     120_000,
     6_000,
-    { revalidateOnMount: true, staleRatio: 0.75 }
+    { revalidateOnMount: !hasInitialCache, staleRatio: 0.88 }
   );
 
   const data = useHomeLiveData(rawData);
@@ -97,21 +95,6 @@ export default function HomePage() {
   const steps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10_000;
 
-  const showTrainingFirst = highlight === "training" || Boolean(data.nextWorkout?.dayId);
-
-  const trainingSection = useMemo(
-    () => (
-      <HomePlannedTrainingCard
-        nextWorkout={data.nextWorkout ?? null}
-        activeSessionId={activeSessionId}
-        lastCompleted={data.lastCompletedWorkout}
-        recoveryMuscles={recoveryMuscles}
-        highlight={highlight === "training"}
-      />
-    ),
-    [data.nextWorkout, data.lastCompletedWorkout, activeSessionId, recoveryMuscles, highlight]
-  );
-
   if (sessionStatus === "unauthenticated") {
     return (
       <div className="space-y-4 py-12 text-center">
@@ -123,8 +106,6 @@ export default function HomePage() {
       </div>
     );
   }
-
-  const hasCache = Boolean(getCached(HOME_DATA_CACHE_KEY));
 
   return (
     <div className="space-y-3 pb-4 max-w-lg mx-auto">
@@ -148,11 +129,15 @@ export default function HomePage() {
         }
       />
 
-      {showTrainingFirst && trainingSection}
+      <HomePlannedTrainingCard
+        nextWorkout={data.nextWorkout ?? null}
+        activeSessionId={activeSessionId}
+        lastCompleted={data.lastCompletedWorkout}
+        recoveryMuscles={recoveryMuscles}
+        highlight={highlight === "training"}
+      />
 
       <HomeDayFocusCard items={dayFocusItems} />
-
-      {!showTrainingFirst && trainingSection}
 
       <HomeProgressGrid
         home={data}
@@ -162,10 +147,6 @@ export default function HomePage() {
       />
 
       <HomeRecentAchievements achievements={data.recentAchievements ?? []} />
-
-      {!hasCache && sessionStatus === "loading" && (
-        <p className="text-[10px] text-center text-zinc-600 pb-2">Aktualisiere im Hintergrund…</p>
-      )}
     </div>
   );
 }

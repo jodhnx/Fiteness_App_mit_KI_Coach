@@ -365,7 +365,10 @@ export default function SettingsPage() {
         active={category}
         onSelect={(id) => {
           setCategory(id);
-          document.getElementById(`settings-${id}`)?.scrollIntoView({ behavior: "smooth" });
+          if (id === "ziele") setEditingPersonal(true);
+          requestAnimationFrame(() => {
+            document.getElementById(`settings-${id}`)?.scrollIntoView({ behavior: "auto", block: "start" });
+          });
         }}
       />
 
@@ -390,6 +393,7 @@ export default function SettingsPage() {
         </div>
       )}
 
+      <section id="settings-profil" className="settings-section">
       <SettingsProfileHero
         form={form}
         userImage={userImage}
@@ -398,10 +402,11 @@ export default function SettingsPage() {
         onEdit={() => setEditingPersonal(true)}
         onImageUpdated={(url) => setUserImage(url)}
       />
+      </section>
 
       {editingPersonal && (
         <>
-          <section className="card-premium p-4 space-y-4 scroll-mt-24">
+          <section className="card-premium p-4 space-y-4 settings-section">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-white text-lg">Persönliche Daten bearbeiten</h2>
               <Button
@@ -449,11 +454,23 @@ export default function SettingsPage() {
               </div>
             </div>
           </section>
+        </>
+      )}
 
-          <section id="settings-ziele" className="card-premium p-4 space-y-4 scroll-mt-24">
-            <p className="text-xs text-zinc-500">
-              Kalorien, Protein & Makros werden automatisch neu berechnet.
-            </p>
+      <section id="settings-ziele" className="card-premium p-4 space-y-4 settings-section">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-semibold text-white text-lg">Ziele</h2>
+          {!editingPersonal && (
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditingPersonal(true)}>
+              Bearbeiten
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-zinc-500">
+          Kalorien, Protein & Makros werden automatisch neu berechnet.
+        </p>
+        {editingPersonal ? (
+          <>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Gewicht (kg)</Label>
@@ -463,7 +480,7 @@ export default function SettingsPage() {
                   placeholder="70 kg"
                   value={form.weightKg}
                   onChange={(e) => setForm({ ...form, weightKg: e.target.value.replace(/[^\d,.]/g, "") })}
-                  className="mt-1"
+                  className="mt-1 keyboard-stable-input"
                 />
               </div>
               <div>
@@ -474,7 +491,7 @@ export default function SettingsPage() {
                   placeholder="180 cm"
                   value={form.heightCm}
                   onChange={(e) => setForm({ ...form, heightCm: e.target.value.replace(/[^\d]/g, "") })}
-                  className="mt-1"
+                  className="mt-1 keyboard-stable-input"
                 />
               </div>
             </div>
@@ -489,7 +506,7 @@ export default function SettingsPage() {
                     placeholder="75 kg"
                     value={form.targetWeightKg}
                     onChange={(e) => setForm({ ...form, targetWeightKg: e.target.value.replace(/[^\d,.]/g, "") })}
-                    className="mt-1"
+                    className="mt-1 keyboard-stable-input"
                   />
                 </div>
                 <div>
@@ -498,7 +515,7 @@ export default function SettingsPage() {
                     type="date"
                     value={form.targetWeightDate}
                     onChange={(e) => setForm({ ...form, targetWeightDate: e.target.value })}
-                    className="mt-1"
+                    className="mt-1 keyboard-stable-input"
                   />
                 </div>
               </div>
@@ -557,11 +574,32 @@ export default function SettingsPage() {
             <Button type="button" onClick={save} disabled={saving} className="w-full">
               {saving ? "Speichern…" : "Speichern"}
             </Button>
-          </section>
-        </>
-      )}
+          </>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-zinc-500">Gewicht</p>
+              <p className="text-white font-medium">{form.weightKg || "—"} kg</p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500">Größe</p>
+              <p className="text-white font-medium">{form.heightCm || "—"} cm</p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500">Zielgewicht</p>
+              <p className="text-white font-medium">{form.targetWeightKg || "—"} kg</p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500">Ernährungsziel</p>
+              <p className="text-white font-medium">
+                {NUTRITION_GOAL_LABELS[form.nutritionGoal] ?? form.nutritionGoal}
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
 
-      <section id="settings-vitaldaten" className="card-premium p-4 space-y-4 scroll-mt-24">
+      <section id="settings-vitaldaten" className="card-premium p-4 space-y-4 settings-section">
         <h2 className="font-semibold text-white text-lg">Vitaldaten</h2>
         <p className="text-xs text-zinc-500">Optional — für Fortschritt & KI-Analyse</p>
         <div className="grid grid-cols-2 gap-3">
@@ -626,7 +664,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section id="settings-training" className="card-premium p-4 space-y-4 scroll-mt-24">
+      <section id="settings-training" className="card-premium p-4 space-y-4 settings-section">
         <h2 className="font-semibold text-white text-lg">Training</h2>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -676,7 +714,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section id="settings-ernaehrung" className="card-premium p-4 space-y-3 scroll-mt-24">
+      <section id="settings-ernaehrung" className="card-premium p-4 space-y-3 settings-section">
         <h2 className="font-semibold text-white text-lg">Ernährung</h2>
         <p className="text-xs text-zinc-500">
           Leer = automatisch ({preview?.calorieTarget ?? "—"} kcal aus deinen Zielen)
@@ -735,7 +773,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section id="settings-design" className="card-premium p-4 space-y-4 scroll-mt-24">
+      <section id="settings-design" className="card-premium p-4 space-y-4 settings-section">
         <h2 className="font-semibold text-white text-lg">Design</h2>
         <p className="text-xs text-zinc-500">Live-Vorschau — ohne Neuladen</p>
         <div className="grid grid-cols-2 gap-2">
@@ -809,7 +847,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section id="settings-benachrichtigungen" className="card-premium p-4 space-y-3 scroll-mt-24">
+      <section id="settings-benachrichtigungen" className="card-premium p-4 space-y-3 settings-section">
         <h2 className="font-semibold text-white text-lg">Benachrichtigungen</h2>
         <p className="text-sm text-zinc-400">
           Erinnerungen für Training, Wasser und Ziele folgen in einem späteren Update. Aktuell
@@ -817,7 +855,7 @@ export default function SettingsPage() {
         </p>
       </section>
 
-      <section id="settings-konto" className="card-premium p-4 space-y-4 scroll-mt-24">
+      <section id="settings-konto" className="card-premium p-4 space-y-4 settings-section">
         <h2 className="font-semibold text-white text-lg">Konto</h2>
         <p className="text-xs text-zinc-500">Deine gespeicherten Profildaten</p>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -896,7 +934,7 @@ export default function SettingsPage() {
         </Button>
       </section>
 
-      <section className="card-premium p-4 scroll-mt-24">
+      <section className="card-premium p-4 settings-section">
         <Link
           href="/settings/support"
           className="flex items-center gap-3 rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-3.5 active:opacity-90"

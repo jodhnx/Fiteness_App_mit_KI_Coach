@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
+import { SafeAreaScript } from "@/components/layout/safe-area-script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -62,6 +63,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased mobile-app-body overscroll-none`}
       >
+        <SafeAreaScript />
         <AuthSessionProvider>
           <PreferencesProvider>
             {children}
