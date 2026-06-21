@@ -1,6 +1,7 @@
 import type { PlanTemplateType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCatalogPlan, type CatalogPlan } from "@/lib/plan-catalog";
+import type { CatalogExerciseEntry } from "@/lib/plan-catalog-builders";
 
 export { PLAN_CATALOG, filterCatalogPlans, getCatalogPlan } from "@/lib/plan-catalog";
 
@@ -30,7 +31,9 @@ export async function createPlanFromTemplate(
 }
 
 async function materializePlan(userId: string, preset: CatalogPlan, customName?: string) {
-  const slugs = preset.days.flatMap((d) => d.exerciseSlugs);
+  const slugs = preset.days.flatMap((d) =>
+    d.entries?.length ? d.entries.map((e) => e.slug) : d.exerciseSlugs
+  );
   const exercises = await prisma.exerciseLibrary.findMany({
     where: { slug: { in: slugs } },
   });
@@ -45,32 +48,44 @@ async function materializePlan(userId: string, preset: CatalogPlan, customName?:
       description: preset.description,
       isPreset: false,
       days: {
-        create: preset.days.map((day, i) => ({
-          name: day.name,
-          description: day.description ?? null,
-          dayOrder: i,
-          exercises: {
-            create: day.exerciseSlugs
-              .map((slug, j) => {
-                const libId = bySlug.get(slug);
-                if (!libId) return null;
-                return {
-                  exerciseLibraryId: libId,
-                  orderIndex: j,
-                  targetSets: day.targetSets ?? 3,
-                  targetReps: day.targetReps ?? "8-12",
-                  restSeconds: day.restSeconds ?? 90,
-                };
-              })
-              .filter(Boolean) as {
-              exerciseLibraryId: string;
-              orderIndex: number;
-              targetSets: number;
-              targetReps: string;
-              restSeconds: number;
-            }[],
-          },
-        })),
+        create: preset.days.map((day, i) => {
+          const entries: CatalogExerciseEntry[] =
+            day.entries ??
+            day.exerciseSlugs.map((slug) => ({
+              slug,
+              targetSets: day.targetSets,
+              targetReps: day.targetReps,
+              restSeconds: day.restSeconds,
+            }));
+          return {
+            name: day.name,
+            description: day.description ?? null,
+            dayOrder: i,
+            exercises: {
+              create: entries
+                .map((entry, j) => {
+                  const libId = bySlug.get(entry.slug);
+                  if (!libId) return null;
+                  return {
+                    exerciseLibraryId: libId,
+                    orderIndex: j,
+                    targetSets: entry.targetSets ?? day.targetSets ?? 3,
+                    targetReps: entry.targetReps ?? day.targetReps ?? "8-12",
+                    restSeconds: entry.restSeconds ?? day.restSeconds ?? 90,
+                    notes: entry.notes ?? null,
+                  };
+                })
+                .filter(Boolean) as {
+                exerciseLibraryId: string;
+                orderIndex: number;
+                targetSets: number;
+                targetReps: string;
+                restSeconds: number;
+                notes: string | null;
+              }[],
+            },
+          };
+        }),
       },
     },
     include: {

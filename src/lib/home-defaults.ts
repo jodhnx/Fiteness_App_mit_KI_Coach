@@ -124,6 +124,9 @@ export type HomeDataPayload = {
   lastCompletedWorkout?: {
     name: string;
     completedAt: string;
+    durationSec?: number;
+    exerciseCount?: number;
+    volumeKg?: number;
   } | null;
 };
 

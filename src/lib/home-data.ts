@@ -20,6 +20,7 @@ import { loadGamificationHomeCard } from "@/lib/gamification-home";
 import { loadChallengesWithProgress } from "@/lib/challenge-progress";
 import { buildBodyTransformation } from "@/lib/body-transformation";
 import type { GamificationSummary } from "@/lib/gamification";
+import { sessionDurationSec, setVolume } from "@/lib/workout-metrics";
 
 function gamificationToHome(g: GamificationSummary): HomeDataPayload["gamification"] {
   return {
@@ -100,7 +101,15 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
           .findFirst({
             where: { userId, status: "COMPLETED" },
             orderBy: { completedAt: "desc" },
-            select: { completedAt: true, name: true },
+            select: {
+              completedAt: true,
+              name: true,
+              startedAt: true,
+              sets: {
+                where: { completed: true },
+                select: { reps: true, weightKg: true, exerciseLibraryId: true },
+              },
+            },
           })
           .catch(() => null),
         prisma.progressEntry
@@ -270,6 +279,21 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
         ? {
             name: lastSession.name ?? "Training",
             completedAt: lastSession.completedAt.toISOString(),
+            durationSec: sessionDurationSec(
+              lastSession.startedAt,
+              lastSession.completedAt
+            ),
+            exerciseCount: new Set(
+              lastSession.sets
+                .map((s) => s.exerciseLibraryId)
+                .filter((id): id is string => Boolean(id))
+            ).size,
+            volumeKg: Math.round(
+              lastSession.sets.reduce(
+                (acc, s) => acc + setVolume(s.reps, s.weightKg),
+                0
+              )
+            ),
           }
         : null,
     });

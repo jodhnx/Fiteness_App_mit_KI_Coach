@@ -5,11 +5,22 @@ import type {
   PlanLevel,
   PlanTemplateType,
 } from "@prisma/client";
+import type { CatalogExerciseEntry } from "@/lib/plan-catalog-builders";
+import {
+  catalogDaysFromDefs,
+  PREMIUM_ARNOLD_DAYS,
+  PREMIUM_PPL_DAYS,
+  PREMIUM_SCIENCE_PPL_DAYS,
+  PREMIUM_UPPER_LOWER_DAYS,
+} from "@/lib/plan-catalog-builders";
+
+export type { CatalogExerciseEntry };
 
 export type CatalogDay = {
   name: string;
   description?: string;
   exerciseSlugs: string[];
+  entries?: CatalogExerciseEntry[];
   targetSets?: number;
   targetReps?: string;
   restSeconds?: number;
@@ -45,99 +56,21 @@ export const PLAN_CATALOG: CatalogPlan[] = [
     durationMinutes: 60,
     equipment: gym,
     scienceBased: false,
-    days: [
-      {
-        name: "Push",
-        description: "Brust, Schultern, Trizeps – Drückbewegungen & Isolation.",
-        exerciseSlugs: [
-          "barbell-bench-press",
-          "incline-dumbbell-press",
-          "overhead-press",
-          "lateral-raise",
-          "tricep-pushdown",
-          "overhead-tricep-extension",
-        ],
-      },
-      {
-        name: "Pull",
-        description: "Rücken & Bizeps – Zugbewegungen, horizontale & vertikale Ebene.",
-        exerciseSlugs: [
-          "pull-up",
-          "bent-over-barbell-row",
-          "lat-pulldown",
-          "face-pull",
-          "barbell-curl",
-          "hammer-curl",
-        ],
-      },
-      {
-        name: "Legs",
-        description: "Quadrizeps, Hamstrings, Gesäß, Waden.",
-        exerciseSlugs: [
-          "barbell-back-squat",
-          "romanian-deadlift",
-          "leg-press",
-          "leg-extension",
-          "leg-curl-lying",
-          "standing-calf-raise",
-        ],
-      },
-    ],
+    days: catalogDaysFromDefs(PREMIUM_PPL_DAYS),
   },
   {
     catalogKey: "UPPER_LOWER",
     template: "UPPER_LOWER",
     name: "Upper Lower",
-    description: "4 Trainingstage – Oberkörper/Unterkörper im Wechsel.",
+    description: "4 Trainingstage — Oberkörper/Unterkörper im Wechsel, evidenzbasiertes Volumen.",
     goal: "MUSCLE_GAIN",
     level: "INTERMEDIATE",
     efficiency: "TIME_OPTIMIZED",
     daysPerWeek: 4,
-    durationMinutes: 60,
+    durationMinutes: 65,
     equipment: gym,
     scienceBased: false,
-    days: [
-      {
-        name: "Upper A",
-        exerciseSlugs: [
-          "barbell-bench-press",
-          "bent-over-barbell-row",
-          "overhead-press",
-          "pull-up",
-          "barbell-curl",
-        ],
-      },
-      {
-        name: "Lower A",
-        exerciseSlugs: [
-          "barbell-back-squat",
-          "romanian-deadlift",
-          "walking-lunge",
-          "leg-press",
-          "standing-calf-raise",
-        ],
-      },
-      {
-        name: "Upper B",
-        exerciseSlugs: [
-          "incline-dumbbell-press",
-          "lat-pulldown",
-          "lateral-raise",
-          "face-pull",
-          "tricep-pushdown",
-        ],
-      },
-      {
-        name: "Lower B",
-        exerciseSlugs: [
-          "front-squat",
-          "hip-thrust",
-          "leg-extension",
-          "leg-curl-lying",
-          "seated-calf-raise",
-        ],
-      },
-    ],
+    days: catalogDaysFromDefs(PREMIUM_UPPER_LOWER_DAYS),
   },
   {
     catalogKey: "FULL_BODY",
@@ -252,7 +185,7 @@ export const PLAN_CATALOG: CatalogPlan[] = [
     catalogKey: "HYPERTROPHY",
     template: "HYPERTROPHY",
     name: "Muskelaufbau",
-    description: "Hohes Volumen, moderate Intensität.",
+    description: "Premium Hypertrophie-PPL: 10–20 Sätze/Muskel, progressive Überladung.",
     goal: "MUSCLE_GAIN",
     level: "INTERMEDIATE",
     efficiency: "MAX_EFFICIENCY",
@@ -260,34 +193,7 @@ export const PLAN_CATALOG: CatalogPlan[] = [
     durationMinutes: 75,
     equipment: gym,
     scienceBased: false,
-    days: [
-      {
-        name: "Push Hypertrophy",
-        exerciseSlugs: [
-          "incline-dumbbell-press",
-          "dumbbell-fly",
-          "overhead-press",
-          "lateral-raise",
-          "tricep-pushdown",
-        ],
-        targetSets: 4,
-        targetReps: "8-12",
-      },
-      {
-        name: "Pull Hypertrophy",
-        exerciseSlugs: ["lat-pulldown", "seated-cable-row", "face-pull", "barbell-curl", "hammer-curl"],
-      },
-      {
-        name: "Legs Hypertrophy",
-        exerciseSlugs: [
-          "leg-press",
-          "romanian-deadlift",
-          "leg-extension",
-          "leg-curl-lying",
-          "seated-calf-raise",
-        ],
-      },
-    ],
+    days: catalogDaysFromDefs(PREMIUM_PPL_DAYS),
   },
   {
     catalogKey: "FAT_LOSS",
@@ -365,95 +271,24 @@ export const PLAN_CATALOG: CatalogPlan[] = [
     level: "INTERMEDIATE",
     efficiency: "SCIENCE_OPTIMIZED",
     daysPerWeek: 3,
-    durationMinutes: 60,
+    durationMinutes: 70,
     equipment: gym,
     scienceBased: true,
-    days: [
-      {
-        name: "Push",
-        exerciseSlugs: [
-          "barbell-bench-press",
-          "incline-dumbbell-press",
-          "overhead-press",
-          "cable-lateral-raise",
-          "rope-tricep-pushdown",
-        ],
-        targetSets: 4,
-        targetReps: "6-10",
-        restSeconds: 120,
-      },
-      {
-        name: "Pull",
-        exerciseSlugs: [
-          "barbell-deadlift",
-          "pull-up",
-          "seated-cable-row",
-          "straight-arm-pulldown",
-          "face-pull",
-        ],
-      },
-      {
-        name: "Legs",
-        exerciseSlugs: [
-          "barbell-back-squat",
-          "romanian-deadlift",
-          "leg-extension",
-          "leg-curl-seated",
-          "standing-calf-raise",
-        ],
-      },
-    ],
+    days: catalogDaysFromDefs(PREMIUM_SCIENCE_PPL_DAYS),
   },
   {
     catalogKey: "SCIENCE_UPPER_LOWER",
     template: "SCIENCE_UPPER_LOWER",
     name: "Science Based Upper Lower",
-    description: "4×/Woche, hohe Muskel-Frequenz, moderates Volumen pro Session.",
+    description: "4×/Woche, hohe Muskel-Frequenz, 10–20 Sätze/Muskel — Aufwärmen, Compounds, Isolation.",
     goal: "MUSCLE_GAIN",
     level: "INTERMEDIATE",
     efficiency: "SCIENCE_OPTIMIZED",
     daysPerWeek: 4,
-    durationMinutes: 60,
+    durationMinutes: 65,
     equipment: gym,
     scienceBased: true,
-    days: [
-      {
-        name: "Upper A",
-        exerciseSlugs: [
-          "barbell-bench-press",
-          "bent-over-barbell-row",
-          "incline-dumbbell-press",
-          "lat-pulldown",
-          "lateral-raise",
-        ],
-        targetSets: 3,
-        targetReps: "8-12",
-      },
-      {
-        name: "Lower A",
-        exerciseSlugs: [
-          "barbell-back-squat",
-          "romanian-deadlift",
-          "leg-extension",
-          "leg-curl-lying",
-          "standing-calf-raise",
-        ],
-      },
-      {
-        name: "Upper B",
-        exerciseSlugs: [
-          "overhead-press",
-          "seated-cable-row",
-          "dumbbell-fly",
-          "face-pull",
-          "hammer-curl",
-        ],
-      },
-      {
-        name: "Lower B",
-        exerciseSlugs: ["hip-thrust", "walking-lunge", "leg-press", "seated-calf-raise"],
-      },
-    ],
+    days: catalogDaysFromDefs(PREMIUM_UPPER_LOWER_DAYS),
   },
   {
     catalogKey: "SCIENCE_FULL_BODY",
@@ -694,58 +529,15 @@ export const PLAN_CATALOG: CatalogPlan[] = [
     catalogKey: "ARNOLD_SPLIT",
     template: "BRO_SPLIT",
     name: "Arnold Split",
-    description: "Klassischer 6-Tage-Split: Brust/Rücken, Schultern/Arme, Beine — für Fortgeschrittene.",
+    description: "Arnold-Klassiker: Brust/Rücken, Schultern/Arme, Beine — Premium-Volumen.",
     goal: "MUSCLE_GAIN",
     level: "ADVANCED",
     efficiency: "MAX_EFFICIENCY",
-    daysPerWeek: 6,
+    daysPerWeek: 3,
     durationMinutes: 75,
     equipment: gym,
     scienceBased: false,
-    days: [
-      {
-        name: "Brust & Rücken",
-        exerciseSlugs: ["barbell-bench-press", "incline-dumbbell-press", "bent-over-barbell-row", "lat-pulldown", "cable-fly"],
-        targetSets: 4,
-        targetReps: "8-12",
-        restSeconds: 90,
-      },
-      {
-        name: "Schultern & Arme",
-        exerciseSlugs: ["overhead-press", "lateral-raise", "barbell-curl", "tricep-pushdown", "hammer-curl"],
-        targetSets: 4,
-        targetReps: "8-12",
-        restSeconds: 75,
-      },
-      {
-        name: "Beine",
-        exerciseSlugs: ["barbell-back-squat", "leg-press", "romanian-deadlift", "leg-extension", "standing-calf-raise"],
-        targetSets: 4,
-        targetReps: "8-12",
-        restSeconds: 120,
-      },
-      {
-        name: "Brust & Rücken B",
-        exerciseSlugs: ["dumbbell-bench-press", "dips-chest", "seated-cable-row", "pull-up", "face-pull"],
-        targetSets: 4,
-        targetReps: "8-12",
-        restSeconds: 90,
-      },
-      {
-        name: "Schultern & Arme B",
-        exerciseSlugs: ["dumbbell-shoulder-press", "rear-delt-fly", "preacher-curl", "overhead-tricep-extension", "concentration-curl"],
-        targetSets: 4,
-        targetReps: "10-12",
-        restSeconds: 75,
-      },
-      {
-        name: "Beine B",
-        exerciseSlugs: ["front-squat", "walking-lunge", "leg-curl", "hip-thrust", "seated-calf-raise"],
-        targetSets: 4,
-        targetReps: "8-12",
-        restSeconds: 120,
-      },
-    ],
+    days: catalogDaysFromDefs(PREMIUM_ARNOLD_DAYS),
   },
   {
     catalogKey: "POWERLIFTING",

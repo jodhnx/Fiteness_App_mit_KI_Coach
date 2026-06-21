@@ -2,7 +2,7 @@
 
 import { memo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Dumbbell, Clock, CheckCircle2 } from "lucide-react";
+import { Play, Dumbbell, Clock, CheckCircle2, Trophy, Flame, Timer, Layers, Weight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { isSameDay } from "date-fns";
@@ -19,6 +19,24 @@ type Props = {
   recoveryMuscles?: MuscleRecovery[];
   highlight?: boolean;
 };
+
+const DONE_HEADLINES = [
+  { icon: CheckCircle2, text: "Heutiges Workout abgeschlossen" },
+  { icon: Flame, text: "Training für heute erledigt" },
+  { icon: Trophy, text: "Stark! Du hast dein heutiges Training geschafft" },
+] as const;
+
+function formatDuration(sec?: number): string {
+  if (!sec || sec <= 0) return "—";
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min} min`;
+  return `${Math.floor(min / 60)}h ${min % 60} min`;
+}
+
+function formatVolume(kg?: number): string {
+  if (!kg || kg <= 0) return "—";
+  return `${Math.round(kg).toLocaleString("de-DE")} kg`;
+}
 
 export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
   nextWorkout,
@@ -70,14 +88,50 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
     );
   }
 
-  if (completedToday && !nextWorkout?.dayId) {
+  if (completedToday) {
+    const headline = DONE_HEADLINES[new Date().getDate() % DONE_HEADLINES.length];
+    const HeadlineIcon = headline.icon;
+
     return (
       <div className="rounded-[1.25rem] border border-emerald-500/30 bg-emerald-950/20 p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-          <p className="text-sm font-semibold text-emerald-200">Training heute erledigt</p>
+        <div className="flex items-center gap-2 mb-4">
+          <HeadlineIcon className="h-5 w-5 text-emerald-400 shrink-0" />
+          <p className="text-sm font-semibold text-emerald-200">{headline.text}</p>
         </div>
-        <Button className="w-full h-12 rounded-2xl" variant="secondary" onClick={() => router.push("/workouts/quick")}>
+
+        {lastCompleted?.name && (
+          <p className="text-base font-bold text-white mb-3 truncate">{lastCompleted.name}</p>
+        )}
+
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800/80 px-2 py-2.5 text-center">
+            <Timer className="h-4 w-4 text-emerald-400 mx-auto mb-1" />
+            <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Dauer</p>
+            <p className="text-sm font-semibold text-white">
+              {formatDuration(lastCompleted?.durationSec)}
+            </p>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800/80 px-2 py-2.5 text-center">
+            <Layers className="h-4 w-4 text-emerald-400 mx-auto mb-1" />
+            <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Übungen</p>
+            <p className="text-sm font-semibold text-white">
+              {lastCompleted?.exerciseCount ?? "—"}
+            </p>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800/80 px-2 py-2.5 text-center">
+            <Weight className="h-4 w-4 text-emerald-400 mx-auto mb-1" />
+            <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Volumen</p>
+            <p className="text-sm font-semibold text-white">
+              {formatVolume(lastCompleted?.volumeKg)}
+            </p>
+          </div>
+        </div>
+
+        <Button
+          className="w-full h-12 rounded-2xl"
+          variant="secondary"
+          onClick={() => router.push("/workouts/quick")}
+        >
           Weiteres Workout
         </Button>
       </div>

@@ -15,6 +15,10 @@ import { CACHE_KEYS, warmTrainingCaches } from "@/lib/cache-manager";
 import { getCached, invalidateCache } from "@/lib/client-cache";
 import { hasScreenLoaded, markScreenLoaded } from "@/lib/storage-service";
 import { startWorkoutAndNavigate } from "@/lib/workout-start";
+import {
+  PlanDayPickerSheet,
+  type PlanDayOption,
+} from "@/components/workout/plan-day-picker-sheet";
 import { Pencil, Play, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -52,25 +56,55 @@ function PlanRow({
   onDelete: (id: string) => void;
 }) {
   const router = useRouter();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [starting, setStarting] = useState(false);
+
   const exerciseCount = plan.days.reduce((s, d) => s + d.exercises.length, 0);
   const statuses = (plan.dayStatuses ?? []).filter((d) => d.status !== "rest");
   const trainingDayCount = plan.days.length;
 
-  const startPlan = useCallback(async () => {
-    const day =
-      plan.days.find((d) => d.exercises.length > 0) ?? plan.days[0];
-    if (!day) {
+  const trainingDays: PlanDayOption[] = useMemo(
+    () =>
+      plan.days
+        .filter((d) => d.exercises.length > 0)
+        .map((d) => ({
+          id: d.id,
+          name: d.name,
+          exerciseCount: d.exercises.length,
+        })),
+    [plan.days]
+  );
+
+  const startDay = useCallback(
+    async (day: PlanDayOption) => {
+      setStarting(true);
+      const result = await startWorkoutAndNavigate(router, {
+        action: "start",
+        workoutPlanId: plan.id,
+        workoutDayId: day.id,
+        name: `${plan.name} – ${day.name}`,
+      });
+      setStarting(false);
+      if (result.ok) {
+        setPickerOpen(false);
+        return;
+      }
+      toast.error(result.error);
+    },
+    [plan.id, plan.name, router]
+  );
+
+  const onStartClick = useCallback(() => {
+    if (trainingDays.length === 0) {
       toast.error("Plan hat keine Trainingstage");
       return;
     }
-    const result = await startWorkoutAndNavigate(router, {
-      action: "start",
-      workoutPlanId: plan.id,
-      workoutDayId: day.id,
-      name: `${plan.name} – ${day.name}`,
-    });
-    if (!result.ok) toast.error(result.error);
-  }, [plan, router]);
+    if (trainingDays.length === 1) {
+      void startDay(trainingDays[0]);
+      return;
+    }
+    setPickerOpen(true);
+  }, [trainingDays, startDay]);
 
   const confirmDelete = () => {
     if (!window.confirm(`Plan „${plan.name}" wirklich löschen?`)) return;
@@ -78,62 +112,74 @@ function PlanRow({
   };
 
   return (
-    <li className="rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-4">
-      <div className="min-w-0">
-        <p className="text-lg font-bold text-white truncate">{plan.name}</p>
-        <p className="text-sm text-zinc-400 mt-0.5">
-          {trainingDayCount}{" "}
-          {trainingDayCount === 1 ? "Trainingstag" : "Trainingstage"} ·{" "}
-          {exerciseCount} {exerciseCount === 1 ? "Übung" : "Übungen"}
-        </p>
-        <p className="text-xs text-zinc-500 mt-1">
-          Letztes Training: {formatLastSession(plan.lastSessionAt)}
-        </p>
-      </div>
-
-      {statuses.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {statuses.map((d) => (
-            <span
-              key={d.id}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium",
-                dayStatusRowClass(d.status)
-              )}
-            >
-              <DayStatusIndicator status={d.status} size="sm" />
-              <span className="truncate max-w-[5.5rem]">{d.name}</span>
-            </span>
-          ))}
+    <>
+      <li className="rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-4">
+        <div className="min-w-0">
+          <p className="text-lg font-bold text-white truncate">{plan.name}</p>
+          <p className="text-sm text-zinc-400 mt-0.5">
+            {trainingDayCount}{" "}
+            {trainingDayCount === 1 ? "Trainingstag" : "Trainingstage"} ·{" "}
+            {exerciseCount} {exerciseCount === 1 ? "Übung" : "Übungen"}
+          </p>
+          <p className="text-xs text-zinc-500 mt-1">
+            Letztes Training: {formatLastSession(plan.lastSessionAt)}
+          </p>
         </div>
-      )}
 
-      <div className="flex flex-wrap gap-2 mt-4">
-        <Button
-          size="sm"
-          className="rounded-xl flex-1 min-w-[7rem]"
-          onClick={() => void startPlan()}
-        >
-          <Play className="h-4 w-4 mr-1.5" />
-          Starten
-        </Button>
-        <Link href={`/workouts/plans/${plan.id}`} className="flex-1 min-w-[7rem]">
-          <Button size="sm" variant="secondary" className="rounded-xl w-full">
-            <Pencil className="h-4 w-4 mr-1.5" />
-            Bearbeiten
+        {statuses.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {statuses.map((d) => (
+              <span
+                key={d.id}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium",
+                  dayStatusRowClass(d.status)
+                )}
+              >
+                <DayStatusIndicator status={d.status} size="sm" />
+                <span className="truncate max-w-[5.5rem]">{d.name}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 mt-4">
+          <Button
+            size="sm"
+            className="rounded-xl flex-1 min-w-[7rem]"
+            onClick={onStartClick}
+            disabled={starting}
+          >
+            <Play className="h-4 w-4 mr-1.5" />
+            {starting ? "Startet…" : "Starten"}
           </Button>
-        </Link>
-        <Button
-          size="sm"
-          variant="outline"
-          className="rounded-xl border-red-500/40 text-red-400 hover:bg-red-500/10"
-          onClick={confirmDelete}
-        >
-          <Trash2 className="h-4 w-4 mr-1.5" />
-          Löschen
-        </Button>
-      </div>
-    </li>
+          <Link href={`/workouts/plans/${plan.id}`} className="flex-1 min-w-[7rem]">
+            <Button size="sm" variant="secondary" className="rounded-xl w-full">
+              <Pencil className="h-4 w-4 mr-1.5" />
+              Bearbeiten
+            </Button>
+          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-xl border-red-500/40 text-red-400 hover:bg-red-500/10"
+            onClick={confirmDelete}
+          >
+            <Trash2 className="h-4 w-4 mr-1.5" />
+            Löschen
+          </Button>
+        </div>
+      </li>
+
+      <PlanDayPickerSheet
+        open={pickerOpen}
+        onClose={() => !starting && setPickerOpen(false)}
+        planName={plan.name}
+        days={trainingDays}
+        onSelectDay={(day) => void startDay(day)}
+        starting={starting}
+      />
+    </>
   );
 }
 
