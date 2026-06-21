@@ -60,10 +60,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" className="dark" data-theme="turquoise" data-density="standard">
+      <head>
+        <SafeAreaScript />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased mobile-app-body overscroll-none`}
       >
-        <SafeAreaScript />
         <AuthSessionProvider>
           <PreferencesProvider>
             {children}

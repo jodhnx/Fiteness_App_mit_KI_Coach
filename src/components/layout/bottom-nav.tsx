@@ -31,6 +31,7 @@ export const BottomNav = memo(function BottomNav() {
               key={href}
               href={href}
               prefetch
+              scroll={false}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 py-2 min-h-[52px] text-[11px] font-medium transition-colors duration-75 active:scale-95 transform-gpu",
                 active ? "text-accent" : "text-zinc-500"

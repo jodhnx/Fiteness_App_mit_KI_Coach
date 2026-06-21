@@ -58,16 +58,21 @@ export function useHomeLiveData(fetched: HomeDataPayload | null) {
   useEffect(() => {
     if (!fetched) return;
     const nutrition = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
+    let next: HomeDataPayload;
     if (
       nutrition &&
       isValidDashboardPayload(nutrition) &&
       isNutritionDashboardToday(nutrition.date)
     ) {
-      setHome(mergeHomeWithNutrition(normalizeHomeData(fetched), nutrition));
-      return;
+      next = mergeHomeWithNutrition(normalizeHomeData(fetched), nutrition);
+    } else {
+      const cached = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
+      next = cached ? normalizeHomeData(cached) : normalizeHomeData(fetched);
     }
-    const cached = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
-    setHome(cached ? normalizeHomeData(cached) : normalizeHomeData(fetched));
+    setHome((prev) => {
+      if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+      return next;
+    });
   }, [fetched]);
 
   useEffect(() => {
