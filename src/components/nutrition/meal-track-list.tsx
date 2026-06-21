@@ -1,15 +1,15 @@
 "use client";
 
 import { memo } from "react";
-import { Plus, Trash2, Pencil, Coffee, Sun, Moon, Cookie } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { MEAL_TYPE_LABELS } from "@/lib/meal-types";
 import type { MealType } from "@prisma/client";
 
-const ICONS: Record<string, typeof Coffee> = {
-  BREAKFAST: Coffee,
-  LUNCH: Sun,
-  DINNER: Moon,
-  SNACK: Cookie,
+const MEAL_EMOJI: Record<string, string> = {
+  BREAKFAST: "🍳",
+  LUNCH: "🍽",
+  DINNER: "🌙",
+  SNACK: "🍫",
 };
 
 type MealItemRow = {
@@ -28,8 +28,6 @@ type MealSlotData = {
 
 type Props = {
   meals: MealSlotData[];
-  expandedMeal: MealType | null;
-  onToggle: (mealType: MealType) => void;
   onRemove: (itemId: string) => void;
   onEdit?: (itemId: string, quantityG: number) => void;
   onDeleteMeal?: (mealId: string) => void;
@@ -38,8 +36,6 @@ type Props = {
 
 export const MealTrackList = memo(function MealTrackList({
   meals,
-  expandedMeal,
-  onToggle,
   onRemove,
   onEdit,
   onDeleteMeal,
@@ -48,100 +44,87 @@ export const MealTrackList = memo(function MealTrackList({
   return (
     <div className="space-y-2">
       {meals.map((slot) => {
-        const Icon = ICONS[slot.mealType] ?? Cookie;
-        const expanded = expandedMeal === slot.mealType;
+        const emoji = MEAL_EMOJI[slot.mealType] ?? "🍽";
         return (
           <div
             key={slot.mealType}
-            className="rounded-2xl nutrition-glass-card overflow-hidden"
+            className="rounded-2xl bg-zinc-900/80 border border-zinc-800 overflow-hidden"
           >
-            <div className="flex items-center gap-2 p-3 sm:p-4">
-              <button
-                type="button"
-                onClick={() => onToggle(slot.mealType)}
-                className="flex flex-1 items-center gap-3 text-left min-w-0"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white">
-                    {MEAL_TYPE_LABELS[slot.mealType]}
-                  </p>
-                  <p className="text-sm text-zinc-500 truncate">
-                    {Math.round(slot.totals.calories)} kcal ·{" "}
-                    {Math.round(slot.totals.proteinG)} g Protein
-                    {slot.items.length > 0 ? ` · ${slot.items.length} Einträge` : ""}
-                  </p>
-                </div>
-                <span className="text-zinc-500 text-sm shrink-0">
-                  {expanded ? "▲" : "▼"}
-                </span>
-              </button>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <span className="text-2xl leading-none shrink-0" aria-hidden>
+                {emoji}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-white text-[15px]">
+                  {MEAL_TYPE_LABELS[slot.mealType]}
+                </p>
+                <p className="text-xs text-zinc-500 tabular-nums mt-0.5">
+                  {Math.round(slot.totals.calories)} kcal
+                  {slot.totals.proteinG > 0 && ` · ${Math.round(slot.totals.proteinG)}g Protein`}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => onAddClick?.(slot.mealType)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl btn-accent active:opacity-90"
-                aria-label={`+ Lebensmittel zu ${MEAL_TYPE_LABELS[slot.mealType]}`}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white active:opacity-90"
+                aria-label={`Lebensmittel zu ${MEAL_TYPE_LABELS[slot.mealType]} hinzufügen`}
               >
                 <Plus className="h-5 w-5 stroke-[2.5]" />
               </button>
             </div>
-            {expanded && slot.items.length > 0 && (
-              <div className="border-t border-zinc-800">
-                <ul className="px-4 py-2 space-y-2">
-                  {slot.items.map((item) => (
-                    <li key={item.id} className="flex items-center gap-2 text-sm">
-                      <span className="text-zinc-300 truncate flex-1">
-                        {item.food.name}{" "}
-                        <span className="text-zinc-500">({item.quantityG} g)</span>
-                      </span>
-                      <span className="text-zinc-500 tabular-nums shrink-0">
-                        {Math.round(item.calories)} kcal
-                      </span>
-                      {onEdit && (
-                        <button
-                          type="button"
-                          onClick={() => onEdit(item.id, item.quantityG)}
-                          className="text-zinc-600 hover:text-accent p-1 shrink-0"
-                          aria-label="Menge bearbeiten"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                      )}
+
+            {slot.items.length > 0 && (
+              <ul className="border-t border-zinc-800/80 px-4 py-2 space-y-1.5">
+                {slot.items.map((item) => (
+                  <li key={item.id} className="flex items-center gap-2 text-sm py-1">
+                    <span className="text-zinc-300 truncate flex-1 min-w-0">
+                      {item.food.name}
+                      <span className="text-zinc-600 ml-1">· {item.quantityG}g</span>
+                    </span>
+                    <span className="text-zinc-500 tabular-nums text-xs shrink-0">
+                      {Math.round(item.calories)} kcal
+                    </span>
+                    {onEdit && (
                       <button
                         type="button"
-                        onClick={() => onRemove(item.id)}
-                        className="text-zinc-600 hover:text-red-400 p-1 shrink-0"
-                        aria-label="Eintrag löschen"
+                        onClick={() => onEdit(item.id, item.quantityG)}
+                        className="text-zinc-600 hover:text-zinc-300 p-1 shrink-0"
+                        aria-label="Menge bearbeiten"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
-                    </li>
-                  ))}
-                </ul>
-                {slot.mealId && onDeleteMeal && (
-                  <div className="px-4 pb-3">
+                    )}
                     <button
                       type="button"
-                      onClick={() => onDeleteMeal(slot.mealId!)}
-                      className="text-xs text-red-400/90 hover:text-red-300"
+                      onClick={() => onRemove(item.id)}
+                      className="text-zinc-600 hover:text-red-400 p-1 shrink-0"
+                      aria-label="Eintrag löschen"
                     >
-                      Ganze Mahlzeit löschen
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                  </div>
-                )}
-              </div>
+                  </li>
+                ))}
+              </ul>
             )}
-            {expanded && slot.items.length === 0 && (
-              <div className="border-t border-zinc-800 px-4 py-3">
+
+            {slot.items.length === 0 && (
+              <button
+                type="button"
+                onClick={() => onAddClick?.(slot.mealType)}
+                className="w-full border-t border-zinc-800/80 px-4 py-2.5 text-xs text-zinc-500 hover:text-zinc-300 text-left"
+              >
+                + Lebensmittel hinzufügen
+              </button>
+            )}
+
+            {slot.mealId && onDeleteMeal && slot.items.length > 0 && (
+              <div className="px-4 pb-2">
                 <button
                   type="button"
-                  onClick={() => onAddClick?.(slot.mealType)}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 py-3 text-sm font-medium text-zinc-400 active:text-cyan-400"
+                  onClick={() => onDeleteMeal(slot.mealId!)}
+                  className="text-[11px] text-zinc-600 hover:text-red-400"
                 >
-                  <Plus className="h-4 w-4" />
-                  Lebensmittel
+                  Mahlzeit leeren
                 </button>
               </div>
             )}

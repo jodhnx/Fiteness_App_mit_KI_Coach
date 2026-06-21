@@ -13,7 +13,7 @@ import {
   optimisticPatchItemQuantity,
   optimisticAddWater,
 } from "@/lib/nutrition-sync";
-import { RemainingMacrosHero } from "@/components/nutrition/remaining-macros-hero";
+import { NutritionOverviewPanel } from "@/components/nutrition/nutrition-overview-panel";
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
 import { FoodAddPopup } from "@/components/nutrition/food-add-popup";
@@ -22,7 +22,6 @@ import type { MealType } from "@prisma/client";
 import { toast } from "sonner";
 import { RefreshCw, AlertCircle, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
 import { warmNutritionSearchCaches } from "@/lib/nav-cache-warmer";
 
@@ -31,7 +30,6 @@ const VALID_MEALS = new Set<string>(MEAL_TYPE_ORDER);
 export default function NutritionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [expandedMeal, setExpandedMeal] = useState<MealType | null>(null);
   const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
 
   useEffect(() => {
@@ -45,13 +43,7 @@ export default function NutritionPage() {
     }
   }, [searchParams]);
 
-  const {
-    dashboard,
-    error,
-    timedOut,
-    reload,
-    applyDashboard,
-  } = useNutritionDashboard(120_000);
+  const { dashboard, error, timedOut, reload, applyDashboard } = useNutritionDashboard(120_000);
 
   const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites();
 
@@ -178,20 +170,17 @@ export default function NutritionPage() {
   }, [router, searchParams]);
 
   return (
-    <div className="nutrition-mobile-page space-y-5 pb-28">
-      <PageHeader
-        title="Ernährung"
-        subtitle="Schnell tracken · DACH-Produkte · Standardgerichte"
-        action={
-          <Link
-            href="/settings"
-            className="p-2 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white"
-            aria-label="Einstellungen"
-          >
-            <Settings2 className="h-5 w-5" />
-          </Link>
-        }
-      />
+    <div className="nutrition-mobile-page space-y-3 pb-28 max-w-lg mx-auto">
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <h1 className="text-xl font-bold text-white">Ernährung</h1>
+        <Link
+          href="/settings"
+          className="p-2 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white"
+          aria-label="Einstellungen"
+        >
+          <Settings2 className="h-5 w-5" />
+        </Link>
+      </div>
 
       {(error || timedOut) && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex gap-3">
@@ -217,43 +206,14 @@ export default function NutritionPage() {
         </div>
       )}
 
-      <div>
-        <RemainingMacrosHero
-          calories={{
-            consumed: dashboard.consumed.calories,
-            target: dashboard.targets.calories,
-            remaining: dashboard.remaining.calories,
-          }}
-          protein={{
-            consumed: dashboard.consumed.proteinG,
-            target: dashboard.targets.proteinG,
-            remaining: dashboard.remaining.proteinG,
-          }}
-          carbs={{
-            consumed: dashboard.consumed.carbsG,
-            target: dashboard.targets.carbsG,
-            remaining: dashboard.remaining.carbsG,
-          }}
-          fat={{
-            consumed: dashboard.consumed.fatG,
-            target: dashboard.targets.fatG,
-            remaining: dashboard.remaining.fatG,
-          }}
-          fiber={{
-            consumed: dashboard.consumed.fiberG ?? 0,
-            target: dashboard.targets.fiberG ?? 35,
-          }}
-        />
-      </div>
+      <NutritionOverviewPanel dashboard={dashboard} />
 
-      <section>
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">
+      <section className="pt-1">
+        <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] mb-2 px-0.5">
           Mahlzeiten
         </h2>
         <MealTrackList
           meals={dashboard.mealsByType}
-          expandedMeal={expandedMeal}
-          onToggle={(m) => setExpandedMeal((e) => (e === m ? null : m))}
           onRemove={removeItem}
           onEdit={editItemQuantity}
           onDeleteMeal={deleteMeal}
