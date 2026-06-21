@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { Check, Plus, Timer, Trash2, Trophy, Dumbbell } from "lucide-react";
 import { EndWorkoutDialog } from "@/components/workout/end-workout-dialog";
 import { ExercisePickerSheet } from "@/components/workout/exercise-picker-sheet";
-import { clearActiveWorkoutCaches } from "@/lib/workout-cache-sync";
+import { clearActiveWorkoutCaches, PENDING_LIVE_SESSION_KEY } from "@/lib/workout-cache-sync";
+import { WORKOUT_INPUT_PLACEHOLDERS } from "@/lib/workout-input-placeholders";
 import type { LibraryExercise } from "@/hooks/use-exercise-library-search";
 
 const WORKOUT_SEQ_KEY = "workout-save-seq";
@@ -52,7 +53,6 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
   const [elapsed, setElapsed] = useState(0);
   const [restLeft, setRestLeft] = useState(0);
   const [endOpen, setEndOpen] = useState(false);
-  const [endSaving, setEndSaving] = useState(false);
   const [defaultEndName, setDefaultEndName] = useState("Workout 001");
   const [pickerOpen, setPickerOpen] = useState(false);
   const patchTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -67,8 +67,21 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem(PENDING_LIVE_SESSION_KEY);
+    if (raw) {
+      try {
+        const pending = JSON.parse(raw) as SessionData;
+        if (pending.id === sessionId) {
+          setSession(pending);
+          sessionStorage.removeItem(PENDING_LIVE_SESSION_KEY);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
     load();
-  }, [load]);
+  }, [sessionId, load]);
 
   useEffect(() => {
     if (!session) return;
@@ -195,8 +208,8 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       exerciseLibraryId,
       exerciseName,
       setNumber,
-      reps: lastSet?.reps ?? 10,
-      weightKg: lastSet?.weightKg ?? 0,
+      reps: lastSet?.reps ?? null,
+      weightKg: lastSet?.weightKg ?? null,
       rpe: null,
       restSeconds: lastSet?.restSeconds ?? 90,
       completed: false,
@@ -214,8 +227,8 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
           exerciseName,
           exerciseLibraryId: exerciseLibraryId ?? undefined,
           setNumber,
-          reps: optimistic.reps ?? 10,
-          weightKg: optimistic.weightKg ?? 0,
+          reps: optimistic.reps ?? undefined,
+          weightKg: optimistic.weightKg ?? undefined,
           restSeconds: optimistic.restSeconds ?? 90,
         }),
       });
@@ -248,38 +261,42 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       return;
     }
     setPickerOpen(false);
-    await addSet(ex.name, ex.id, 1);
+    void addSet(ex.name, ex.id, 1);
   }
 
-  async function saveCompletedWorkout(name: string) {
-    setEndSaving(true);
-    const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
+  function saveCompletedWorkout(name: string) {
+    setEndOpen(false);
+    clearActiveWorkoutCaches({
+      name,
+      completedAt: new Date().toISOString(),
+    });
+    bumpWorkoutSeq();
+    router.push("/workouts/journey");
+
+    void fetch(`/api/workouts/sessions/${sessionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "complete", name }),
-    });
-    const data = await res.json();
-    setEndSaving(false);
-    if (!res.ok) {
-      toast.error("Fehler beim Abschließen");
-      return;
-    }
-    clearActiveWorkoutCaches({
-      name: data.session?.name ?? name,
-      completedAt:
-        data.session?.completedAt ?? new Date().toISOString(),
-    });
-    bumpWorkoutSeq();
-    setEndOpen(false);
-    if (data.newPRs?.length) {
-      toast.success(`${data.newPRs.length} neue Personal Records!`, {
-        icon: <Trophy className="h-4 w-4" />,
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          toast.error("Fehler beim Speichern — bitte erneut versuchen");
+          return;
+        }
+        clearActiveWorkoutCaches({
+          name: data.session?.name ?? name,
+          completedAt: data.session?.completedAt ?? new Date().toISOString(),
+        });
+        if (data.newPRs?.length) {
+          toast.success(`${data.newPRs.length} neue Personal Records!`, {
+            icon: <Trophy className="h-4 w-4" />,
+          });
+        }
+      })
+      .catch(() => {
+        toast.error("Netzwerkfehler beim Speichern");
       });
-    } else {
-      toast.success("Training gespeichert!");
-    }
-    router.push(`/workouts/journey`);
-    router.refresh();
   }
 
   function openEndDialog() {
@@ -307,8 +324,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       <EndWorkoutDialog
         open={endOpen}
         defaultName={defaultEndName}
-        saving={endSaving}
-        onSave={(name) => void saveCompletedWorkout(name)}
+        onSave={(name) => saveCompletedWorkout(name)}
         onCancel={() => setEndOpen(false)}
       />
     <div className="space-y-4 pb-36 max-w-lg mx-auto">
@@ -369,7 +385,10 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
               <h2 className="text-xl font-bold text-white">{name}</h2>
               {prev && (
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Letzte: {prev.weightKg ?? 0} kg × {prev.reps ?? 0}
+                  Letzte:{" "}
+                  {prev.weightKg != null || prev.reps != null
+                    ? `${prev.weightKg ?? "—"} kg × ${prev.reps ?? "—"}`
+                    : "—"}
                 </p>
               )}
             </div>
@@ -396,7 +415,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
                   <Input
                     type="number"
                     inputMode="decimal"
-                    placeholder="kg"
+                    placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
                     className="h-14 text-xl text-center rounded-xl tabular-nums"
                     value={set.weightKg ?? ""}
                     onChange={(e) => {
@@ -413,12 +432,17 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
                         };
                       });
                     }}
-                    onBlur={() => patchSet(set.id, { weightKg: set.weightKg ?? 0 })}
+                    onBlur={(e) => {
+                      const v = e.target.value;
+                      patchSet(set.id, {
+                        weightKg: v === "" ? null : Number(v),
+                      });
+                    }}
                   />
                   <Input
                     type="number"
                     inputMode="numeric"
-                    placeholder="Wdh"
+                    placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
                     className="h-14 text-xl text-center rounded-xl tabular-nums"
                     value={set.reps ?? ""}
                     onChange={(e) => {
@@ -435,7 +459,10 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
                         };
                       });
                     }}
-                    onBlur={() => patchSet(set.id, { reps: set.reps ?? 0 })}
+                    onBlur={(e) => {
+                      const v = e.target.value;
+                      patchSet(set.id, { reps: v === "" ? null : Number(v) });
+                    }}
                   />
                   <Button
                     size="icon"

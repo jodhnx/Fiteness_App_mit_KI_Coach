@@ -8,6 +8,16 @@ import { cn } from "@/lib/utils";
 
 type Tab = "favorites" | "recent" | "frequent";
 
+type ListsCache = {
+  recent: LibraryExercise[];
+  favorites: LibraryExercise[];
+  frequent: LibraryExercise[];
+  loadedAt: number;
+};
+
+let listsCache: ListsCache | null = null;
+const LISTS_TTL_MS = 120_000;
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -51,21 +61,26 @@ function ExerciseRow({
 export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: Props) {
   const [tab, setTab] = useState<Tab>("favorites");
   const [search, setSearch] = useState("");
-  const [recent, setRecent] = useState<LibraryExercise[]>([]);
-  const [favorites, setFavorites] = useState<LibraryExercise[]>([]);
-  const [frequent, setFrequent] = useState<LibraryExercise[]>([]);
-  const [listsLoading, setListsLoading] = useState(false);
+  const [recent, setRecent] = useState<LibraryExercise[]>(listsCache?.recent ?? []);
+  const [favorites, setFavorites] = useState<LibraryExercise[]>(listsCache?.favorites ?? []);
+  const [frequent, setFrequent] = useState<LibraryExercise[]>(listsCache?.frequent ?? []);
 
   const exclude = useMemo(() => new Set(excludeIds), [excludeIds]);
 
   const { exercises: searchResults, loading: searchLoading } = useExerciseLibrarySearch(
     search,
     {},
-    { limit: 80, enabled: open && search.trim().length > 0, debounceMs: 120 }
+    { limit: 80, enabled: open && search.trim().length > 0, debounceMs: 50 }
   );
 
   const loadLists = useCallback(async () => {
-    setListsLoading(true);
+    if (listsCache && Date.now() - listsCache.loadedAt < LISTS_TTL_MS) {
+      setRecent(listsCache.recent);
+      setFavorites(listsCache.favorites);
+      setFrequent(listsCache.frequent);
+      return;
+    }
+
     try {
       const [recentRes, favRes, popRes] = await Promise.all([
         fetch("/api/exercises/recent", { credentials: "include" }),
@@ -77,13 +92,20 @@ export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: 
         favRes.json(),
         popRes.json(),
       ]);
-      setRecent((recentData.exercises ?? []) as LibraryExercise[]);
-      setFavorites((favData.exercises ?? []) as LibraryExercise[]);
-      setFrequent((popData.exercises ?? []) as LibraryExercise[]);
+      const nextRecent = (recentData.exercises ?? []) as LibraryExercise[];
+      const nextFavorites = (favData.exercises ?? []) as LibraryExercise[];
+      const nextFrequent = (popData.exercises ?? []) as LibraryExercise[];
+      listsCache = {
+        recent: nextRecent,
+        favorites: nextFavorites,
+        frequent: nextFrequent,
+        loadedAt: Date.now(),
+      };
+      setRecent(nextRecent);
+      setFavorites(nextFavorites);
+      setFrequent(nextFrequent);
     } catch {
       /* keep empty */
-    } finally {
-      setListsLoading(false);
     }
   }, []);
 
@@ -116,7 +138,7 @@ export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: 
         ? recent
         : frequent;
 
-  const loading = isSearching ? searchLoading : listsLoading;
+  const loading = isSearching ? searchLoading : false;
 
   if (!open) return null;
 

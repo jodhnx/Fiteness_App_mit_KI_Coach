@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 type Props = {
   open: boolean;
   defaultName: string;
-  saving?: boolean;
   onSave: (name: string) => void;
   onCancel: () => void;
 };
@@ -17,7 +16,6 @@ type Props = {
 export const EndWorkoutDialog = memo(function EndWorkoutDialog({
   open,
   defaultName,
-  saving = false,
   onSave,
   onCancel,
 }: Props) {
@@ -47,7 +45,6 @@ export const EndWorkoutDialog = memo(function EndWorkoutDialog({
           defaultValue={defaultName}
           className="mt-4 h-12 rounded-xl bg-zinc-950 border-zinc-700"
           placeholder="Workout 001"
-          disabled={saving}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -61,7 +58,6 @@ export const EndWorkoutDialog = memo(function EndWorkoutDialog({
             type="button"
             variant="secondary"
             className="flex-1 h-12 rounded-xl"
-            disabled={saving}
             onClick={onCancel}
           >
             Abbrechen
@@ -69,13 +65,12 @@ export const EndWorkoutDialog = memo(function EndWorkoutDialog({
           <Button
             type="button"
             className="flex-1 h-12 rounded-xl"
-            disabled={saving}
             onClick={() => {
               const v = inputRef.current?.value.trim();
               onSave(v || defaultName);
             }}
           >
-            {saving ? "Speichern…" : "Speichern"}
+            Speichern
           </Button>
         </div>
       </div>

@@ -1,39 +1,23 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { WorkoutBackLink } from "@/components/workout/workout-back-link";
 import { Button } from "@/components/ui/button";
 import { Play, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { startWorkoutAndNavigate } from "@/lib/workout-start";
 
 /** Quick Workout — sofort starten, Übungen im Training hinzufügen */
 export default function QuickWorkoutPage() {
   const router = useRouter();
-  const [starting, setStarting] = useState(false);
 
   const startWorkout = useCallback(async () => {
-    setStarting(true);
-    try {
-      const res = await fetch("/api/workouts/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "start",
-          name: "Quick Workout",
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error ?? "Training konnte nicht gestartet werden");
-        return;
-      }
-      router.push(`/workouts/live/${data.session.id}`);
-    } catch {
-      toast.error("Netzwerkfehler");
-    } finally {
-      setStarting(false);
-    }
+    const result = await startWorkoutAndNavigate(router, {
+      action: "start",
+      name: "Quick Workout",
+    });
+    if (!result.ok) toast.error(result.error);
   }, [router]);
 
   return (
@@ -56,11 +40,10 @@ export default function QuickWorkoutPage() {
 
       <Button
         className="w-full h-16 text-lg rounded-2xl"
-        disabled={starting}
         onClick={() => void startWorkout()}
       >
         <Play className="h-6 w-6 mr-2" />
-        {starting ? "Startet…" : "Workout starten"}
+        Workout starten
       </Button>
     </div>
   );

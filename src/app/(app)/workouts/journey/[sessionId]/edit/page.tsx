@@ -9,6 +9,7 @@ import { CACHE_KEYS } from "@/lib/cache-manager";
 import { invalidateCache } from "@/lib/client-cache";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
+import { WORKOUT_INPUT_PLACEHOLDERS } from "@/lib/workout-input-placeholders";
 
 type WorkoutSetRow = {
   id: string;
@@ -181,7 +182,7 @@ export default function EditJourneyWorkoutPage() {
                       })
                     }
                     className="mt-0.5 h-10 rounded-lg bg-zinc-950 border-zinc-700 tabular-nums"
-                    placeholder="Wdh."
+                    placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
                   />
                 </div>
                 <div>
@@ -196,7 +197,7 @@ export default function EditJourneyWorkoutPage() {
                       })
                     }
                     className="mt-0.5 h-10 rounded-lg bg-zinc-950 border-zinc-700 tabular-nums"
-                    placeholder="kg"
+                    placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
                   />
                 </div>
                 <p className="text-xs text-zinc-600 pb-2 text-center">Satz {s.setNumber}</p>

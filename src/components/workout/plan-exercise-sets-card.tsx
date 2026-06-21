@@ -13,6 +13,7 @@ import {
   type PlanSetTarget,
 } from "@/lib/plan-exercise-sets";
 import { cn } from "@/lib/utils";
+import { WORKOUT_INPUT_PLACEHOLDERS } from "@/lib/workout-input-placeholders";
 
 type Props = {
   id: string;
@@ -141,7 +142,7 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
               inputMode="decimal"
               min={0}
               step="0.5"
-              placeholder="kg"
+              placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
               value={set.weightKg ?? ""}
               onChange={(e) => {
                 const v = e.target.value;
@@ -155,7 +156,7 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
               type="number"
               inputMode="numeric"
               min={1}
-              placeholder="Wdh"
+              placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
               value={set.reps ?? ""}
               onChange={(e) => {
                 const v = e.target.value;

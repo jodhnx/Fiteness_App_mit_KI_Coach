@@ -127,8 +127,8 @@ export async function POST(req: NextRequest) {
               exerciseLibraryId: ex.exerciseLibraryId,
               exerciseName: ex.exerciseName,
               setNumber: i + 1,
-              reps: ls?.reps ?? 10,
-              weightKg: ls?.weightKg ?? 0,
+              reps: ls?.reps ?? undefined,
+              weightKg: ls?.weightKg ?? undefined,
               restSeconds: 90,
               completed: false,
             });
@@ -168,8 +168,8 @@ export async function POST(req: NextRequest) {
                   exerciseLibraryId: ex.exerciseLibraryId,
                   exerciseName: ex.exercise.name,
                   setNumber: i + 1,
-                  reps: ls?.reps ?? planRow?.reps ?? 10,
-                  weightKg: ls?.weightKg ?? planRow?.weightKg ?? 0,
+                  reps: ls?.reps ?? planRow?.reps ?? undefined,
+                  weightKg: ls?.weightKg ?? planRow?.weightKg ?? undefined,
                   restSeconds: ex.restSeconds,
                   completed: false,
                 });
@@ -181,8 +181,8 @@ export async function POST(req: NextRequest) {
                   exerciseLibraryId: ex.exerciseLibraryId,
                   exerciseName: ex.exercise.name,
                   setNumber: i + 1,
-                  reps: planRow?.reps ?? 10,
-                  weightKg: planRow?.weightKg ?? 0,
+                  reps: planRow?.reps ?? undefined,
+                  weightKg: planRow?.weightKg ?? undefined,
                   restSeconds: ex.restSeconds,
                   completed: false,
                 });

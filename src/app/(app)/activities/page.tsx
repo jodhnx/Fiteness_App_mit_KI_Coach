@@ -17,6 +17,7 @@ import {
 } from "@/lib/activity-types";
 import type { HealthDashboardPayload } from "@/lib/activity-health";
 import type { EnduranceActivityType } from "@prisma/client";
+import { WORKOUT_INPUT_PLACEHOLDERS } from "@/lib/workout-input-placeholders";
 import { ActivityRings } from "@/components/activities/activity-rings";
 import { SleepTracker } from "@/components/activities/sleep-tracker";
 import { StatChart } from "@/components/charts/stat-chart";
@@ -80,7 +81,7 @@ function MetricCard({
 
 export default function ActivitiesPage() {
   const [type, setType] = useState<EnduranceActivityType>("RUNNING");
-  const [durationMin, setDurationMin] = useState("30");
+  const [durationMin, setDurationMin] = useState("");
   const [distanceKm, setDistanceKm] = useState("");
   const [calories, setCalories] = useState("");
   const [speedKmh, setSpeedKmh] = useState("");
@@ -421,6 +422,7 @@ export default function ActivitiesPage() {
               <label className="text-xs text-zinc-500">Dauer (Min)</label>
               <Input
                 type="number"
+                placeholder={WORKOUT_INPUT_PLACEHOLDERS.durationMin}
                 value={durationMin}
                 onChange={(e) => setDurationMin(e.target.value)}
                 className="mt-1 bg-zinc-900 border-zinc-700"
@@ -431,7 +433,7 @@ export default function ActivitiesPage() {
               <Input
                 type="number"
                 step="0.1"
-                placeholder="optional"
+                placeholder={WORKOUT_INPUT_PLACEHOLDERS.distanceKm}
                 value={distanceKm}
                 onChange={(e) => setDistanceKm(e.target.value)}
                 className="mt-1 bg-zinc-900 border-zinc-700"

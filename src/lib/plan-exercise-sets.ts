@@ -12,7 +12,7 @@ export function defaultPlanSets(count = DEFAULT_SET_COUNT): PlanSetTarget[] {
 export function parsePlanSetTargets(
   raw: unknown,
   targetSets: number,
-  targetReps?: string | null
+  _targetReps?: string | null
 ): PlanSetTarget[] {
   if (Array.isArray(raw)) {
     const sets = raw
@@ -32,11 +32,7 @@ export function parsePlanSetTargets(
   }
 
   const count = Math.max(1, targetSets || DEFAULT_SET_COUNT);
-  const repGuess = targetReps?.includes("-")
-    ? Number.parseInt(targetReps.split("-")[0] ?? "10", 10)
-    : Number.parseInt(targetReps ?? "10", 10);
-  const reps = Number.isFinite(repGuess) && repGuess > 0 ? repGuess : 10;
-  return Array.from({ length: count }, () => ({ weightKg: null, reps }));
+  return Array.from({ length: count }, () => ({ weightKg: null, reps: null }));
 }
 
 export function serializePlanSetTargets(sets: PlanSetTarget[]): PlanSetTarget[] {

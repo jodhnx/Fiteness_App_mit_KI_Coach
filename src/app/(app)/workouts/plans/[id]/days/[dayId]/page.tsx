@@ -8,6 +8,7 @@ import { ExerciseItem } from "@/components/workout/exercise-item";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 import { toast } from "sonner";
+import { startWorkoutAndNavigate } from "@/lib/workout-start";
 
 type PlanExercise = {
   id: string;
@@ -55,22 +56,13 @@ export default function WorkoutDayPage() {
 
   const startTraining = useCallback(async () => {
     if (!plan || !day) return;
-    const res = await fetch("/api/workouts/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "start",
-        workoutPlanId: plan.id,
-        workoutDayId: day.id,
-        name: `${plan.name} – ${day.name}`,
-      }),
+    const result = await startWorkoutAndNavigate(router, {
+      action: "start",
+      workoutPlanId: plan.id,
+      workoutDayId: day.id,
+      name: `${plan.name} – ${day.name}`,
     });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      toast.error("Training konnte nicht gestartet werden");
-      return;
-    }
-    router.push(`/workouts/live/${body.session.id}`);
+    if (!result.ok) toast.error(result.error);
   }, [plan, day, router]);
 
   return (
@@ -103,7 +95,6 @@ export default function WorkoutDayPage() {
       <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent">
         <Button
           className="w-full h-14 text-base rounded-2xl"
-          disabled={exercises.length === 0}
           onClick={() => void startTraining()}
         >
           <Play className="h-5 w-5 mr-2" />
