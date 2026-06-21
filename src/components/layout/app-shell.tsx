@@ -5,7 +5,6 @@ import { useProfileHeader } from "@/hooks/use-profile-header";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Header } from "@/components/layout/header";
-import { AppScrollMain } from "@/components/layout/app-scroll-main";
 import { NotificationProvider } from "@/components/providers/notification-provider";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { GamificationUnlockToast } from "@/components/gamification/gamification-unlock-toast";
@@ -21,15 +20,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <NotificationProvider>
-        <div className="app-viewport gradient-mesh">
+        <div className="gradient-mesh min-h-[100dvh]">
           <RoutePrefetcher />
           <SidebarNav isAdmin={isAdmin} />
-          <div className="mobile-app-frame mx-auto flex h-full w-full max-w-[430px] flex-col">
+          <div className="mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
             <Header userName={headerName} userImage={headerImage} />
-            <AppScrollMain>
+            <main className="app-page-content flex-1 px-4 pb-4">
               <GuestUpgradeBanner />
               {children}
-            </AppScrollMain>
+            </main>
           </div>
           <BottomNav />
           <NotificationCenter />

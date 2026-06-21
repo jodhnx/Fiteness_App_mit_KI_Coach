@@ -128,11 +128,9 @@ html {
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --app-safe-top-extra: 0.75rem;
   --app-header-bar: 3.75rem;
-  --app-bottom-bar: 3.75rem;
   --app-header-total: calc(
     var(--safe-area-top) + var(--app-safe-top-extra) + var(--app-header-bar)
   );
-  --app-bottom-total: calc(var(--app-bottom-bar) + var(--safe-area-bottom));
 }
 
 body {
@@ -145,14 +143,6 @@ body {
 .mobile-app-body {
   min-height: 100svh;
   -webkit-tap-highlight-color: transparent;
-}
-
-.app-viewport {
-  height: 100svh;
-  max-height: 100svh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
 .mobile-app-frame {
@@ -174,14 +164,6 @@ body {
 
 .mobile-app-header__inner {
   height: var(--app-header-bar);
-}
-
-.app-main-scroll {
-  padding-top: 1.25rem;
-  padding-bottom: var(--app-bottom-total);
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: auto;
-  overflow-anchor: none;
 }
 
 .app-page-content {
@@ -247,27 +229,7 @@ html[data-density="large"] .hub-card-pad { padding: 1.35rem; min-height: 88px; }
 }
 
 .safe-area-pb {
-  padding-bottom: var(--safe-area-bottom);
-}
-
-.app-bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  padding-bottom: var(--safe-area-bottom);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(9, 9, 11, 0.98);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-}
-
-.app-bottom-nav__inner {
-  height: var(--app-bottom-bar);
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
 .settings-section {
