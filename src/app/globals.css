@@ -129,11 +129,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  min-height: 100vh;
+  min-height: 100svh;
 }
 
 .mobile-app-body {
-  min-height: 100dvh;
+  min-height: 100svh;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -359,6 +359,28 @@ html[data-density="large"] .hub-card-pad { padding: 1.35rem; min-height: 88px; }
   max-width: 430px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Keyboard-stable layouts — prevent viewport resize jumps on mobile */
+.auth-screen-root {
+  height: 100svh;
+  max-height: 100svh;
+  touch-action: manipulation;
+}
+
+.auth-screen-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+}
+
+.keyboard-stable-page {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.keyboard-stable-input {
+  scroll-margin: 0;
+  font-size: 16px;
 }
 
 body[data-mobileSheet] .app-bottom-nav,

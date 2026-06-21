@@ -178,7 +178,7 @@ export default function NutritionPage() {
   );
 
   return (
-    <div className="nutrition-mobile-page space-y-3 pb-28 max-w-lg mx-auto">
+    <div className="nutrition-mobile-page keyboard-stable-page space-y-3 pb-28 max-w-lg mx-auto">
       <div className="flex items-center justify-between gap-3 pt-1">
         <h1 className="text-xl font-bold text-white">Ernährung</h1>
         <Link

@@ -1,8 +1,6 @@
-export function scrollInputIntoView(el: HTMLElement) {
-  if (typeof window === "undefined") return;
-  setTimeout(() => {
-    el.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, 320);
+/** Intentionally no-op — scrolling on focus caused layout jumps on mobile keyboards. */
+export function scrollInputIntoView(_el: HTMLElement) {
+  void _el;
 }
 
 export function formatNumField(v: unknown): string {

@@ -37,8 +37,9 @@ function ResetForm() {
   }
 
   return (
-    <div className="gradient-mesh min-h-screen flex items-center justify-center p-6">
-      <Card className="w-full max-w-md">
+    <div className="auth-screen-root gradient-mesh">
+      <div className="auth-screen-scroll flex items-center justify-center p-6">
+      <Card className="w-full max-w-md shrink-0">
         <CardHeader>
           <CardTitle>{token ? "Neues Passwort" : "Passwort zurücksetzen"}</CardTitle>
           <CardDescription>
@@ -50,12 +51,12 @@ function ResetForm() {
             {token ? (
               <div>
                 <Label htmlFor="password">Neues Passwort</Label>
-                <Input id="password" name="password" type="password" minLength={8} required />
+                <Input id="password" name="password" type="password" minLength={8} required className="keyboard-stable-input" />
               </div>
             ) : (
               <div>
                 <Label htmlFor="email">E-Mail</Label>
-                <Input id="email" name="email" type="email" required />
+                <Input id="email" name="email" type="email" required className="keyboard-stable-input" />
               </div>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
@@ -67,6 +68,7 @@ function ResetForm() {
           </Link>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

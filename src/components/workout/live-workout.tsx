@@ -327,7 +327,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         onSave={(name) => saveCompletedWorkout(name)}
         onCancel={() => setEndOpen(false)}
       />
-    <div className="space-y-4 pb-36 max-w-lg mx-auto">
+    <div className="space-y-4 pb-36 max-w-lg mx-auto keyboard-stable-page">
       <div className="sticky top-0 z-20 py-3 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/50 -mx-1 px-1">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
           <div className="flex items-start justify-between gap-3">
@@ -416,7 +416,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
                     type="number"
                     inputMode="decimal"
                     placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
-                    className="h-14 text-xl text-center rounded-xl tabular-nums"
+                    className="h-14 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
                     value={set.weightKg ?? ""}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -443,7 +443,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
                     type="number"
                     inputMode="numeric"
                     placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
-                    className="h-14 text-xl text-center rounded-xl tabular-nums"
+                    className="h-14 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
                     value={set.reps ?? ""}
                     onChange={(e) => {
                       const v = e.target.value;

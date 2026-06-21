@@ -4,8 +4,8 @@ import { memo } from "react";
 import Link from "next/link";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets, nutritionProfileIncomplete } from "@/lib/nutrition-defaults";
+import { CalorieRing } from "@/components/nutrition/calorie-ring";
 import { NutritionMacroCard } from "@/components/nutrition/nutrition-macro-card";
-import { NutritionCalorieSummary } from "@/components/nutrition/nutrition-calorie-summary";
 
 export const NutritionOverviewPanel = memo(function NutritionOverviewPanel({
   dashboard,
@@ -35,11 +35,16 @@ export const NutritionOverviewPanel = memo(function NutritionOverviewPanel({
 
   return (
     <div className="rounded-2xl bg-zinc-900/80 border border-zinc-800 overflow-hidden">
-      <NutritionCalorieSummary
-        consumed={consumed.calories}
-        target={targets.calories}
-        remaining={remaining.calories}
-      />
+      <div className="flex justify-center py-5 px-3">
+        <CalorieRing
+          consumed={consumed.calories}
+          target={targets.calories}
+          remaining={remaining.calories}
+          size={152}
+          ringId="nutrition-kcal-ring"
+          label="ÜBRIG"
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-px bg-zinc-800/60 border-t border-zinc-800/80">
         <NutritionMacroCard

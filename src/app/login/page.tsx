@@ -108,11 +108,11 @@ function LoginForm() {
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <Label htmlFor="email">E-Mail</Label>
-          <Input id="email" name="email" type="email" required disabled={loading} className="mt-1.5 h-12 rounded-xl" />
+          <Input id="email" name="email" type="email" required disabled={loading} className="mt-1.5 h-12 rounded-xl keyboard-stable-input" />
         </div>
         <div>
           <Label htmlFor="password">Passwort</Label>
-          <Input id="password" name="password" type="password" required disabled={loading} className="mt-1.5 h-12 rounded-xl" />
+          <Input id="password" name="password" type="password" required disabled={loading} className="mt-1.5 h-12 rounded-xl keyboard-stable-input" />
         </div>
         <Button type="submit" className="w-full h-14 rounded-2xl btn-accent" disabled={loading}>
           {loading ? "Wird angemeldet…" : "Anmelden"}

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useId } from "react";
+import { memo, useId, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -11,8 +11,6 @@ type Props = {
   className?: string;
   label?: string;
   ringId?: string;
-  /** ringOnly = decorative ring without center text (use NutritionCalorieSummary for text) */
-  variant?: "default" | "ringOnly";
 };
 
 export const CalorieRing = memo(function CalorieRing({
@@ -23,7 +21,6 @@ export const CalorieRing = memo(function CalorieRing({
   className,
   label = "ÜBRIG",
   ringId,
-  variant = "default",
 }: Props) {
   const autoId = useId();
   const gradientId = ringId ?? `kcal-ring-${autoId.replace(/:/g, "")}`;
@@ -35,67 +32,73 @@ export const CalorieRing = memo(function CalorieRing({
   const hasTarget = target > 0;
   const strokeW = size >= 200 ? 12 : size >= 140 ? 10 : 8;
 
-  const ringSvg = (
-    <svg width={size} height={size} className="-rotate-90" aria-hidden>
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#f97316" />
-          <stop offset="100%" stopColor="#fb923c" />
-        </linearGradient>
-      </defs>
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke="rgba(255,255,255,0.07)"
-        strokeWidth={strokeW}
-      />
-      {hasTarget && (
+  const kcalLeft = hasTarget ? Math.max(0, Math.round(remaining)) : 0;
+  const kcalConsumed = Math.round(consumed);
+  const kcalTarget = Math.round(target);
+
+  const numberSizeClass = useMemo(() => {
+    const digits = String(kcalLeft).length;
+    if (size >= 200) {
+      return digits >= 4 ? "text-3xl" : "text-4xl";
+    }
+    if (size >= 150) {
+      return digits >= 4 ? "text-2xl" : digits >= 3 ? "text-3xl" : "text-[2rem]";
+    }
+    return digits >= 4 ? "text-xl" : "text-2xl";
+  }, [kcalLeft, size]);
+
+  return (
+    <div
+      className={cn("relative mx-auto shrink-0", className)}
+      style={{ width: size, height: size }}
+    >
+      <svg width={size} height={size} className="-rotate-90" aria-hidden>
+        <defs>
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#f97316" />
+            <stop offset="100%" stopColor="#fb923c" />
+          </linearGradient>
+        </defs>
         <circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={`url(#${gradientId})`}
+          stroke="rgba(255,255,255,0.07)"
           strokeWidth={strokeW}
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-300 ease-out"
         />
-      )}
-    </svg>
-  );
+        {hasTarget && (
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke={`url(#${gradientId})`}
+            strokeWidth={strokeW}
+            strokeLinecap="round"
+            strokeDasharray={c}
+            strokeDashoffset={offset}
+            className="transition-[stroke-dashoffset] duration-300 ease-out"
+          />
+        )}
+      </svg>
 
-  if (variant === "ringOnly") {
-    return (
-      <div className={cn("relative mx-auto", className)} style={{ width: size, height: size }}>
-        {ringSvg}
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("relative mx-auto", className)} style={{ width: size, height: size }}>
-      {ringSvg}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-3 min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500 truncate w-full">
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-2 min-w-0 pointer-events-none">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500 leading-none">
           {label}
         </p>
         <p
           className={cn(
-            "font-bold text-white tabular-nums leading-none mt-1 w-full",
-            size >= 200 ? "text-4xl" : size >= 160 ? "text-3xl" : "text-2xl"
+            "font-bold text-white tabular-nums leading-none mt-1",
+            numberSizeClass
           )}
         >
-          {hasTarget ? Math.max(0, Math.round(remaining)).toLocaleString("de-DE") : "—"}
+          {hasTarget ? kcalLeft.toLocaleString("de-DE") : "—"}
         </p>
-        <p className="text-[11px] text-zinc-500 mt-1.5 tabular-nums truncate w-full max-w-full px-0.5">
+        <p className="text-[10px] text-zinc-500 mt-1 tabular-nums leading-tight whitespace-nowrap max-w-full">
           {hasTarget ? (
             <>
-              {Math.round(consumed).toLocaleString("de-DE")} von{" "}
-              {Math.round(target).toLocaleString("de-DE")} kcal
+              {kcalConsumed.toLocaleString("de-DE")} / {kcalTarget.toLocaleString("de-DE")} kcal
             </>
           ) : (
             "Ziel fehlt"

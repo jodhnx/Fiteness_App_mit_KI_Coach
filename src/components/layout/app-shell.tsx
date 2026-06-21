@@ -20,10 +20,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <NotificationProvider>
-        <div className="gradient-mesh min-h-[100dvh]">
+        <div className="gradient-mesh min-h-[100svh]">
           <RoutePrefetcher />
           <SidebarNav isAdmin={isAdmin} />
-          <div className="mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
+          <div className="mobile-app-frame mx-auto w-full min-h-[100svh] flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
             <Header userName={headerName} userImage={headerImage} />
             <main className="app-page-content flex-1 px-4 pb-4">
               <GuestUpgradeBanner />

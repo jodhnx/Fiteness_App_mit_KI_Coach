@@ -48,6 +48,8 @@ export const viewport = {
   maximumScale: 5,
   viewportFit: "cover",
   themeColor: "#09090b",
+  /** Keyboard overlays content — layout height stays fixed on iOS/Android */
+  interactiveWidget: "overlays-content" as const,
 };
 
 export default function RootLayout({

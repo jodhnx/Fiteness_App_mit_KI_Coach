@@ -36,7 +36,6 @@ import {
 } from "@/lib/onboarding-draft";
 import { CONFIG_LOCATIONS, type ConfigLocation } from "@/lib/plan-configurator";
 import { PlaceholderNumberInput } from "@/components/ui/placeholder-number-input";
-import { scrollInputIntoView } from "@/lib/mobile-input-scroll";
 import { ChevronLeft, ChevronRight, Sparkles, Minus, Plus } from "lucide-react";
 
 const PROFILE_STEPS = 12;
@@ -348,7 +347,7 @@ export function RegistrationFlow() {
         <GlassCard>
           <Label>Name</Label>
           <Input
-            className="mt-2 h-14 text-lg rounded-xl"
+            className="mt-2 h-14 text-lg rounded-xl keyboard-stable-input"
             value={draft.name}
             onChange={(e) => patch({ name: e.target.value })}
             placeholder="Dein Name"
@@ -553,10 +552,9 @@ export function RegistrationFlow() {
                 <Label>E-Mail</Label>
                 <Input
                   type="email"
-                  className="mt-1.5 h-12 rounded-xl"
+                  className="mt-1.5 h-12 rounded-xl keyboard-stable-input"
                   value={draft.email}
                   onChange={(e) => patch({ email: e.target.value })}
-                  onFocus={(e) => scrollInputIntoView(e.target)}
                   placeholder="deine@email.de"
                 />
               </div>
@@ -564,16 +562,15 @@ export function RegistrationFlow() {
                 <Label>Passwort</Label>
                 <Input
                   type="password"
-                  className="mt-1.5 h-12 rounded-xl"
+                  className="mt-1.5 h-12 rounded-xl keyboard-stable-input"
                   value={draft.password}
                   onChange={(e) => patch({ password: e.target.value })}
-                  onFocus={(e) => scrollInputIntoView(e.target)}
                 />
                 <PasswordStrength password={draft.password} />
               </div>
               <div>
                 <Label>Passwort wiederholen</Label>
-                <Input type="password" className="mt-1.5 h-12 rounded-xl" value={draft.passwordConfirm} onChange={(e) => patch({ passwordConfirm: e.target.value })} />
+                <Input type="password" className="mt-1.5 h-12 rounded-xl keyboard-stable-input" value={draft.passwordConfirm} onChange={(e) => patch({ passwordConfirm: e.target.value })} />
               </div>
               <label className="flex items-start gap-2 text-xs text-zinc-400">
                 <input type="checkbox" checked={draft.acceptTerms} onChange={(e) => patch({ acceptTerms: e.target.checked })} className="mt-0.5 accent-cyan-400" />

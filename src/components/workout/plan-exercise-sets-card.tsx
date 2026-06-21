@@ -150,7 +150,7 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
                   weightKg: v === "" ? null : Number(v),
                 });
               }}
-              className="h-11 text-base tabular-nums"
+              className="h-11 text-base tabular-nums keyboard-stable-input"
             />
             <Input
               type="number"
@@ -164,7 +164,7 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
                   reps: v === "" ? null : Number(v),
                 });
               }}
-              className="h-11 text-base tabular-nums"
+              className="h-11 text-base tabular-nums keyboard-stable-input"
             />
             <Button
               type="button"

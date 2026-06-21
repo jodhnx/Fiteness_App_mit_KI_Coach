@@ -3,7 +3,6 @@
 import { useCallback, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { scrollInputIntoView } from "@/lib/mobile-input-scroll";
 
 type Props = {
   value: number | null;
@@ -27,14 +26,10 @@ export function PlaceholderNumberInput({
   const [focused, setFocused] = useState(false);
   const [text, setText] = useState("");
 
-  const handleFocus = useCallback(
-    (e: React.FocusEvent<HTMLInputElement>) => {
-      setFocused(true);
-      setText("");
-      scrollInputIntoView(e.target);
-    },
-    []
-  );
+  const handleFocus = useCallback(() => {
+    setFocused(true);
+    setText("");
+  }, []);
 
   const handleBlur = useCallback(() => {
     setFocused(false);
@@ -73,7 +68,7 @@ export function PlaceholderNumberInput({
       onBlur={handleBlur}
       onChange={handleChange}
       autoFocus={autoFocus}
-      className={cn(className)}
+      className={cn("keyboard-stable-input", className)}
     />
   );
 }

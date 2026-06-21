@@ -177,7 +177,7 @@ export default function OnboardingPage() {
   if (step === 5 && result) {
     const months = Math.max(1, Math.round(result.estimatedGoalWeeks / 4));
     return (
-      <div className="gradient-mesh min-h-[100dvh] flex flex-col p-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
+      <div className="gradient-mesh fixed inset-0 flex flex-col overflow-hidden p-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
           <div className="text-center mb-6">
             <Sparkles className="h-12 w-12 text-cyan-400 mx-auto mb-3" />
@@ -234,8 +234,8 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="gradient-mesh min-h-[100dvh] flex flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <div className="max-w-md mx-auto w-full flex-1 flex flex-col">
+    <div className="gradient-mesh fixed inset-0 flex flex-col overflow-hidden px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-y-auto overscroll-contain min-h-0">
         {step > 1 && step < 5 && (
           <div className="mb-5">
             <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
