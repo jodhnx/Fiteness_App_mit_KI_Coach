@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +13,7 @@ import {
   signInCredentials,
   redirectAfterLogin,
 } from "@/lib/auth-flow";
+import { warmPostLoginCaches } from "@/lib/post-login-cache";
 import {
   AuthScreenLayout,
   GuestContinueButton,
@@ -29,9 +29,12 @@ function resolveErrorCode(error?: string | null, code?: string | null): string {
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const { status: sessionStatus } = useSession();
   const [loading, setLoading] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+
+  useEffect(() => {
+    router.prefetch(DEFAULT_POST_LOGIN);
+  }, [router]);
 
   useEffect(() => {
     const err = params.get("error");
@@ -48,12 +51,6 @@ function LoginForm() {
     }
   }, [params]);
 
-  useEffect(() => {
-    if (sessionStatus === "authenticated") {
-      router.replace(DEFAULT_POST_LOGIN);
-    }
-  }, [sessionStatus, router]);
-
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -66,8 +63,9 @@ function LoginForm() {
     try {
       const res = await signInCredentials(email, password, DEFAULT_POST_LOGIN);
       if (res.ok) {
+        warmPostLoginCaches();
         toast.success("Willkommen zurück!");
-        await redirectAfterLogin(router);
+        redirectAfterLogin(router);
         return;
       }
       const errCode = resolveErrorCode(res.error, res.code);

@@ -1,6 +1,10 @@
 import { fetchCached, getCached, isCacheStale } from "@/lib/client-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
-import { PROFILE_CACHE_KEY, HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
+import {
+  PROFILE_CACHE_KEY,
+  HOME_DATA_CACHE_KEY,
+  NUTRITION_DASHBOARD_CACHE_KEY,
+} from "@/lib/nutrition-sync";
 
 let warmed = false;
 
@@ -23,6 +27,22 @@ export function warmNavDataCaches() {
     ).catch(() => {});
   }
 
+  if (isCacheStale(NUTRITION_DASHBOARD_CACHE_KEY, 0.85)) {
+    void fetchCached(
+      NUTRITION_DASHBOARD_CACHE_KEY,
+      () => fetchJson("/api/nutrition/dashboard"),
+      120_000
+    ).catch(() => {});
+  }
+
+  if (isCacheStale(PROFILE_CACHE_KEY, 0.92)) {
+    void fetchCached(
+      PROFILE_CACHE_KEY,
+      () => fetchJson("/api/profile"),
+      120_000
+    ).catch(() => {});
+  }
+
   const idle =
     typeof requestIdleCallback !== "undefined"
       ? requestIdleCallback
@@ -34,14 +54,6 @@ export function warmNavDataCaches() {
         PROGRESS_CACHE_KEY,
         () => fetchJson("/api/progress"),
         180_000
-      ).catch(() => {});
-    }
-
-    if (isCacheStale(PROFILE_CACHE_KEY, 0.92)) {
-      void fetchCached(
-        PROFILE_CACHE_KEY,
-        () => fetchJson("/api/profile"),
-        120_000
       ).catch(() => {});
     }
 

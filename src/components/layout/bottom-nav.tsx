@@ -19,11 +19,8 @@ export const BottomNav = memo(function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav
-      className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 lg:hidden border-t border-white/10 bg-zinc-950/98 backdrop-blur-xl safe-area-pb transform-gpu"
-      aria-label="Hauptnavigation"
-    >
-      <div className="mx-auto w-full max-w-[430px] flex items-stretch justify-between px-1 pt-1 pb-1.5">
+    <nav className="app-bottom-nav lg:hidden" aria-label="Hauptnavigation">
+      <div className="app-bottom-nav__inner mx-auto w-full max-w-[430px] px-1">
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isNavActive(pathname, href);
           return (
@@ -33,7 +30,7 @@ export const BottomNav = memo(function BottomNav() {
               prefetch
               scroll={false}
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 py-2 min-h-[52px] text-[11px] font-medium transition-colors duration-75 active:scale-95 transform-gpu",
+                "flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors duration-75 active:scale-95",
                 active ? "text-accent" : "text-zinc-500"
               )}
               aria-current={active ? "page" : undefined}

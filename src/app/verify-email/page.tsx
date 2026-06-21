@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInCredentials, redirectAfterLogin } from "@/lib/auth-flow";
+import { warmPostLoginCaches } from "@/lib/post-login-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,7 +48,8 @@ function VerifyEmailForm() {
         const signInRes = await signInCredentials(email.trim(), password);
         if (signInRes.ok) {
           logAuthFlow("verify_email_auto_login");
-          await redirectAfterLogin(router);
+          warmPostLoginCaches();
+          redirectAfterLogin(router);
           return;
         }
         console.log("LOGIN ERROR", signInRes);

@@ -132,9 +132,7 @@ html {
   --app-header-total: calc(
     var(--safe-area-top) + var(--app-safe-top-extra) + var(--app-header-bar)
   );
-  --app-bottom-total: calc(
-    var(--app-bottom-bar) + max(0.5rem, var(--safe-area-bottom))
-  );
+  --app-bottom-total: calc(var(--app-bottom-bar) + var(--safe-area-bottom));
 }
 
 body {
@@ -249,11 +247,27 @@ html[data-density="large"] .hub-card-pad { padding: 1.35rem; min-height: 88px; }
 }
 
 .safe-area-pb {
-  padding-bottom: max(0.5rem, var(--safe-area-bottom));
+  padding-bottom: var(--safe-area-bottom);
 }
 
 .app-bottom-nav {
-  min-height: var(--app-bottom-total);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding-bottom: var(--safe-area-bottom);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(9, 9, 11, 0.98);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.app-bottom-nav__inner {
+  height: var(--app-bottom-bar);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
 }
 
 .settings-section {

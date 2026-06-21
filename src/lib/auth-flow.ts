@@ -1,5 +1,4 @@
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { getSession } from "next-auth/react";
 import {
   DEFAULT_POST_LOGIN,
   resolvePostLoginPath,
@@ -99,11 +98,19 @@ export async function signInCredentials(
   const { error, code } = parseAuthRedirectUrl(data.url);
 
   if (res.ok && !error) {
-    await getSession();
+    logAuthFlow("signInCredentials", {
+      ok: true,
+      status: res.status,
+    });
+    return {
+      ok: true,
+      status: res.status,
+      url: data.url ?? null,
+    };
   }
 
   logAuthFlow("signInCredentials", {
-    ok: res.ok && !error,
+    ok: false,
     status: res.status,
     error,
     code,
@@ -111,38 +118,21 @@ export async function signInCredentials(
   });
 
   return {
-    ok: res.ok && !error,
+    ok: false,
     error,
     code,
     status: res.status,
-    url: error ? null : data.url ?? null,
+    url: null,
   };
 }
 
-export async function waitForClientSession(timeoutMs = 2000): Promise<boolean> {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const session = await getSession();
-    if (session?.user?.id) return true;
-    await new Promise((r) => setTimeout(r, 50));
-  }
-  return false;
-}
-
-export async function redirectAfterLogin(
+/** Client navigation after login — no full page reload. */
+export function redirectAfterLogin(
   router: AppRouterInstance,
-  _callbackUrl?: string | null
-): Promise<void> {
-  const target = DEFAULT_POST_LOGIN;
+  callbackUrl?: string | null
+): void {
+  const target = resolvePostLoginPath(callbackUrl ?? DEFAULT_POST_LOGIN);
   logAuthFlow("redirect_after_login", target);
-
-  if (typeof window !== "undefined") {
-    window.location.replace(target);
-    return;
-  }
-
-  const hasSession = await waitForClientSession();
-  logAuthFlow(hasSession ? "session_ready" : "session_missing", target);
   router.replace(target);
   router.refresh();
 }
