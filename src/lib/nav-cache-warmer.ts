@@ -1,6 +1,6 @@
 import { fetchCached, getCached, isCacheStale } from "@/lib/client-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
-import { PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
+import { PROFILE_CACHE_KEY, HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
 
 let warmed = false;
 
@@ -33,6 +33,14 @@ export function warmNavDataCaches() {
       void fetchCached(
         PROFILE_CACHE_KEY,
         () => fetchJson("/api/profile"),
+        120_000
+      ).catch(() => {});
+    }
+
+    if (isCacheStale(HOME_DATA_CACHE_KEY, 0.75)) {
+      void fetchCached(
+        HOME_DATA_CACHE_KEY,
+        () => fetchJson("/api/home"),
         120_000
       ).catch(() => {});
     }

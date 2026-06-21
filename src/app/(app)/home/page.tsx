@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
@@ -10,30 +10,34 @@ import { type HomeDataPayload } from "@/lib/home-defaults";
 import { useHomeLiveData } from "@/hooks/use-home-live-data";
 import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
 import { useDisplayName } from "@/hooks/use-display-name";
-import { RefreshCw, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HomeGreeting } from "@/components/home/home-greeting";
-import { HomeCalorieHeroCard } from "@/components/home/home-calorie-hero-card";
-import { HomeNextTrainingCard } from "@/components/home/home-next-training-card";
-import { HomeTrainingStreakCard } from "@/components/home/home-training-streak-card";
-import { HomeWeightTrendCard } from "@/components/home/home-weight-trend-card";
-import { HomeKiTipCard } from "@/components/home/home-ki-tip-card";
+import { HomeStatsStrip } from "@/components/home/home-stats-strip";
+import { HomeStatusHeroCard } from "@/components/home/home-status-hero-card";
+import { HomePlannedTrainingCard } from "@/components/home/home-planned-training-card";
+import { HomeDayFocusCard } from "@/components/home/home-day-focus-card";
+import { HomeProgressGrid } from "@/components/home/home-progress-grid";
 import { HomeRecentAchievements } from "@/components/home/home-recent-achievements";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
-import { refreshCached, isCacheStale, getCached } from "@/lib/client-cache";
-import { HomeLoadingSkeleton } from "@/components/home/home-loading-skeleton";
+import {
+  computeHomeHighlight,
+  buildDayFocusItems,
+} from "@/lib/home-smart-layout";
+import { getCached } from "@/lib/client-cache";
+import { isSameDay } from "date-fns";
 
 export default function HomePage() {
   const { status: sessionStatus } = useSession();
   const [workoutCleared, setWorkoutCleared] = useState(false);
 
-  const { data: rawData, error, timedOut, reload } = useCachedFetch<HomeDataPayload>(
+  const { data: rawData } = useCachedFetch<HomeDataPayload>(
     HOME_DATA_CACHE_KEY,
     "/api/home",
     120_000,
-    8_000,
-    { revalidateOnMount: false, staleRatio: 0.98 }
+    6_000,
+    { revalidateOnMount: true, staleRatio: 0.75 }
   );
 
   const data = useHomeLiveData(rawData);
@@ -59,45 +63,54 @@ export default function HomePage() {
     if (data.activeSession?.id) setWorkoutCleared(false);
   }, [data.activeSession?.id]);
 
-  useEffect(() => {
-    if (!rawData || !isCacheStale(HOME_DATA_CACHE_KEY, 0.98)) return;
-    const idle =
-      typeof requestIdleCallback !== "undefined"
-        ? requestIdleCallback
-        : (cb: () => void) => setTimeout(cb, 2000);
-    const handle = idle(() => {
-      refreshCached(
-        HOME_DATA_CACHE_KEY,
-        async () => {
-          const res = await fetch("/api/home", { credentials: "same-origin" });
-          if (!res.ok) throw new Error("refresh failed");
-          return res.json() as Promise<HomeDataPayload>;
-        },
-        120_000,
-        () => {},
-        () => {}
-      );
-    });
-    return () => {
-      if (typeof handle === "number") {
-        if (typeof cancelIdleCallback !== "undefined") cancelIdleCallback(handle);
-        else clearTimeout(handle);
-      }
-    };
-  }, [rawData]);
-
+  const activeSessionId = workoutCleared ? null : data.activeSession?.id ?? null;
   const trainingStreakDays =
     data.trainingStreak?.currentDays ?? data.streak?.currentDays ?? 0;
-  const activeSessionId = workoutCleared ? null : data.activeSession?.id;
-  const nextWorkout = data.nextWorkout ?? null;
+  const level = data.gamification?.level ?? 0;
+  const levelName = data.gamification?.levelName;
 
-  const recoveryMuscles: MuscleRecovery[] = filterDisplayMuscles(
-    (data.recovery?.muscles ?? []) as MuscleRecovery[]
+  const recoveryMuscles: MuscleRecovery[] = useMemo(
+    () => filterDisplayMuscles((data.recovery?.muscles ?? []) as MuscleRecovery[]),
+    [data.recovery?.muscles]
   );
 
-  if (sessionStatus === "loading" && !rawData && !getCached(HOME_DATA_CACHE_KEY)) {
-    return <HomeLoadingSkeleton />;
-  }
+  const highlight = useMemo(
+    () => computeHomeHighlight(data, nutrition, activeSessionId),
+    [data, nutrition, activeSessionId]
+  );
+
+  const dayFocusItems = useMemo(
+    () => buildDayFocusItems(data, recoveryMuscles),
+    [data, recoveryMuscles]
+  );
+
+  const trainingStatus = useMemo(() => {
+    if (activeSessionId) return "active" as const;
+    const completedToday =
+      data.lastCompletedWorkout?.completedAt &&
+      isSameDay(new Date(data.lastCompletedWorkout.completedAt), new Date());
+    if (completedToday) return "done" as const;
+    if (data.nextWorkout?.dayId) return "planned" as const;
+    return "open" as const;
+  }, [activeSessionId, data.lastCompletedWorkout, data.nextWorkout?.dayId]);
+
+  const steps = data.healthToday?.steps ?? 0;
+  const stepGoal = data.healthToday?.stepGoal ?? 10_000;
+
+  const showTrainingFirst = highlight === "training" || Boolean(data.nextWorkout?.dayId);
+
+  const trainingSection = useMemo(
+    () => (
+      <HomePlannedTrainingCard
+        nextWorkout={data.nextWorkout ?? null}
+        activeSessionId={activeSessionId}
+        lastCompleted={data.lastCompletedWorkout}
+        recoveryMuscles={recoveryMuscles}
+        highlight={highlight === "training"}
+      />
+    ),
+    [data.nextWorkout, data.lastCompletedWorkout, activeSessionId, recoveryMuscles, highlight]
+  );
 
   if (sessionStatus === "unauthenticated") {
     return (
@@ -111,38 +124,48 @@ export default function HomePage() {
     );
   }
 
-  return (
-    <div className="space-y-3 pb-2 max-w-lg mx-auto">
-      {(error || timedOut) && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span className="flex-1">{error ?? "Aktualisierung im Hintergrund…"}</span>
-          {error && (
-            <button type="button" onClick={reload} aria-label="Neu laden">
-              <RefreshCw className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-      )}
+  const hasCache = Boolean(getCached(HOME_DATA_CACHE_KEY));
 
+  return (
+    <div className="space-y-3 pb-4 max-w-lg mx-auto">
       <HomeGreeting name={displayName} />
 
-      <HomeCalorieHeroCard nutrition={nutrition} />
-
-      <HomeNextTrainingCard
-        nextWorkout={nextWorkout}
-        activeSessionId={activeSessionId}
-        lastCompleted={data.lastCompletedWorkout}
-        recoveryMuscles={recoveryMuscles}
+      <HomeStatsStrip
+        weightKg={data.weightKg}
+        streakDays={trainingStreakDays}
+        level={level}
+        levelName={levelName}
+        highlight={highlight === "streak" ? "streak" : null}
       />
 
-      <HomeTrainingStreakCard streakDays={trainingStreakDays} />
+      <HomeStatusHeroCard
+        nutrition={nutrition}
+        steps={steps}
+        stepGoal={stepGoal}
+        trainingStatus={trainingStatus}
+        highlight={
+          highlight === "calories" ? "calories" : highlight === "training" ? "training" : null
+        }
+      />
 
-      <HomeWeightTrendCard home={data} />
+      {showTrainingFirst && trainingSection}
 
-      <HomeKiTipCard coach={data.coach} />
+      <HomeDayFocusCard items={dayFocusItems} />
+
+      {!showTrainingFirst && trainingSection}
+
+      <HomeProgressGrid
+        home={data}
+        nutrition={nutrition}
+        streakDays={trainingStreakDays}
+        streakHighlight={highlight === "streak"}
+      />
 
       <HomeRecentAchievements achievements={data.recentAchievements ?? []} />
+
+      {!hasCache && sessionStatus === "loading" && (
+        <p className="text-[10px] text-center text-zinc-600 pb-2">Aktualisiere im Hintergrund…</p>
+      )}
     </div>
   );
 }
