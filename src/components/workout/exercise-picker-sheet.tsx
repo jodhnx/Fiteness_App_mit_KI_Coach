@@ -5,6 +5,7 @@ import { X, Search, Star, Clock, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useExerciseLibrarySearch, type LibraryExercise } from "@/hooks/use-exercise-library-search";
 import { cn } from "@/lib/utils";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
 type Tab = "favorites" | "recent" | "frequent";
 
@@ -66,6 +67,8 @@ export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: 
   const [frequent, setFrequent] = useState<LibraryExercise[]>(listsCache?.frequent ?? []);
 
   const exclude = useMemo(() => new Set(excludeIds), [excludeIds]);
+
+  useBodyScrollLock(open);
 
   const { exercises: searchResults, loading: searchLoading } = useExerciseLibrarySearch(
     search,

@@ -91,12 +91,13 @@ export const HomeStatusHeroCard = memo(function HomeStatusHeroCard({
             <p className="text-sm text-zinc-400 py-2">Kalorienziel in Einstellungen festlegen</p>
           ) : (
             <>
-              <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">kcal übrig</p>
-              <p className="text-[3.25rem] font-bold text-white tabular-nums leading-none mt-1 tracking-tight">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">Kalorien übrig</p>
+              <p className="text-[clamp(2rem,9vw,3.25rem)] font-bold text-white tabular-nums leading-none mt-1 tracking-tight">
                 {kcalLeft.toLocaleString("de-DE")}
+                <span className="text-[0.42em] font-semibold text-zinc-400 ml-1.5">kcal</span>
               </p>
-              <p className="text-xs text-zinc-500 mt-2 tabular-nums">
-                {kcalConsumed.toLocaleString("de-DE")} / {kcalTarget.toLocaleString("de-DE")} kcal
+              <p className="text-xs text-zinc-500 mt-2 tabular-nums whitespace-nowrap">
+                {kcalConsumed.toLocaleString("de-DE")} von {kcalTarget.toLocaleString("de-DE")} kcal
               </p>
             </>
           )}

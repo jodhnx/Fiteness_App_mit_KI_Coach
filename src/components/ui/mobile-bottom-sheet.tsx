@@ -4,6 +4,7 @@ import { memo, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
 type Props = {
   open: boolean;
@@ -40,13 +41,12 @@ export const MobileBottomSheet = memo(function MobileBottomSheet({
     setMounted(true);
   }, []);
 
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     document.body.dataset.mobileSheet = layer;
     return () => {
-      document.body.style.overflow = prev;
       if (document.body.dataset.mobileSheet === layer) {
         delete document.body.dataset.mobileSheet;
       }

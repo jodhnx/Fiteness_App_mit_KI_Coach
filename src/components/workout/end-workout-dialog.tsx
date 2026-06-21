@@ -4,6 +4,7 @@ import { memo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 
 type Props = {
   open: boolean;
@@ -20,6 +21,8 @@ export const EndWorkoutDialog = memo(function EndWorkoutDialog({
   onCancel,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();

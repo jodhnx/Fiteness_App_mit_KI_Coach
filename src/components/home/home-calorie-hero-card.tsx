@@ -44,12 +44,15 @@ export const HomeCalorieHeroCard = memo(function HomeCalorieHeroCard({
       prefetch
       className="block rounded-2xl border border-zinc-800 bg-zinc-900/80 px-6 py-8 text-center active:opacity-95 transition-opacity"
     >
-      <p className="text-6xl font-semibold text-white tabular-nums leading-none tracking-tight">
-        {kcalLeft.toLocaleString("de-DE")}
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+        Kalorien übrig
       </p>
-      <p className="text-sm text-zinc-400 mt-2 font-medium">kcal übrig</p>
-      <p className="text-sm text-zinc-500 mt-3 tabular-nums">
-        {kcalConsumed.toLocaleString("de-DE")} / {kcalTarget.toLocaleString("de-DE")} kcal
+      <p className="text-[clamp(2rem,9vw,3.75rem)] font-semibold text-white tabular-nums leading-none tracking-tight mt-1.5">
+        {kcalLeft.toLocaleString("de-DE")}
+        <span className="text-[0.42em] font-semibold text-zinc-400 ml-1.5">kcal</span>
+      </p>
+      <p className="text-sm text-zinc-500 mt-2 tabular-nums whitespace-nowrap">
+        {kcalConsumed.toLocaleString("de-DE")} von {kcalTarget.toLocaleString("de-DE")} kcal
       </p>
       <MacroProgressBar
         consumed={consumed.calories}

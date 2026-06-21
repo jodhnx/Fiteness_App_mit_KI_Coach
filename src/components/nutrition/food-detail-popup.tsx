@@ -48,14 +48,6 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
     setCustomGrams(String(defaultG));
   }, [product]);
 
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
   const activeGrams = customMode
     ? Math.max(0, Number(customGrams.replace(",", ".")) || 0)
     : selectedGrams;

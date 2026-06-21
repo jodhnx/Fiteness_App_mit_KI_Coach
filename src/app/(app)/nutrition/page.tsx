@@ -24,6 +24,7 @@ import { RefreshCw, AlertCircle, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { warmNutritionSearchCaches } from "@/lib/nav-cache-warmer";
+import { resetBodyScroll } from "@/lib/scroll-lock";
 
 const VALID_MEALS = new Set<string>(MEAL_TYPE_ORDER);
 
@@ -49,6 +50,7 @@ export default function NutritionPage() {
 
   const closeAddPopup = useCallback(() => {
     setAddSheetMeal(null);
+    resetBodyScroll();
     if (searchParams.get("add")) {
       router.replace("/nutrition");
     }
@@ -56,7 +58,7 @@ export default function NutritionPage() {
 
   const onFoodAdded = useCallback(() => {
     closeAddPopup();
-    toast.success("Lebensmittel gespeichert ✓", { duration: 2000 });
+    toast.success("Lebensmittel hinzugefügt ✓", { duration: 2000 });
   }, [closeAddPopup]);
 
   const { quickAdd } = useFoodQuickAdd({

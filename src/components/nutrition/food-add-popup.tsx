@@ -19,6 +19,8 @@ import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
 import { searchStandardDishes } from "@/data/standard-dishes";
 import { FoodQuickRow } from "@/components/nutrition/food-quick-row";
 import { FoodDetailPopup } from "@/components/nutrition/food-detail-popup";
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import { resetBodyScroll } from "@/lib/scroll-lock";
 
 type Props = {
   open: boolean;
@@ -193,16 +195,21 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     return () => window.clearTimeout(t);
   }, [open]);
 
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     document.body.dataset.foodAddPopup = "open";
     return () => {
-      document.body.style.overflow = prev;
       delete document.body.dataset.foodAddPopup;
     };
   }, [open]);
+
+  const handleClose = useCallback(() => {
+    setDetailProduct(null);
+    resetBodyScroll();
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -342,7 +349,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
               />
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="food-add-popup-icon-btn"
                 aria-label="Schließen"
               >
