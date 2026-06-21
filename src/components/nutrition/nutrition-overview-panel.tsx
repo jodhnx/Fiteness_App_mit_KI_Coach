@@ -15,13 +15,14 @@ export const NutritionOverviewPanel = memo(function NutritionOverviewPanel({
   const { consumed, targets, remaining } = dashboard;
   const ready = hasNutritionTargets(dashboard);
   const incomplete = nutritionProfileIncomplete(dashboard);
+  const fiberRemaining = Math.max(0, Math.round(targets.fiberG - consumed.fiberG));
 
   if (!ready) {
     return (
       <Link
         href="/settings"
         prefetch
-        className="block rounded-2xl border border-zinc-800 bg-zinc-900/80 px-6 py-10 text-center"
+        className="block rounded-2xl border border-zinc-800 bg-zinc-900/80 px-6 py-8 text-center"
       >
         <p className="text-sm text-zinc-300">
           {incomplete
@@ -33,42 +34,56 @@ export const NutritionOverviewPanel = memo(function NutritionOverviewPanel({
   }
 
   return (
-    <div className="space-y-2">
-      <div className="rounded-2xl bg-zinc-900/80 border border-zinc-800 py-6 px-4">
+    <div className="rounded-2xl bg-zinc-900/80 border border-zinc-800 overflow-hidden">
+      <div className="py-2 px-2">
         <CalorieRing
           consumed={consumed.calories}
           target={targets.calories}
           remaining={remaining.calories}
-          size={208}
+          size={148}
           label="ÜBRIG"
           ringId="nutrition-kcal-ring"
         />
       </div>
 
-      <NutritionMacroCard
-        emoji="🥩"
-        label="Protein"
-        consumed={consumed.proteinG}
-        target={targets.proteinG}
-        remaining={remaining.proteinG}
-        barColor="bg-rose-400"
-      />
-      <NutritionMacroCard
-        emoji="🍚"
-        label="Kohlenhydrate"
-        consumed={consumed.carbsG}
-        target={targets.carbsG}
-        remaining={remaining.carbsG}
-        barColor="bg-amber-400"
-      />
-      <NutritionMacroCard
-        emoji="🥑"
-        label="Fett"
-        consumed={consumed.fatG}
-        target={targets.fatG}
-        remaining={remaining.fatG}
-        barColor="bg-sky-400"
-      />
+      <div className="grid grid-cols-2 gap-px bg-zinc-800/60 border-t border-zinc-800/80">
+        <NutritionMacroCard
+          compact
+          emoji="🥩"
+          label="Protein"
+          consumed={consumed.proteinG}
+          target={targets.proteinG}
+          remaining={remaining.proteinG}
+          barColor="bg-rose-400"
+        />
+        <NutritionMacroCard
+          compact
+          emoji="🍚"
+          label="Kohlenhydrate"
+          consumed={consumed.carbsG}
+          target={targets.carbsG}
+          remaining={remaining.carbsG}
+          barColor="bg-amber-400"
+        />
+        <NutritionMacroCard
+          compact
+          emoji="🥑"
+          label="Fett"
+          consumed={consumed.fatG}
+          target={targets.fatG}
+          remaining={remaining.fatG}
+          barColor="bg-sky-400"
+        />
+        <NutritionMacroCard
+          compact
+          emoji="🌾"
+          label="Ballaststoffe"
+          consumed={consumed.fiberG}
+          target={targets.fiberG}
+          remaining={fiberRemaining}
+          barColor="bg-emerald-400"
+        />
+      </div>
     </div>
   );
 });

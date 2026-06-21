@@ -1,21 +1,25 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { getCached, setCached } from "@/lib/client-cache";
 import { PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
+import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 
-export type ProfilePrefetch = {
-  user?: { name?: string | null; image?: string | null };
-};
+const ProfileDataContext = createContext<ProfileServerPrefetch | null>(null);
 
-const ProfileDataContext = createContext<ProfilePrefetch | null>(null);
-
-function seedProfileCache(initial: ProfilePrefetch | null) {
-  if (!initial?.user) return;
-  const prev = getCached<ProfilePrefetch>(PROFILE_CACHE_KEY);
+function seedProfileCacheFromServer(initial: ProfileServerPrefetch) {
+  if (!initial.profile && !initial.user) return;
+  const prev = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY);
+  if (prev?.profile && !initial.profile) return;
   setCached(
     PROFILE_CACHE_KEY,
-    { ...prev, user: { ...prev?.user, ...initial.user } },
+    {
+      ...prev,
+      ...initial,
+      user: { ...prev?.user, ...initial.user },
+      profile: initial.profile ?? prev?.profile,
+      calculations: initial.calculations ?? prev?.calculations,
+    },
     120_000
   );
 }
@@ -24,24 +28,30 @@ export function ProfileDataProvider({
   initialProfile,
   children,
 }: {
-  initialProfile: ProfilePrefetch | null;
+  initialProfile: ProfileServerPrefetch | null;
   children: ReactNode;
 }) {
-  const [profile] = useState(() => {
-    const cached = getCached<ProfilePrefetch>(PROFILE_CACHE_KEY);
-    if (cached?.user?.name) return cached;
-    if (initialProfile?.user?.name || initialProfile?.user?.image) {
-      seedProfileCache(initialProfile);
+  const [profile] = useState<ProfileServerPrefetch | null>(() => {
+    const cached = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY);
+    if (cached?.profile) return cached;
+    if (initialProfile?.profile || initialProfile?.user) {
+      seedProfileCacheFromServer(initialProfile);
       return initialProfile;
     }
     return initialProfile;
   });
+
+  useEffect(() => {
+    if (initialProfile?.profile) {
+      seedProfileCacheFromServer(initialProfile);
+    }
+  }, [initialProfile]);
 
   return (
     <ProfileDataContext.Provider value={profile}>{children}</ProfileDataContext.Provider>
   );
 }
 
-export function usePrefetchedProfile(): ProfilePrefetch | null {
+export function usePrefetchedProfile(): ProfileServerPrefetch | null {
   return useContext(ProfileDataContext);
 }

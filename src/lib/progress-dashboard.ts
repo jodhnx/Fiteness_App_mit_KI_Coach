@@ -45,6 +45,7 @@ export async function loadProgressDashboardExtras(userId: string) {
     prisma.workoutSession.findMany({
       where: { userId, status: "COMPLETED", completedAt: { gte: since90 } },
       orderBy: { completedAt: "asc" },
+      take: 60,
       select: {
         id: true,
         name: true,

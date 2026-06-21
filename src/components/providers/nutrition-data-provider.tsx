@@ -39,20 +39,26 @@ function resolveInitialDashboard(
   const cached = getCached<NutritionDashboardPayload>(
     NUTRITION_DASHBOARD_CACHE_KEY
   );
-  if (
+  const cacheValid =
     cached &&
     isValidDashboardPayload(cached) &&
-    isNutritionDashboardToday(cached.date)
-  ) {
-    return cached;
-  }
-  if (
+    isNutritionDashboardToday(cached.date);
+  const serverValid =
     initialDashboard &&
     isValidDashboardPayload(initialDashboard) &&
-    isNutritionDashboardToday(initialDashboard.date)
-  ) {
-    return initialDashboard;
+    isNutritionDashboardToday(initialDashboard.date);
+
+  if (serverValid && cacheValid) {
+    if (initialDashboard.profileComplete && !cached.profileComplete) {
+      return initialDashboard;
+    }
+    if (initialDashboard.targets.calories > 0 && cached.targets.calories <= 0) {
+      return initialDashboard;
+    }
+    return cached;
   }
+  if (cacheValid) return cached;
+  if (serverValid) return initialDashboard;
   return { ...createEmptyNutritionDashboard(), date: nutritionDayKey() };
 }
 
@@ -68,19 +74,22 @@ export function NutritionDataProvider({
   );
 
   useEffect(() => {
+    if (!initialDashboard) return;
     const resolved = resolveInitialDashboard(initialDashboard);
     const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
-    const sameAsCache =
+    const cacheValid =
       cached &&
       isValidDashboardPayload(cached) &&
-      cached.date === resolved.date &&
-      cached.targets.calories === resolved.targets.calories &&
-      cached.consumed.calories === resolved.consumed.calories;
+      isNutritionDashboardToday(cached.date);
 
-    if (sameAsCache) {
-      setDashboard(cached);
+    if (
+      cacheValid &&
+      cached.consumed.calories === resolved.consumed.calories &&
+      cached.targets.calories === resolved.targets.calories
+    ) {
       return;
     }
+
     publishNutritionDashboard(resolved);
     setDashboard(resolved);
   }, [initialDashboard]);

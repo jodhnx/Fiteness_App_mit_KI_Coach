@@ -47,9 +47,22 @@ export default function NutritionPage() {
 
   const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites();
 
+  const closeAddPopup = useCallback(() => {
+    setAddSheetMeal(null);
+    if (searchParams.get("add")) {
+      router.replace("/nutrition");
+    }
+  }, [router, searchParams]);
+
+  const onFoodAdded = useCallback(() => {
+    closeAddPopup();
+    toast.success("Lebensmittel gespeichert ✓", { duration: 2000 });
+  }, [closeAddPopup]);
+
   const { quickAdd } = useFoodQuickAdd({
     dashboard,
     applyDashboard,
+    onSuccess: onFoodAdded,
   });
 
   const refreshAll = useCallback(() => {
@@ -161,13 +174,6 @@ export default function NutritionPage() {
     },
     [favoriteFoods, toggleFavorite]
   );
-
-  const closeAddPopup = useCallback(() => {
-    setAddSheetMeal(null);
-    if (searchParams.get("add")) {
-      router.replace("/nutrition");
-    }
-  }, [router, searchParams]);
 
   return (
     <div className="nutrition-mobile-page space-y-3 pb-28 max-w-lg mx-auto">

@@ -83,7 +83,7 @@ export default function ProgressPage() {
     "/api/progress",
     180_000,
     6_000,
-    { revalidateOnMount: false, staleRatio: 0.99 }
+    { revalidateOnMount: true, staleRatio: 0.85 }
   );
 
   const [nutritionRev, setNutritionRev] = useState(0);
@@ -99,12 +99,14 @@ export default function ProgressPage() {
   }, []);
 
   const displayData = useMemo(() => {
-    // nutritionRev bumps cache re-read after live food log events
     return progressData ?? getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- nutritionRev intentionally invalidates cache read
   }, [progressData, nutritionRev]);
-  const entries = displayData?.entries ?? [];
-  const photos = displayData?.photos ?? [];
+
+  const entries = useMemo(
+    () => displayData?.entries ?? [],
+    [displayData?.entries]
+  );
+  const photos = useMemo(() => displayData?.photos ?? [], [displayData?.photos]);
   const profile = displayData?.profile ?? null;
   const startWeightKg = displayData?.startWeightKg ?? null;
   const dashboard = displayData?.dashboard ?? null;
@@ -182,19 +184,19 @@ export default function ProgressPage() {
   const showSkeleton = loading && !displayData && !hadCache;
   const lastWeight = analytics.currentKg ?? profile?.weightKg;
 
-  if (showSkeleton) {
-    return (
-      <div className="space-y-4 max-w-2xl mx-auto pb-28">
-        <div className="h-8 w-40 bg-zinc-900 rounded" />
-        <div className="h-48 bg-zinc-900 rounded-2xl border border-zinc-800" />
-        <div className="h-36 bg-zinc-900 rounded-2xl border border-zinc-800" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5 max-w-2xl mx-auto pb-28">
       <PageHeader title="Fortschritt" subtitle="Transformation · Gewicht · Historie · Statistiken" />
+
+      {showSkeleton && (
+        <div className="space-y-4 animate-pulse">
+          <div className="h-48 bg-zinc-900 rounded-2xl border border-zinc-800" />
+          <div className="h-36 bg-zinc-900 rounded-2xl border border-zinc-800" />
+        </div>
+      )}
+
+      {!showSkeleton && (
+      <>
 
       {/* OBERER BEREICH */}
       <section className="space-y-4">
@@ -304,6 +306,8 @@ export default function ProgressPage() {
           </>
         )}
       </section>
+      </>
+      )}
     </div>
   );
 }

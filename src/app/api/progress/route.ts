@@ -4,11 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { progressEntrySchema } from "@/lib/validations";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { startOfDay } from "date-fns";
-import { buildProgressInsights } from "@/lib/progress-insights";
 import { buildBodyTransformation } from "@/lib/body-transformation";
-import { buildWeeklyReport } from "@/lib/weekly-report";
-import { invalidateCache } from "@/lib/client-cache";
-import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { loadProgressDashboardExtras } from "@/lib/progress-dashboard";
 
 export async function GET() {
@@ -17,18 +13,17 @@ export async function GET() {
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
     const userId = session.user.id;
 
-    const [entries, photos, insights, profile, firstWeight, weeklyReport, dashboard] =
-      await Promise.all([
+    const [entries, photos, profile, firstWeight, dashboard] = await Promise.all([
       prisma.progressEntry.findMany({
         where: { userId },
         orderBy: { date: "desc" },
-        take: 400,
+        take: 120,
         select: { id: true, date: true, weightKg: true, waistCm: true },
       }),
       prisma.progressPhoto.findMany({
         where: { userId },
         orderBy: { takenAt: "desc" },
-        take: 20,
+        take: 12,
         select: {
           id: true,
           imageUrl: true,
@@ -37,7 +32,6 @@ export async function GET() {
           takenAt: true,
         },
       }),
-      buildProgressInsights(userId),
       prisma.profile.findUnique({
         where: { userId },
         select: { weightKg: true, targetWeightKg: true, targetWeightDate: true },
@@ -47,7 +41,6 @@ export async function GET() {
         orderBy: { date: "asc" },
         select: { weightKg: true },
       }),
-      buildWeeklyReport(userId).catch(() => null),
       loadProgressDashboardExtras(userId).catch(() => null),
     ]);
 
@@ -67,14 +60,12 @@ export async function GET() {
     const res = jsonOk({
       entries: entriesMapped,
       photos,
-      insights,
       profile,
       startWeightKg: firstWeight?.weightKg ?? null,
       transformation,
-      weeklyReport,
       dashboard,
     });
-    res.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
+    res.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=120");
     return res;
   } catch (e) {
     return handleApiError(e);
@@ -124,9 +115,6 @@ export async function POST(req: NextRequest) {
       const { awardXPForAction } = await import("@/lib/gamification");
       await awardXPForAction(userId, "WEIGHT_LOGGED");
     }
-
-    invalidateCache(PROGRESS_CACHE_KEY);
-    invalidateCache("home-data");
 
     return jsonOk({ entry }, existing ? 200 : 201);
   } catch (e) {

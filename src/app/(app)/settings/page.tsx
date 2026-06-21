@@ -133,7 +133,9 @@ export default function SettingsPage() {
     hipsCm: "",
   });
   const [userImage, setUserImage] = useState<string | null>(null);
-  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(
+    () => getCached<ProfileApiResponse>(PROFILE_CACHE_KEY)?.profile != null
+  );
   const [loggingOut, setLoggingOut] = useState(false);
   const [smartGoalHint, setSmartGoalHint] = useState<string | null>(null);
 
@@ -142,7 +144,7 @@ export default function SettingsPage() {
     "/api/profile",
     120_000,
     6_000,
-    { revalidateOnMount: false, staleRatio: 0.95 }
+    { revalidateOnMount: true, staleRatio: 0.5 }
   );
 
   useEffect(() => {

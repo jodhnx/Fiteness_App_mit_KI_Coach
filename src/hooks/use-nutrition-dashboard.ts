@@ -29,7 +29,7 @@ export function useNutritionDashboard(ttlMs = 120_000) {
     DASHBOARD_URL,
     ttlMs,
     8_000,
-    { revalidateOnMount: false, staleRatio: 0.98 }
+    { revalidateOnMount: true, staleRatio: 0.85 }
   );
 
   useEffect(() => {

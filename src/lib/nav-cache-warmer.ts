@@ -25,14 +25,22 @@ export function warmNavDataCaches() {
       void fetchCached(
         PROGRESS_CACHE_KEY,
         () => fetchJson("/api/progress"),
+        180_000
+      ).catch(() => {});
+    }
+
+    if (isCacheStale(PROFILE_CACHE_KEY, 0.5)) {
+      void fetchCached(
+        PROFILE_CACHE_KEY,
+        () => fetchJson("/api/profile"),
         120_000
       ).catch(() => {});
     }
 
-    if (isCacheStale(PROFILE_CACHE_KEY, 0.92)) {
+    if (isCacheStale("gamification-full", 0.85)) {
       void fetchCached(
-        PROFILE_CACHE_KEY,
-        () => fetchJson("/api/profile"),
+        "gamification-full",
+        () => fetchJson("/api/gamification"),
         120_000
       ).catch(() => {});
     }

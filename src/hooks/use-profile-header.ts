@@ -50,10 +50,10 @@ export function useProfileHeader() {
         if (cancelled || !data?.user) return;
         if (data.user.name) setName(data.user.name);
         setImage(data.user.image ?? null);
-        const prev = getCached<ProfileCache>(PROFILE_CACHE_KEY);
+        const prev = getCached<Record<string, unknown>>(PROFILE_CACHE_KEY);
         setCached(
           PROFILE_CACHE_KEY,
-          { ...prev, user: { ...prev?.user, ...data.user } },
+          { ...prev, ...data, user: { ...(prev?.user as object), ...data.user } },
           120_000
         );
       })
