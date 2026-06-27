@@ -35,11 +35,6 @@ export function warmTrainingCaches(force = false) {
       fetchCached(CACHE_KEYS.JOURNEY, () => fetchJson("/api/workouts/journey"), TTL.JOURNEY)
     );
   }
-  if (force || isCacheStale(CACHE_KEYS.PROGRESS, 0.9)) {
-    jobs.push(
-      fetchCached(CACHE_KEYS.PROGRESS, () => fetchJson("/api/progress"), TTL.PROGRESS)
-    );
-  }
 
   void Promise.all(jobs).catch(() => {});
 }

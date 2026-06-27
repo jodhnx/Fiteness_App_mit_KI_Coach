@@ -9,6 +9,7 @@ import { Check, Plus, Timer, Trash2, Trophy, Dumbbell } from "lucide-react";
 import { EndWorkoutDialog } from "@/components/workout/end-workout-dialog";
 import { ExercisePickerSheet } from "@/components/workout/exercise-picker-sheet";
 import { clearActiveWorkoutCaches, PENDING_LIVE_SESSION_KEY } from "@/lib/workout-cache-sync";
+import { hapticSuccess, hapticTap } from "@/lib/haptic";
 import { WORKOUT_INPUT_PLACEHOLDERS } from "@/lib/workout-input-placeholders";
 import type { LibraryExercise } from "@/hooks/use-exercise-library-search";
 
@@ -266,6 +267,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
 
   function saveCompletedWorkout(name: string) {
     setEndOpen(false);
+    hapticSuccess();
     clearActiveWorkoutCaches({
       name,
       completedAt: new Date().toISOString(),
@@ -470,7 +472,10 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
                     className="h-14 w-14 rounded-xl"
                     onClick={async () => {
                       await patchSet(set.id, { completed: !set.completed }, true);
-                      if (!set.completed) setRestLeft(set.restSeconds ?? 90);
+                      if (!set.completed) {
+                        hapticTap();
+                        setRestLeft(set.restSeconds ?? 90);
+                      }
                     }}
                   >
                     <Check className="h-6 w-6" />

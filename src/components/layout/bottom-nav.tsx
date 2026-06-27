@@ -1,11 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { memo } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { memo, useCallback } from "react";
 import { Home, Dumbbell, Apple, TrendingUp, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isNavActive } from "@/lib/nav-active";
+import { warmProgressCache } from "@/lib/nav-cache-warmer";
+import { navigateWithTransition } from "@/lib/view-transition";
+import { hapticSelect } from "@/lib/haptic";
 
 const ITEMS = [
   { href: "/home", label: "Home", icon: Home },
@@ -17,6 +19,19 @@ const ITEMS = [
 
 export const BottomNav = memo(function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const onProgressIntent = useCallback(() => {
+    warmProgressCache();
+  }, []);
+
+  const navigate = useCallback(
+    (href: string) => {
+      if (isNavActive(pathname, href)) return;
+      navigateWithTransition(href, router, () => hapticSelect());
+    },
+    [pathname, router]
+  );
 
   return (
     <nav
@@ -27,11 +42,13 @@ export const BottomNav = memo(function BottomNav() {
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isNavActive(pathname, href);
           return (
-            <Link
+            <button
               key={href}
-              href={href}
-              prefetch
-              scroll={false}
+              type="button"
+              onPointerEnter={href === "/progress" ? onProgressIntent : undefined}
+              onFocus={href === "/progress" ? onProgressIntent : undefined}
+              onTouchStart={href === "/progress" ? onProgressIntent : undefined}
+              onClick={() => navigate(href)}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 py-2 min-h-[52px] text-[11px] font-medium transition-colors duration-75 active:scale-95 transform-gpu",
                 active ? "text-accent" : "text-zinc-500"
@@ -43,7 +60,7 @@ export const BottomNav = memo(function BottomNav() {
                 strokeWidth={active ? 2.5 : 2}
               />
               <span className="truncate max-w-[72px]">{label}</span>
-            </Link>
+            </button>
           );
         })}
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
 import { warmTrainingCaches } from "@/lib/cache-manager";
+import { hydratePersistentCaches } from "@/lib/client-cache";
 
 /** Reihenfolge = Hauptmenü: Home → Training → Ernährung → Fortschritt → Coach */
 const NAV_ROUTES = [
@@ -23,6 +24,8 @@ export function RoutePrefetcher() {
   useEffect(() => {
     if (done.current) return;
     done.current = true;
+
+    hydratePersistentCaches();
 
     for (const href of NAV_ROUTES.slice(0, 5)) {
       router.prefetch(href);

@@ -10,6 +10,7 @@ import { type HomeDataPayload } from "@/lib/home-defaults";
 import { useHomeLiveData } from "@/hooks/use-home-live-data";
 import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
 import { useDisplayName } from "@/hooks/use-display-name";
+import { PageShell } from "@/components/layout/page-shell";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HomeGreeting } from "@/components/home/home-greeting";
@@ -108,7 +109,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-3 pb-4 max-w-lg mx-auto">
+    <PageShell>
       <HomeGreeting name={displayName} />
 
       <HomeStatsStrip
@@ -147,6 +148,6 @@ export default function HomePage() {
       />
 
       <HomeRecentAchievements achievements={data.recentAchievements ?? []} />
-    </div>
+    </PageShell>
   );
 }

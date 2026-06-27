@@ -11,6 +11,7 @@ import {
   type ChartRange,
   type NutritionPoint,
 } from "@/lib/progress-chart-utils";
+import { getPrefetchedCharts } from "@/lib/progress-chart-prefetch";
 import type { WeightPeriod } from "@/lib/weight-analytics";
 
 type TrendPoint = { date: string; label: string; value: number };
@@ -78,22 +79,31 @@ export const ProgressChartsSection = memo(function ProgressChartsSection({
   const [nutRange, setNutRange] = useState<ChartRange>("day");
   const [trainRange, setTrainRange] = useState<ChartRange>("week");
 
-  const calorieData = useMemo(
-    () => aggregateNutrition(nutritionTrend, nutRange, "calories"),
-    [nutritionTrend, nutRange]
-  );
-  const proteinData = useMemo(
-    () => aggregateNutrition(nutritionTrend, nutRange, "proteinG"),
-    [nutritionTrend, nutRange]
-  );
-  const volumeData = useMemo(
-    () => aggregateSumByRange(trainingVolumeTrend, trainRange),
-    [trainingVolumeTrend, trainRange]
-  );
-  const frequencyData = useMemo(
-    () => aggregateSumByRange(trainingFrequencyTrend, trainRange),
-    [trainingFrequencyTrend, trainRange]
-  );
+  const prefetched = useMemo(() => getPrefetchedCharts(), []);
+
+  const calorieData = useMemo(() => {
+    const hit = prefetched?.calories[nutRange];
+    if (hit?.length) return hit;
+    return aggregateNutrition(nutritionTrend, nutRange, "calories");
+  }, [prefetched, nutritionTrend, nutRange]);
+
+  const proteinData = useMemo(() => {
+    const hit = prefetched?.protein[nutRange];
+    if (hit?.length) return hit;
+    return aggregateNutrition(nutritionTrend, nutRange, "proteinG");
+  }, [prefetched, nutritionTrend, nutRange]);
+
+  const volumeData = useMemo(() => {
+    const hit = prefetched?.volume[trainRange];
+    if (hit?.length) return hit;
+    return aggregateSumByRange(trainingVolumeTrend, trainRange);
+  }, [prefetched, trainingVolumeTrend, trainRange]);
+
+  const frequencyData = useMemo(() => {
+    const hit = prefetched?.frequency[trainRange];
+    if (hit?.length) return hit;
+    return aggregateSumByRange(trainingFrequencyTrend, trainRange);
+  }, [prefetched, trainingFrequencyTrend, trainRange]);
 
   return (
     <div className="space-y-4">

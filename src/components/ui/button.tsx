@@ -13,6 +13,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-white/10 text-white",
         destructive: "bg-red-600 text-white hover:bg-red-500",
         outline: "border border-accent text-accent hover:bg-accent-soft",
+        premium: "btn-premium hover:brightness-110",
       },
       size: {
         default: "h-10 px-4 py-2",

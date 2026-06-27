@@ -4,6 +4,7 @@ import { useRef, useState, useCallback, useEffect, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Send, Bot } from "lucide-react";
 import { toast } from "sonner";
+import { PageShell } from "@/components/layout/page-shell";
 import { CoachQuickActions } from "@/components/coach/coach-quick-actions";
 import {
   loadCachedCoachChat,
@@ -195,7 +196,7 @@ export default function CoachPage() {
   const busy = loading || streaming;
 
   return (
-    <div className="coach-page-root max-w-2xl mx-auto -mx-1">
+    <PageShell maxWidth="2xl" className="coach-page-root -mx-1" bottomNav={false}>
       <div className="shrink-0 mb-3">
         <h1 className="text-xl font-bold text-white flex items-center gap-2">
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-violet-400 font-extrabold tracking-tight">
@@ -281,6 +282,6 @@ export default function CoachPage() {
       </div>
 
       <div className="h-[5.5rem]" aria-hidden />
-    </div>
+    </PageShell>
   );
 }

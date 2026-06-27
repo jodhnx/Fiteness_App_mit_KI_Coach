@@ -1,3 +1,10 @@
+import {
+  writePersistentCache,
+  readPersistentCache,
+  clearPersistentCache,
+  clearPersistentCacheByPrefix,
+} from "@/lib/persistent-cache";
+
 type CacheEntry<T> = { data: T; expires: number; cachedAt: number };
 
 const store = new Map<string, CacheEntry<unknown>>();
@@ -33,12 +40,14 @@ export function isCacheStale(key: string, staleRatio = 0.75): boolean {
 export function setCached<T>(key: string, data: T, ttlMs = 60_000) {
   const now = Date.now();
   store.set(key, { data, cachedAt: now, expires: now + ttlMs });
+  writePersistentCache(key, data, ttlMs);
 }
 
 export function invalidateCache(prefix?: string) {
   if (!prefix) {
     store.clear();
     inflight.clear();
+    clearPersistentCache();
     return;
   }
   for (const key of store.keys()) {
@@ -47,6 +56,7 @@ export function invalidateCache(prefix?: string) {
       inflight.delete(key);
     }
   }
+  clearPersistentCacheByPrefix(prefix);
 }
 
 async function runDeduped<T>(
@@ -96,4 +106,18 @@ export function refreshCached<T>(
     return;
   }
   runDeduped(key, fetcher, ttlMs).then(onDone).catch(onError);
+}
+
+/** Restore Home / Progress / Nutrition from localStorage on cold start. */
+export function hydratePersistentCaches() {
+  if (typeof window === "undefined") return;
+  const keys = ["home-data", "progress-main", "nutrition-dashboard"] as const;
+  for (const key of keys) {
+    if (store.has(key)) continue;
+    const hit = readPersistentCache(key);
+    if (hit) {
+      const ttlMs = hit.expires - Date.now();
+      if (ttlMs > 0) setCached(key, hit.data, ttlMs);
+    }
+  }
 }

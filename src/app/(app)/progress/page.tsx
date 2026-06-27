@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { invalidateCache, getCached } from "@/lib/client-cache";
@@ -20,6 +20,7 @@ import { TrainingHistorySection } from "@/components/progress/training-history-s
 import { ProgressStatsSection } from "@/components/progress/progress-stats-section";
 import { ProgressChartsSection } from "@/components/progress/progress-charts-section";
 import { Input } from "@/components/ui/input";
+import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
 import { hasScreenLoaded } from "@/lib/storage-service";
 
 type ProgressPayload = {
@@ -83,7 +84,7 @@ export default function ProgressPage() {
     "/api/progress",
     180_000,
     6_000,
-    { revalidateOnMount: true, staleRatio: 0.85 }
+    { revalidateOnMount: !hadCache, staleRatio: 0.85 }
   );
 
   const [nutritionRev, setNutritionRev] = useState(0);
@@ -134,6 +135,7 @@ export default function ProgressPage() {
   useEffect(() => {
     if (displayData) {
       import("@/lib/storage-service").then(({ markScreenLoaded }) => markScreenLoaded("progress"));
+      void prefetchProgressCharts();
     }
   }, [displayData]);
 
@@ -185,8 +187,13 @@ export default function ProgressPage() {
   const lastWeight = analytics.currentKg ?? profile?.weightKg;
 
   return (
-    <div className="space-y-5 max-w-2xl mx-auto pb-28">
-      <PageHeader title="Fortschritt" subtitle="Transformation · Gewicht · Historie · Statistiken" />
+    <PageShell
+      title="Fortschritt"
+      subtitle="Transformation · Gewicht · Historie · Statistiken"
+      maxWidth="2xl"
+      className="space-y-5 pb-28"
+      bottomNav={false}
+    >
 
       {showSkeleton && (
         <div className="space-y-4 animate-pulse">
@@ -308,6 +315,6 @@ export default function ProgressPage() {
       </section>
       </>
       )}
-    </div>
+    </PageShell>
   );
 }

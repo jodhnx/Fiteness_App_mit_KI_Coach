@@ -5,6 +5,7 @@ import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useRouter } from "next/navigation";
 import { WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
 import { HOME_DATA_EVENT } from "@/lib/nutrition-sync";
+import { PageShell } from "@/components/layout/page-shell";
 import { TrainingChoiceCard } from "@/components/workout/training-choice-card";
 import { MuscleRecoveryPanel } from "@/components/workout/muscle-recovery-panel";
 import { Button } from "@/components/ui/button";
@@ -73,7 +74,7 @@ export default function WorkoutsHubPage() {
   const recoveryMuscles = filterDisplayMuscles(recoveryData?.recovery ?? []);
 
   return (
-    <div className="space-y-3 pb-24 max-w-lg mx-auto -mt-1">
+    <PageShell className="-mt-1 pb-24" bottomNav={false}>
       {activeSession && (
         <div className="rounded-3xl border border-cyan-500/30 bg-cyan-500/10 p-4 mb-1">
           <p className="text-xs text-cyan-300/80 uppercase tracking-wide font-medium">Läuft gerade</p>
@@ -138,6 +139,6 @@ export default function WorkoutsHubPage() {
       />
 
       <MuscleRecoveryPanel muscles={recoveryMuscles} variant="section" />
-    </div>
+    </PageShell>
   );
 }

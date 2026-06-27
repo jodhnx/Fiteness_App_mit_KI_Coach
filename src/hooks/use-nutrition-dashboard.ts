@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
 import {
@@ -17,6 +17,10 @@ const DASHBOARD_URL = "/api/nutrition/dashboard";
  */
 export function useNutritionDashboard(ttlMs = 120_000) {
   const { dashboard, applyDashboard } = useCentralNutrition();
+  const hadCache = useMemo(
+    () => getCached(NUTRITION_DASHBOARD_CACHE_KEY) != null,
+    []
+  );
 
   const {
     data: fetched,
@@ -29,7 +33,7 @@ export function useNutritionDashboard(ttlMs = 120_000) {
     DASHBOARD_URL,
     ttlMs,
     8_000,
-    { revalidateOnMount: true, staleRatio: 0.85 }
+    { revalidateOnMount: !hadCache, staleRatio: 0.85 }
   );
 
   useEffect(() => {
