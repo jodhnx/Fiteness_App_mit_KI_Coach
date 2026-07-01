@@ -847,6 +847,26 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      <section id="settings-geraete" className="card-premium p-4 space-y-4 settings-section">
+        <h2 className="font-semibold text-white text-lg">Geräte & Gesundheit</h2>
+        <p className="text-sm text-zinc-400">
+          Smartwatches und Fitness-Tracker verbinden, Synchronisation starten und
+          Datenschutz pro Kategorie verwalten.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Link href="/geraete">
+            <Button variant="premium" className="w-full">
+              Geräte verbinden
+            </Button>
+          </Link>
+          <Link href="/gesundheit">
+            <Button variant="outline" className="w-full">
+              Gesundheit Dashboard
+            </Button>
+          </Link>
+        </div>
+      </section>
+
       <section id="settings-benachrichtigungen" className="card-premium p-4 space-y-3 settings-section">
         <h2 className="font-semibold text-white text-lg">Benachrichtigungen</h2>
         <p className="text-sm text-zinc-400">

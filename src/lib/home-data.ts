@@ -3,6 +3,7 @@ import { loadTrainingSnapshot } from "@/lib/training-snapshot";
 import { buildCoachInsightsFromContext } from "@/lib/coach-insights";
 import { getActivityWeekSummary, getRecentActivity } from "@/lib/activity-service";
 import { loadHealthDashboard } from "@/lib/activity-health";
+import { loadExtendedHealthDashboard } from "@/lib/health/health-dashboard";
 import { prisma } from "@/lib/prisma";
 import { startOfDay } from "date-fns";
 import {
@@ -51,6 +52,7 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
       nutrition,
       training,
       health,
+      healthEco,
       activityWeek,
       recentActivity,
       user,
@@ -74,6 +76,7 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
           return null;
         }),
         loadHealthDashboard(userId).catch(() => null),
+        loadExtendedHealthDashboard(userId).catch(() => null),
         getActivityWeekSummary(userId).catch(() => createEmptyHomeData().activityWeek),
         getRecentActivity(userId).catch(() => null),
         prisma.user
@@ -223,6 +226,10 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
             caloriesBurned: health.today.caloriesBurned,
             distanceM: health.today.distanceM,
             stepStreak: health.stepStreak,
+            sleepHours: healthEco?.today.sleepHours ?? null,
+            restingHeartRate: healthEco?.today.restingHeartRate ?? null,
+            recoveryScore: healthEco?.regeneration.score ?? null,
+            trainingReadiness: healthEco?.regeneration.trainingReadiness ?? null,
           }
         : null,
       caloriesBurnedTotal: health?.today?.caloriesBurned ?? 0,

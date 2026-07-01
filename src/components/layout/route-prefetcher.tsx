@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
 import { warmTrainingCaches } from "@/lib/cache-manager";
 import { hydratePersistentCaches } from "@/lib/client-cache";
+import { warmHealthSync } from "@/lib/health-sync-warmer";
 
 /** Reihenfolge = Hauptmenü: Home → Training → Ernährung → Fortschritt → Coach */
 const NAV_ROUTES = [
@@ -13,7 +14,8 @@ const NAV_ROUTES = [
   "/nutrition",
   "/progress",
   "/coach",
-  "/erfolge",
+  "/gesundheit",
+  "/geraete",
   "/settings",
 ] as const;
 
@@ -32,6 +34,7 @@ export function RoutePrefetcher() {
     }
     warmNavDataCaches();
     warmTrainingCaches();
+    warmHealthSync();
 
     const idle =
       typeof requestIdleCallback !== "undefined"

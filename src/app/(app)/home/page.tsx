@@ -13,6 +13,7 @@ import { useDisplayName } from "@/hooks/use-display-name";
 import { PageShell } from "@/components/layout/page-shell";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HomeHealthEcosystem } from "@/components/home/home-health-ecosystem";
 import { HomeGreeting } from "@/components/home/home-greeting";
 import { HomeStatsStrip } from "@/components/home/home-stats-strip";
 import { HomeStatusHeroCard } from "@/components/home/home-status-hero-card";
@@ -127,6 +128,21 @@ export default function HomePage() {
         trainingStatus={trainingStatus}
         highlight={
           highlight === "calories" ? "calories" : highlight === "training" ? "training" : null
+        }
+      />
+
+      <HomeHealthEcosystem
+        health={
+          data.healthToday
+            ? {
+                steps: data.healthToday.steps,
+                stepGoal: data.healthToday.stepGoal,
+                sleepHours: data.healthToday.sleepHours ?? null,
+                restingHeartRate: data.healthToday.restingHeartRate ?? null,
+                recoveryScore: data.healthToday.recoveryScore ?? null,
+                trainingReadiness: data.healthToday.trainingReadiness ?? null,
+              }
+            : null
         }
       />
 

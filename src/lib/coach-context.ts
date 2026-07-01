@@ -12,10 +12,11 @@ import { getActivityWeekSummary } from "@/lib/activity-service";
 import { loadTrainingSnapshot } from "@/lib/training-snapshot";
 import { loadMuscleRecovery } from "@/lib/recovery-service";
 import { loadHealthDashboard } from "@/lib/activity-health";
+import { loadExtendedHealthDashboard, buildCoachHealthInsights } from "@/lib/health/health-dashboard";
 
 export async function buildCoachUserContext(userId: string): Promise<string> {
   const today = startOfDay(new Date());
-  const [profile, nutrition, training, activityWeek, recentSessions, goals, user, recovery, health] =
+  const [profile, nutrition, training, activityWeek, recentSessions, goals, user, recovery, health, healthEco] =
     await Promise.all([
       prisma.profile.findUnique({ where: { userId } }),
       loadNutritionDashboard(userId, today).catch(() => null),
@@ -37,6 +38,7 @@ export async function buildCoachUserContext(userId: string): Promise<string> {
       }),
       loadMuscleRecovery(userId).catch(() => null),
       loadHealthDashboard(userId).catch(() => null),
+      loadExtendedHealthDashboard(userId).catch(() => null),
     ]);
 
   const metrics = profile ? profileToMetricsInput(profile) : null;
@@ -95,6 +97,28 @@ export async function buildCoachUserContext(userId: string): Promise<string> {
       `Aktive Minuten: ${health.today.activeMinutes}`,
       `Kalorienverbrauch heute: ${health.today.caloriesBurned} kcal`
     );
+  }
+
+  if (healthEco) {
+    const t = healthEco.today;
+    if (t.sleepHours != null) {
+      lines.push(`Schlaf letzte Nacht: ${t.sleepHours.toFixed(1)} h`);
+    }
+    if (t.restingHeartRate != null) {
+      lines.push(`Ruhepuls heute: ${t.restingHeartRate} bpm`);
+    }
+    if (healthEco.regeneration.trainingReadiness != null) {
+      lines.push(
+        `Trainingsbereitschaft: ${healthEco.regeneration.trainingReadiness}% (${healthEco.regeneration.readinessLabel})`
+      );
+    }
+    if (healthEco.regeneration.score != null) {
+      lines.push(`Regeneration: ${healthEco.regeneration.score}% (${healthEco.regeneration.label})`);
+    }
+    const insights = buildCoachHealthInsights(healthEco);
+    for (const tip of insights.slice(0, 4)) {
+      lines.push(`Coach-Hinweis: ${tip}`);
+    }
   }
 
   if (recovery) {

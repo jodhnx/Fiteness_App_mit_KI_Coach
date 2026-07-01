@@ -9,6 +9,7 @@ export const SETTINGS_CATEGORIES = [
   { id: "vitaldaten", label: "Vitaldaten" },
   { id: "ernaehrung", label: "Ernährung" },
   { id: "training", label: "Training" },
+  { id: "geraete", label: "Geräte & Gesundheit" },
   { id: "design", label: "Design" },
   { id: "benachrichtigungen", label: "Benachrichtigungen" },
 ] as const;

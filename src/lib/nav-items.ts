@@ -12,6 +12,8 @@ import {
   MessageCircle,
   Lock,
   LogOut,
+  HeartPulse,
+  Watch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,12 +34,14 @@ export const PRIMARY_NAV: NavItem[] = [
 export const PROFILE_MENU_NAV: NavItem[] = [
   { href: "/settings", label: "Account", icon: Settings },
   { href: "/settings#settings-ziele", label: "Ziele", icon: Target },
-  { href: "/settings", label: "Einstellungen", icon: Settings },
+  { href: "/settings#settings-geraete", label: "Geräte & Gesundheit", icon: Watch },
   { href: "/settings/support", label: "Support", icon: MessageCircle },
   { href: "/settings/support", label: "Feedback", icon: MessageCircle },
 ];
 
 export const MORE_NAV: NavItem[] = [
+  { href: "/gesundheit", label: "Gesundheit", icon: HeartPulse },
+  { href: "/geraete", label: "Geräte", icon: Watch },
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
   { href: "/activities", label: "Aktivität", icon: Footprints },
 ];

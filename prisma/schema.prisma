@@ -52,6 +52,8 @@ model User {
   userChallenges        UserChallenge[]
   waterLogs             WaterLog[]
   wearableConnections   WearableConnection[]
+  healthSyncPreference  HealthSyncPreference?
+  healthSyncRecords     HealthSyncRecord[]
   workoutPlans          WorkoutPlan[]
   workoutTemplates      WorkoutTemplate[]
   xpTransactions        XPTransaction[]
@@ -151,6 +153,23 @@ model DailyHealthMetric {
   sleepHours     Float?
   sleepQuality   String?
   recoveryRating String?
+  floorsClimbed      Int?
+  activeCalories     Int?
+  restingHeartRate   Int?
+  avgHeartRate       Int?
+  maxHeartRate       Int?
+  bloodOxygen        Float?
+  bloodPressureSys   Int?
+  bloodPressureDia   Int?
+  bodyTempC          Float?
+  sleepDeepHours     Float?
+  sleepRemHours      Float?
+  sleepLightHours    Float?
+  sleepBedtime       DateTime?
+  sleepWakeTime      DateTime?
+  recoveryScore      Int?
+  trainingReadiness  Int?
+  dataSources        String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -507,9 +526,14 @@ model EnduranceActivity {
   avgSpeedKmh    Float?
   elevationM     Float?
   notes          String?
+  sourceProvider WearableProvider?
+  externalId     String?
+  avgHeartRate   Int?
+  maxHeartRate   Int?
   createdAt      DateTime              @default(now())
   user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, sourceProvider, externalId])
   @@index([userId, startedAt])
 }
 
@@ -745,6 +769,7 @@ model WearableConnection {
   accessToken  String?
   refreshToken String?
   lastSyncAt   DateTime?
+  lastSyncError String?
   isActive     Boolean          @default(false)
   metadata     String?
   createdAt    DateTime         @default(now())
@@ -752,6 +777,40 @@ model WearableConnection {
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, provider])
+}
+
+model HealthSyncPreference {
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  steps         Boolean @default(true)
+  distance      Boolean @default(true)
+  floors        Boolean @default(true)
+  activeMinutes Boolean @default(true)
+  calories      Boolean @default(true)
+  sleep         Boolean @default(true)
+  heartRate     Boolean @default(true)
+  workouts      Boolean @default(true)
+  weight        Boolean @default(true)
+  bodyFat       Boolean @default(false)
+  muscleMass    Boolean @default(false)
+  bloodPressure Boolean @default(false)
+  bloodOxygen   Boolean @default(true)
+  bodyTemp      Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HealthSyncRecord {
+  id        String           @id @default(cuid())
+  userId    String
+  provider  WearableProvider
+  recordKey String
+  syncedAt  DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider, recordKey])
+  @@index([userId, syncedAt])
 }
 
 model Streak {
@@ -932,6 +991,13 @@ enum WearableProvider {
   GARMIN
   APPLE_HEALTH
   SAMSUNG_HEALTH
+  GOOGLE_FIT
+  GOOGLE_HEALTH_CONNECT
+  POLAR
+  HUAWEI_HEALTH
+  WEAR_OS
+  COROS
+  SUUNTO
 }
 
 enum NotificationType {

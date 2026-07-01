@@ -52,6 +52,10 @@ export type HomeDataPayload = {
     caloriesBurned: number;
     distanceM: number;
     stepStreak: number;
+    sleepHours?: number | null;
+    restingHeartRate?: number | null;
+    recoveryScore?: number | null;
+    trainingReadiness?: number | null;
   } | null;
   userName?: string | null;
   userImage?: string | null;
