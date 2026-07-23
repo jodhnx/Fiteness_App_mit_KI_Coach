@@ -32,12 +32,12 @@ export const EndWorkoutDialog = memo(function EndWorkoutDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-4 bg-black/70"
+      className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-black/70"
       role="dialog"
       aria-modal="true"
       aria-labelledby="end-workout-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-5 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-5 shadow-xl mb-[env(safe-area-inset-bottom,0px)]">
         <h2 id="end-workout-title" className="text-lg font-bold text-white">
           Training beenden
         </h2>
@@ -46,7 +46,7 @@ export const EndWorkoutDialog = memo(function EndWorkoutDialog({
         <Input
           ref={inputRef}
           defaultValue={defaultName}
-          className="mt-4 h-12 rounded-xl bg-zinc-950 border-zinc-700"
+          className="mt-4 h-12 rounded-xl bg-zinc-950 border-zinc-700 keyboard-stable-input"
           placeholder="Workout 001"
           onKeyDown={(e) => {
             if (e.key === "Enter") {

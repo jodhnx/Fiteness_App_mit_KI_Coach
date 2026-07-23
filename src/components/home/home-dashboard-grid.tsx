@@ -98,7 +98,7 @@ export const HomeDashboardGrid = memo(function HomeDashboardGrid({ home, nutriti
         accent="text-sky-400"
       />
       <StatTile
-        href="/activities"
+        href="/progress"
         icon={Footprints}
         label="Schritte"
         value={steps > 0 ? steps.toLocaleString("de-AT") : "—"}

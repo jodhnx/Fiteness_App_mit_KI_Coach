@@ -6,6 +6,7 @@ import { getPhoneSensorConsent, getPhoneStepsToday } from "@/lib/phone-sensors";
 /** Quiet background sync of phone steps when consent is already granted. */
 export function PhoneSensorWarmup() {
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const consent = getPhoneSensorConsent();
     if (!consent?.steps) return;
 

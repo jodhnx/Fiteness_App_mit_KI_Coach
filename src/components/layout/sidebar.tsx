@@ -9,10 +9,8 @@ import {
   TrendingUp,
   Bot,
   Trophy,
-  Users,
   Shield,
   Watch,
-  Target,
   Settings,
   Menu,
   X,
@@ -21,16 +19,15 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/home", label: "Home", icon: LayoutDashboard },
   { href: "/workouts", label: "Training", icon: Dumbbell },
   { href: "/nutrition", label: "Ernährung", icon: Apple },
   { href: "/progress", label: "Fortschritt", icon: TrendingUp },
-  { href: "/goals", label: "Ziele", icon: Target },
   { href: "/coach", label: "KI Coach", icon: Bot },
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
-  { href: "/social", label: "Social", icon: Users },
-  { href: "/wearables", label: "Wearables", icon: Watch },
+  { href: "/geraete", label: "Geräte", icon: Watch },
   { href: "/settings", label: "Account", icon: Settings },
+  { href: "/settings/support", label: "Support", icon: Settings },
 ];
 
 export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {

@@ -112,7 +112,7 @@ export function buildCoachInsightsFromContext(ctx: CoachContext): CoachInsightsR
         type: "steps",
         message: `Ein ${walkMin}-minütiger Spaziergang würde dein Tagesziel erfüllen.`,
         priority: "medium",
-        actionHref: "/activities",
+        actionHref: "/progress",
       });
     }
   }
@@ -133,7 +133,7 @@ export function buildCoachInsightsFromContext(ctx: CoachContext): CoachInsightsR
         type: "recovery",
         message: `${fatigued.map((f) => f.label).join(", ")} brauchen mehr Pause — leichteres Training oder Ruhetag.`,
         priority: "medium",
-        actionHref: "/activities",
+        actionHref: "/progress",
       });
     }
   }
@@ -152,14 +152,14 @@ export function buildCoachInsightsFromContext(ctx: CoachContext): CoachInsightsR
       type: "activity",
       message: "Für dein Ausdauer-Ziel: tracke heute eine Aktivität (Laufen, Rad, Schwimmen).",
       priority: "high",
-      actionHref: "/activities",
+      actionHref: "/progress",
     });
   } else if (activityWeek.count > 0) {
     tips.push({
       type: "activity",
       message: `Diese Woche ${activityWeek.count} Aktivität(en), ${Math.round(activityWeek.totalDistanceM / 1000)} km – gut für Regeneration & Kalorienbalance.`,
       priority: "medium",
-      actionHref: "/activities",
+      actionHref: "/progress",
     });
   }
 
@@ -184,14 +184,14 @@ export function buildCoachInsightsFromContext(ctx: CoachContext): CoachInsightsR
       message:
         "Du hast die letzten 3 Nächte unter 6 Stunden geschlafen. Reduziere heute die Trainingsintensität.",
       priority: "high",
-      actionHref: "/activities",
+      actionHref: "/progress",
     });
   } else if (sleepStats?.avgHours != null && sleepStats.avgHours < 6.5) {
     tips.push({
       type: "sleep",
       message: `Durchschnittlich nur ${sleepStats.avgHours}h Schlaf diese Woche – Erholung priorisieren.`,
       priority: "medium",
-      actionHref: "/activities",
+      actionHref: "/progress",
     });
   }
 

@@ -6,7 +6,7 @@ export const SUPPORT_CATEGORIES: {
 }[] = [
   { value: "PROBLEM", label: "Problem melden" },
   { value: "IMPROVEMENT", label: "Verbesserung vorschlagen" },
-  { value: "OTHER", label: "Frage stellen" },
+  { value: "OTHER", label: "Frage stellen / Kontakt" },
   { value: "FEATURE", label: "Feature-Wunsch" },
   { value: "BUG", label: "Fehler melden" },
   { value: "ACCOUNT", label: "Account Problem" },
@@ -33,9 +33,9 @@ export const SUPPORT_QUICK_TOPICS: {
     category: "OTHER",
   },
   {
-    title: "Feature-Wunsch",
-    description: "Neue Funktionen vorschlagen",
-    category: "FEATURE",
+    title: "Kontakt aufnehmen",
+    description: "Direkt mit dem Support sprechen",
+    category: "OTHER",
   },
 ];
 

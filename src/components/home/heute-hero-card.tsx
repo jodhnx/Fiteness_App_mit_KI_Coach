@@ -93,7 +93,7 @@ export const HeuteHeroCard = memo(function HeuteHeroCard({
 
       <div className="grid grid-cols-3 gap-px bg-white/5 border-t border-white/10">
         <Link
-          href="/activities"
+          href="/progress"
           prefetch
           className="bg-black/20 px-3 py-3 active:bg-black/35 transition-colors"
         >
@@ -107,7 +107,7 @@ export const HeuteHeroCard = memo(function HeuteHeroCard({
           <p className="text-[10px] text-zinc-500">kcal heute</p>
         </Link>
         <Link
-          href="/activities"
+          href="/progress"
           prefetch
           className="bg-black/20 px-3 py-3 active:bg-black/35 transition-colors"
         >

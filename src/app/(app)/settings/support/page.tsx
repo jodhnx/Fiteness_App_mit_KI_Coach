@@ -81,7 +81,7 @@ export default function SupportPage() {
   if (success) {
     return (
       <div className="max-w-lg mx-auto space-y-6 pb-24">
-        <PageHeader title="Support" subtitle="Wir sind für dich da" />
+        <PageHeader title="Support & Feedback" subtitle="Wir sind für dich da" />
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center space-y-3">
           <CheckCircle2 className="h-12 w-12 text-emerald-400 mx-auto" aria-hidden />
           <p className="text-emerald-100 font-medium leading-relaxed">
@@ -120,7 +120,7 @@ export default function SupportPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <PageHeader title="Support" subtitle="Kontakt & Feedback" />
+        <PageHeader title="Support & Feedback" subtitle="Problem · Verbesserung · Frage · Kontakt" />
       </div>
 
       <section className="space-y-2">
@@ -231,14 +231,16 @@ export default function SupportPage() {
           <p className="text-[10px] text-zinc-600 mt-1 text-right">{message.length}/5000</p>
         </div>
 
-        <Button
-          type="submit"
-          disabled={sending}
-          className="w-full h-14 text-base font-semibold btn-accent rounded-2xl"
-        >
-          <Send className="h-5 w-5 mr-2" aria-hidden />
-          {sending ? "Wird gesendet…" : "Nachricht senden"}
-        </Button>
+        <div className="sticky-cta-bar pt-2">
+          <Button
+            type="submit"
+            disabled={sending}
+            className="w-full h-14 text-base font-semibold btn-accent rounded-2xl"
+          >
+            <Send className="h-5 w-5 mr-2" aria-hidden />
+            {sending ? "Wird gesendet…" : "Nachricht senden"}
+          </Button>
+        </div>
       </form>
     </div>
   );

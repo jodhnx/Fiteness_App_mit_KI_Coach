@@ -13,6 +13,7 @@ import { useDisplayName } from "@/hooks/use-display-name";
 import { PageShell } from "@/components/layout/page-shell";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HomePhoneStepsHint } from "@/components/home/home-phone-steps-hint";
 import { HomeGreeting } from "@/components/home/home-greeting";
 import { HomeDashboardPremium } from "@/components/home/home-dashboard-premium";
 import { HomeHealthEcosystem } from "@/components/home/home-health-ecosystem";
@@ -118,6 +119,8 @@ export default function HomePage() {
   return (
     <PageShell>
       <HomeGreeting name={displayName} />
+
+      <HomePhoneStepsHint />
 
       <HomeDashboardPremium
         nutrition={nutrition}

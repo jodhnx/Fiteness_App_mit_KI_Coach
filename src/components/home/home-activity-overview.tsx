@@ -12,7 +12,7 @@ export function HomeActivityOverview({ home }: { home: HomeDataPayload }) {
 
   return (
     <Link
-      href="/activities"
+      href="/progress"
       prefetch
       className="block rounded-2xl border border-emerald-500/20 bg-emerald-950/15 p-4 active:opacity-95"
     >

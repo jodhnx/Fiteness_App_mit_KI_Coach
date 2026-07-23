@@ -21,6 +21,7 @@ import { ProgressStatsSection } from "@/components/progress/progress-stats-secti
 import { ProgressChartsSection } from "@/components/progress/progress-charts-section";
 import { Input } from "@/components/ui/input";
 import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
+import { ProgressActivityStrip } from "@/components/progress/progress-activity-strip";
 import { hasScreenLoaded } from "@/lib/storage-service";
 
 type ProgressPayload = {
@@ -189,16 +190,18 @@ export default function ProgressPage() {
   return (
     <PageShell
       title="Fortschritt"
-      subtitle="Transformation · Gewicht · Historie · Statistiken"
+      subtitle="Gewicht · Aktivität · Diagramme · Historie"
       maxWidth="2xl"
       className="space-y-5 pb-28"
       bottomNav={false}
     >
+      {/* Always visible immediately — no spinner gate */}
+      <ProgressActivityStrip />
 
       {showSkeleton && (
-        <div className="space-y-4 animate-pulse">
-          <div className="h-48 bg-zinc-900 rounded-2xl border border-zinc-800" />
-          <div className="h-36 bg-zinc-900 rounded-2xl border border-zinc-800" />
+        <div className="space-y-4">
+          <div className="h-36 rounded-2xl bg-white/[0.03] border border-white/[0.06]" />
+          <div className="h-48 rounded-2xl bg-white/[0.03] border border-white/[0.06]" />
         </div>
       )}
 
@@ -207,7 +210,7 @@ export default function ProgressPage() {
 
       {/* OBERER BEREICH */}
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold text-white">📸 Body Transformation</h2>
+        <h2 className="text-sm font-semibold text-white">Body Transformation</h2>
         {transformation && <BodyTransformationCard data={transformation} />}
 
         <div className="card-premium p-4">

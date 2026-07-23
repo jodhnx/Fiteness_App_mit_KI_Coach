@@ -128,7 +128,7 @@ export const HomeStatusHeroCard = memo(function HomeStatusHeroCard({
           <p className="text-lg font-bold text-white mt-1">{trainingLabel}</p>
         </Link>
 
-        <Link href="/activities" prefetch className="bg-black/30 px-4 py-3.5 active:bg-black/45">
+        <Link href="/progress" prefetch className="bg-black/30 px-4 py-3.5 active:bg-black/45">
           <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-emerald-300/90">
             <Footprints className="h-3 w-3" />
             Schritte

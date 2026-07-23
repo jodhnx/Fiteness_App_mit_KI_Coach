@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useProfileHeader } from "@/hooks/use-profile-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -13,22 +14,43 @@ import { GuestUpgradeBanner } from "@/components/auth/guest-upgrade-banner";
 import { SidebarProvider } from "@/components/layout/sidebar-provider";
 import { ServiceWorkerProvider } from "@/components/providers/service-worker-provider";
 import { PhoneSensorWarmup } from "@/components/health/phone-sensor-warmup";
+import { cn } from "@/lib/utils";
+
+function isImmersiveRoute(pathname: string) {
+  return (
+    pathname.includes("/workouts/live/") ||
+    pathname.includes("/nutrition/add/") ||
+    pathname.includes("/workouts/exercises/pick")
+  );
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const { name: headerName, image: headerImage } = useProfileHeader();
   const isAdmin = session?.user?.role === "ADMIN";
+  const pathname = usePathname();
+  const immersive = isImmersiveRoute(pathname);
 
   return (
     <SidebarProvider>
       <NotificationProvider>
         <ServiceWorkerProvider />
         <PhoneSensorWarmup />
-        <div className="gradient-mesh min-h-[100dvh]">
+        <div className="gradient-mesh min-h-[100dvh] overflow-x-hidden">
           <RoutePrefetcher />
-          <div className="mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
-            <Header userName={headerName} userImage={headerImage} />
-            <main className="app-page-content flex-1 px-4 pb-4 view-transition-page">
+          <div
+            className={cn(
+              "mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col",
+              !immersive && "pb-[calc(4.5rem+env(safe-area-inset-bottom))]"
+            )}
+          >
+            {!immersive && <Header userName={headerName} userImage={headerImage} />}
+            <main
+              className={cn(
+                "app-page-content flex-1 view-transition-page min-w-0",
+                immersive ? "px-3 pb-4 pt-2" : "px-4 pb-4"
+              )}
+            >
               <GuestUpgradeBanner />
               {children}
             </main>

@@ -155,8 +155,8 @@ export default function GeraetePage() {
 
       <PremiumCard glow>
         <p className="text-sm text-zinc-400">
-          Verbinde dein Gerät einmal — danach synchronisiert NEXFORM automatisch
-          Schritte, Schlaf, Herzfrequenz und Workouts im Hintergrund.
+          Verbinde Smartwatch oder Smartphone — Schritte, Schlaf und Aktivität
+          werden automatisch synchronisiert. Ohne Watch nutzt NEXFORM dein Handy.
         </p>
       </PremiumCard>
 

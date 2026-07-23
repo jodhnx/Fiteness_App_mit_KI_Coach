@@ -504,7 +504,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         );
       })}
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-zinc-950/95 border-t border-zinc-800">
+      <div className="fixed bottom-0 left-0 right-0 z-40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-zinc-950/95 border-t border-zinc-800">
         <div className="max-w-lg mx-auto">
           <Button
             variant="outline"

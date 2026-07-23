@@ -17,6 +17,14 @@ const ITEMS = [
   { href: "/coach", label: "Coach", icon: Bot },
 ] as const;
 
+function shouldHideBottomNav(pathname: string) {
+  return (
+    pathname.includes("/workouts/live/") ||
+    pathname.includes("/nutrition/add/") ||
+    pathname.includes("/workouts/exercises/pick")
+  );
+}
+
 export const BottomNav = memo(function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -32,6 +40,8 @@ export const BottomNav = memo(function BottomNav() {
     },
     [pathname, router]
   );
+
+  if (shouldHideBottomNav(pathname)) return null;
 
   return (
     <nav

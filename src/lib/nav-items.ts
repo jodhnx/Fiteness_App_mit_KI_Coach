@@ -6,8 +6,6 @@ import {
   Bot,
   Trophy,
   Settings,
-  Footprints,
-  Target,
   Shield,
   MessageCircle,
   Lock,
@@ -31,19 +29,17 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/coach", label: "Coach", icon: Bot },
 ];
 
+/** Profile panel — simplified: no separate Ziele / Feedback duplicates */
 export const PROFILE_MENU_NAV: NavItem[] = [
-  { href: "/settings", label: "Account", icon: Settings },
-  { href: "/settings#settings-ziele", label: "Ziele", icon: Target },
+  { href: "/settings", label: "Account & Einstellungen", icon: Settings },
   { href: "/settings#settings-geraete", label: "Geräte & Gesundheit", icon: Watch },
-  { href: "/settings/support", label: "Support", icon: MessageCircle },
-  { href: "/settings/support", label: "Feedback", icon: MessageCircle },
+  { href: "/settings/support", label: "Support & Feedback", icon: MessageCircle },
 ];
 
 export const MORE_NAV: NavItem[] = [
   { href: "/gesundheit", label: "Gesundheit", icon: HeartPulse },
   { href: "/geraete", label: "Geräte", icon: Watch },
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
-  { href: "/activities", label: "Aktivität", icon: Footprints },
 ];
 
 export const ADMIN_NAV: NavItem = {

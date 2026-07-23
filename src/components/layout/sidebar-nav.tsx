@@ -7,14 +7,14 @@ import {
   Home,
   Dumbbell,
   Apple,
-  Footprints,
   Bot,
   Shield,
   X,
   TrendingUp,
-  Target,
   Settings,
   Trophy,
+  Watch,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isNavActive } from "@/lib/nav-active";
@@ -31,8 +31,8 @@ const PRIMARY_NAV = [
 const SECONDARY_NAV = [
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
   { href: "/settings", label: "Account", icon: Settings },
-  { href: "/activities", label: "Aktivität & Schritte", icon: Footprints },
-  { href: "/goals", label: "Ziele", icon: Target },
+  { href: "/geraete", label: "Geräte & Gesundheit", icon: Watch },
+  { href: "/settings/support", label: "Support & Feedback", icon: MessageCircle },
 ] as const;
 
 const NavLink = memo(function NavLink({

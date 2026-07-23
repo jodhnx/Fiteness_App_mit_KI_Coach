@@ -21,7 +21,7 @@ type Props = {
 export function AuthScreenLayout({ title, subtitle, children, footer }: Props) {
   return (
     <div className="auth-screen-root fixed inset-0 gradient-mesh overflow-hidden">
-      <div className="auth-screen-scroll mx-auto flex h-full w-full max-w-md flex-col overflow-y-auto overscroll-contain px-5 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
+      <div className="auth-screen-scroll mx-auto flex h-full w-full max-w-md flex-col overflow-y-auto overscroll-contain px-5 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] keyboard-stable-page">
         <Link href="/" className="mb-8 inline-block shrink-0 text-xl font-extrabold text-white">
           NEX<span className="text-cyan-400">FORM</span>
         </Link>
@@ -32,7 +32,7 @@ export function AuthScreenLayout({ title, subtitle, children, footer }: Props) {
         <div className="shrink-0 rounded-3xl border border-white/10 bg-zinc-900/50 p-5 backdrop-blur-xl">
           {children}
         </div>
-        {footer && <div className="mt-6 shrink-0 pb-4">{footer}</div>}
+        {footer && <div className="mt-6 shrink-0 auth-sticky-actions">{footer}</div>}
       </div>
     </div>
   );
