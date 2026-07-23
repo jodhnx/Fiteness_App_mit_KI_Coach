@@ -6,6 +6,7 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { ALL_PROVIDER_IDS, HEALTH_PROVIDERS } from "@/lib/health/providers/registry";
 import type { WearableProvider } from "@prisma/client";
 import { getFitbitOAuthUrl } from "@/lib/health/providers/fitbit-provider";
+import { getGoogleFitOAuthUrl } from "@/lib/health/providers/google-fit-provider";
 
 const connectSchema = z.object({
   provider: z.enum(ALL_PROVIDER_IDS as [WearableProvider, ...WearableProvider[]]),
@@ -60,6 +61,8 @@ export async function POST(req: NextRequest) {
     let oauthUrl: string | null = null;
     if (provider === "FITBIT") {
       oauthUrl = getFitbitOAuthUrl(redirectUri, state);
+    } else if (provider === "GOOGLE_FIT") {
+      oauthUrl = getGoogleFitOAuthUrl(redirectUri, state);
     }
 
     const connection = await prisma.wearableConnection.upsert({

@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ProviderMeta } from "@/lib/health/types";
 import { HEALTH_CATEGORY_LABELS, type HealthMetricCategory } from "@/lib/health/types";
+import { PhoneSensorPanel } from "@/components/health/phone-sensor-panel";
 
 type Connection = {
   provider: string;
@@ -158,6 +159,10 @@ export default function GeraetePage() {
           Schritte, Schlaf, Herzfrequenz und Workouts im Hintergrund.
         </p>
       </PremiumCard>
+
+      <PhoneSensorPanel
+        hasWearable={connections.some((c) => c.isActive)}
+      />
 
       <div className="grid gap-3 sm:grid-cols-2">
         {providers.map((p) => {

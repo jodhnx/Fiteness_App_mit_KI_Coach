@@ -12,6 +12,7 @@ import { RoutePrefetcher } from "@/components/layout/route-prefetcher";
 import { GuestUpgradeBanner } from "@/components/auth/guest-upgrade-banner";
 import { SidebarProvider } from "@/components/layout/sidebar-provider";
 import { ServiceWorkerProvider } from "@/components/providers/service-worker-provider";
+import { PhoneSensorWarmup } from "@/components/health/phone-sensor-warmup";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <NotificationProvider>
         <ServiceWorkerProvider />
+        <PhoneSensorWarmup />
         <div className="gradient-mesh min-h-[100dvh]">
           <RoutePrefetcher />
           <div className="mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">

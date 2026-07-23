@@ -13,10 +13,9 @@ import { useDisplayName } from "@/hooks/use-display-name";
 import { PageShell } from "@/components/layout/page-shell";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HomeHealthEcosystem } from "@/components/home/home-health-ecosystem";
 import { HomeGreeting } from "@/components/home/home-greeting";
-import { HomeStatsStrip } from "@/components/home/home-stats-strip";
-import { HomeStatusHeroCard } from "@/components/home/home-status-hero-card";
+import { HomeDashboardPremium } from "@/components/home/home-dashboard-premium";
+import { HomeHealthEcosystem } from "@/components/home/home-health-ecosystem";
 import { HomePlannedTrainingCard } from "@/components/home/home-planned-training-card";
 import { HomeDayFocusCard } from "@/components/home/home-day-focus-card";
 import { HomeProgressGrid } from "@/components/home/home-progress-grid";
@@ -66,8 +65,6 @@ export default function HomePage() {
   const activeSessionId = workoutCleared ? null : data.activeSession?.id ?? null;
   const trainingStreakDays =
     data.trainingStreak?.currentDays ?? data.streak?.currentDays ?? 0;
-  const level = data.gamification?.level ?? 0;
-  const levelName = data.gamification?.levelName;
 
   const recoveryMuscles: MuscleRecovery[] = useMemo(
     () => filterDisplayMuscles((data.recovery?.muscles ?? []) as MuscleRecovery[]),
@@ -94,6 +91,15 @@ export default function HomePage() {
     return "open" as const;
   }, [activeSessionId, data.lastCompletedWorkout, data.nextWorkout?.dayId]);
 
+  const trainingLabel = useMemo(() => {
+    if (trainingStatus === "active") return "Training läuft";
+    if (trainingStatus === "done") return "Heute trainiert";
+    if (trainingStatus === "planned" && data.nextWorkout?.dayName) {
+      return data.nextWorkout.dayName;
+    }
+    return undefined;
+  }, [trainingStatus, data.nextWorkout?.dayName]);
+
   const steps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10_000;
 
@@ -113,22 +119,15 @@ export default function HomePage() {
     <PageShell>
       <HomeGreeting name={displayName} />
 
-      <HomeStatsStrip
-        weightKg={data.weightKg}
-        streakDays={trainingStreakDays}
-        level={level}
-        levelName={levelName}
-        highlight={highlight === "streak" ? "streak" : null}
-      />
-
-      <HomeStatusHeroCard
+      <HomeDashboardPremium
         nutrition={nutrition}
         steps={steps}
         stepGoal={stepGoal}
+        sleepHours={data.healthToday?.sleepHours ?? null}
+        weightKg={data.weightKg}
+        streakDays={trainingStreakDays}
         trainingStatus={trainingStatus}
-        highlight={
-          highlight === "calories" ? "calories" : highlight === "training" ? "training" : null
-        }
+        trainingLabel={trainingLabel}
       />
 
       <HomeHealthEcosystem

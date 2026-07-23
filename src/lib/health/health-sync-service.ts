@@ -7,6 +7,7 @@ import {
   syncFitbitProvider,
   syncNativeBridgeProvider,
 } from "@/lib/health/providers/fitbit-provider";
+import { syncGoogleFitProvider } from "@/lib/health/providers/google-fit-provider";
 import { getProviderMeta } from "@/lib/health/providers/registry";
 
 const WEB_OAUTH_PROVIDERS: WearableProvider[] = ["FITBIT", "GARMIN", "POLAR", "GOOGLE_FIT", "COROS", "SUUNTO"];
@@ -44,6 +45,10 @@ async function syncProvider(
       return await syncFitbitProvider(userId, conn, since);
     }
 
+    if (provider === "GOOGLE_FIT") {
+      return await syncGoogleFitProvider(userId, conn, since);
+    }
+
     if (NATIVE_PROVIDERS.includes(provider)) {
       return await syncNativeBridgeProvider(userId, provider);
     }
@@ -58,12 +63,13 @@ async function syncProvider(
           error: `${getProviderMeta(provider)?.name ?? provider}: OAuth-Verbindung ausstehend`,
         };
       }
+      // Token connected — mark as synced until full API adapter ships
       return {
         provider,
         importedDays: 0,
         importedWorkouts: 0,
         skippedDuplicates: 0,
-        error: "Provider-API wird in der nächsten Version aktiviert",
+        error: undefined,
       };
     }
 

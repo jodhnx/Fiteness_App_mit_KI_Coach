@@ -5,11 +5,11 @@ export const SUPPORT_CATEGORIES: {
   label: string;
 }[] = [
   { value: "PROBLEM", label: "Problem melden" },
-  { value: "IMPROVEMENT", label: "Verbesserungsvorschlag" },
+  { value: "IMPROVEMENT", label: "Verbesserung vorschlagen" },
+  { value: "OTHER", label: "Frage stellen" },
   { value: "FEATURE", label: "Feature-Wunsch" },
   { value: "BUG", label: "Fehler melden" },
   { value: "ACCOUNT", label: "Account Problem" },
-  { value: "OTHER", label: "Sonstiges" },
 ];
 
 export const SUPPORT_QUICK_TOPICS: {
@@ -18,29 +18,24 @@ export const SUPPORT_QUICK_TOPICS: {
   category: SupportCategory;
 }[] = [
   {
-    title: "Kontakt aufnehmen",
-    description: "Allgemeine Fragen an unser Team",
-    category: "OTHER",
-  },
-  {
-    title: "Verbesserungsvorschlag senden",
-    description: "Ideen zur App-Optimierung",
-    category: "IMPROVEMENT",
-  },
-  {
     title: "Problem melden",
     description: "Etwas funktioniert nicht wie erwartet",
     category: "PROBLEM",
   },
   {
-    title: "Feature-Wunsch senden",
-    description: "Neue Funktionen vorschlagen",
-    category: "FEATURE",
+    title: "Verbesserung vorschlagen",
+    description: "Ideen zur App-Optimierung",
+    category: "IMPROVEMENT",
   },
   {
-    title: "Sonstiges",
-    description: "Alles andere — wir helfen gerne",
+    title: "Frage stellen",
+    description: "Allgemeine Fragen an unser Team",
     category: "OTHER",
+  },
+  {
+    title: "Feature-Wunsch",
+    description: "Neue Funktionen vorschlagen",
+    category: "FEATURE",
   },
 ];
 

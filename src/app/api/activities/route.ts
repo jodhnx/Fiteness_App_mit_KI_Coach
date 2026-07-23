@@ -26,6 +26,7 @@ const createSchema = z.object({
   elevationM: z.coerce.number().optional(),
   notes: z.string().max(500).optional(),
   avgSpeedKmh: z.coerce.number().positive().max(120).optional(),
+  startedAt: z.string().datetime().optional(),
 });
 
 export async function GET() {
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
     const { awardXPForAction } = await import("@/lib/gamification");
     const activity = await createActivity(session.user.id, {
       ...parsed.data,
+      startedAt: parsed.data.startedAt ? new Date(parsed.data.startedAt) : undefined,
       avgSpeedKmh:
         parsed.data.avgSpeedKmh ??
         computeAvgSpeedKmh(parsed.data.distanceM, parsed.data.durationSec) ??

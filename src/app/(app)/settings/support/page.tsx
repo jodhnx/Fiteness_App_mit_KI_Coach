@@ -87,8 +87,8 @@ export default function SupportPage() {
           <p className="text-emerald-100 font-medium leading-relaxed">
             Deine Anfrage wurde erfolgreich gesendet.
             {emailSent
-              ? " Du erhältst in Kürze eine Bestätigungs-E-Mail."
-              : " Unser Team wird deine Nachricht prüfen."}
+              ? " Du erhältst in Kürze eine Bestätigungs-E-Mail an deine Adresse. Unser Team antwortet in der Regel innerhalb von 24 Stunden."
+              : " Deine Nachricht wurde gespeichert. Unser Team prüft sie und meldet sich bei dir."}
           </p>
           <div className="flex flex-col gap-2 pt-2">
             <Button
