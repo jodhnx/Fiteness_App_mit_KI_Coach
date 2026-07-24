@@ -1,12 +1,14 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
 import { memo, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Home, Dumbbell, Apple, TrendingUp, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isNavActive } from "@/lib/nav-active";
-import { warmProgressCache } from "@/lib/nav-cache-warmer";
-import { navigateWithTransition } from "@/lib/view-transition";
+import {
+  warmProgressCache,
+  warmNavDataCaches,
+} from "@/lib/nav-cache-warmer";
 import { hapticSelect } from "@/lib/haptic";
 
 const ITEMS = [
@@ -29,14 +31,18 @@ export const BottomNav = memo(function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const onProgressIntent = useCallback(() => {
-    warmProgressCache();
-  }, []);
+  const warmIntent = useCallback((href: string) => {
+    router.prefetch(href);
+    if (href === "/progress") warmProgressCache();
+    else warmNavDataCaches();
+  }, [router]);
 
   const navigate = useCallback(
     (href: string) => {
       if (isNavActive(pathname, href)) return;
-      navigateWithTransition(href, router, () => hapticSelect());
+      hapticSelect();
+      // Instant push — no View Transition delay on primary tabs
+      router.push(href);
     },
     [pathname, router]
   );
@@ -55,9 +61,9 @@ export const BottomNav = memo(function BottomNav() {
             <button
               key={href}
               type="button"
-              onPointerEnter={href === "/progress" ? onProgressIntent : undefined}
-              onFocus={href === "/progress" ? onProgressIntent : undefined}
-              onTouchStart={href === "/progress" ? onProgressIntent : undefined}
+              onPointerEnter={() => warmIntent(href)}
+              onFocus={() => warmIntent(href)}
+              onTouchStart={() => warmIntent(href)}
               onClick={() => navigate(href)}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 py-2 min-h-[52px] text-[11px] font-medium transition-colors duration-75 active:scale-95 transform-gpu",

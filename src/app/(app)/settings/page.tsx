@@ -954,6 +954,26 @@ export default function SettingsPage() {
         </Button>
       </section>
 
+      <section id="settings-app" className="card-premium p-4 space-y-3 settings-section">
+        <h2 className="font-semibold text-white text-lg">App-Informationen</h2>
+        <dl className="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">App</dt>
+            <dd className="font-medium text-white mt-0.5">NEXFORM</dd>
+          </div>
+          <div>
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Version</dt>
+            <dd className="font-medium text-white mt-0.5">3.0</dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Plattformen</dt>
+            <dd className="text-zinc-300 mt-0.5 text-xs leading-relaxed">
+              Apple Health · Health Connect · Google Fit · Fitbit · Garmin · Polar · COROS · Samsung · Huawei · Wear OS · Smartphone-Sensoren
+            </dd>
+          </div>
+        </dl>
+      </section>
+
       <section className="card-premium p-4 settings-section">
         <Link
           href="/settings/support"

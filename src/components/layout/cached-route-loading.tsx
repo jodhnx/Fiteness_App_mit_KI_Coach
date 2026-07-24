@@ -9,15 +9,15 @@ import { NUTRITION_DASHBOARD_CACHE_KEY } from "@/lib/nutrition-sync";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { HomeGreeting } from "@/components/home/home-greeting";
-import { HomeStatsStrip } from "@/components/home/home-stats-strip";
-import { HomeStatusHeroCard } from "@/components/home/home-status-hero-card";
+import { HomeDashboardPremium } from "@/components/home/home-dashboard-premium";
 import { PageHeader } from "@/components/layout/page-header";
 import { PremiumCard } from "@/components/ui/premium-card";
 import { useDisplayName } from "@/hooks/use-display-name";
 import { createEmptyHomeData } from "@/lib/home-defaults";
 import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
+import { isSameDay } from "date-fns";
 
-/** Route transition placeholder — shows real cached values instead of empty skeletons. */
+/** Route transition placeholder — must match real page layout (no old Home UI). */
 export const CachedRouteLoading = memo(function CachedRouteLoading() {
   const pathname = usePathname();
 
@@ -31,16 +31,29 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
       createEmptyNutritionDashboard(),
     []
   );
-  const progress = useMemo(() => getCached<{ profile?: { weightKg: number | null } }>(PROGRESS_CACHE_KEY), []);
+  const progress = useMemo(
+    () => getCached<{ profile?: { weightKg: number | null } }>(PROGRESS_CACHE_KEY),
+    []
+  );
 
   const displayName = useDisplayName(home.userName);
   const trainingStreakDays =
     home.trainingStreak?.currentDays ?? home.streak?.currentDays ?? 0;
 
+  const trainingStatus = useMemo(() => {
+    if (home.activeSession?.id) return "active" as const;
+    const completedToday =
+      home.lastCompletedWorkout?.completedAt &&
+      isSameDay(new Date(home.lastCompletedWorkout.completedAt), new Date());
+    if (completedToday) return "done" as const;
+    if (home.nextWorkout?.dayId) return "planned" as const;
+    return "open" as const;
+  }, [home]);
+
   if (pathname.startsWith("/progress")) {
     const weight = progress?.profile?.weightKg;
     return (
-      <div className="space-y-5 max-w-2xl mx-auto pb-28 view-transition-page">
+      <div className="space-y-5 max-w-2xl mx-auto pb-28">
         <PageHeader title="Fortschritt" subtitle="Transformation · Gewicht · Historie" />
         <PremiumCard>
           <p className="text-xs text-zinc-500 uppercase tracking-wide">Gewicht</p>
@@ -63,7 +76,7 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
 
   if (pathname.startsWith("/nutrition")) {
     return (
-      <div className="space-y-3 max-w-lg mx-auto pb-4 view-transition-page">
+      <div className="space-y-3 max-w-lg mx-auto pb-4">
         <PremiumCard glow>
           <p className="text-xs text-zinc-500">Kalorien heute</p>
           <p className="text-3xl font-bold text-accent tabular-nums">
@@ -73,13 +86,20 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
             </span>
           </p>
         </PremiumCard>
+        <div className="grid grid-cols-4 gap-2">
+          {["P", "KH", "F", "B"].map((m) => (
+            <PremiumCard key={m} padding="sm" className="h-14 flex items-center justify-center">
+              <span className="text-xs text-zinc-500">{m}</span>
+            </PremiumCard>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (pathname.startsWith("/workouts")) {
     return (
-      <div className="space-y-3 max-w-lg mx-auto pb-24 view-transition-page">
+      <div className="space-y-3 max-w-lg mx-auto pb-24">
         {["Meine Pläne", "Quick Workout", "Übungen"].map((title) => (
           <PremiumCard key={title} padding="sm" className="h-20 flex items-center">
             <span className="font-medium text-zinc-300">{title}</span>
@@ -91,7 +111,7 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
 
   if (pathname.startsWith("/coach")) {
     return (
-      <div className="max-w-lg mx-auto pb-4 view-transition-page">
+      <div className="max-w-lg mx-auto pb-4">
         <PremiumCard className="h-[60vh] flex items-end p-4">
           <p className="text-sm text-zinc-500">Coach bereit…</p>
         </PremiumCard>
@@ -99,21 +119,37 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
     );
   }
 
-  // Default: Home cached preview
+  if (pathname.startsWith("/geraete") || pathname.startsWith("/gesundheit")) {
+    return (
+      <div className="space-y-3 max-w-2xl mx-auto pb-28">
+        <PageHeader
+          title={pathname.startsWith("/geraete") ? "Geräte & Gesundheit" : "Gesundheit"}
+        />
+        <PremiumCard className="h-24">
+          <span className="sr-only">Laden</span>
+        </PremiumCard>
+        <PremiumCard className="h-32">
+          <span className="sr-only">Laden</span>
+        </PremiumCard>
+      </div>
+    );
+  }
+
+  // Home — identical structure to live HomeDashboardPremium (no legacy strip/hero)
   return (
-    <div className="space-y-3 pb-4 max-w-lg mx-auto view-transition-page">
+    <div className="space-y-3 pb-4 max-w-lg mx-auto">
       <HomeGreeting name={displayName} />
-      <HomeStatsStrip
-        weightKg={home.weightKg}
-        streakDays={trainingStreakDays}
-        level={home.gamification?.level ?? 0}
-        levelName={home.gamification?.levelName}
-      />
-      <HomeStatusHeroCard
+      <HomeDashboardPremium
         nutrition={nutrition}
         steps={home.healthToday?.steps ?? 0}
         stepGoal={home.healthToday?.stepGoal ?? 10_000}
-        trainingStatus="open"
+        sleepHours={home.healthToday?.sleepHours ?? null}
+        weightKg={home.weightKg}
+        streakDays={trainingStreakDays}
+        trainingStatus={trainingStatus}
+        trainingLabel={
+          trainingStatus === "planned" ? home.nextWorkout?.dayName : undefined
+        }
       />
     </div>
   );

@@ -67,11 +67,19 @@ export type ProviderSyncResult = {
 export type ProviderMeta = {
   id: WearableProvider;
   name: string;
+  manufacturer: string;
   platform: "web_oauth" | "native_bridge" | "both";
   color: string;
   description: string;
   apiNote: string;
 };
+
+export type DeviceSyncStatus =
+  | "connected"
+  | "syncing"
+  | "error"
+  | "oauth_pending"
+  | "native_bridge";
 
 export const HEALTH_CATEGORY_LABELS: Record<HealthMetricCategory, string> = {
   steps: "Schritte",

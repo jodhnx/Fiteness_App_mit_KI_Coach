@@ -12,6 +12,9 @@ import {
   LogOut,
   HeartPulse,
   Watch,
+  Bell,
+  Info,
+  User,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,16 +32,19 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/coach", label: "Coach", icon: Bot },
 ];
 
-/** Profile panel — simplified: no separate Ziele / Feedback duplicates */
+/** Profile panel — Account / Devices / Settings / Support */
 export const PROFILE_MENU_NAV: NavItem[] = [
-  { href: "/settings", label: "Account & Einstellungen", icon: Settings },
-  { href: "/settings#settings-geraete", label: "Geräte & Gesundheit", icon: Watch },
+  { href: "/settings", label: "Account", icon: User },
+  { href: "/geraete", label: "Geräte & Gesundheit", icon: Watch },
+  { href: "/settings", label: "Einstellungen", icon: Settings },
+  { href: "/settings#settings-konto", label: "Datenschutz", icon: Lock },
   { href: "/settings/support", label: "Support & Feedback", icon: MessageCircle },
+  { href: "/settings#settings-benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
+  { href: "/settings#settings-app", label: "App-Informationen", icon: Info },
 ];
 
 export const MORE_NAV: NavItem[] = [
   { href: "/gesundheit", label: "Gesundheit", icon: HeartPulse },
-  { href: "/geraete", label: "Geräte", icon: Watch },
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
 ];
 

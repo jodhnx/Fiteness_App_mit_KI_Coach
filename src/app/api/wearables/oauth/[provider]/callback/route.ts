@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { exchangeFitbitCode } from "@/lib/health/providers/fitbit-provider";
-import { exchangeGoogleFitCode } from "@/lib/health/providers/google-fit-provider";
 import type { WearableProvider } from "@prisma/client";
+import {
+  exchangeProviderCode,
+  providerFromPathParam,
+} from "@/lib/health/providers/oauth-dispatcher";
+import { getProviderMeta } from "@/lib/health/providers/registry";
+import { syncWearableProvider } from "@/lib/health/health-sync-service";
 
 type RouteParams = { params: Promise<{ provider: string }> };
 
 async function saveTokens(
   userId: string,
   provider: WearableProvider,
-  tokens: { accessToken: string; refreshToken?: string; expiresAt?: number }
+  tokens: {
+    accessToken: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    extra?: Record<string, unknown>;
+  }
 ) {
+  const meta = getProviderMeta(provider);
   await prisma.wearableConnection.upsert({
     where: { userId_provider: { userId, provider } },
     create: {
@@ -21,7 +31,11 @@ async function saveTokens(
       refreshToken: tokens.refreshToken,
       metadata: JSON.stringify({
         status: "connected",
+        connectedAt: new Date().toISOString(),
         expiresAt: tokens.expiresAt,
+        deviceName: meta?.name,
+        manufacturer: meta?.manufacturer,
+        ...tokens.extra,
       }),
     },
     update: {
@@ -31,14 +45,18 @@ async function saveTokens(
       lastSyncError: null,
       metadata: JSON.stringify({
         status: "connected",
+        connectedAt: new Date().toISOString(),
         expiresAt: tokens.expiresAt,
+        deviceName: meta?.name,
+        manufacturer: meta?.manufacturer,
+        ...tokens.extra,
       }),
     },
   });
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
-  const { provider } = await params;
+  const { provider: providerParam } = await params;
   const code = req.nextUrl.searchParams.get("code");
   const state = req.nextUrl.searchParams.get("state");
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -48,28 +66,30 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   }
 
   try {
+    const provider = providerFromPathParam(providerParam);
+    if (!provider) {
+      return NextResponse.redirect(`${baseUrl}/geraete?error=unknown_provider`);
+    }
+
     const decoded = JSON.parse(Buffer.from(state, "base64url").toString()) as {
       userId: string;
       provider: string;
     };
 
-    if (provider === "fitbit") {
-      const redirectUri = `${baseUrl}/api/wearables/oauth/fitbit/callback`;
-      const tokens = await exchangeFitbitCode(code, redirectUri);
-      if (!tokens) {
-        return NextResponse.redirect(`${baseUrl}/geraete?error=oauth_failed`);
-      }
-      await saveTokens(decoded.userId, "FITBIT", tokens);
-    } else if (provider === "google_fit") {
-      const redirectUri = `${baseUrl}/api/wearables/oauth/google_fit/callback`;
-      const tokens = await exchangeGoogleFitCode(code, redirectUri);
-      if (!tokens) {
-        return NextResponse.redirect(`${baseUrl}/geraete?error=oauth_failed`);
-      }
-      await saveTokens(decoded.userId, "GOOGLE_FIT", tokens);
+    const redirectUri = `${baseUrl}/api/wearables/oauth/${providerParam.toLowerCase()}/callback`;
+    const tokens = await exchangeProviderCode(provider, code, redirectUri);
+    if (!tokens) {
+      return NextResponse.redirect(`${baseUrl}/geraete?error=oauth_failed`);
     }
 
-    return NextResponse.redirect(`${baseUrl}/geraete?connected=${provider}`);
+    await saveTokens(decoded.userId, provider, tokens);
+
+    // Kick off first sync in background (don't block redirect)
+    void syncWearableProvider(decoded.userId, provider, 7).catch(() => {});
+
+    return NextResponse.redirect(
+      `${baseUrl}/geraete?connected=${encodeURIComponent(provider)}`
+    );
   } catch {
     return NextResponse.redirect(`${baseUrl}/geraete?error=oauth_failed`);
   }

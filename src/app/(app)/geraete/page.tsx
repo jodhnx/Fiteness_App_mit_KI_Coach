@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { PremiumCard } from "@/components/ui/premium-card";
@@ -13,6 +13,10 @@ import {
   Shield,
   CheckCircle2,
   AlertCircle,
+  Battery,
+  BatteryLow,
+  Clock,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -25,16 +29,46 @@ type Connection = {
   isActive: boolean;
   lastSyncAt: string | null;
   lastSyncError: string | null;
+  connectedAt?: string | null;
+  deviceName?: string;
+  manufacturer?: string;
+  batteryLevel?: number | null;
+  syncStatus?: string;
 };
 
 type Prefs = Record<HealthMetricCategory, boolean>;
+
+function formatDate(iso: string | null | undefined) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function syncLabel(status?: string, error?: string | null) {
+  if (error) return "Fehler";
+  switch (status) {
+    case "oauth_pending":
+      return "OAuth ausstehend";
+    case "native_bridge":
+      return "Native Bridge bereit";
+    case "error":
+      return "Fehler";
+    default:
+      return "Verbunden";
+  }
+}
 
 export default function GeraetePage() {
   const searchParams = useSearchParams();
   const [providers, setProviders] = useState<ProviderMeta[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [prefs, setPrefs] = useState<Partial<Prefs>>({});
-  const [syncing, setSyncing] = useState(false);
+  const [syncing, setSyncing] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/wearables");
@@ -51,9 +85,21 @@ export default function GeraetePage() {
   useEffect(() => {
     const connected = searchParams.get("connected");
     const error = searchParams.get("error");
-    if (connected) toast.success(`${connected} erfolgreich verbunden`);
+    if (connected) toast.success(`${connected.replace(/_/g, " ")} verbunden`);
     if (error) toast.error("Verbindung fehlgeschlagen");
   }, [searchParams]);
+
+  const activeConnections = useMemo(
+    () => connections.filter((c) => c.isActive),
+    [connections]
+  );
+  const hasWearable = activeConnections.length > 0;
+
+  const lastSync = activeConnections
+    .map((c) => c.lastSyncAt)
+    .filter(Boolean)
+    .sort()
+    .pop();
 
   async function connect(providerId: string) {
     const res = await fetch("/api/wearables", {
@@ -63,7 +109,7 @@ export default function GeraetePage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      toast.error("Verbindung fehlgeschlagen");
+      toast.error(data?.error ?? "Verbindung fehlgeschlagen");
       return;
     }
     if (data.oauthUrl) {
@@ -72,7 +118,7 @@ export default function GeraetePage() {
     }
     toast.success(
       data.nativeBridge
-        ? "Gerät verbunden — Sync über mobile App / Health Connect"
+        ? "Verbunden — Sync über HealthKit / Health Connect"
         : "Gerät verbunden"
     );
     void load();
@@ -88,10 +134,14 @@ export default function GeraetePage() {
     void load();
   }
 
-  async function syncAll() {
-    setSyncing(true);
+  async function syncOne(providerId?: string) {
+    setSyncing(providerId ?? "all");
     try {
-      const res = await fetch("/api/wearables/sync", { method: "POST" });
+      const res = await fetch("/api/wearables/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(providerId ? { provider: providerId } : {}),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error();
       const total =
@@ -107,7 +157,7 @@ export default function GeraetePage() {
     } catch {
       toast.error("Sync fehlgeschlagen");
     } finally {
-      setSyncing(false);
+      setSyncing(null);
     }
   }
 
@@ -121,16 +171,10 @@ export default function GeraetePage() {
     });
   }
 
-  const lastSync = connections
-    .map((c) => c.lastSyncAt)
-    .filter(Boolean)
-    .sort()
-    .pop();
-
   return (
     <PageShell
-      title="Geräte"
-      subtitle="Smartwatches & Fitness-Tracker verbinden"
+      title="Geräte & Gesundheit"
+      subtitle="Smartwatches, Health-Apps & Smartphone"
       maxWidth="2xl"
       className="pb-28"
       bottomNav={false}
@@ -138,49 +182,81 @@ export default function GeraetePage() {
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => void syncAll()}
-          disabled={syncing}
+          onClick={() => void syncOne()}
+          disabled={syncing !== null || !hasWearable}
         >
-          <RefreshCw className={cn("h-4 w-4 mr-1", syncing && "animate-spin")} />
+          <RefreshCw className={cn("h-4 w-4 mr-1", syncing === "all" && "animate-spin")} />
           Sync
         </Button>
       }
     >
       {lastSync && (
         <p className="text-xs text-zinc-500 -mt-4">
-          Letzte Synchronisation:{" "}
-          {new Date(lastSync).toLocaleString("de-DE")}
+          Letzte Synchronisation: {formatDate(lastSync)}
         </p>
       )}
 
       <PremiumCard glow>
-        <p className="text-sm text-zinc-400">
-          Verbinde Smartwatch oder Smartphone — Schritte, Schlaf und Aktivität
-          werden automatisch synchronisiert. Ohne Watch nutzt NEXFORM dein Handy.
+        <p className="text-sm text-zinc-300">
+          Verbinde Apple Health, Health Connect, Fitbit, Garmin und mehr.
+          Ohne Smartwatch nutzt NEXFORM automatisch dein Smartphone — nach deiner Zustimmung.
         </p>
       </PremiumCard>
 
-      <PhoneSensorPanel
-        hasWearable={connections.some((c) => c.isActive)}
-      />
+      {/* Connected devices management */}
+      {activeConnections.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] px-0.5">
+            Verbundene Geräte
+          </h2>
+          {activeConnections.map((conn) => {
+            const meta = providers.find((p) => p.id === conn.provider);
+            return (
+              <ConnectedDeviceCard
+                key={conn.provider}
+                connection={conn}
+                color={meta?.color ?? "text-accent"}
+                syncing={syncing === conn.provider}
+                onSync={() => void syncOne(conn.provider)}
+                onDisconnect={() => void disconnect(conn.provider)}
+              />
+            );
+          })}
+        </section>
+      )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {providers.map((p) => {
-          const conn = connections.find((c) => c.provider === p.id);
-          const connected = conn?.isActive;
-          return (
-            <ProviderCard
-              key={p.id}
-              provider={p}
-              connected={!!connected}
-              lastSyncAt={conn?.lastSyncAt ?? null}
-              lastSyncError={conn?.lastSyncError ?? null}
-              onConnect={() => void connect(p.id)}
-              onDisconnect={() => void disconnect(p.id)}
-            />
-          );
-        })}
-      </div>
+      {/* Phone fallback — always available, highlighted when no watch */}
+      <section className="space-y-2">
+        {!hasWearable && (
+          <div className="flex items-center gap-2 text-xs text-accent px-0.5">
+            <Smartphone className="h-3.5 w-3.5" />
+            Keine Smartwatch — Smartphone als Sensor empfohlen
+          </div>
+        )}
+        <PhoneSensorPanel hasWearable={hasWearable} />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] px-0.5">
+          Plattformen verbinden
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {providers.map((p) => {
+            const conn = connections.find((c) => c.provider === p.id && c.isActive);
+            return (
+              <ProviderCard
+                key={p.id}
+                provider={p}
+                connected={!!conn}
+                lastSyncAt={conn?.lastSyncAt ?? null}
+                lastSyncError={conn?.lastSyncError ?? null}
+                onConnect={() => void connect(p.id)}
+                onDisconnect={() => void disconnect(p.id)}
+              />
+            );
+          })}
+        </div>
+      </section>
 
       <PremiumCard>
         <div className="flex items-center gap-2 mb-4">
@@ -208,6 +284,99 @@ export default function GeraetePage() {
   );
 }
 
+const ConnectedDeviceCard = memo(function ConnectedDeviceCard({
+  connection,
+  color,
+  syncing,
+  onSync,
+  onDisconnect,
+}: {
+  connection: Connection;
+  color: string;
+  syncing: boolean;
+  onSync: () => void;
+  onDisconnect: () => void;
+}) {
+  const BatteryIcon =
+    connection.batteryLevel != null && connection.batteryLevel < 20
+      ? BatteryLow
+      : Battery;
+
+  return (
+    <PremiumCard className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Watch className={cn("h-5 w-5 shrink-0", color)} />
+            <h3 className="font-semibold text-white truncate">
+              {connection.deviceName ?? connection.provider}
+            </h3>
+            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+          </div>
+          <p className="text-xs text-zinc-500 mt-1">
+            {connection.manufacturer ?? "—"}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "text-[10px] font-medium px-2 py-1 rounded-full shrink-0",
+            connection.lastSyncError
+              ? "bg-amber-500/15 text-amber-300"
+              : "bg-emerald-500/15 text-emerald-300"
+          )}
+        >
+          {syncLabel(connection.syncStatus, connection.lastSyncError)}
+        </span>
+      </div>
+
+      <dl className="grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <dt className="text-zinc-600 flex items-center gap-1">
+            <Clock className="h-3 w-3" /> Letzte Sync
+          </dt>
+          <dd className="text-zinc-300 mt-0.5">{formatDate(connection.lastSyncAt)}</dd>
+        </div>
+        <div>
+          <dt className="text-zinc-600">Verbunden seit</dt>
+          <dd className="text-zinc-300 mt-0.5">{formatDate(connection.connectedAt)}</dd>
+        </div>
+        {connection.batteryLevel != null && (
+          <div className="col-span-2">
+            <dt className="text-zinc-600 flex items-center gap-1">
+              <BatteryIcon className="h-3 w-3" /> Akkustand
+            </dt>
+            <dd className="text-zinc-300 mt-0.5">{connection.batteryLevel}%</dd>
+          </div>
+        )}
+      </dl>
+
+      {connection.lastSyncError && (
+        <p className="text-xs text-amber-400 flex items-start gap-1.5">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          {connection.lastSyncError}
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <Button
+          variant="premium"
+          size="sm"
+          className="flex-1"
+          disabled={syncing}
+          onClick={onSync}
+        >
+          <RefreshCw className={cn("h-4 w-4 mr-1", syncing && "animate-spin")} />
+          Neu synchronisieren
+        </Button>
+        <Button variant="secondary" size="sm" onClick={onDisconnect}>
+          <Unlink className="h-4 w-4 mr-1" />
+          Trennen
+        </Button>
+      </div>
+    </PremiumCard>
+  );
+});
+
 const ProviderCard = memo(function ProviderCard({
   provider,
   connected,
@@ -231,6 +400,7 @@ const ProviderCard = memo(function ProviderCard({
             <Watch className={cn("h-5 w-5", provider.color)} />
             <h3 className={cn("font-semibold", provider.color)}>{provider.name}</h3>
           </div>
+          <p className="text-[10px] text-zinc-600 mt-0.5">{provider.manufacturer}</p>
           <p className="text-xs text-zinc-500 mt-1">{provider.description}</p>
           <p className="text-[10px] text-zinc-600 mt-1">{provider.apiNote}</p>
         </div>
@@ -247,9 +417,7 @@ const ProviderCard = memo(function ProviderCard({
       )}
 
       {lastSyncAt && (
-        <p className="text-[10px] text-zinc-600">
-          Sync: {new Date(lastSyncAt).toLocaleString("de-DE")}
-        </p>
+        <p className="text-[10px] text-zinc-600">Sync: {formatDate(lastSyncAt)}</p>
       )}
 
       <Button

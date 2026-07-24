@@ -12,7 +12,6 @@ import {
   PROFILE_MENU_NAV,
   MORE_NAV,
   ADMIN_NAV,
-  PRIVACY_NAV,
   LOGOUT_ACTION,
 } from "@/lib/nav-items";
 import { cn } from "@/lib/utils";
@@ -55,7 +54,7 @@ const MenuLink = memo(function MenuLink({
   );
 });
 
-/** Whoop-style profile dashboard — slides in from the right with glassmorphism. */
+/** Premium profile panel — Whoop / Apple Fitness style. */
 export const ProfileDashboardPanel = memo(function ProfileDashboardPanel({
   userName,
   userImage,
@@ -95,7 +94,7 @@ export const ProfileDashboardPanel = memo(function ProfileDashboardPanel({
         className="profile-panel"
         role="dialog"
         aria-modal="true"
-        aria-label="Profil & Navigation"
+        aria-label="Profil & Einstellungen"
       >
         <div className="profile-panel-header">
           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -114,7 +113,7 @@ export const ProfileDashboardPanel = memo(function ProfileDashboardPanel({
                   router.push("/settings");
                 }}
               >
-                Profil anzeigen →
+                Profil bearbeiten →
               </button>
             </div>
           </div>
@@ -129,6 +128,9 @@ export const ProfileDashboardPanel = memo(function ProfileDashboardPanel({
         </div>
 
         <div className="profile-panel-body">
+          <p className="px-1 mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+            Account
+          </p>
           <nav className="space-y-1">
             {PROFILE_MENU_NAV.map((item) => (
               <MenuLink
@@ -136,17 +138,14 @@ export const ProfileDashboardPanel = memo(function ProfileDashboardPanel({
                 href={item.href}
                 label={item.label}
                 icon={item.icon}
-                active={isNavActive(pathname, item.href)}
+                active={
+                  item.href.includes("#")
+                    ? pathname.startsWith("/settings")
+                    : isNavActive(pathname, item.href)
+                }
                 onNavigate={close}
               />
             ))}
-            <MenuLink
-              href={PRIVACY_NAV.href}
-              label={PRIVACY_NAV.label}
-              icon={PRIVACY_NAV.icon}
-              active={pathname.startsWith("/settings")}
-              onNavigate={close}
-            />
           </nav>
 
           <div className="my-4 border-t border-white/8" />

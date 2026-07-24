@@ -56,6 +56,17 @@ export const HomePhoneStepsHint = memo(function HomePhoneStepsHint() {
             onClick={() => {
               setPhoneSensorConsent({ steps: true, motion: true, gps: true });
               setShow(false);
+              // iOS motion permission
+              try {
+                const DME = DeviceMotionEvent as unknown as {
+                  requestPermission?: () => Promise<PermissionState>;
+                };
+                if (typeof DME.requestPermission === "function") {
+                  void DME.requestPermission();
+                }
+              } catch {
+                /* ignore */
+              }
               void fetch("/api/activities/steps", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },

@@ -8,16 +8,15 @@ import {
   syncNativeBridgeProvider,
 } from "@/lib/health/providers/fitbit-provider";
 import { syncGoogleFitProvider } from "@/lib/health/providers/google-fit-provider";
+import { syncGarminProvider } from "@/lib/health/providers/garmin-provider";
+import { syncPolarProvider } from "@/lib/health/providers/polar-provider";
+import { syncCorosProvider } from "@/lib/health/providers/coros-provider";
+import { syncSuuntoProvider } from "@/lib/health/providers/suunto-provider";
+import {
+  NATIVE_BRIDGE_PROVIDERS,
+  WEB_OAUTH_PROVIDERS,
+} from "@/lib/health/providers/oauth-dispatcher";
 import { getProviderMeta } from "@/lib/health/providers/registry";
-
-const WEB_OAUTH_PROVIDERS: WearableProvider[] = ["FITBIT", "GARMIN", "POLAR", "GOOGLE_FIT", "COROS", "SUUNTO"];
-const NATIVE_PROVIDERS: WearableProvider[] = [
-  "APPLE_HEALTH",
-  "SAMSUNG_HEALTH",
-  "GOOGLE_HEALTH_CONNECT",
-  "HUAWEI_HEALTH",
-  "WEAR_OS",
-];
 
 async function syncProvider(
   userId: string,
@@ -41,15 +40,24 @@ async function syncProvider(
   const conn = connectionFromDb(connection);
 
   try {
-    if (provider === "FITBIT") {
-      return await syncFitbitProvider(userId, conn, since);
+    switch (provider) {
+      case "FITBIT":
+        return await syncFitbitProvider(userId, conn, since);
+      case "GOOGLE_FIT":
+        return await syncGoogleFitProvider(userId, conn, since);
+      case "GARMIN":
+        return await syncGarminProvider(userId, conn, since);
+      case "POLAR":
+        return await syncPolarProvider(userId, conn, since);
+      case "COROS":
+        return await syncCorosProvider(userId, conn, since);
+      case "SUUNTO":
+        return await syncSuuntoProvider(userId, conn, since);
+      default:
+        break;
     }
 
-    if (provider === "GOOGLE_FIT") {
-      return await syncGoogleFitProvider(userId, conn, since);
-    }
-
-    if (NATIVE_PROVIDERS.includes(provider)) {
+    if (NATIVE_BRIDGE_PROVIDERS.includes(provider)) {
       return await syncNativeBridgeProvider(userId, provider);
     }
 
@@ -63,13 +71,11 @@ async function syncProvider(
           error: `${getProviderMeta(provider)?.name ?? provider}: OAuth-Verbindung ausstehend`,
         };
       }
-      // Token connected — mark as synced until full API adapter ships
       return {
         provider,
         importedDays: 0,
         importedWorkouts: 0,
         skippedDuplicates: 0,
-        error: undefined,
       };
     }
 

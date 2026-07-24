@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { ALL_PROVIDER_IDS } from "@/lib/health/providers/registry";
@@ -50,10 +51,19 @@ const workoutSchema = z.object({
   maxHeartRate: z.number().optional(),
 });
 
+const deviceSchema = z
+  .object({
+    name: z.string().optional(),
+    manufacturer: z.string().optional(),
+    batteryLevel: z.number().min(0).max(100).optional(),
+  })
+  .optional();
+
 const ingestSchema = z.object({
   provider: z.enum(ALL_PROVIDER_IDS as [WearableProvider, ...WearableProvider[]]),
   days: z.array(daySchema).optional(),
   workouts: z.array(workoutSchema).optional(),
+  device: deviceSchema,
   triggerSync: z.boolean().optional(),
 });
 
@@ -67,7 +77,7 @@ export async function POST(req: NextRequest) {
     const parsed = ingestSchema.safeParse(body);
     if (!parsed.success) return jsonError("Ungültige Daten");
 
-    const { provider, days, workouts } = parsed.data;
+    const { provider, days, workouts, device } = parsed.data;
     let importedDays = 0;
     let importedWorkouts = 0;
     let skippedDuplicates = 0;
@@ -91,6 +101,38 @@ export async function POST(req: NextRequest) {
       if (applied) importedWorkouts++;
       if (duplicate) skippedDuplicates++;
     }
+
+    await prisma.wearableConnection.upsert({
+      where: {
+        userId_provider: { userId: session.user.id, provider },
+      },
+      create: {
+        userId: session.user.id,
+        provider,
+        isActive: true,
+        lastSyncAt: new Date(),
+        metadata: JSON.stringify({
+          status: "native_bridge",
+          connectedAt: new Date().toISOString(),
+          deviceName: device?.name,
+          manufacturer: device?.manufacturer,
+          batteryLevel: device?.batteryLevel,
+        }),
+      },
+      update: {
+        isActive: true,
+        lastSyncAt: new Date(),
+        lastSyncError: null,
+        metadata: JSON.stringify({
+          status: "native_bridge",
+          connectedAt: new Date().toISOString(),
+          deviceName: device?.name,
+          manufacturer: device?.manufacturer,
+          batteryLevel: device?.batteryLevel,
+          lastIngestAt: new Date().toISOString(),
+        }),
+      },
+    });
 
     if (parsed.data.triggerSync) {
       await syncAllWearables(session.user.id, 1);

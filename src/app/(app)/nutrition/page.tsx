@@ -15,6 +15,7 @@ import {
 } from "@/lib/nutrition-sync";
 import { PageShell } from "@/components/layout/page-shell";
 import { NutritionOverviewPanel } from "@/components/nutrition/nutrition-overview-panel";
+import { NutritionDaySummary } from "@/components/nutrition/nutrition-day-summary";
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
 import { FoodAddPopup } from "@/components/nutrition/food-add-popup";
@@ -218,6 +219,7 @@ export default function NutritionPage() {
         </div>
       )}
 
+      {/* Reihenfolge: Kalorien → Makros → Mahlzeiten → Tageszusammenfassung */}
       <NutritionOverviewPanel dashboard={dashboard} />
 
       <section className="pt-1">
@@ -238,6 +240,8 @@ export default function NutritionPage() {
         targetMl={dashboard.water.targetMl}
         onAdd={addWater}
       />
+
+      <NutritionDaySummary dashboard={dashboard} />
 
       {addSheetMeal && (
         <FoodAddPopup

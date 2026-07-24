@@ -5,12 +5,20 @@ import { z } from "zod";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { ALL_PROVIDER_IDS, HEALTH_PROVIDERS } from "@/lib/health/providers/registry";
 import type { WearableProvider } from "@prisma/client";
-import { getFitbitOAuthUrl } from "@/lib/health/providers/fitbit-provider";
-import { getGoogleFitOAuthUrl } from "@/lib/health/providers/google-fit-provider";
+import { getProviderOAuthUrl } from "@/lib/health/providers/oauth-dispatcher";
 
 const connectSchema = z.object({
   provider: z.enum(ALL_PROVIDER_IDS as [WearableProvider, ...WearableProvider[]]),
 });
+
+function parseMeta(raw: string | null): Record<string, unknown> {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
 
 export async function GET() {
   try {
@@ -27,14 +35,35 @@ export async function GET() {
       .catch(() => null);
 
     return jsonOk({
-      connections: connections.map((c) => ({
-        id: c.id,
-        provider: c.provider,
-        isActive: c.isActive,
-        lastSyncAt: c.lastSyncAt?.toISOString() ?? null,
-        lastSyncError: c.lastSyncError ?? null,
-        metadata: c.metadata ? JSON.parse(c.metadata) : null,
-      })),
+      connections: connections.map((c) => {
+        const meta = parseMeta(c.metadata);
+        const providerMeta = HEALTH_PROVIDERS.find((p) => p.id === c.provider);
+        let syncStatus: string = "connected";
+        if (!c.isActive) syncStatus = "disconnected";
+        else if (c.lastSyncError) syncStatus = "error";
+        else if (meta.status === "oauth_pending") syncStatus = "oauth_pending";
+        else if (meta.status === "native_bridge") syncStatus = "native_bridge";
+
+        return {
+          id: c.id,
+          provider: c.provider,
+          isActive: c.isActive,
+          lastSyncAt: c.lastSyncAt?.toISOString() ?? null,
+          lastSyncError: c.lastSyncError ?? null,
+          connectedAt:
+            (typeof meta.connectedAt === "string" && meta.connectedAt) ||
+            c.createdAt.toISOString(),
+          deviceName:
+            (typeof meta.deviceName === "string" && meta.deviceName) ||
+            providerMeta?.name ||
+            c.provider,
+          manufacturer: providerMeta?.manufacturer ?? "Unbekannt",
+          batteryLevel:
+            typeof meta.batteryLevel === "number" ? meta.batteryLevel : null,
+          syncStatus,
+          metadata: meta,
+        };
+      }),
       providers: HEALTH_PROVIDERS,
       preferences: prefs,
     });
@@ -58,13 +87,16 @@ export async function POST(req: NextRequest) {
       JSON.stringify({ userId: session.user.id, provider })
     ).toString("base64url");
 
-    let oauthUrl: string | null = null;
-    if (provider === "FITBIT") {
-      oauthUrl = getFitbitOAuthUrl(redirectUri, state);
-    } else if (provider === "GOOGLE_FIT") {
-      oauthUrl = getGoogleFitOAuthUrl(redirectUri, state);
+    const oauthUrl = getProviderOAuthUrl(provider, redirectUri, state);
+
+    if (oauthUrl === null && ["FITBIT", "GOOGLE_FIT", "GARMIN", "POLAR", "COROS", "SUUNTO"].includes(provider)) {
+      return jsonError(
+        `OAuth nicht konfiguriert — fehlende Client-Credentials für ${provider}`,
+        400
+      );
     }
 
+    const connectedAt = new Date().toISOString();
     const connection = await prisma.wearableConnection.upsert({
       where: {
         userId_provider: {
@@ -78,7 +110,9 @@ export async function POST(req: NextRequest) {
         isActive: true,
         metadata: JSON.stringify({
           status: oauthUrl ? "oauth_pending" : "native_bridge",
-          connectedAt: new Date().toISOString(),
+          connectedAt,
+          deviceName: HEALTH_PROVIDERS.find((p) => p.id === provider)?.name,
+          manufacturer: HEALTH_PROVIDERS.find((p) => p.id === provider)?.manufacturer,
         }),
       },
       update: {
@@ -86,7 +120,9 @@ export async function POST(req: NextRequest) {
         lastSyncError: null,
         metadata: JSON.stringify({
           status: oauthUrl ? "oauth_pending" : "native_bridge",
-          connectedAt: new Date().toISOString(),
+          connectedAt,
+          deviceName: HEALTH_PROVIDERS.find((p) => p.id === provider)?.name,
+          manufacturer: HEALTH_PROVIDERS.find((p) => p.id === provider)?.manufacturer,
         }),
       },
     });

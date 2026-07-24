@@ -6,6 +6,7 @@ import {
   applyHealthDaySnapshot,
   applyWearableWorkout,
 } from "@/lib/health/health-merge-service";
+import { prisma } from "@/lib/prisma";
 
 const FITBIT_API = "https://api.fitbit.com/1";
 
@@ -48,7 +49,7 @@ export async function syncFitbitProvider(
     const d = subDays(new Date(), i);
     const dateStr = d.toISOString().slice(0, 10);
 
-    const [stepsData, sleepData, hrData] = await Promise.all([
+    const [stepsData, sleepData, hrData, distData, calData] = await Promise.all([
       fitbitFetch<{ "activities-steps": { value: string }[] }>(
         connection.accessToken,
         `/user/-/activities/steps/date/${dateStr}/1d.json`
@@ -60,16 +61,29 @@ export async function syncFitbitProvider(
         connection.accessToken,
         `/user/-/activities/heart/date/${dateStr}/1d.json`
       ),
+      fitbitFetch<{ "activities-distance": { value: string }[] }>(
+        connection.accessToken,
+        `/user/-/activities/distance/date/${dateStr}/1d.json`
+      ),
+      fitbitFetch<{ "activities-calories": { value: string }[] }>(
+        connection.accessToken,
+        `/user/-/activities/calories/date/${dateStr}/1d.json`
+      ),
     ]);
 
     const steps = Number(stepsData?.["activities-steps"]?.[0]?.value ?? 0);
     const sleepMin = sleepData?.sleep?.[0]?.minutesAsleep ?? 0;
     const levels = sleepData?.sleep?.[0]?.levels?.summary;
     const restingHr = hrData?.["activities-heart"]?.[0]?.value?.restingHeartRate;
+    const distanceKm = Number(distData?.["activities-distance"]?.[0]?.value ?? 0);
+    const calories = Number(calData?.["activities-calories"]?.[0]?.value ?? 0);
 
     const snapshot: HealthDaySnapshot = {
       date: dateStr,
       steps: steps > 0 ? steps : undefined,
+      distanceM: distanceKm > 0 ? distanceKm * 1000 : undefined,
+      caloriesBurned: calories > 0 ? Math.round(calories) : undefined,
+      activeCalories: calories > 0 ? Math.round(calories) : undefined,
       sleepHours: sleepMin > 0 ? sleepMin / 60 : undefined,
       sleepDeepHours: levels?.deep?.minutes ? levels.deep.minutes / 60 : undefined,
       sleepRemHours: levels?.rem?.minutes ? levels.rem.minutes / 60 : undefined,
@@ -172,13 +186,36 @@ export async function syncNativeBridgeProvider(
   userId: string,
   provider: WearableProvider
 ): Promise<ProviderSyncResult> {
+  // Check if companion recently ingested data
+  const connection = await prisma.wearableConnection.findUnique({
+    where: { userId_provider: { userId, provider } },
+  });
+  const meta = connection?.metadata
+    ? (() => {
+        try {
+          return JSON.parse(connection.metadata) as { lastIngestAt?: string };
+        } catch {
+          return {};
+        }
+      })()
+    : {};
+
+  if (meta.lastIngestAt) {
+    return {
+      provider,
+      importedDays: 0,
+      importedWorkouts: 0,
+      skippedDuplicates: 0,
+    };
+  }
+
   return {
     provider,
     importedDays: 0,
     importedWorkouts: 0,
     skippedDuplicates: 0,
     error:
-      "Native Bridge aktiv — Daten werden über die mobile App / Health Connect synchronisiert. Öffne NEXFORM auf deinem Gerät.",
+      "Native Bridge bereit — öffne die NEXFORM-App auf iOS/Android und erlaube HealthKit / Health Connect. Daten kommen über /api/health/ingest.",
   };
 }
 
