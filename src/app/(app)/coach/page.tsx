@@ -6,6 +6,8 @@ import { Send, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { CoachQuickActions } from "@/components/coach/coach-quick-actions";
+import { CoachInsightsPanel } from "@/components/coach/coach-insights-panel";
+import { PageIntro } from "@/components/guide/page-intro";
 import {
   loadCachedCoachChat,
   saveCachedCoachChat,
@@ -202,15 +204,19 @@ export default function CoachPage() {
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-violet-400 font-extrabold tracking-tight">
             NEXFORM
           </span>
-          <span className="text-zinc-400 font-medium text-base">KI Coach</span>
+          <span className="text-zinc-400 font-medium text-base">KI Coach 2.0</span>
         </h1>
         <p className="text-xs text-zinc-500 mt-1">
-          OpenAI · personalisiert mit deinen Trainings- & Ernährungsdaten
+          OpenAI · personalisiert mit Training, Ernährung, Schlaf & Regeneration
         </p>
       </div>
 
-      <div className="shrink-0 mb-3 card-premium p-3">
-        <CoachQuickActions onAsk={(t) => void sendMessage(t)} disabled={busy} compact />
+      <div className="shrink-0 mb-3 space-y-3">
+        <PageIntro pageId="coach" />
+        <CoachInsightsPanel />
+        <div className="card-premium p-3">
+          <CoachQuickActions onAsk={(t) => void sendMessage(t)} disabled={busy} compact />
+        </div>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-zinc-900/60 overflow-hidden">

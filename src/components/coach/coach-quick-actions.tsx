@@ -7,14 +7,62 @@ import {
   Beef,
   TrendingUp,
   TrendingDown,
+  Moon,
+  Heart,
+  Footprints,
+  LineChart,
+  Sparkles,
+  RefreshCw,
 } from "lucide-react";
 
 const ACTIONS = [
   {
-    label: "Trainingsplan erstellen",
+    label: "Trainingsanalyse",
     prompt:
-      "Erstelle mir einen individuellen Trainingsplan basierend auf meinem Ziel, meiner Erfahrung, Trainingstagen pro Woche und Regenerationsstatus. Gib Wochenstruktur mit Übungen, Sätzen und Wdh.",
+      "Analysiere mein Training der letzten 7–14 Tage: Frequenz, Volumen, Muskelgruppen-Balance, Regeneration und mögliche Überlastung. Gib 3 konkrete Anpassungen.",
     icon: Dumbbell,
+  },
+  {
+    label: "Ernährungsanalyse",
+    prompt:
+      "Analysiere meine heutige und wöchentliche Ernährung: Kalorien, Protein, Timing. Vergleiche mit meinem Ziel und gib 3 Verbesserungen.",
+    icon: Apple,
+  },
+  {
+    label: "Plateau checken",
+    prompt:
+      "Prüfe ob ich in einem Plateau stecke (Gewicht, Kraft, Schritte). Falls ja: Ursachen und 3 Strategien zum Durchbrechen.",
+    icon: LineChart,
+  },
+  {
+    label: "Schlaf analysieren",
+    prompt:
+      "Analysiere meinen Schlaf der letzten Woche und den Einfluss auf Training & Erholung. Gib konkrete Schlaf-Hygiene-Tipps.",
+    icon: Moon,
+  },
+  {
+    label: "Schritte & NEAT",
+    prompt:
+      "Bewerte meine Schrittzahl und alltägliche Bewegung (NEAT) im Kontext Kalorienziel. Wie viele Schritte brauche ich heute noch?",
+    icon: Footprints,
+  },
+  {
+    label: "Herzfrequenz",
+    prompt:
+      "Interpretiere meinen Ruhepuls / Herzfrequenz-Kontext für Trainingstauglichkeit heute. Intensität empfehlen (leicht/moderat/intensiv).",
+    icon: Heart,
+  },
+  {
+    label: "Regeneration",
+    prompt:
+      "Bewerte meine Regeneration (Schlaf, Ruhepuls, Muskel-Recovery). Soll ich heute hart trainieren, leicht oder pausieren?",
+    icon: RefreshCw,
+  },
+  {
+    label: "Ziel anpassen",
+    prompt:
+      "Schlage eine automatische Zielanpassung vor (Kalorien/Protein/Trainingstage) basierend auf meinem aktuellen Fortschritt und Compliance.",
+    icon: Sparkles,
   },
   {
     label: "Kalorien berechnen",
@@ -46,6 +94,18 @@ const ACTIONS = [
       "Analysiere meinen Cut: Kaloriendefizit, Makros, Gewichtstrend, Muskel-Erhalt. Rate Defizit-Stärke und gib 3 Tipps.",
     icon: TrendingDown,
   },
+  {
+    label: "Wochenbericht",
+    prompt:
+      "Erstelle einen persönlichen Wochenbericht: Training, Ernährung, Schlaf, Schritte, Gewicht. Motiviere und setze 3 Fokus-Punkte für nächste Woche.",
+    icon: LineChart,
+  },
+  {
+    label: "Motivation",
+    prompt:
+      "Gib mir einen kurzen, persönlichen Motivationstipp basierend auf meinem aktuellen Streak, Ziel und heutigen Daten. Keine Floskeln.",
+    icon: Sparkles,
+  },
 ] as const;
 
 export function CoachQuickActions({
@@ -60,7 +120,7 @@ export function CoachQuickActions({
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
       <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">
-        Schnellaktionen
+        Coach 2.0 · Schnellaktionen
       </p>
       <div className={cnGrid(compact)}>
         {ACTIONS.map(({ label, prompt, icon: Icon }) => (

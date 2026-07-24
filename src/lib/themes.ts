@@ -85,6 +85,7 @@ export function applyThemeToDocument(
   document.documentElement.dataset.density = density;
   document.documentElement.dataset.colorMode = colorMode;
   document.documentElement.classList.toggle("light", colorMode === "light");
+  document.documentElement.classList.toggle("dark", colorMode !== "light");
   localStorage.setItem(STORAGE_THEME, theme);
   localStorage.setItem(STORAGE_DENSITY, density);
   localStorage.setItem(STORAGE_COLOR_MODE, colorMode);

@@ -20,6 +20,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
+import { PageIntro } from "@/components/guide/page-intro";
 
 export default function WorkoutsHubPage() {
   const router = useRouter();
@@ -75,6 +76,8 @@ export default function WorkoutsHubPage() {
 
   return (
     <PageShell className="-mt-1 pb-24" bottomNav={false}>
+      <PageIntro pageId="workouts" />
+
       {activeSession && (
         <div className="rounded-3xl border border-cyan-500/30 bg-cyan-500/10 p-4 mb-1">
           <p className="text-xs text-cyan-300/80 uppercase tracking-wide font-medium">Läuft gerade</p>

@@ -14,11 +14,13 @@ import {
   optimisticAddWater,
 } from "@/lib/nutrition-sync";
 import { PageShell } from "@/components/layout/page-shell";
-import { NutritionOverviewPanel } from "@/components/nutrition/nutrition-overview-panel";
+import { NutritionOrbitOverview } from "@/components/nutrition/nutrition-orbit-overview";
 import { NutritionDaySummary } from "@/components/nutrition/nutrition-day-summary";
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
 import { FoodAddPopup } from "@/components/nutrition/food-add-popup";
+import { NutritionExtrasPanel } from "@/components/nutrition/nutrition-extras-panel";
+import { PageIntro } from "@/components/guide/page-intro";
 import { MEAL_TYPE_ORDER } from "@/lib/meal-types";
 import type { MealType } from "@prisma/client";
 import { toast } from "sonner";
@@ -219,8 +221,12 @@ export default function NutritionPage() {
         </div>
       )}
 
-      {/* Reihenfolge: Kalorien → Makros → Mahlzeiten → Tageszusammenfassung */}
-      <NutritionOverviewPanel dashboard={dashboard} />
+      <PageIntro pageId="nutrition" />
+
+      {/* Reihenfolge: Kalorien-Orbit → Makros → Extras → Mahlzeiten → Summary */}
+      <NutritionOrbitOverview dashboard={dashboard} />
+
+      <NutritionExtrasPanel />
 
       <section className="pt-1">
         <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] mb-2 px-0.5">

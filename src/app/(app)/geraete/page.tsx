@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import type { ProviderMeta } from "@/lib/health/types";
 import { HEALTH_CATEGORY_LABELS, type HealthMetricCategory } from "@/lib/health/types";
 import { PhoneSensorPanel } from "@/components/health/phone-sensor-panel";
+import { PageIntro } from "@/components/guide/page-intro";
 
 type Connection = {
   provider: string;
@@ -190,6 +191,8 @@ export default function GeraetePage() {
         </Button>
       }
     >
+      <PageIntro pageId="geraete" />
+
       {lastSync && (
         <p className="text-xs text-zinc-500 -mt-4">
           Letzte Synchronisation: {formatDate(lastSync)}

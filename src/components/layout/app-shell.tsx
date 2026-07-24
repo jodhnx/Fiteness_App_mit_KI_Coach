@@ -14,6 +14,7 @@ import { GuestUpgradeBanner } from "@/components/auth/guest-upgrade-banner";
 import { SidebarProvider } from "@/components/layout/sidebar-provider";
 import { ServiceWorkerProvider } from "@/components/providers/service-worker-provider";
 import { PhoneSensorWarmup } from "@/components/health/phone-sensor-warmup";
+import { FeatureTour } from "@/components/guide/feature-tour";
 import { cn } from "@/lib/utils";
 
 function isImmersiveRoute(pathname: string) {
@@ -63,6 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <NotificationCenter />
           <GamificationUnlockToast />
+          <FeatureTour />
         </div>
       </NotificationProvider>
     </SidebarProvider>

@@ -18,7 +18,17 @@ export async function GET() {
         where: { userId },
         orderBy: { date: "desc" },
         take: 120,
-        select: { id: true, date: true, weightKg: true, waistCm: true },
+        select: {
+          id: true,
+          date: true,
+          weightKg: true,
+          waistCm: true,
+          chestCm: true,
+          hipsCm: true,
+          bicepsCm: true,
+          thighsCm: true,
+          bodyFatPct: true,
+        },
       }),
       prisma.progressPhoto.findMany({
         where: { userId },
@@ -81,21 +91,23 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return jsonError("Ungültige Eingabe");
 
     const userId = session.user.id;
-    const day = startOfDay(new Date(parsed.data.date));
+    const day = startOfDay(
+      new Date(parsed.data.date ?? new Date().toISOString().slice(0, 10))
+    );
 
     const existing = await prisma.progressEntry.findFirst({
       where: { userId, date: day },
     });
 
     const data = {
-      weightKg: parsed.data.weightKg,
-      bodyFatPct: parsed.data.bodyFatPct,
-      chestCm: parsed.data.chestCm,
-      waistCm: parsed.data.waistCm,
-      hipsCm: parsed.data.hipsCm,
-      bicepsCm: parsed.data.bicepsCm,
-      thighsCm: parsed.data.thighsCm,
-      notes: parsed.data.notes,
+      ...(parsed.data.weightKg != null ? { weightKg: parsed.data.weightKg } : {}),
+      ...(parsed.data.bodyFatPct != null ? { bodyFatPct: parsed.data.bodyFatPct } : {}),
+      ...(parsed.data.chestCm != null ? { chestCm: parsed.data.chestCm } : {}),
+      ...(parsed.data.waistCm != null ? { waistCm: parsed.data.waistCm } : {}),
+      ...(parsed.data.hipsCm != null ? { hipsCm: parsed.data.hipsCm } : {}),
+      ...(parsed.data.bicepsCm != null ? { bicepsCm: parsed.data.bicepsCm } : {}),
+      ...(parsed.data.thighsCm != null ? { thighsCm: parsed.data.thighsCm } : {}),
+      ...(parsed.data.notes != null ? { notes: parsed.data.notes } : {}),
     };
 
     const entry = existing

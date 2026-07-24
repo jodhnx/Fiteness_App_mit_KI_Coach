@@ -22,10 +22,22 @@ import { ProgressChartsSection } from "@/components/progress/progress-charts-sec
 import { Input } from "@/components/ui/input";
 import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
 import { ProgressActivityStrip } from "@/components/progress/progress-activity-strip";
+import { BodyMeasurementsCard } from "@/components/progress/body-measurements-card";
+import { PageIntro } from "@/components/guide/page-intro";
 import { hasScreenLoaded } from "@/lib/storage-service";
 
 type ProgressPayload = {
-  entries: { id: string; date: string; weightKg?: number; waistCm?: number }[];
+  entries: {
+    id: string;
+    date: string;
+    weightKg?: number;
+    waistCm?: number;
+    chestCm?: number;
+    hipsCm?: number;
+    bicepsCm?: number;
+    thighsCm?: number;
+    bodyFatPct?: number;
+  }[];
   photos: {
     id: string;
     imageUrl: string;
@@ -197,6 +209,7 @@ export default function ProgressPage() {
     >
       {/* Always visible immediately — no spinner gate */}
       <ProgressActivityStrip />
+      <PageIntro pageId="progress" />
 
       {showSkeleton && (
         <div className="space-y-4">
@@ -288,6 +301,14 @@ export default function ProgressPage() {
           )}
           <WeightInput initialKg={lastWeight} onSave={saveWeight} />
         </div>
+
+        <BodyMeasurementsCard
+          latest={entries[0] ?? null}
+          onSaved={() => {
+            invalidateCache(PROGRESS_CACHE_KEY);
+            reload();
+          }}
+        />
 
         {dashboard && (
           <ProgressChartsSection

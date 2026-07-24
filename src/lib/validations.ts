@@ -264,7 +264,7 @@ export const mealSchema = z.object({
 });
 
 export const progressEntrySchema = z.object({
-  date: z.string(),
+  date: z.string().optional(),
   weightKg: z.coerce.number().positive().optional(),
   bodyFatPct: z.coerce.number().min(0).max(100).optional(),
   chestCm: z.coerce.number().positive().optional(),

@@ -21,11 +21,17 @@ import { HomePlannedTrainingCard } from "@/components/home/home-planned-training
 import { HomeDayFocusCard } from "@/components/home/home-day-focus-card";
 import { HomeProgressGrid } from "@/components/home/home-progress-grid";
 import { HomeRecentAchievements } from "@/components/home/home-recent-achievements";
+import { HomeDayGoals } from "@/components/home/home-day-goals";
+import { HomeDaySummary } from "@/components/home/home-day-summary";
+import { HomeWidgetBoard } from "@/components/home/home-widget-board";
+import { QuickAccessRail } from "@/components/guide/quick-access-rail";
+import { PageIntro } from "@/components/guide/page-intro";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { getCached } from "@/lib/client-cache";
 import { isSameDay } from "date-fns";
+import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 
 export default function HomePage() {
   const { status: sessionStatus } = useSession();
@@ -103,6 +109,7 @@ export default function HomePage() {
 
   const steps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10_000;
+  const ready = hasNutritionTargets(nutrition);
 
   if (sessionStatus === "unauthenticated") {
     return (
@@ -119,53 +126,86 @@ export default function HomePage() {
   return (
     <PageShell>
       <HomeGreeting name={displayName} />
-
+      <PageIntro pageId="home" />
       <HomePhoneStepsHint />
 
-      <HomeDashboardPremium
-        nutrition={nutrition}
-        steps={steps}
-        stepGoal={stepGoal}
-        sleepHours={data.healthToday?.sleepHours ?? null}
-        weightKg={data.weightKg}
-        streakDays={trainingStreakDays}
-        trainingStatus={trainingStatus}
-        trainingLabel={trainingLabel}
-      />
-
-      <HomeHealthEcosystem
-        health={
-          data.healthToday
-            ? {
-                steps: data.healthToday.steps,
-                stepGoal: data.healthToday.stepGoal,
-                sleepHours: data.healthToday.sleepHours ?? null,
-                restingHeartRate: data.healthToday.restingHeartRate ?? null,
-                recoveryScore: data.healthToday.recoveryScore ?? null,
-                trainingReadiness: data.healthToday.trainingReadiness ?? null,
+      <HomeWidgetBoard
+        slots={{
+          quickAccess: <QuickAccessRail />,
+          dashboard: (
+            <HomeDashboardPremium
+              nutrition={nutrition}
+              steps={steps}
+              stepGoal={stepGoal}
+              sleepHours={data.healthToday?.sleepHours ?? null}
+              weightKg={data.weightKg}
+              streakDays={trainingStreakDays}
+              trainingStatus={trainingStatus}
+              trainingLabel={trainingLabel}
+            />
+          ),
+          dayGoals: (
+            <HomeDayGoals
+              caloriesConsumed={nutrition.consumed.calories}
+              calorieTarget={nutrition.targets.calories}
+              steps={steps}
+              stepGoal={stepGoal}
+              waterMl={nutrition.water.consumedMl}
+              waterTargetMl={nutrition.water.targetMl}
+              trainingDone={trainingStatus === "done" || trainingStatus === "active"}
+            />
+          ),
+          health: (
+            <HomeHealthEcosystem
+              health={
+                data.healthToday
+                  ? {
+                      steps: data.healthToday.steps,
+                      stepGoal: data.healthToday.stepGoal,
+                      sleepHours: data.healthToday.sleepHours ?? null,
+                      restingHeartRate: data.healthToday.restingHeartRate ?? null,
+                      recoveryScore: data.healthToday.recoveryScore ?? null,
+                      trainingReadiness: data.healthToday.trainingReadiness ?? null,
+                    }
+                  : null
               }
-            : null
-        }
+            />
+          ),
+          training: (
+            <HomePlannedTrainingCard
+              nextWorkout={data.nextWorkout ?? null}
+              activeSessionId={activeSessionId}
+              lastCompleted={data.lastCompletedWorkout}
+              recoveryMuscles={recoveryMuscles}
+              highlight={highlight === "training"}
+            />
+          ),
+          dayFocus: <HomeDayFocusCard items={dayFocusItems} />,
+          progress: (
+            <HomeProgressGrid
+              home={data}
+              nutrition={nutrition}
+              streakDays={trainingStreakDays}
+              streakHighlight={highlight === "streak"}
+            />
+          ),
+          daySummary: (
+            <HomeDaySummary
+              caloriesLeft={ready ? nutrition.remaining.calories : 0}
+              proteinG={nutrition.consumed.proteinG}
+              proteinTarget={nutrition.targets.proteinG}
+              steps={steps}
+              stepGoal={stepGoal}
+              sleepHours={data.healthToday?.sleepHours ?? null}
+              streakDays={trainingStreakDays}
+              trainingLabel={trainingLabel}
+            />
+          ),
+          achievements: (
+            <HomeRecentAchievements achievements={data.recentAchievements ?? []} />
+          ),
+        }}
       />
-
-      <HomePlannedTrainingCard
-        nextWorkout={data.nextWorkout ?? null}
-        activeSessionId={activeSessionId}
-        lastCompleted={data.lastCompletedWorkout}
-        recoveryMuscles={recoveryMuscles}
-        highlight={highlight === "training"}
-      />
-
-      <HomeDayFocusCard items={dayFocusItems} />
-
-      <HomeProgressGrid
-        home={data}
-        nutrition={nutrition}
-        streakDays={trainingStreakDays}
-        streakHighlight={highlight === "streak"}
-      />
-
-      <HomeRecentAchievements achievements={data.recentAchievements ?? []} />
     </PageShell>
   );
 }

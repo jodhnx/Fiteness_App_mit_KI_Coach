@@ -17,6 +17,7 @@ export type CoachInsight = {
 export type CoachInsightsResult = {
   summary: string;
   tips: CoachInsight[];
+  weeklyReportText?: string;
 };
 
 type CoachContext = {
@@ -240,12 +241,84 @@ export function buildCoachInsightsFromContext(ctx: CoachContext): CoachInsightsR
     });
   }
 
+  // Heart rate / recovery readiness — from recovery snapshot when available
+  if (recovery) {
+    const avgRec =
+      recovery.muscles.reduce((s, m) => s + m.recoveryPercent, 0) /
+      Math.max(1, recovery.muscles.length);
+    if (avgRec < 55) {
+      tips.unshift({
+        type: "recovery",
+        message: `Durchschnittliche Muskel-Erholung ${Math.round(avgRec)}% — heute eher Mobility oder Pause.`,
+        priority: "high",
+        actionHref: "/gesundheit",
+      });
+    }
+  }
+
+  // Plateau detection (weight stuck + consistent training)
+  if (
+    weeklyReport?.workouts != null &&
+    weeklyReport.workouts >= 3 &&
+    weeklyReport.weightChangeKg != null &&
+    Math.abs(weeklyReport.weightChangeKg) < 0.15 &&
+    profile?.nutritionGoal === "FAT_LOSS"
+  ) {
+    tips.unshift({
+      type: "plateau",
+      message:
+        "Plateau erkannt: Gewicht stagniert trotz Training. Prüfe Kaloriendefizit (+200 kcal check) oder erhöhe NEAT (Schritte).",
+      priority: "high",
+      actionHref: "/nutrition",
+    });
+  }
+
+  // Auto goal nudge
+  if (
+    nutrition &&
+    nutrition.targets.calories > 0 &&
+    nutrition.consumed.calories > nutrition.targets.calories * 1.15
+  ) {
+    tips.push({
+      type: "goal-adjust",
+      message:
+        "Du liegst klar über dem Kalorienziel — für morgen 150–200 kcal weniger planen oder Abendspaziergang einbauen.",
+      priority: "medium",
+      actionHref: "/nutrition",
+    });
+  }
+
+  // Motivation
+  if ((trainingStreak?.currentDays ?? 0) === 0 && tips.every((t) => t.type !== "motivation")) {
+    tips.push({
+      type: "motivation",
+      message: "Kleiner Start zählt: 20 Minuten Training oder 2.000 Schritte — Momentum schlägt Perfektion.",
+      priority: "low",
+      actionHref: "/workouts/quick",
+    });
+  }
+
   const summary =
     tips.find((t) => t.priority === "high")?.message ??
     tips[0]?.message ??
     "Dein KI-Coach analysiert Ernährung, Training und Aktivitäten – starte mit dem Tracken.";
 
-  return { summary, tips: tips.slice(0, 6) };
+  const weeklyReportText = weeklyReport
+    ? `Diese Woche: ${weeklyReport.workouts} Workouts, ⌀ ${Math.round(weeklyReport.avgProteinG)} g Protein` +
+      (weeklyReport.weightChangeKg != null
+        ? `, Gewicht ${weeklyReport.weightChangeKg > 0 ? "+" : ""}${weeklyReport.weightChangeKg.toFixed(1)} kg`
+        : "") +
+      (weeklyReport.avgSleepHours != null
+        ? `, ⌀ Schlaf ${weeklyReport.avgSleepHours.toFixed(1)} h`
+        : "") +
+      (weeklyReport.goalReached ? " — Wochenziel erreicht ✓" : ".")
+    : undefined;
+
+  return {
+    summary,
+    tips: tips.slice(0, 8),
+    weeklyReportText,
+  };
 }
 
 import { getSleepWeekStats } from "@/lib/sleep-service";

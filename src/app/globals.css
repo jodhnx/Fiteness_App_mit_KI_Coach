@@ -799,6 +799,34 @@ body[data-profilePanel="open"] nav[aria-label="Hauptnavigation"] {
   transform: scale(0.98);
 }
 
+/* Premium additive motion (respect reduced motion) */
+@keyframes nexform-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes nexform-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in-fade {
+  animation: nexform-fade-in 0.35s ease-out both;
+}
+.animate-in-up {
+  animation: nexform-slide-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-in-fade,
+  .animate-in-up {
+    animation: none;
+  }
+}
+
+.glass-panel {
+  background: color-mix(in srgb, var(--card, rgba(24, 24, 27, 0.85)) 88%, transparent);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   a,
   button {

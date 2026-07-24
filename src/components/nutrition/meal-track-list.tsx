@@ -22,7 +22,7 @@ type MealItemRow = {
 type MealSlotData = {
   mealType: MealType;
   mealId?: string | null;
-  totals: { calories: number; proteinG: number };
+  totals: { calories: number; proteinG: number; carbsG?: number; fatG?: number };
   items: MealItemRow[];
 };
 
@@ -60,7 +60,9 @@ export const MealTrackList = memo(function MealTrackList({
                 </p>
                 <p className="text-xs text-zinc-500 tabular-nums mt-0.5">
                   {Math.round(slot.totals.calories)} kcal
-                  {slot.totals.proteinG > 0 && ` · ${Math.round(slot.totals.proteinG)}g Protein`}
+                  {slot.totals.proteinG > 0 && ` · P ${Math.round(slot.totals.proteinG)}g`}
+                  {(slot.totals.carbsG ?? 0) > 0 && ` · KH ${Math.round(slot.totals.carbsG!)}g`}
+                  {(slot.totals.fatG ?? 0) > 0 && ` · F ${Math.round(slot.totals.fatG!)}g`}
                 </p>
               </div>
               <button

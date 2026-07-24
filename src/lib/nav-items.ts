@@ -15,6 +15,7 @@ import {
   Bell,
   Info,
   User,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,6 +46,7 @@ export const PROFILE_MENU_NAV: NavItem[] = [
 
 export const MORE_NAV: NavItem[] = [
   { href: "/gesundheit", label: "Gesundheit", icon: HeartPulse },
+  { href: "/social", label: "Community", icon: Users },
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
 ];
 
