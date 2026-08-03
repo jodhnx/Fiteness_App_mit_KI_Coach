@@ -870,9 +870,16 @@ export default function SettingsPage() {
       <section id="settings-benachrichtigungen" className="card-premium p-4 space-y-3 settings-section">
         <h2 className="font-semibold text-white text-lg">Benachrichtigungen</h2>
         <p className="text-sm text-zinc-400">
-          Erinnerungen für Training, Wasser und Ziele folgen in einem späteren Update. Aktuell
-          erhältst du Hinweise über den KI Coach auf dem Dashboard.
+          Aktive Kanäle: In-App-Center (Glocke), Coach-Hinweise und optionale
+          Essenserinnerungen unter Ernährung. System-Push für Training/Wasser folgt mit der
+          nativen App.
         </p>
+        <ul className="text-sm text-zinc-300 space-y-1.5 list-disc pl-5">
+          <li>In-App-Benachrichtigungen über die Glocke im Header</li>
+          <li>Coach-Empfehlungen auf dem Home-Bildschirm</li>
+          <li>Gamification-Freischaltungen als Toast</li>
+          <li>Support-Bestätigungen per E-Mail (wenn konfiguriert)</li>
+        </ul>
       </section>
 
       <section id="settings-konto" className="card-premium p-4 space-y-4 settings-section">

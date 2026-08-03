@@ -14,7 +14,7 @@ export function HomeWeightGoalCard({
 }) {
   return (
     <Link
-      href="/settings#ziele"
+      href="/settings#settings-ziele"
       prefetch
       className="block rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-950/30 to-zinc-900/90 p-4 active:opacity-95"
     >

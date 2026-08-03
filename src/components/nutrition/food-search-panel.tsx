@@ -71,6 +71,33 @@ export const FoodSearchPanel = memo(function FoodSearchPanel({
     toast.success(`${food.name} hinzugefügt`);
   }
 
+  async function lookupBarcode() {
+    const raw = window.prompt("Barcode / EAN eingeben:");
+    if (!raw) return;
+    const code = raw.replace(/\D/g, "");
+    if (code.length < 8) {
+      toast.error("Ungültiger Barcode");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/food/barcode/${code}`);
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Produkt nicht gefunden");
+        return;
+      }
+      const name = data.product?.name ?? data.name;
+      if (name) {
+        setQ(String(name));
+        toast.success(`Gefunden: ${name}`);
+      } else {
+        toast.message("Produkt gefunden — bitte Menge wählen");
+      }
+    } catch {
+      toast.error("Barcode-Lookup fehlgeschlagen");
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
@@ -84,10 +111,8 @@ export const FoodSearchPanel = memo(function FoodSearchPanel({
           type="button"
           variant="outline"
           size="icon"
-          title="Barcode-Scanner (vorbereitet)"
-          onClick={() =>
-            toast.info("Barcode-Scanner: API unter /api/food/barcode/[EAN] bereit.")
-          }
+          title="Barcode eingeben"
+          onClick={() => void lookupBarcode()}
         >
           <ScanLine className="h-4 w-4" />
         </Button>

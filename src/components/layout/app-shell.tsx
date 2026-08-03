@@ -14,6 +14,7 @@ import { GuestUpgradeBanner } from "@/components/auth/guest-upgrade-banner";
 import { SidebarProvider } from "@/components/layout/sidebar-provider";
 import { ServiceWorkerProvider } from "@/components/providers/service-worker-provider";
 import { PhoneSensorWarmup } from "@/components/health/phone-sensor-warmup";
+import { MealReminderWarmup } from "@/components/nutrition/meal-reminder-warmup";
 import { FeatureTour } from "@/components/guide/feature-tour";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <NotificationProvider>
         <ServiceWorkerProvider />
         <PhoneSensorWarmup />
+        <MealReminderWarmup />
         <div className="gradient-mesh min-h-[100dvh] overflow-x-hidden">
           <RoutePrefetcher />
           <div

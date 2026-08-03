@@ -29,8 +29,10 @@ export default auth((req) => {
     isApiRegister ||
     isApiVerify ||
     isApiReset ||
-    path.startsWith("/api/auth/guest") ||
-    path.startsWith("/api/health");
+    path === "/api/auth/guest" ||
+    path === "/api/health" ||
+    // OAuth callbacks must be reachable without session cookie
+    path.startsWith("/api/wearables/oauth/");
 
   if (path.startsWith("/api/") && !publicApi && !isLoggedIn) {
     return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });

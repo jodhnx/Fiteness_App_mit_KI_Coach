@@ -32,8 +32,15 @@ function ResetForm() {
       toast.error(data.error ?? "Fehler");
       return;
     }
-    if (data.resetUrl) toast.message("Dev Reset-Link", { description: data.resetUrl });
-    toast.success(data.message);
+    if (process.env.NODE_ENV === "development" && data.resetUrl) {
+      toast.message("Reset-Link (nur Entwicklung)", { description: data.resetUrl });
+    }
+    toast.success(
+      data.message ??
+        (token
+          ? "Passwort aktualisiert"
+          : "Falls die E-Mail existiert, wurde ein Link gesendet")
+    );
   }
 
   return (
@@ -43,7 +50,9 @@ function ResetForm() {
         <CardHeader>
           <CardTitle>{token ? "Neues Passwort" : "Passwort zurücksetzen"}</CardTitle>
           <CardDescription>
-            {token ? "Gib dein neues Passwort ein" : "Wir senden dir einen Reset-Link (Dev: in Response)"}
+            {token
+              ? "Gib dein neues Passwort ein"
+              : "Wir senden dir einen Link zum Zurücksetzen per E-Mail."}
           </CardDescription>
         </CardHeader>
         <CardContent>

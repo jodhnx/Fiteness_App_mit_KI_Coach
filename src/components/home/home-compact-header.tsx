@@ -4,6 +4,7 @@ import { memo } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
+import { useNotifications } from "@/components/providers/notification-provider";
 import { cn } from "@/lib/utils";
 
 function greetingPart(): string {
@@ -21,6 +22,7 @@ export const HomeCompactHeader = memo(function HomeCompactHeader({
   name?: string | null;
   image?: string | null;
 }) {
+  const { setOpen } = useNotifications();
   const first = name?.trim().split(/\s+/)[0];
 
   return (
@@ -42,17 +44,17 @@ export const HomeCompactHeader = memo(function HomeCompactHeader({
           </p>
         </div>
 
-        <Link
-          href="/settings#benachrichtigungen"
-          prefetch
+        <button
+          type="button"
           aria-label="Benachrichtigungen"
+          onClick={() => setOpen(true)}
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
             "header-glass-btn text-zinc-300 active:scale-95 transition-transform"
           )}
         >
           <Bell className="h-4 w-4" strokeWidth={2} />
-        </Link>
+        </button>
       </div>
     </header>
   );

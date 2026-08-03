@@ -36,6 +36,7 @@ export default function NutritionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
+  const [addInitialQuery, setAddInitialQuery] = useState("");
 
   useEffect(() => {
     warmNutritionSearchCaches();
@@ -45,6 +46,7 @@ export default function NutritionPage() {
     const add = searchParams.get("add");
     if (add && VALID_MEALS.has(add)) {
       setAddSheetMeal(add as MealType);
+      setAddInitialQuery(searchParams.get("q")?.trim() ?? "");
     }
   }, [searchParams]);
 
@@ -54,8 +56,9 @@ export default function NutritionPage() {
 
   const closeAddPopup = useCallback(() => {
     setAddSheetMeal(null);
+    setAddInitialQuery("");
     resetBodyScroll();
-    if (searchParams.get("add")) {
+    if (searchParams.get("add") || searchParams.get("q")) {
       router.replace("/nutrition");
     }
   }, [router, searchParams]);
@@ -254,6 +257,7 @@ export default function NutritionPage() {
           open
           mealType={addSheetMeal}
           favoriteIds={favoriteIds}
+          initialQuery={addInitialQuery}
           onClose={closeAddPopup}
           onQuickAddFood={quickAdd}
           onToggleFavorite={handleToggleFavorite}

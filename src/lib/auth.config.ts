@@ -38,7 +38,8 @@ export const authConfig: NextAuthConfig = {
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
-      allowDangerousEmailAccountLinking: true,
+      // Require explicit verified linking — avoids account takeover via email match
+      allowDangerousEmailAccountLinking: false,
     }),
     Credentials({
       name: "credentials",
@@ -61,7 +62,8 @@ export const authConfig: NextAuthConfig = {
         "/verify-email",
       ];
       if (publicRoutes.includes(path)) return true;
-      if (path.startsWith("/api/health")) return true;
+      if (path === "/api/health") return true;
+      if (path.startsWith("/api/wearables/oauth/")) return true;
       if (
         path.startsWith("/api/register") ||
         path.startsWith("/api/verify-email") ||

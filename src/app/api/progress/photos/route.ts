@@ -1,12 +1,11 @@
 import { NextRequest } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { analyzeProgressPhoto } from "@/lib/openai";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { awardXP } from "@/lib/gamification";
+import { saveUserUpload, validateImageUpload } from "@/lib/secure-upload";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,16 +19,11 @@ export async function POST(req: NextRequest) {
     const caption = (formData.get("caption") as string) || undefined;
     if (!file) return jsonError("Keine Datei");
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const invalid = validateImageUpload(file);
+    if (invalid) return jsonError(invalid);
+
+    const { imageUrl, buffer } = await saveUserUpload(session.user.id, file, "prog");
     const base64 = buffer.toString("base64");
-
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-    const filename = `${session.user.id}-${Date.now()}.jpg`;
-    await writeFile(path.join(uploadDir, filename), buffer);
-    const imageUrl = `/uploads/${filename}`;
-
     const analysis = await analyzeProgressPhoto(base64, session.user.id);
 
     const photo = await prisma.progressPhoto.create({

@@ -6,6 +6,7 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { ALL_PROVIDER_IDS, HEALTH_PROVIDERS } from "@/lib/health/providers/registry";
 import type { WearableProvider } from "@prisma/client";
 import { getProviderOAuthUrl } from "@/lib/health/providers/oauth-dispatcher";
+import { createWearableOAuthState } from "@/lib/health/oauth-state";
 
 const connectSchema = z.object({
   provider: z.enum(ALL_PROVIDER_IDS as [WearableProvider, ...WearableProvider[]]),
@@ -83,9 +84,12 @@ export async function POST(req: NextRequest) {
     const provider = parsed.data.provider;
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const redirectUri = `${baseUrl}/api/wearables/oauth/${provider.toLowerCase()}/callback`;
-    const state = Buffer.from(
-      JSON.stringify({ userId: session.user.id, provider })
-    ).toString("base64url");
+    let state: string;
+    try {
+      state = createWearableOAuthState(session.user.id, provider);
+    } catch {
+      return jsonError("Server-Konfiguration unvollständig (AUTH_SECRET)", 500);
+    }
 
     const oauthUrl = getProviderOAuthUrl(provider, redirectUri, state);
 

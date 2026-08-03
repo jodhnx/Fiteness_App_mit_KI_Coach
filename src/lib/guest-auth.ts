@@ -11,6 +11,11 @@ import type { OnboardingDraft } from "@/lib/onboarding-draft";
 import { paceToTargetDate } from "@/lib/onboarding-draft";
 import { GUEST_EMAIL_SUFFIX } from "@/lib/guest-utils";
 import { addDays } from "date-fns";
+import {
+  generateVerificationCode,
+  isEmailVerificationEnabled,
+  verificationExpiresAt,
+} from "@/lib/verification";
 
 export { isGuestEmail, GUEST_EMAIL_SUFFIX } from "@/lib/guest-utils";
 
@@ -117,6 +122,9 @@ export async function convertGuestToAccount(
   }
 
   const passwordHash = await bcrypt.hash(input.password, 12);
+  const verificationRequired = isEmailVerificationEnabled();
+  const code = verificationRequired ? generateVerificationCode() : null;
+
   const updated = await prisma.user.update({
     where: { id: userId },
     data: {
@@ -124,13 +132,18 @@ export async function convertGuestToAccount(
       passwordHash,
       isGuest: false,
       name: input.name?.trim() || undefined,
-      emailVerified: new Date(),
-      verificationCode: null,
-      verificationExpires: null,
+      emailVerified: verificationRequired ? null : new Date(),
+      verificationCode: code,
+      verificationExpires: verificationRequired ? verificationExpiresAt() : null,
     },
   });
 
-  return { ok: true as const, user: updated };
+  return {
+    ok: true as const,
+    user: updated,
+    needsEmailVerification: verificationRequired,
+    verificationCode: code,
+  };
 }
 
 /** Apply onboarding draft to an existing user profile */

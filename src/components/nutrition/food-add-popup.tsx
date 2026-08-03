@@ -26,6 +26,8 @@ type Props = {
   open: boolean;
   mealType: MealType;
   favoriteIds: Set<string>;
+  /** Prefill search (e.g. restaurant dish or photo recognition). */
+  initialQuery?: string;
   onClose: () => void;
   onQuickAddFood: (
     product: FoodProduct,
@@ -165,6 +167,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   open,
   mealType,
   favoriteIds,
+  initialQuery = "",
   onClose,
   onQuickAddFood,
   onToggleFavorite,
@@ -189,11 +192,11 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
   useEffect(() => {
     if (!open) return;
-    setQ("");
+    setQ(initialQuery.trim());
     setDetailProduct(null);
     const t = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(t);
-  }, [open]);
+  }, [open, initialQuery]);
 
   useBodyScrollLock(open);
 

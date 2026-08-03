@@ -50,7 +50,10 @@ export async function POST(req: NextRequest) {
 
   const resetUrl = `${getServerAuthBaseUrl()}/reset-password?token=${token}`;
   return jsonOk({
-    message: "Reset-Link erstellt",
+    message:
+      process.env.NODE_ENV === "development"
+        ? "Reset-Link erstellt (Entwicklung)"
+        : "Falls die E-Mail existiert, wurde ein Link gesendet",
     resetUrl: process.env.NODE_ENV === "development" ? resetUrl : undefined,
   });
 }

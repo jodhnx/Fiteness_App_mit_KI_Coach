@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ScanBarcode,
   Camera,
@@ -20,16 +21,23 @@ import {
   saveShoppingList,
   type ShoppingItem,
 } from "@/lib/shopping-list";
+import {
+  mealRemindersEnabled,
+  setMealRemindersEnabled,
+} from "@/lib/meal-reminders";
 
 /** Additive nutrition tools: barcode, photo, recipes, shopping, reminders. */
 export const NutritionExtrasPanel = memo(function NutritionExtrasPanel() {
+  const router = useRouter();
   const [barcode, setBarcode] = useState("");
   const [busy, setBusy] = useState(false);
   const [list, setList] = useState<ShoppingItem[]>([]);
   const [newItem, setNewItem] = useState("");
+  const [remindersOn, setRemindersOn] = useState(false);
 
   useEffect(() => {
     setList(loadShoppingList());
+    setRemindersOn(mealRemindersEnabled());
   }, []);
 
   const lookupBarcode = useCallback(async () => {
@@ -77,16 +85,20 @@ export const NutritionExtrasPanel = memo(function NutritionExtrasPanel() {
         toast.error(data.error ?? "Erkennung fehlgeschlagen");
         return;
       }
+      const name = data.name ? String(data.name) : null;
       toast.success(data.suggestion ?? "Lebensmittel erkannt — bitte bestätigen");
-      if (data.name) {
+      if (name) {
         setList((prev) => {
           const next = [
             ...prev,
-            { id: crypto.randomUUID(), name: String(data.name), done: false },
+            { id: crypto.randomUUID(), name, done: false },
           ];
           saveShoppingList(next);
           return next;
         });
+        router.push(`/nutrition?add=LUNCH&q=${encodeURIComponent(name)}`);
+      } else {
+        router.push("/nutrition?add=LUNCH");
       }
     } catch {
       toast.error("Foto-Analyse nicht verfügbar");
@@ -111,19 +123,26 @@ export const NutritionExtrasPanel = memo(function NutritionExtrasPanel() {
     saveShoppingList(next);
   }
 
-  function enableMealReminder() {
+  function toggleMealReminder() {
     hapticTap();
+    if (remindersOn) {
+      setMealRemindersEnabled(false);
+      setRemindersOn(false);
+      toast.message("Essenserinnerungen aus");
+      return;
+    }
     if (typeof window === "undefined" || !("Notification" in window)) {
       toast.message("Benachrichtigungen nicht unterstützt");
       return;
     }
     void Notification.requestPermission().then((perm) => {
       if (perm === "granted") {
-        localStorage.setItem("nexform:meal-reminders", "1");
-        toast.success("Essenserinnerungen aktiviert");
+        setMealRemindersEnabled(true);
+        setRemindersOn(true);
+        toast.success("Erinnerungen um 8:00, 12:30 und 18:30 (Tab offen)");
         try {
           new Notification("NEXFORM", {
-            body: "Wir erinnern dich an deine Mahlzeiten (Browser).",
+            body: "Essenserinnerungen aktiv — wir melden uns zu den Mahlzeiten.",
           });
         } catch {
           /* ignore */
@@ -182,13 +201,13 @@ export const NutritionExtrasPanel = memo(function NutritionExtrasPanel() {
           <button
             type="button"
             className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-zinc-900/80 h-11 text-sm text-zinc-200"
-            onClick={enableMealReminder}
+            onClick={toggleMealReminder}
           >
-            <Bell className="h-4 w-4 text-accent" />
-            Erinnerung
+            <Bell className={`h-4 w-4 ${remindersOn ? "text-emerald-400" : "text-accent"}`} />
+            {remindersOn ? "Erinnerung an" : "Erinnerung"}
           </button>
           <Link
-            href="/nutrition?add=LUNCH"
+            href="/nutrition?add=LUNCH&q=Pizza"
             className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-zinc-900/80 h-11 text-sm text-zinc-200"
           >
             <Store className="h-4 w-4 text-accent" />

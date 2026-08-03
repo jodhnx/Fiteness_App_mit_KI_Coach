@@ -86,20 +86,6 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
       sub: "kcal",
       color: "text-accent",
     },
-    {
-      key: "sug",
-      label: "Zucker",
-      value: "—",
-      sub: "geschätzt",
-      color: "text-pink-400",
-    },
-    {
-      key: "na",
-      label: "Salz",
-      value: "—",
-      sub: "geschätzt",
-      color: "text-zinc-400",
-    },
   ];
 
   return (
@@ -117,7 +103,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
             ringId="nutrition-kcal-ring"
             label="ÜBRIG"
           />
-          <div className="grid grid-cols-4 gap-2 w-full">
+          <div className="grid grid-cols-3 gap-2 w-full">
             {orbit.map((o) => (
               <div
                 key={o.key}

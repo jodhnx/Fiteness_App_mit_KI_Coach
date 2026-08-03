@@ -83,8 +83,24 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
-    const limit = rateLimit(`coach:${session.user.id}`, 30, 60_000);
-    if (!limit.success) return jsonError("Rate limit erreicht", 429);
+
+    const guest = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isGuest: true },
+    });
+    const limit = rateLimit(
+      `coach:${session.user.id}`,
+      guest?.isGuest ? 8 : 30,
+      60_000
+    );
+    if (!limit.success) {
+      return jsonError(
+        guest?.isGuest
+          ? "Gast-Limit erreicht — bitte Konto erstellen für mehr Coach-Anfragen."
+          : "Rate limit erreicht",
+        429
+      );
+    }
 
     const body = await req.json();
     const parsed = chatMessageSchema.safeParse(body);
