@@ -175,7 +175,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const inputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
   const [q, setQ] = useState("");
-  const debouncedQ = useDebounce(q, 60);
+  const debouncedQ = useDebounce(q, 30);
   const [result, setResult] = useState<FoodSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [historyFoods, setHistoryFoods] = useState<{
@@ -245,6 +245,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
       setResult(cached);
       setLoading(false);
     } else {
+      // Keep previous/instant results visible — no spinner flash
       setLoading(true);
     }
 
@@ -294,8 +295,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const searchResults = useMemo(() => {
     if (!isSearching) return [];
     const api = result?.products ?? [];
-    if (api.length > 0) return api;
-    return instantResults;
+    return dedupeFoods([...instantResults, ...api]).slice(0, 36);
   }, [isSearching, result, instantResults]);
 
   const quickAdd = useCallback(
@@ -375,10 +375,10 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
               {isSearching && (
                 <div className="food-add-popup-results">
-                  {loading && debouncedQ.trim().length >= 2 && searchResults.length === 0 && (
+                  {searchResults.length === 0 && loading && (
                     <p className="text-sm text-zinc-500 py-6 text-center">Suche…</p>
                   )}
-                  {!loading && searchResults.length === 0 && (
+                  {searchResults.length === 0 && !loading && (
                     <p className="text-sm text-zinc-500 py-6 text-center">Keine Treffer</p>
                   )}
                   {searchResults.map((food) => renderRow(food))}

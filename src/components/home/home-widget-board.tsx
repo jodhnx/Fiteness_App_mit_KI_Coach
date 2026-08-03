@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState, type ReactNode } from "react";
+import { memo, useCallback, useState, type ReactNode } from "react";
 import { Settings2, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
 import {
   loadHomeWidgets,
@@ -21,12 +21,8 @@ export const HomeWidgetBoard = memo(function HomeWidgetBoard({
 }: {
   slots: SlotMap;
 }) {
-  const [widgets, setWidgets] = useState<HomeWidgetConfig[]>([]);
+  const [widgets, setWidgets] = useState<HomeWidgetConfig[]>(() => loadHomeWidgets());
   const [edit, setEdit] = useState(false);
-
-  useEffect(() => {
-    setWidgets(loadHomeWidgets());
-  }, []);
 
   const persist = useCallback((next: HomeWidgetConfig[]) => {
     setWidgets(next);

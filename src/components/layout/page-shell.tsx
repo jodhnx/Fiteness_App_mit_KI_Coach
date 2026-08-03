@@ -37,7 +37,7 @@ export const PageShell = memo(function PageShell({
     <div
       className={cn(
         WIDTH[maxWidth],
-        "mx-auto space-y-3 view-transition-page",
+        "mx-auto space-y-3",
         bottomNav && "pb-4",
         className
       )}

@@ -41,7 +41,8 @@ export const BottomNav = memo(function BottomNav() {
     (href: string) => {
       if (isNavActive(pathname, href)) return;
       hapticSelect();
-      // Instant push — no View Transition delay on primary tabs
+      // Prefetch + push in same tick for instant paint from cache
+      router.prefetch(href);
       router.push(href);
     },
     [pathname, router]

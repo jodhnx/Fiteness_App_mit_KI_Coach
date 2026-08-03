@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {!immersive && <Header userName={headerName} userImage={headerImage} />}
             <main
               className={cn(
-                "app-page-content flex-1 view-transition-page min-w-0",
+                "app-page-content flex-1 min-w-0",
                 immersive ? "px-3 pb-4 pt-2" : "px-4 pb-4"
               )}
             >

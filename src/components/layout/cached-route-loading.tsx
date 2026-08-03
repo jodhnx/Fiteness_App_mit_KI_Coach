@@ -3,9 +3,8 @@
 import { memo, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { getCached } from "@/lib/client-cache";
-import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
+import { HOME_DATA_CACHE_KEY, NUTRITION_DASHBOARD_CACHE_KEY } from "@/lib/nutrition-sync";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
-import { NUTRITION_DASHBOARD_CACHE_KEY } from "@/lib/nutrition-sync";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { HomeGreeting } from "@/components/home/home-greeting";
@@ -17,10 +16,16 @@ import { createEmptyHomeData } from "@/lib/home-defaults";
 import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
 import { isSameDay } from "date-fns";
 
-/** Route transition placeholder — must match real page layout (no old Home UI). */
-export const CachedRouteLoading = memo(function CachedRouteLoading() {
-  const pathname = usePathname();
+/** Prefer live URL during soft nav — React pathname can lag one frame behind. */
+function useTransitionPathname() {
+  const reactPath = usePathname();
+  if (typeof window !== "undefined") {
+    return window.location.pathname || reactPath;
+  }
+  return reactPath;
+}
 
+export const HomeRoutePreview = memo(function HomeRoutePreview() {
   const home = useMemo(
     () => getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY) ?? createEmptyHomeData(),
     []
@@ -31,11 +36,6 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
       createEmptyNutritionDashboard(),
     []
   );
-  const progress = useMemo(
-    () => getCached<{ profile?: { weightKg: number | null } }>(PROGRESS_CACHE_KEY),
-    []
-  );
-
   const displayName = useDisplayName(home.userName);
   const trainingStreakDays =
     home.trainingStreak?.currentDays ?? home.streak?.currentDays ?? 0;
@@ -49,6 +49,44 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
     if (home.nextWorkout?.dayId) return "planned" as const;
     return "open" as const;
   }, [home]);
+
+  return (
+    <div className="space-y-3 pb-4 max-w-lg mx-auto">
+      <HomeGreeting name={displayName} />
+      <HomeDashboardPremium
+        nutrition={nutrition}
+        steps={home.healthToday?.steps ?? 0}
+        stepGoal={home.healthToday?.stepGoal ?? 10_000}
+        sleepHours={home.healthToday?.sleepHours ?? null}
+        weightKg={home.weightKg}
+        streakDays={trainingStreakDays}
+        trainingStatus={trainingStatus}
+        trainingLabel={
+          trainingStatus === "planned" ? home.nextWorkout?.dayName : undefined
+        }
+      />
+    </div>
+  );
+});
+
+/** Route transition placeholder — matches destination via live URL, never wrong tab. */
+export const CachedRouteLoading = memo(function CachedRouteLoading() {
+  const pathname = useTransitionPathname();
+
+  const nutrition = useMemo(
+    () =>
+      getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY) ??
+      createEmptyNutritionDashboard(),
+    []
+  );
+  const progress = useMemo(
+    () => getCached<{ profile?: { weightKg: number | null } }>(PROGRESS_CACHE_KEY),
+    []
+  );
+
+  if (pathname.startsWith("/home") || pathname === "/") {
+    return <HomeRoutePreview />;
+  }
 
   if (pathname.startsWith("/progress")) {
     const weight = progress?.profile?.weightKg;
@@ -77,22 +115,25 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
   if (pathname.startsWith("/nutrition")) {
     return (
       <div className="space-y-3 max-w-lg mx-auto pb-4">
-        <PremiumCard glow>
-          <p className="text-xs text-zinc-500">Kalorien heute</p>
-          <p className="text-3xl font-bold text-accent tabular-nums">
-            {Math.round(nutrition.consumed?.calories ?? 0).toLocaleString("de-DE")}
-            <span className="text-sm font-normal text-zinc-500 ml-1">
-              / {Math.round(nutrition.targets?.calories ?? 0).toLocaleString("de-DE")}
-            </span>
+        <PageHeader title="Ernährung" />
+        <PremiumCard glow className="flex flex-col items-center py-6">
+          <p className="text-xs text-zinc-500 mb-2">Kalorien übrig</p>
+          <p className="text-4xl font-bold text-white tabular-nums">
+            {Math.max(
+              0,
+              Math.round(
+                (nutrition.targets?.calories ?? 0) - (nutrition.consumed?.calories ?? 0)
+              )
+            ).toLocaleString("de-DE")}
+          </p>
+          <p className="text-xs text-zinc-500 mt-2 tabular-nums">
+            {Math.round(nutrition.consumed?.calories ?? 0).toLocaleString("de-DE")} /{" "}
+            {Math.round(nutrition.targets?.calories ?? 0).toLocaleString("de-DE")} kcal
           </p>
         </PremiumCard>
-        <div className="grid grid-cols-4 gap-2">
-          {["P", "KH", "F", "B"].map((m) => (
-            <PremiumCard key={m} padding="sm" className="h-14 flex items-center justify-center">
-              <span className="text-xs text-zinc-500">{m}</span>
-            </PremiumCard>
-          ))}
-        </div>
+        <PremiumCard padding="sm" className="h-14 flex items-center px-4">
+          <span className="text-sm text-zinc-400">🍳 Frühstück</span>
+        </PremiumCard>
       </div>
     );
   }
@@ -128,29 +169,10 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
         <PremiumCard className="h-24">
           <span className="sr-only">Laden</span>
         </PremiumCard>
-        <PremiumCard className="h-32">
-          <span className="sr-only">Laden</span>
-        </PremiumCard>
       </div>
     );
   }
 
-  // Home — identical structure to live HomeDashboardPremium (no legacy strip/hero)
-  return (
-    <div className="space-y-3 pb-4 max-w-lg mx-auto">
-      <HomeGreeting name={displayName} />
-      <HomeDashboardPremium
-        nutrition={nutrition}
-        steps={home.healthToday?.steps ?? 0}
-        stepGoal={home.healthToday?.stepGoal ?? 10_000}
-        sleepHours={home.healthToday?.sleepHours ?? null}
-        weightKg={home.weightKg}
-        streakDays={trainingStreakDays}
-        trainingStatus={trainingStatus}
-        trainingLabel={
-          trainingStatus === "planned" ? home.nextWorkout?.dayName : undefined
-        }
-      />
-    </div>
-  );
+  // Default / settings / other — prefer home-like cache so returning to home never shows wrong shell
+  return <HomeRoutePreview />;
 });

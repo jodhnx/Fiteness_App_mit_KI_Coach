@@ -657,44 +657,13 @@ body[data-foodAddPopup] nav[aria-label="Hauptnavigation"] {
   padding-bottom: 0.5rem;
 }
 
-/* ── View Transitions (tab navigation) ── */
+/* ── View Transitions disabled for tab nav (avoids old-screen flash) ── */
 @view-transition {
-  navigation: auto;
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 180ms;
-  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-::view-transition-old(root) {
-  animation-name: vt-fade-out;
-}
-
-::view-transition-new(root) {
-  animation-name: vt-fade-in;
-}
-
-@keyframes vt-fade-out {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(-4px); }
-}
-
-@keyframes vt-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  navigation: none;
 }
 
 .view-transition-page {
-  view-transition-name: page-content;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none;
-  }
+  /* keep class for compatibility; no named transition */
 }
 
 /* ── Profile Dashboard Slide-In (Whoop-style) ── */

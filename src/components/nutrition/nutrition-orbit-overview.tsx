@@ -5,18 +5,17 @@ import Link from "next/link";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets, nutritionProfileIncomplete } from "@/lib/nutrition-defaults";
 import { CalorieRing } from "@/components/nutrition/calorie-ring";
-import { NutritionMacroCard } from "@/components/nutrition/nutrition-macro-card";
-import { PremiumCard } from "@/components/ui/premium-card";
 
-type OrbitStat = {
+type OrbitCorner = {
   key: string;
   label: string;
   value: string;
-  sub?: string;
-  color: string;
+  sub: string;
+  accent: string;
+  position: string;
 };
 
-/** Kalorien-Kreis mit umliegenden Makro-/Nährstoff-Stats. */
+/** Compact calorie hero with macros orbiting the ring (Yazio / MFP style). */
 export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   dashboard,
 }: {
@@ -25,7 +24,6 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   const { consumed, targets, remaining, water } = dashboard;
   const ready = hasNutritionTargets(dashboard);
   const incomplete = nutritionProfileIncomplete(dashboard);
-  const fiberRemaining = Math.max(0, Math.round(targets.fiberG - consumed.fiberG));
 
   if (!ready) {
     return (
@@ -43,123 +41,65 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     );
   }
 
-  const orbit: OrbitStat[] = [
+  const corners: OrbitCorner[] = [
     {
       key: "p",
       label: "Protein",
       value: `${Math.round(consumed.proteinG)}g`,
-      sub: `übrig ${Math.round(remaining.proteinG)}g`,
-      color: "text-rose-400",
-    },
-    {
-      key: "c",
-      label: "KH",
-      value: `${Math.round(consumed.carbsG)}g`,
-      sub: `übrig ${Math.round(remaining.carbsG)}g`,
-      color: "text-amber-400",
+      sub: `${Math.round(remaining.proteinG)}g übrig`,
+      accent: "text-rose-400",
+      position: "left-0 top-0 items-start text-left",
     },
     {
       key: "f",
       label: "Fett",
       value: `${Math.round(consumed.fatG)}g`,
-      sub: `übrig ${Math.round(remaining.fatG)}g`,
-      color: "text-sky-400",
+      sub: `${Math.round(remaining.fatG)}g übrig`,
+      accent: "text-sky-400",
+      position: "right-0 top-0 items-end text-right",
     },
     {
-      key: "fi",
-      label: "Ballast",
-      value: `${Math.round(consumed.fiberG)}g`,
-      sub: `Ziel ${Math.round(targets.fiberG)}g`,
-      color: "text-emerald-400",
+      key: "c",
+      label: "Kohlenhydrate",
+      value: `${Math.round(consumed.carbsG)}g`,
+      sub: `${Math.round(remaining.carbsG)}g übrig`,
+      accent: "text-amber-400",
+      position: "left-0 bottom-0 items-start text-left",
     },
     {
       key: "w",
       label: "Wasser",
-      value: `${Math.round(water.consumedMl)}ml`,
-      sub: `Ziel ${Math.round(water.targetMl)}ml`,
-      color: "text-cyan-400",
-    },
-    {
-      key: "left",
-      label: "Übrig",
-      value: `${Math.round(remaining.calories)}`,
-      sub: "kcal",
-      color: "text-accent",
+      value: `${(Math.round(water.consumedMl / 100) / 10).toFixed(1)}l`,
+      sub: `Ziel ${(Math.round(water.targetMl / 100) / 10).toFixed(1)}l`,
+      accent: "text-cyan-400",
+      position: "right-0 bottom-0 items-end text-right",
     },
   ];
 
   return (
-    <div className="space-y-3">
-      <PremiumCard glow className="overflow-hidden">
-        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.15em] mb-2">
-          Kalorienübersicht
-        </p>
-        <div className="flex flex-col items-center gap-4">
+    <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 px-3 pt-3 pb-2">
+      <div className="relative mx-auto h-[220px] w-full max-w-[340px]">
+        {corners.map((c) => (
+          <div
+            key={c.key}
+            className={`absolute flex flex-col gap-0.5 max-w-[88px] ${c.position}`}
+          >
+            <p className={`text-[10px] font-semibold uppercase tracking-wide ${c.accent}`}>
+              {c.label}
+            </p>
+            <p className="text-sm font-bold text-white tabular-nums leading-none">{c.value}</p>
+            <p className="text-[9px] text-zinc-500 tabular-nums leading-tight">{c.sub}</p>
+          </div>
+        ))}
+
+        <div className="absolute inset-0 flex items-center justify-center">
           <CalorieRing
             consumed={consumed.calories}
             target={targets.calories}
             remaining={remaining.calories}
-            size={148}
+            size={168}
             ringId="nutrition-kcal-ring"
             label="ÜBRIG"
-          />
-          <div className="grid grid-cols-3 gap-2 w-full">
-            {orbit.map((o) => (
-              <div
-                key={o.key}
-                className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-1.5 py-2 text-center"
-              >
-                <p className={`text-[9px] uppercase tracking-wide ${o.color}`}>{o.label}</p>
-                <p className="text-xs font-bold text-white tabular-nums mt-0.5">{o.value}</p>
-                {o.sub && (
-                  <p className="text-[9px] text-zinc-600 mt-0.5 truncate">{o.sub}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </PremiumCard>
-
-      <div>
-        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.15em] mb-2 px-0.5">
-          Makros Detail
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <NutritionMacroCard
-            compact
-            emoji="🥩"
-            label="Protein"
-            consumed={consumed.proteinG}
-            target={targets.proteinG}
-            remaining={remaining.proteinG}
-            barColor="bg-rose-400"
-          />
-          <NutritionMacroCard
-            compact
-            emoji="🍚"
-            label="Kohlenhydrate"
-            consumed={consumed.carbsG}
-            target={targets.carbsG}
-            remaining={remaining.carbsG}
-            barColor="bg-amber-400"
-          />
-          <NutritionMacroCard
-            compact
-            emoji="🥑"
-            label="Fett"
-            consumed={consumed.fatG}
-            target={targets.fatG}
-            remaining={remaining.fatG}
-            barColor="bg-sky-400"
-          />
-          <NutritionMacroCard
-            compact
-            emoji="🌾"
-            label="Ballaststoffe"
-            consumed={consumed.fiberG}
-            target={targets.fiberG}
-            remaining={fiberRemaining}
-            barColor="bg-emerald-400"
           />
         </div>
       </div>

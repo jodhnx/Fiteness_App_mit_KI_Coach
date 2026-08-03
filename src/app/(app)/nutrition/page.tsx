@@ -19,7 +19,10 @@ import { NutritionDaySummary } from "@/components/nutrition/nutrition-day-summar
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
 import { FoodAddPopup } from "@/components/nutrition/food-add-popup";
-import { NutritionExtrasPanel } from "@/components/nutrition/nutrition-extras-panel";
+import {
+  NutritionExtrasPanel,
+  NutritionShoppingList,
+} from "@/components/nutrition/nutrition-extras-panel";
 import { PageIntro } from "@/components/guide/page-intro";
 import { MEAL_TYPE_ORDER } from "@/lib/meal-types";
 import type { MealType } from "@prisma/client";
@@ -65,7 +68,7 @@ export default function NutritionPage() {
 
   const onFoodAdded = useCallback(() => {
     closeAddPopup();
-    toast.success("Lebensmittel hinzugefügt ✓", { duration: 2000 });
+    toast.success("Lebensmittel hinzugefügt ✓", { duration: 1600 });
   }, [closeAddPopup]);
 
   const { quickAdd } = useFoodQuickAdd({
@@ -187,7 +190,7 @@ export default function NutritionPage() {
   return (
     <PageShell
       title="Ernährung"
-      className="nutrition-mobile-page keyboard-stable-page pb-28"
+      className="nutrition-mobile-page keyboard-stable-page pb-28 space-y-2.5"
       bottomNav={false}
       action={
         <Link
@@ -199,7 +202,6 @@ export default function NutritionPage() {
         </Link>
       }
     >
-
       {(error || timedOut) && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex gap-3">
           <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
@@ -226,13 +228,12 @@ export default function NutritionPage() {
 
       <PageIntro pageId="nutrition" />
 
-      {/* Reihenfolge: Kalorien-Orbit → Makros → Extras → Mahlzeiten → Summary */}
+      {/* 1–2: Kalorien-Kreis + Makros drumherum */}
       <NutritionOrbitOverview dashboard={dashboard} />
 
-      <NutritionExtrasPanel />
-
-      <section className="pt-1">
-        <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] mb-2 px-0.5">
+      {/* 3: Mahlzeiten sofort sichtbar */}
+      <section className="pt-0.5">
+        <h2 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.15em] mb-1.5 px-0.5">
           Mahlzeiten
         </h2>
         <MealTrackList
@@ -244,13 +245,20 @@ export default function NutritionPage() {
         />
       </section>
 
+      {/* 4: Tagesübersicht */}
+      <NutritionDaySummary dashboard={dashboard} />
+
       <WaterTracker
         consumedMl={dashboard.water.consumedMl}
         targetMl={dashboard.water.targetMl}
         onAdd={addWater}
       />
 
-      <NutritionDaySummary dashboard={dashboard} />
+      {/* Tools kompakt */}
+      <NutritionExtrasPanel />
+
+      {/* 5: Einkaufsliste ganz unten */}
+      <NutritionShoppingList />
 
       {addSheetMeal && (
         <FoodAddPopup
