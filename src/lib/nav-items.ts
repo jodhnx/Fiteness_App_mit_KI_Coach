@@ -1,21 +1,21 @@
+"use client";
+
+import {
+  Settings,
+  Watch,
+  Users,
+  Trophy,
+  type LucideIcon,
+} from "lucide-react";
 import {
   Home,
   Dumbbell,
   Apple,
   TrendingUp,
   Bot,
-  Trophy,
-  Settings,
   Shield,
-  MessageCircle,
   Lock,
   LogOut,
-  Watch,
-  Bell,
-  Info,
-  User,
-  Users,
-  type LucideIcon,
 } from "lucide-react";
 
 export type NavItem = {
@@ -32,17 +32,13 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/coach", label: "Coach", icon: Bot },
 ];
 
-/** Profile panel — everything under Einstellungen (no duplicate main-nav items). */
+/** Profile panel — only two primary settings areas. */
 export const PROFILE_MENU_NAV: NavItem[] = [
   { href: "/settings", label: "Einstellungen", icon: Settings },
-  { href: "/settings#settings-konto", label: "Konto", icon: User },
   { href: "/settings#settings-geraete", label: "Geräte & Gesundheit", icon: Watch },
-  { href: "/settings#settings-datenschutz", label: "Datenschutz", icon: Lock },
-  { href: "/settings/support", label: "Support & Feedback", icon: MessageCircle },
-  { href: "/settings#settings-benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
-  { href: "/settings#settings-app", label: "Über die App", icon: Info },
 ];
 
+/** Keep Community & Erfolge as existing features. */
 export const MORE_NAV: NavItem[] = [
   { href: "/social", label: "Community", icon: Users },
   { href: "/erfolge", label: "Erfolge", icon: Trophy },

@@ -69,8 +69,8 @@ export default function PlanPreviewPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/workouts/catalog" className="text-zinc-400 hover:text-white flex items-center gap-1 text-sm">
-        <ArrowLeft className="h-4 w-4" /> Bibliothek
+      <Link href="/workouts" className="text-zinc-400 hover:text-white flex items-center gap-1 text-sm">
+        <ArrowLeft className="h-4 w-4" /> Training
       </Link>
       <WorkoutNav />
 

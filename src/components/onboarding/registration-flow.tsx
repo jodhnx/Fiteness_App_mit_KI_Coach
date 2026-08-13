@@ -53,10 +53,12 @@ type Draft = FormDraft & {
   password: string;
   passwordConfirm: string;
   acceptTerms: boolean;
+  username: string;
 };
 
 const DEFAULT: Draft = {
   name: "",
+  username: "",
   age: null,
   gender: "MALE",
   heightCm: null,
@@ -148,7 +150,10 @@ export function RegistrationFlow() {
   const canContinue = useMemo(() => {
     switch (step) {
       case 1:
-        return draft.name.trim().length >= 2;
+        return (
+          draft.name.trim().length >= 2 &&
+          /^[a-z0-9_]{3,24}$/.test(draft.username.trim().toLowerCase())
+        );
       case 2:
         return draft.age != null && draft.age >= 14 && draft.age <= 100;
       case 3:
@@ -268,6 +273,7 @@ export function RegistrationFlow() {
             email: draft.email.trim(),
             password: draft.password,
             name: ob.name,
+            username: draft.username.trim().toLowerCase(),
           }),
         });
         const convData = await conv.json();
@@ -286,6 +292,7 @@ export function RegistrationFlow() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: ob.name,
+            username: draft.username.trim().toLowerCase(),
             email: draft.email.trim(),
             password: draft.password,
           }),
@@ -353,6 +360,29 @@ export function RegistrationFlow() {
             placeholder="Dein Name"
             autoFocus
           />
+          <Label className="mt-4 block">Benutzername</Label>
+          <p className="text-xs text-zinc-500 mt-1 mb-2">
+            Eindeutig · für Freunde & Community (nur a–z, 0–9, _)
+          </p>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-lg">
+              @
+            </span>
+            <Input
+              className="h-14 text-lg rounded-xl keyboard-stable-input pl-8"
+              value={draft.username}
+              onChange={(e) =>
+                patch({
+                  username: e.target.value
+                    .toLowerCase()
+                    .replace(/[^a-z0-9_]/g, "")
+                    .slice(0, 24),
+                })
+              }
+              placeholder="dein_name"
+              autoComplete="username"
+            />
+          </div>
         </GlassCard>
       )}
 

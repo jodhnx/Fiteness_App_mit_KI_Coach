@@ -21,6 +21,8 @@ export function clearActiveWorkoutCaches(completed?: {
   invalidateCache("workouts-journey-hub");
   invalidateCache(CACHE_KEYS.JOURNEY);
   invalidateCache("workouts-journey");
+  invalidateCache("workouts-recovery-hub");
+  invalidateCache("workouts-recovery");
   invalidateCache(PROGRESS_CACHE_KEY);
   invalidateCache("gamification-full");
 

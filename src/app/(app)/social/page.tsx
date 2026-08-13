@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { PremiumCard } from "@/components/ui/premium-card";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageIntro } from "@/components/guide/page-intro";
 import { toast } from "sonner";
-import { Users, Trophy, Share2, Medal } from "lucide-react";
+import { Users, Trophy, Share2, Search, UserPlus, Check, X } from "lucide-react";
 import { hapticTap } from "@/lib/haptic";
+import { UserAvatar } from "@/components/user/user-avatar";
+import { useDebounce } from "@/hooks/use-debounce";
 
-type Friend = {
+type PublicUser = {
+  id: string;
+  name: string | null;
+  username: string | null;
+  image: string | null;
+  publicAchievements?: { name: string; icon: string | null }[];
+};
+
+type FriendRow = {
   id: string;
   status: string;
-  initiator: { id: string; name: string; email: string };
-  receiver: { id: string; name: string; email: string };
+  initiatorId: string;
+  receiverId: string;
+  initiator: PublicUser;
+  receiver: PublicUser;
+  other?: PublicUser;
+  publicAchievements?: { name: string; icon: string | null }[];
 };
 
 type ChallengeRow = {
@@ -27,10 +41,19 @@ type ChallengeRow = {
   status?: string;
 };
 
+function displayHandle(u: PublicUser) {
+  if (u.username) return `@${u.username}`;
+  return u.name?.trim() || "Nutzer";
+}
+
 export default function SocialPage() {
-  const [friends, setFriends] = useState<Friend[]>([]);
+  const [friends, setFriends] = useState<FriendRow[]>([]);
   const [challenges, setChallenges] = useState<ChallengeRow[]>([]);
-  const [email, setEmail] = useState("");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PublicUser[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [myId, setMyId] = useState<string | null>(null);
+  const debouncedQ = useDebounce(query, 250);
 
   const load = useCallback(() => {
     void fetch("/api/social/friends")
@@ -39,37 +62,80 @@ export default function SocialPage() {
     void fetch("/api/challenges")
       .then((r) => r.json())
       .then((d) => setChallenges(d.challenges ?? []));
+    void fetch("/api/profile")
+      .then((r) => r.json())
+      .then((d) => setMyId(d.user?.id ?? null));
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  async function sendRequest() {
+  useEffect(() => {
+    const q = debouncedQ.trim();
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+    setSearching(true);
+    void fetch(`/api/social/friends?q=${encodeURIComponent(q)}`)
+      .then((r) => r.json())
+      .then((d) => setResults(d.users ?? []))
+      .finally(() => setSearching(false));
+  }, [debouncedQ]);
+
+  const pendingIncoming = useMemo(
+    () =>
+      friends.filter(
+        (f) => f.status === "PENDING" && myId && f.receiverId === myId
+      ),
+    [friends, myId]
+  );
+  const pendingOutgoing = useMemo(
+    () =>
+      friends.filter(
+        (f) => f.status === "PENDING" && myId && f.initiatorId === myId
+      ),
+    [friends, myId]
+  );
+  const accepted = useMemo(
+    () => friends.filter((f) => f.status === "ACCEPTED"),
+    [friends]
+  );
+
+  async function sendRequest(username: string) {
     hapticTap();
     const res = await fetch("/api/social/friends", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ username }),
     });
     const data = await res.json();
     if (!res.ok) {
       toast.error(data.error ?? "Anfrage fehlgeschlagen");
       return;
     }
-    toast.success("Anfrage gesendet");
-    setEmail("");
+    toast.success("Freundschaftsanfrage gesendet");
+    setQuery("");
+    setResults([]);
     load();
   }
 
-  async function accept(id: string) {
+  async function patchFriend(id: string, action: "accept" | "reject" | "remove" | "cancel") {
     hapticTap();
-    await fetch("/api/social/friends", {
+    const res = await fetch("/api/social/friends", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, action: "accept" }),
+      body: JSON.stringify({ id, action }),
     });
-    toast.success("Freundschaft angenommen");
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Aktion fehlgeschlagen");
+      return;
+    }
+    if (action === "accept") toast.success("Freundschaft angenommen");
+    else if (action === "reject") toast.message("Anfrage abgelehnt");
+    else toast.message("Entfernt");
     load();
   }
 
@@ -80,133 +146,197 @@ export default function SocialPage() {
       void navigator.share({ title: "NEXFORM", text }).catch(() => {});
     } else {
       void navigator.clipboard.writeText(text);
-      toast.success("Text kopiert — teile ihn mit Freunden");
+      toast.success("In Zwischenablage kopiert");
     }
   }
-
-  const accepted = friends.filter((f) => f.status === "ACCEPTED");
-  const pending = friends.filter((f) => f.status === "PENDING");
 
   return (
     <PageShell
       title="Community"
       subtitle="Freunde · Challenges · Teilen"
-      maxWidth="2xl"
-      className="pb-28"
+      className="pb-28 space-y-4"
       bottomNav={false}
     >
       <PageIntro pageId="social" />
 
-      <PremiumCard glow className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-accent" />
-          <h2 className="font-semibold text-white">Freund hinzufügen</h2>
-        </div>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Label className="sr-only">E-Mail</Label>
-            <Input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              placeholder="freund@email.de"
-              className="h-11"
-            />
-          </div>
-          <Button variant="premium" className="h-11" onClick={() => void sendRequest()}>
-            Einladen
-          </Button>
-        </div>
-      </PremiumCard>
-
       <PremiumCard className="space-y-3">
-        <h2 className="text-sm font-semibold text-white">Freunde & Anfragen</h2>
-        {pending.map((f) => (
-          <div
-            key={f.id}
-            className="flex justify-between items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2"
-          >
-            <p className="text-sm text-zinc-300 truncate">
-              {f.initiator.name ?? f.initiator.email}
-            </p>
-            <Button size="sm" onClick={() => void accept(f.id)}>
-              Annehmen
-            </Button>
-          </div>
-        ))}
-        {accepted.map((f) => (
-          <div
-            key={f.id}
-            className="flex items-center gap-2 text-sm text-zinc-300 rounded-xl bg-white/[0.03] px-3 py-2"
-          >
-            <Medal className="h-4 w-4 text-accent shrink-0" />
-            <span className="truncate">
-              {f.initiator.name ?? f.initiator.email} ↔{" "}
-              {f.receiver.name ?? f.receiver.email}
-            </span>
-          </div>
-        ))}
-        {friends.length === 0 && (
-          <p className="text-sm text-zinc-500">Noch keine Verbindungen</p>
+        <div className="flex items-center gap-2">
+          <Search className="h-4 w-4 text-accent" />
+          <h2 className="text-sm font-semibold text-white">Freunde finden</h2>
+        </div>
+        <Label className="text-xs text-zinc-500">Benutzername suchen</Label>
+        <Input
+          placeholder="@benutzername"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="h-11"
+          autoComplete="off"
+        />
+        {searching && <p className="text-xs text-zinc-500">Suche…</p>}
+        {results.length > 0 && (
+          <ul className="space-y-2">
+            {results.map((u) => (
+              <li
+                key={u.id}
+                className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5"
+              >
+                <UserAvatar src={u.image} name={u.name ?? u.username} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-white truncate">
+                    {displayHandle(u)}
+                  </p>
+                  {u.name && u.username && (
+                    <p className="text-[11px] text-zinc-500 truncate">{u.name}</p>
+                  )}
+                  {(u.publicAchievements?.length ?? 0) > 0 && (
+                    <p className="text-[10px] text-zinc-400 mt-0.5 truncate">
+                      {u.publicAchievements!.map((a) => a.name).join(" · ")}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="premium"
+                  disabled={!u.username}
+                  onClick={() => u.username && void sendRequest(u.username)}
+                >
+                  <UserPlus className="h-3.5 w-3.5 mr-1" />
+                  Anfragen
+                </Button>
+              </li>
+            ))}
+          </ul>
         )}
       </PremiumCard>
 
+      {pendingIncoming.length > 0 && (
+        <PremiumCard className="space-y-2">
+          <h2 className="text-sm font-semibold text-white">Anfragen</h2>
+          {pendingIncoming.map((f) => {
+            const other = f.initiator;
+            return (
+              <div key={f.id} className="flex items-center gap-3">
+                <UserAvatar src={other.image} name={other.name ?? other.username} size="sm" />
+                <p className="flex-1 text-sm text-zinc-200 truncate">{displayHandle(other)}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="premium"
+                  onClick={() => void patchFriend(f.id, "accept")}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void patchFriend(f.id, "reject")}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+        </PremiumCard>
+      )}
+
+      {pendingOutgoing.length > 0 && (
+        <PremiumCard className="space-y-2">
+          <h2 className="text-sm font-semibold text-white">Ausstehend</h2>
+          {pendingOutgoing.map((f) => {
+            const other = f.receiver;
+            return (
+              <div key={f.id} className="flex items-center gap-3">
+                <UserAvatar src={other.image} name={other.name ?? other.username} size="sm" />
+                <p className="flex-1 text-sm text-zinc-300 truncate">{displayHandle(other)}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => void patchFriend(f.id, "cancel")}
+                >
+                  Zurückziehen
+                </Button>
+              </div>
+            );
+          })}
+        </PremiumCard>
+      )}
+
       <PremiumCard className="space-y-3">
         <div className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-amber-400" />
-          <h2 className="font-semibold text-white">Challenges</h2>
+          <Users className="h-4 w-4 text-accent" />
+          <h2 className="text-sm font-semibold text-white">
+            Freunde ({accepted.length})
+          </h2>
         </div>
-        {challenges.length === 0 && (
+        {accepted.length === 0 ? (
           <p className="text-sm text-zinc-500">
-            Noch keine Challenges — schau unter Erfolge vorbei.
+            Noch keine Freunde — suche oben nach einem Benutzernamen.
           </p>
+        ) : (
+          <ul className="space-y-2">
+            {accepted.map((f) => {
+              const other =
+                f.other ??
+                (myId && f.initiatorId === myId ? f.receiver : f.initiator);
+              const ach = f.publicAchievements ?? [];
+              return (
+                <li
+                  key={f.id}
+                  className="flex items-center gap-3 rounded-xl border border-white/[0.06] p-2.5"
+                >
+                  <UserAvatar src={other.image} name={other.name ?? other.username} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white truncate">
+                      {displayHandle(other)}
+                    </p>
+                    {ach.length > 0 && (
+                      <p className="text-[10px] text-zinc-400 truncate">
+                        {ach.map((a) => a.name).join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="text-zinc-500"
+                    onClick={() => void patchFriend(f.id, "remove")}
+                  >
+                    Entfernen
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
         )}
-        {challenges.slice(0, 6).map((c) => {
-          const target = c.targetDays ?? 0;
-          const pct =
-            target > 0
-              ? Math.min(100, Math.round(((c.progress ?? 0) / target) * 100))
-              : 0;
-          return (
-            <div key={c.id} className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-200">{c.title}</span>
-                <span className="text-zinc-500 tabular-nums">{pct}%</span>
-              </div>
-              <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-amber-400 transition-all"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
       </PremiumCard>
 
       <PremiumCard className="space-y-3">
         <div className="flex items-center gap-2">
-          <Share2 className="h-5 w-5 text-accent" />
-          <h2 className="font-semibold text-white">Teilen</h2>
+          <Trophy className="h-4 w-4 text-accent" />
+          <h2 className="text-sm font-semibold text-white">Challenges</h2>
         </div>
-        <p className="text-xs text-zinc-400">
-          Teile Erfolge und Trainingsfortschritte mit Freunden.
-        </p>
-        <Button variant="secondary" className="w-full" onClick={shareAchievement}>
-          Erfolg teilen
-        </Button>
+        {challenges.length === 0 ? (
+          <p className="text-sm text-zinc-500">Aktuell keine Challenges.</p>
+        ) : (
+          challenges.slice(0, 5).map((c) => (
+            <div key={c.id} className="rounded-xl bg-zinc-900/60 p-3">
+              <p className="text-sm font-medium text-white">{c.title}</p>
+              {c.description && (
+                <p className="text-xs text-zinc-500 mt-0.5">{c.description}</p>
+              )}
+            </div>
+          ))
+        )}
       </PremiumCard>
 
-      <PremiumCard>
-        <p className="text-[10px] uppercase tracking-widest text-zinc-500 mb-2">
-          Rangliste (Freunde)
-        </p>
-        <p className="text-sm text-zinc-400">
-          {accepted.length > 0
-            ? `${accepted.length} Freunde verbunden — gemeinsame Challenges erscheinen hier.`
-            : "Lade Freunde ein, um Ranglisten freizuschalten."}
-        </p>
-      </PremiumCard>
+      <Button type="button" variant="outline" className="w-full" onClick={shareAchievement}>
+        <Share2 className="h-4 w-4 mr-2" />
+        Fortschritt teilen
+      </Button>
     </PageShell>
   );
 }

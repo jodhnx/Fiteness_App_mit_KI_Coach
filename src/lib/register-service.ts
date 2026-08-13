@@ -12,9 +12,11 @@ import {
   explainSupabasePoolerError,
   flattenErrorMessage,
 } from "@/lib/database-url";
+import { normalizeUsername } from "@/lib/username";
 
 export type RegisterInput = {
   name: string;
+  username: string;
   email: string;
   password: string;
 };
@@ -65,6 +67,14 @@ function mapPrismaError(error: unknown): RegisterResult | null {
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
+      const target = String(error.meta?.target ?? "");
+      if (target.includes("username")) {
+        return {
+          ok: false,
+          status: 409,
+          error: "Dieser Benutzername ist bereits vergeben.",
+        };
+      }
       return { ok: false, status: 409, error: "Diese E-Mail ist bereits registriert." };
     }
     if (error.code === "P2021" || error.code === "P2010") {
@@ -83,6 +93,7 @@ async function upsertUserWithStreak(
   db: import("@prisma/client").PrismaClient,
   data: {
     name: string;
+    username: string;
     email: string;
     passwordHash: string;
   },
@@ -93,6 +104,7 @@ async function upsertUserWithStreak(
       where: { id: existingId },
       data: {
         name: data.name,
+        username: data.username,
         passwordHash: data.passwordHash,
         verificationCode: null,
         verificationExpires: null,
@@ -105,6 +117,7 @@ async function upsertUserWithStreak(
   const newUser = await db.user.create({
     data: {
       name: data.name,
+      username: data.username,
       email: data.email,
       passwordHash: data.passwordHash,
       emailVerified: new Date(),
@@ -125,6 +138,7 @@ async function upsertUserWithStreak(
 
 export async function registerUser(input: RegisterInput): Promise<RegisterResult> {
   const email = input.email.toLowerCase().trim();
+  const username = normalizeUsername(input.username);
   let step = 0;
 
   try {
@@ -136,6 +150,15 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
         return { ok: false, status: 409, error: "Diese E-Mail ist bereits registriert." };
       }
 
+      const taken = await db.user.findUnique({ where: { username } });
+      if (taken && taken.id !== existing?.id) {
+        return {
+          ok: false,
+          status: 409,
+          error: "Dieser Benutzername ist bereits vergeben.",
+        };
+      }
+
       step = 2;
       const passwordHash = await bcrypt.hash(input.password, 12);
 
@@ -144,6 +167,7 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
         db,
         {
           name: input.name,
+          username,
           email,
           passwordHash,
         },

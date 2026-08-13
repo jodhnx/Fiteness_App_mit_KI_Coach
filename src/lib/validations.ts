@@ -8,6 +8,13 @@ const registerEmailSchema = z
 
 export const registerSchema = z.object({
   name: z.string().min(2, "Name muss mindestens 2 Zeichen haben").max(100),
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3, "Benutzername muss mindestens 3 Zeichen haben")
+    .max(24, "Benutzername darf maximal 24 Zeichen haben")
+    .regex(/^[a-z0-9_]+$/, "Nur Kleinbuchstaben, Zahlen und Unterstrich (_)"),
   email: registerEmailSchema,
   password: z.string().min(8, "Passwort muss mindestens 8 Zeichen haben").max(128),
 });
@@ -289,9 +296,21 @@ export const chatMessageSchema = z.object({
   stream: z.boolean().optional(),
 });
 
-export const friendRequestSchema = z.object({
-  email: z.string().email(),
-});
+export const friendRequestSchema = z
+  .object({
+    email: z.string().email().optional(),
+    username: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(3)
+      .max(24)
+      .regex(/^[a-z0-9_]+$/)
+      .optional(),
+  })
+  .refine((d) => Boolean(d.email || d.username), {
+    message: "Benutzername oder E-Mail erforderlich",
+  });
 
 export const supportRequestSchema = z.object({
   name: z.string().min(2).max(120),

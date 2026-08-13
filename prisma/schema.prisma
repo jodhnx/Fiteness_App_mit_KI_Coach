@@ -9,6 +9,8 @@ datasource db {
 model User {
   id                    String               @id @default(cuid())
   name                  String?
+  /** Public unique handle for community (@username) — lowercase */
+  username              String?              @unique
   email                 String               @unique
   emailVerified         DateTime?
   verificationCode      String?

@@ -103,7 +103,7 @@ export async function createGuestUser(draft?: OnboardingDraft | null) {
 
 export async function convertGuestToAccount(
   userId: string,
-  input: { email: string; password: string; name?: string }
+  input: { email: string; password: string; name?: string; username?: string }
 ) {
   const guest = await prisma.user.findUnique({
     where: { id: userId },
@@ -121,6 +121,20 @@ export async function convertGuestToAccount(
     return { ok: false as const, error: "E-Mail bereits registriert", status: 409 };
   }
 
+  if (input.username) {
+    const taken = await prisma.user.findUnique({
+      where: { username: input.username },
+      select: { id: true },
+    });
+    if (taken && taken.id !== userId) {
+      return {
+        ok: false as const,
+        error: "Dieser Benutzername ist bereits vergeben.",
+        status: 409,
+      };
+    }
+  }
+
   const passwordHash = await bcrypt.hash(input.password, 12);
   const verificationRequired = isEmailVerificationEnabled();
   const code = verificationRequired ? generateVerificationCode() : null;
@@ -132,6 +146,7 @@ export async function convertGuestToAccount(
       passwordHash,
       isGuest: false,
       name: input.name?.trim() || undefined,
+      username: input.username || undefined,
       emailVerified: verificationRequired ? null : new Date(),
       verificationCode: code,
       verificationExpires: verificationRequired ? verificationExpiresAt() : null,

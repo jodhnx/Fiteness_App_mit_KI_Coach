@@ -77,6 +77,7 @@ export async function GET() {
           select: {
             id: true,
             name: true,
+            username: true,
             email: true,
             image: true,
             role: true,
@@ -172,7 +173,7 @@ export async function PATCH(req: NextRequest) {
     const user = await dbQuery("user.getAfterPatch", (db) =>
       db.user.findUnique({
         where: { id: userId },
-        select: { id: true, name: true, email: true, image: true },
+        select: { id: true, name: true, username: true, email: true, image: true },
       })
     );
 

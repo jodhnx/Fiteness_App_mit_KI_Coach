@@ -181,7 +181,11 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const [historyFoods, setHistoryFoods] = useState<{
     frequent: FoodProduct[];
     recents: FoodProduct[];
-  }>({ frequent: [], recents: [] });
+    favorites: FoodProduct[];
+  }>({ frequent: [], recents: [], favorites: [] });
+  const [browseTab, setBrowseTab] = useState<"favorites" | "recent" | "frequent">(
+    "frequent"
+  );
   const [detailProduct, setDetailProduct] = useState<FoodProduct | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const requestGen = useRef(0);
@@ -220,14 +224,23 @@ export const FoodAddPopup = memo(function FoodAddPopup({
       .then((r) => r.json())
       .then((d) => {
         const rec = (d.recents ?? []) as FoodProduct[];
-        const frequent = ((d.frequent ?? rec) as FoodProduct[]).slice(0, 8);
+        const frequent = ((d.frequent ?? rec) as FoodProduct[]).slice(0, 12);
+        const favorites = ((d.favorites ?? []) as FoodProduct[]).slice(0, 24);
         setHistoryFoods({
           frequent: frequent.length > 0 ? frequent : FALLBACK_FREQUENT,
-          recents: rec.length > 0 ? rec.slice(0, 8) : FALLBACK_RECENT,
+          recents: rec.length > 0 ? rec.slice(0, 12) : FALLBACK_RECENT,
+          favorites,
         });
+        if (favorites.length > 0) setBrowseTab("favorites");
+        else if (rec.length > 0) setBrowseTab("recent");
+        else setBrowseTab("frequent");
       })
       .catch(() => {
-        setHistoryFoods({ frequent: FALLBACK_FREQUENT, recents: FALLBACK_RECENT });
+        setHistoryFoods({
+          frequent: FALLBACK_FREQUENT,
+          recents: FALLBACK_RECENT,
+          favorites: [],
+        });
       });
   }, [open]);
 
@@ -363,13 +376,50 @@ export const FoodAddPopup = memo(function FoodAddPopup({
             <div className="food-add-popup-scroll">
               {!isSearching && (
                 <>
-                  <FoodSection title="Häufig verwendet">
-                    {historyFoods.frequent.map((food) => renderRow(food))}
-                  </FoodSection>
+                  <div className="flex gap-1 px-1 pb-2">
+                    {(
+                      [
+                        { id: "favorites" as const, label: "Favoriten" },
+                        { id: "recent" as const, label: "Zuletzt" },
+                        { id: "frequent" as const, label: "Häufig" },
+                      ] as const
+                    ).map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setBrowseTab(t.id)}
+                        className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-colors ${
+                          browseTab === t.id
+                            ? "bg-accent text-zinc-950"
+                            : "bg-zinc-800/80 text-zinc-400"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
 
-                  <FoodSection title="Zuletzt verwendet">
-                    {historyFoods.recents.map((food) => renderRow(food))}
-                  </FoodSection>
+                  {browseTab === "favorites" && (
+                    <FoodSection title="Favoriten">
+                      {historyFoods.favorites.length === 0 ? (
+                        <p className="text-sm text-zinc-500 py-4 text-center px-2">
+                          Noch keine Favoriten — tippe auf den Stern bei einem Produkt.
+                        </p>
+                      ) : (
+                        historyFoods.favorites.map((food) => renderRow(food))
+                      )}
+                    </FoodSection>
+                  )}
+                  {browseTab === "recent" && (
+                    <FoodSection title="Zuletzt verwendet">
+                      {historyFoods.recents.map((food) => renderRow(food))}
+                    </FoodSection>
+                  )}
+                  {browseTab === "frequent" && (
+                    <FoodSection title="Häufig verwendet">
+                      {historyFoods.frequent.map((food) => renderRow(food))}
+                    </FoodSection>
+                  )}
                 </>
               )}
 

@@ -116,8 +116,8 @@ export default function WorkoutsHubPage() {
       />
       <TrainingChoiceCard
         href="/workouts/journey"
-        title="Fitness Journey"
-        description="Historie · Kalender · Check-Ins · Streak · Volumen"
+        title="Historie"
+        description="Vergangene Workouts · Kalender · Streak · Volumen"
         icon={Map}
         iconClassName="bg-emerald-500/15 text-emerald-400"
         meta={
@@ -129,14 +129,14 @@ export default function WorkoutsHubPage() {
       <TrainingChoiceCard
         href="/workouts/records"
         title="Rekorde"
-        description="Bankdrücken · Kniebeuge · Kreuzheben · Highlights"
+        description="Persönliche Bestleistungen & Highlights"
         icon={Trophy}
         iconClassName="bg-yellow-500/15 text-yellow-400"
       />
       <TrainingChoiceCard
         href="/workouts/exercises"
-        title="Übungen"
-        description="Exercise Hub · Suche · Muskelgruppen · Favoriten"
+        title="Übungen durchsuchen"
+        description="Suche · Muskelgruppen · Favoriten"
         icon={Dumbbell}
         iconClassName="bg-rose-500/15 text-rose-400"
       />

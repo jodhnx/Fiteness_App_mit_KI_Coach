@@ -9,6 +9,14 @@ const schema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(128),
   name: z.string().trim().min(2).max(100).optional(),
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(24)
+    .regex(/^[a-z0-9_]+$/)
+    .optional(),
 });
 
 export async function POST(req: NextRequest) {

@@ -60,7 +60,7 @@ type CalcPreview = {
 };
 
 type ProfileApiResponse = {
-  user?: { name?: string; email?: string; image?: string | null };
+  user?: { name?: string; username?: string | null; email?: string; image?: string | null };
   profile?: Record<string, unknown>;
   calculations?: CalcPreview;
   smartGoal?: { weightProjection?: string };
@@ -70,6 +70,7 @@ function applyProfileToForm(d: ProfileApiResponse) {
   const p = d.profile as Record<string, unknown> | undefined;
   return {
     name: d.user?.name ?? "",
+    username: d.user?.username ?? "",
     email: d.user?.email ?? "",
     age: formatNumField(p?.age),
     weightKg: formatNumField(p?.weightKg),
@@ -108,6 +109,7 @@ export default function SettingsPage() {
   const [preview, setPreview] = useState<CalcPreview | null>(null);
   const [form, setForm] = useState({
     name: "",
+    username: "",
     email: "",
     age: "",
     weightKg: "",
@@ -258,6 +260,22 @@ export default function SettingsPage() {
             : data.error ?? `Speichern fehlgeschlagen (${res.status})`;
         toast.error(msg);
         return;
+      }
+
+      if (form.username.trim()) {
+        const uRes = await fetch("/api/username", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: form.username.trim().toLowerCase() }),
+        });
+        const uData = await uRes.json().catch(() => ({}));
+        if (!uRes.ok) {
+          toast.error(uData.error ?? "Benutzername konnte nicht gespeichert werden");
+          return;
+        }
+        if (uData.username) {
+          setForm((f) => ({ ...f, username: uData.username }));
+        }
       }
 
       if (data.calculations) setPreview(data.calculations);
@@ -431,6 +449,30 @@ export default function SettingsPage() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="mt-1"
               />
+            </div>
+            <div>
+              <Label>Benutzername</Label>
+              <p className="text-[11px] text-zinc-500 mt-0.5 mb-1">
+                Für Freunde & Community — eindeutig
+              </p>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">@</span>
+                <Input
+                  value={form.username}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      username: e.target.value
+                        .toLowerCase()
+                        .replace(/[^a-z0-9_]/g, "")
+                        .slice(0, 24),
+                    })
+                  }
+                  className="mt-1 pl-7"
+                  placeholder="dein_name"
+                  autoComplete="username"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -916,6 +958,12 @@ export default function SettingsPage() {
           <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
             <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Name</dt>
             <dd className="font-medium text-white mt-0.5">{form.name || "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Benutzername</dt>
+            <dd className="font-medium text-accent mt-0.5">
+              {form.username ? `@${form.username}` : "—"}
+            </dd>
           </div>
           <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
             <dt className="text-[10px] uppercase tracking-wide text-zinc-500">E-Mail</dt>

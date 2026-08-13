@@ -15,10 +15,29 @@ type Props = {
   variant?: "default" | "section";
 };
 
-function barColor(percent: number) {
-  if (percent >= 85) return "bg-emerald-500";
-  if (percent >= 50) return "bg-cyan-500";
-  return "bg-amber-500";
+function statusMeta(percent: number) {
+  if (percent >= 85) {
+    return {
+      emoji: "🟢",
+      label: "Erholt",
+      bar: "bg-emerald-500",
+      text: "text-emerald-400",
+    };
+  }
+  if (percent >= 50) {
+    return {
+      emoji: "🟡",
+      label: "Teilweise erholt",
+      bar: "bg-amber-400",
+      text: "text-amber-400",
+    };
+  }
+  return {
+    emoji: "🔴",
+    label: "Noch nicht vollständig erholt",
+    bar: "bg-red-500",
+    text: "text-red-400",
+  };
 }
 
 function RecoveryRow({
@@ -30,30 +49,26 @@ function RecoveryRow({
   live: number;
   premium?: boolean;
 }) {
-  const filled = Math.round((live / 100) * 10);
-  const blocks = "█".repeat(filled) + "░".repeat(10 - filled);
+  const meta = statusMeta(live);
 
   return (
     <div className={cn("space-y-1.5", premium && "space-y-2")}>
       <div className="flex items-center justify-between gap-2">
         <span
           className={cn(
-            "text-zinc-300 font-medium shrink-0",
-            premium ? "text-sm w-20" : "text-sm w-24"
+            "text-zinc-300 font-medium shrink-0 flex items-center gap-1.5",
+            premium ? "text-sm min-w-[5.5rem]" : "text-sm min-w-[5rem]"
           )}
         >
+          <span aria-hidden>{meta.emoji}</span>
           {row.label}
         </span>
-        {!premium && (
-          <span className="font-mono text-[11px] text-zinc-500 tracking-tight truncate flex-1">
-            {blocks}
-          </span>
-        )}
+        <span className={cn("text-[10px] truncate flex-1", meta.text)}>{meta.label}</span>
         <span
           className={cn(
             "tabular-nums font-bold text-right shrink-0",
             premium ? "text-sm w-12" : "text-xs w-10",
-            live >= 85 ? "text-emerald-400" : live >= 50 ? "text-cyan-400" : "text-amber-400"
+            meta.text
           )}
         >
           {live}%
@@ -66,13 +81,7 @@ function RecoveryRow({
         )}
       >
         <div
-          className={cn(
-            "h-full rounded-full transition-all duration-700",
-            barColor(live),
-            premium && live >= 85 && "bg-gradient-to-r from-emerald-600 to-emerald-400",
-            premium && live >= 50 && live < 85 && "bg-gradient-to-r from-cyan-600 to-cyan-400",
-            premium && live < 50 && "bg-gradient-to-r from-amber-600 to-amber-400"
-          )}
+          className={cn("h-full rounded-full transition-all duration-700", meta.bar)}
           style={{ width: `${live}%` }}
         />
       </div>
@@ -130,7 +139,17 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
           </Link>
         )}
       </div>
-      <div className={cn("space-y-3", compact && !isSection && "space-y-2.5", isSection && "space-y-3.5")}>
+      <p className="text-[10px] text-zinc-500 mb-3 leading-relaxed">
+        Basierend auf deinen abgeschlossenen Workouts (Muskelgruppen, Sätze, Volumen,
+        Intensität).
+      </p>
+      <div
+        className={cn(
+          "space-y-3",
+          compact && !isSection && "space-y-2.5",
+          isSection && "space-y-3.5"
+        )}
+      >
         {liveMuscles.map((row) => (
           <RecoveryRow key={row.muscle} row={row} live={row.live} premium={isSection} />
         ))}
