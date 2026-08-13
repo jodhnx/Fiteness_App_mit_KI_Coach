@@ -32,6 +32,7 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { signOut } from "next-auth/react";
 import { usePreferences } from "@/components/providers/preferences-provider";
 import { APP_THEMES, UI_DENSITY_OPTIONS, COLOR_MODE_OPTIONS } from "@/lib/themes";
+import { SettingsHubNav } from "@/components/settings/settings-hub-nav";
 import {
   SettingsCategoryNav,
   type SettingsCategoryId,
@@ -357,9 +358,11 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl pb-24">
       <PageHeader
-        title="Account"
-        subtitle="Profil, Ziele, Vitaldaten & Design — automatische Berechnung"
+        title="Einstellungen"
+        subtitle="Konto, Geräte & App — alles an einem Ort"
       />
+
+      <SettingsHubNav />
 
       <SettingsCategoryNav
         active={category}
@@ -847,27 +850,51 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section id="settings-geraete" className="card-premium p-4 space-y-4 settings-section">
+      <section id="settings-geraete" className="card-premium p-4 space-y-4 settings-section scroll-mt-4">
         <h2 className="font-semibold text-white text-lg">Geräte & Gesundheit</h2>
         <p className="text-sm text-zinc-400">
-          Smartwatches und Fitness-Tracker verbinden, Synchronisation starten und
-          Datenschutz pro Kategorie verwalten.
+          Apple Health / HealthKit, Health Connect, Smartwatches und Fitness-Tracker
+          verbinden, Synchronisation starten und Berechtigungen verwalten.
         </p>
+        <ul className="text-sm text-zinc-300 space-y-1 list-disc pl-5">
+          <li>Apple Health / HealthKit</li>
+          <li>Health Connect (Android)</li>
+          <li>Smartwatch & verbundene Geräte</li>
+          <li>Synchronisation & Gesundheitsdaten</li>
+        </ul>
         <div className="grid gap-2 sm:grid-cols-2">
           <Link href="/geraete">
             <Button variant="premium" className="w-full">
-              Geräte verbinden
+              Geräte & Sync öffnen
             </Button>
           </Link>
           <Link href="/gesundheit">
             <Button variant="outline" className="w-full">
-              Gesundheit Dashboard
+              Gesundheitsdaten
             </Button>
           </Link>
         </div>
       </section>
 
-      <section id="settings-benachrichtigungen" className="card-premium p-4 space-y-3 settings-section">
+      <section id="settings-datenschutz" className="card-premium p-4 space-y-3 settings-section scroll-mt-4">
+        <h2 className="font-semibold text-white text-lg">Datenschutz</h2>
+        <p className="text-sm text-zinc-400">
+          Gesundheitsdaten bleiben unter deiner Kontrolle. Pro Kategorie kannst du Sync und
+          Freigaben unter Geräte & Gesundheit steuern.
+        </p>
+        <ul className="text-sm text-zinc-300 space-y-1.5 list-disc pl-5">
+          <li>Keine Weitergabe deiner Trainings- und Ernährungsdaten an Dritte zu Werbezwecken</li>
+          <li>Wearable-Zugriffe kannst du jederzeit widerrufen</li>
+          <li>Gastmodus speichert Daten nur lokal auf diesem Gerät bis zur Registrierung</li>
+        </ul>
+        <Link href="/geraete">
+          <Button variant="outline" className="w-full mt-1">
+            Sync-Berechtigungen verwalten
+          </Button>
+        </Link>
+      </section>
+
+      <section id="settings-benachrichtigungen" className="card-premium p-4 space-y-3 settings-section scroll-mt-4">
         <h2 className="font-semibold text-white text-lg">Benachrichtigungen</h2>
         <p className="text-sm text-zinc-400">
           Aktive Kanäle: In-App-Center (Glocke), Coach-Hinweise und optionale
@@ -882,9 +909,9 @@ export default function SettingsPage() {
         </ul>
       </section>
 
-      <section id="settings-konto" className="card-premium p-4 space-y-4 settings-section">
+      <section id="settings-konto" className="card-premium p-4 space-y-4 settings-section scroll-mt-4">
         <h2 className="font-semibold text-white text-lg">Konto</h2>
-        <p className="text-xs text-zinc-500">Deine gespeicherten Profildaten</p>
+        <p className="text-xs text-zinc-500">Persönliche Daten, Körperdaten & Ziele</p>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
             <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Name</dt>
@@ -961,8 +988,8 @@ export default function SettingsPage() {
         </Button>
       </section>
 
-      <section id="settings-app" className="card-premium p-4 space-y-3 settings-section">
-        <h2 className="font-semibold text-white text-lg">App-Informationen</h2>
+      <section id="settings-app" className="card-premium p-4 space-y-3 settings-section scroll-mt-4">
+        <h2 className="font-semibold text-white text-lg">Über die App</h2>
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-[10px] uppercase tracking-wide text-zinc-500">App</dt>

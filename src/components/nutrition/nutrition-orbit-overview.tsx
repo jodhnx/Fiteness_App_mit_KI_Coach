@@ -6,22 +6,13 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets, nutritionProfileIncomplete } from "@/lib/nutrition-defaults";
 import { CalorieRing } from "@/components/nutrition/calorie-ring";
 
-type OrbitCorner = {
-  key: string;
-  label: string;
-  value: string;
-  sub: string;
-  accent: string;
-  position: string;
-};
-
-/** Compact calorie hero with macros orbiting the ring (Yazio / MFP style). */
+/** Clean calorie hero + compact P / KH / F row (Yazio / MFP style). */
 export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   dashboard,
 }: {
   dashboard: NutritionDashboardPayload;
 }) {
-  const { consumed, targets, remaining, water } = dashboard;
+  const { consumed, targets, remaining } = dashboard;
   const ready = hasNutritionTargets(dashboard);
   const incomplete = nutritionProfileIncomplete(dashboard);
 
@@ -41,67 +32,72 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     );
   }
 
-  const corners: OrbitCorner[] = [
+  const macros = [
     {
       key: "p",
       label: "Protein",
-      value: `${Math.round(consumed.proteinG)}g`,
-      sub: `${Math.round(remaining.proteinG)}g übrig`,
-      accent: "text-rose-400",
-      position: "left-0 top-0 items-start text-left",
-    },
-    {
-      key: "f",
-      label: "Fett",
-      value: `${Math.round(consumed.fatG)}g`,
-      sub: `${Math.round(remaining.fatG)}g übrig`,
-      accent: "text-sky-400",
-      position: "right-0 top-0 items-end text-right",
+      value: Math.round(consumed.proteinG),
+      target: Math.round(targets.proteinG),
+      left: Math.round(remaining.proteinG),
+      bar: "bg-rose-400",
+      tint: "text-rose-400",
     },
     {
       key: "c",
       label: "Kohlenhydrate",
-      value: `${Math.round(consumed.carbsG)}g`,
-      sub: `${Math.round(remaining.carbsG)}g übrig`,
-      accent: "text-amber-400",
-      position: "left-0 bottom-0 items-start text-left",
+      value: Math.round(consumed.carbsG),
+      target: Math.round(targets.carbsG),
+      left: Math.round(remaining.carbsG),
+      bar: "bg-amber-400",
+      tint: "text-amber-400",
     },
     {
-      key: "w",
-      label: "Wasser",
-      value: `${(Math.round(water.consumedMl / 100) / 10).toFixed(1)}l`,
-      sub: `Ziel ${(Math.round(water.targetMl / 100) / 10).toFixed(1)}l`,
-      accent: "text-cyan-400",
-      position: "right-0 bottom-0 items-end text-right",
+      key: "f",
+      label: "Fett",
+      value: Math.round(consumed.fatG),
+      target: Math.round(targets.fatG),
+      left: Math.round(remaining.fatG),
+      bar: "bg-sky-400",
+      tint: "text-sky-400",
     },
-  ];
+  ] as const;
 
   return (
-    <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 px-3 pt-3 pb-2">
-      <div className="relative mx-auto h-[220px] w-full max-w-[340px]">
-        {corners.map((c) => (
-          <div
-            key={c.key}
-            className={`absolute flex flex-col gap-0.5 max-w-[88px] ${c.position}`}
-          >
-            <p className={`text-[10px] font-semibold uppercase tracking-wide ${c.accent}`}>
-              {c.label}
-            </p>
-            <p className="text-sm font-bold text-white tabular-nums leading-none">{c.value}</p>
-            <p className="text-[9px] text-zinc-500 tabular-nums leading-tight">{c.sub}</p>
-          </div>
-        ))}
+    <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/95 to-zinc-950/90 px-3 pt-4 pb-3 space-y-3">
+      <CalorieRing
+        consumed={consumed.calories}
+        target={targets.calories}
+        remaining={remaining.calories}
+        size={176}
+        ringId="nutrition-kcal-ring"
+        label="ÜBRIG"
+      />
 
-        <div className="absolute inset-0 flex items-center justify-center">
-          <CalorieRing
-            consumed={consumed.calories}
-            target={targets.calories}
-            remaining={remaining.calories}
-            size={168}
-            ringId="nutrition-kcal-ring"
-            label="ÜBRIG"
-          />
-        </div>
+      <div className="grid grid-cols-3 gap-2">
+        {macros.map((m) => {
+          const pct =
+            m.target > 0 ? Math.min(100, Math.round((m.value / m.target) * 100)) : 0;
+          return (
+            <div
+              key={m.key}
+              className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-2.5 text-center"
+            >
+              <p className={`text-[10px] font-semibold uppercase tracking-wide ${m.tint}`}>
+                {m.label}
+              </p>
+              <p className="text-base font-bold text-white tabular-nums mt-1 leading-none">
+                {m.value}
+                <span className="text-[10px] font-medium text-zinc-500">g</span>
+              </p>
+              <div className="mt-2 h-1 rounded-full bg-zinc-800 overflow-hidden">
+                <div className={`h-full rounded-full ${m.bar}`} style={{ width: `${pct}%` }} />
+              </div>
+              <p className="text-[9px] text-zinc-500 tabular-nums mt-1.5">
+                {m.left}g übrig
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

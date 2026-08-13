@@ -85,7 +85,8 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
   );
 
   if (pathname.startsWith("/home") || pathname === "/") {
-    return <HomeRoutePreview />;
+    // Persistent tabs keep real home; never swap in a partial preview
+    return null;
   }
 
   if (pathname.startsWith("/progress")) {
@@ -173,6 +174,6 @@ export const CachedRouteLoading = memo(function CachedRouteLoading() {
     );
   }
 
-  // Default / settings / other — prefer home-like cache so returning to home never shows wrong shell
-  return <HomeRoutePreview />;
+  // Default / settings — no fake home shell (avoids flash when leaving tabs)
+  return null;
 });

@@ -10,7 +10,7 @@ import { computeWeightGoalProgress, type WeightGoalProgress } from "@/lib/smart-
 
 export type WeightEntry = { date: string; weightKg: number };
 
-export type WeightPeriod = "today" | "7d" | "30d" | "90d" | "all";
+export type WeightPeriod = "today" | "7d" | "30d" | "90d" | "180d" | "365d" | "all";
 
 export type WeightAnalytics = {
   currentKg: number | null;
@@ -38,7 +38,19 @@ function filterByPeriod(entries: WeightEntry[], period: WeightPeriod): WeightEnt
   if (period === "all") return entries;
   const now = startOfDay(new Date());
   const days =
-    period === "today" ? 0 : period === "7d" ? 7 : period === "30d" ? 30 : 90;
+    period === "today"
+      ? 0
+      : period === "7d"
+        ? 7
+        : period === "30d"
+          ? 30
+          : period === "90d"
+            ? 90
+            : period === "180d"
+              ? 180
+              : period === "365d"
+                ? 365
+                : 90;
   const from = subDays(now, days);
   return entries.filter((e) => startOfDay(new Date(e.date)) >= from);
 }

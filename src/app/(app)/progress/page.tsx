@@ -21,7 +21,7 @@ import { ProgressStatsSection } from "@/components/progress/progress-stats-secti
 import { ProgressChartsSection } from "@/components/progress/progress-charts-section";
 import { Input } from "@/components/ui/input";
 import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
-import { ProgressActivityStrip } from "@/components/progress/progress-activity-strip";
+import { ProgressOverviewCards } from "@/components/progress/progress-overview-cards";
 import { BodyMeasurementsCard } from "@/components/progress/body-measurements-card";
 import { PageIntro } from "@/components/guide/page-intro";
 import { hasScreenLoaded } from "@/lib/storage-service";
@@ -81,7 +81,7 @@ type ProgressPayload = {
   } | null;
 };
 
-/** ProgressScreen — Body → Gewicht → Charts → Historie → Statistiken */
+/** Progress — Übersicht → Diagramme → Details */
 export default function ProgressPage() {
   const searchParams = useSearchParams();
   const logRef = useRef<HTMLDivElement>(null);
@@ -114,6 +114,8 @@ export default function ProgressPage() {
 
   const displayData = useMemo(() => {
     return progressData ?? getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
+    // nutritionRev forces re-read when macros change elsewhere
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional cache bump
   }, [progressData, nutritionRev]);
 
   const entries = useMemo(
@@ -202,14 +204,19 @@ export default function ProgressPage() {
   return (
     <PageShell
       title="Fortschritt"
-      subtitle="Gewicht · Aktivität · Diagramme · Historie"
+      subtitle="Übersicht · Diagramme · Rekorde"
       maxWidth="2xl"
-      className="space-y-5 pb-28"
+      className="space-y-4 pb-28"
       bottomNav={false}
     >
-      {/* Always visible immediately — no spinner gate */}
-      <ProgressActivityStrip />
       <PageIntro pageId="progress" />
+
+      {/* 1. Übersicht zuerst */}
+      <ProgressOverviewCards
+        currentKg={lastWeight ?? null}
+        targetKg={profile?.targetWeightKg ?? null}
+        trainingSessions={dashboard?.trainingHistory?.length ?? 0}
+      />
 
       {showSkeleton && (
         <div className="space-y-4">
@@ -219,125 +226,118 @@ export default function ProgressPage() {
       )}
 
       {!showSkeleton && (
-      <>
+        <>
+          {/* 2. Gewicht schnell eintragen */}
+          <div ref={logRef} className="card-premium p-4 scroll-mt-4">
+            <h2 className="text-sm font-semibold text-white mb-1">Gewicht eintragen</h2>
+            {lastWeight != null && (
+              <p className="text-2xl font-bold text-cyan-400 tabular-nums mb-3">
+                {lastWeight.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg
+                <span className="text-xs font-normal text-zinc-500 ml-2">aktuell</span>
+              </p>
+            )}
+            <WeightInput initialKg={lastWeight} onSave={saveWeight} />
+          </div>
 
-      {/* OBERER BEREICH */}
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold text-white">Body Transformation</h2>
-        {transformation && <BodyTransformationCard data={transformation} />}
-
-        <div className="card-premium p-4">
-          <Input type="file" accept="image/*" onChange={uploadPhoto} className="text-sm mb-3" />
-          {photos.length === 0 ? (
-            <p className="text-sm text-zinc-500">Noch keine Vorher/Nachher-Fotos.</p>
-          ) : (
-            <>
-              {photos.length >= 2 && (
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div className="rounded-xl overflow-hidden border border-zinc-700">
-                    <p className="text-[10px] text-zinc-500 px-2 py-1 bg-zinc-900">Vorher</p>
-                    <Image
-                      src={photos[photos.length - 1]!.imageUrl}
-                      alt="Vorher"
-                      width={200}
-                      height={200}
-                      className="w-full h-32 object-cover"
-                    />
-                    {photos[photos.length - 1]?.takenAt && (
-                      <p className="text-[10px] text-zinc-600 px-2 py-1">
-                        {format(new Date(photos[photos.length - 1]!.takenAt!), "dd.MM.yyyy")}
-                      </p>
-                    )}
-                  </div>
-                  <div className="rounded-xl overflow-hidden border border-cyan-500/30">
-                    <p className="text-[10px] text-cyan-400 px-2 py-1 bg-zinc-900">Nachher</p>
-                    <Image
-                      src={photos[0]!.imageUrl}
-                      alt="Nachher"
-                      width={200}
-                      height={200}
-                      className="w-full h-32 object-cover"
-                    />
-                    {photos[0]?.takenAt && (
-                      <p className="text-[10px] text-zinc-600 px-2 py-1">
-                        {format(new Date(photos[0]!.takenAt!), "dd.MM.yyyy")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {photos.map((p) => (
-                  <div key={p.id} className="flex gap-3 items-center rounded-lg bg-zinc-900/60 p-2">
-                    <Image
-                      src={p.imageUrl}
-                      alt=""
-                      width={48}
-                      height={48}
-                      className="h-12 w-12 rounded-lg object-cover shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <p className="text-xs text-zinc-400">
-                        {p.takenAt ? format(new Date(p.takenAt), "dd.MM.yyyy") : "—"}
-                      </p>
-                      {p.aiProgress && (
-                        <p className="text-[11px] text-zinc-300 truncate">{p.aiProgress}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
+          {/* 3. Diagramme */}
+          {dashboard && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-white px-0.5">Diagramme</h2>
+              <ProgressChartsSection
+                nutritionTrend={dashboard.nutritionTrend}
+                calorieTarget={dashboard.calorieTarget}
+                proteinTargetG={dashboard.proteinTargetG}
+                weightChartPoints={analytics.chartPoints}
+                weightPeriod={period}
+                onWeightPeriodChange={setPeriod}
+                trainingVolumeTrend={dashboard.trainingVolumeTrend ?? []}
+                trainingFrequencyTrend={dashboard.trainingFrequencyTrend ?? []}
+              />
+            </section>
           )}
-        </div>
 
-        <div ref={logRef} className="card-premium p-4 scroll-mt-4">
-          <h2 className="text-sm font-semibold text-white mb-1">⚖️ Gewicht eintragen</h2>
-          {lastWeight != null && (
-            <p className="text-2xl font-bold text-cyan-400 tabular-nums mb-3">
-              {lastWeight.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg
-              <span className="text-xs font-normal text-zinc-500 ml-2">zuletzt</span>
-            </p>
-          )}
-          <WeightInput initialKg={lastWeight} onSave={saveWeight} />
-        </div>
+          {/* 4. Weitere Fortschritte */}
+          <section className="space-y-4">
+            <h2 className="text-sm font-semibold text-white px-0.5">Weitere Fortschritte</h2>
 
-        <BodyMeasurementsCard
-          latest={entries[0] ?? null}
-          onSaved={() => {
-            invalidateCache(PROGRESS_CACHE_KEY);
-            reload();
-          }}
-        />
+            {transformation && <BodyTransformationCard data={transformation} />}
 
-        {dashboard && (
-          <ProgressChartsSection
-            nutritionTrend={dashboard.nutritionTrend}
-            calorieTarget={dashboard.calorieTarget}
-            proteinTargetG={dashboard.proteinTargetG}
-            weightChartPoints={analytics.chartPoints}
-            weightPeriod={period}
-            onWeightPeriodChange={setPeriod}
-            trainingVolumeTrend={dashboard.trainingVolumeTrend ?? []}
-            trainingFrequencyTrend={dashboard.trainingFrequencyTrend ?? []}
-          />
-        )}
-      </section>
-
-      {/* UNTERER BEREICH */}
-      <section className="space-y-4">
-        {dashboard && (
-          <>
-            <TrainingHistorySection sessions={dashboard.trainingHistory} />
-            <ProgressStatsSection
-              trainingHistory={dashboard.trainingHistory}
-              streaks={dashboard.streaks}
-              personalRecords={dashboard.personalRecords}
+            <BodyMeasurementsCard
+              latest={entries[0] ?? null}
+              onSaved={() => {
+                invalidateCache(PROGRESS_CACHE_KEY);
+                reload();
+              }}
             />
-          </>
-        )}
-      </section>
-      </>
+
+            <div className="card-premium p-4">
+              <h3 className="text-sm font-semibold text-white mb-2">Vorher / Nachher</h3>
+              <Input type="file" accept="image/*" onChange={uploadPhoto} className="text-sm mb-3" />
+              {photos.length === 0 ? (
+                <p className="text-sm text-zinc-500">Noch keine Vorher/Nachher-Fotos.</p>
+              ) : (
+                <>
+                  {photos.length >= 2 && (
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div className="rounded-xl overflow-hidden border border-zinc-700">
+                        <p className="text-[10px] text-zinc-500 px-2 py-1 bg-zinc-900">Vorher</p>
+                        <Image
+                          src={photos[photos.length - 1]!.imageUrl}
+                          alt="Vorher"
+                          width={200}
+                          height={200}
+                          className="w-full h-32 object-cover"
+                        />
+                      </div>
+                      <div className="rounded-xl overflow-hidden border border-cyan-500/30">
+                        <p className="text-[10px] text-cyan-400 px-2 py-1 bg-zinc-900">Nachher</p>
+                        <Image
+                          src={photos[0]!.imageUrl}
+                          alt="Nachher"
+                          width={200}
+                          height={200}
+                          className="w-full h-32 object-cover"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {photos.map((p) => (
+                      <div key={p.id} className="flex gap-3 items-center rounded-lg bg-zinc-900/60 p-2">
+                        <Image
+                          src={p.imageUrl}
+                          alt=""
+                          width={48}
+                          height={48}
+                          className="h-12 w-12 rounded-lg object-cover shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs text-zinc-400">
+                            {p.takenAt ? format(new Date(p.takenAt), "dd.MM.yyyy") : "—"}
+                          </p>
+                          {p.aiProgress && (
+                            <p className="text-[11px] text-zinc-300 truncate">{p.aiProgress}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {dashboard && (
+              <>
+                <ProgressStatsSection
+                  trainingHistory={dashboard.trainingHistory}
+                  streaks={dashboard.streaks}
+                  personalRecords={dashboard.personalRecords}
+                />
+                <TrainingHistorySection sessions={dashboard.trainingHistory} />
+              </>
+            )}
+          </section>
+        </>
       )}
     </PageShell>
   );

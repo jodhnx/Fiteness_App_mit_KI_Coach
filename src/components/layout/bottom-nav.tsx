@@ -10,6 +10,11 @@ import {
   warmNavDataCaches,
 } from "@/lib/nav-cache-warmer";
 import { hapticSelect } from "@/lib/haptic";
+import {
+  useMainTabNav,
+  type MainTab,
+  MAIN_TABS,
+} from "@/components/layout/persistent-tab-provider";
 
 const ITEMS = [
   { href: "/home", label: "Home", icon: Home },
@@ -17,7 +22,7 @@ const ITEMS = [
   { href: "/nutrition", label: "Ernährung", icon: Apple },
   { href: "/progress", label: "Fortschritt", icon: TrendingUp },
   { href: "/coach", label: "Coach", icon: Bot },
-] as const;
+] as const satisfies ReadonlyArray<{ href: MainTab; label: string; icon: typeof Home }>;
 
 function shouldHideBottomNav(pathname: string) {
   return (
@@ -30,22 +35,37 @@ function shouldHideBottomNav(pathname: string) {
 export const BottomNav = memo(function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const tabNav = useMainTabNav();
 
-  const warmIntent = useCallback((href: string) => {
-    router.prefetch(href);
-    if (href === "/progress") warmProgressCache();
-    else warmNavDataCaches();
-  }, [router]);
+  const warmIntent = useCallback(
+    (href: string) => {
+      router.prefetch(href);
+      if (href === "/progress") warmProgressCache();
+      else warmNavDataCaches();
+    },
+    [router]
+  );
 
   const navigate = useCallback(
-    (href: string) => {
-      if (isNavActive(pathname, href)) return;
+    (href: MainTab) => {
+      if (tabNav?.activeTab === href || isNavActive(pathname, href)) return;
       hapticSelect();
-      // Prefetch + push in same tick for instant paint from cache
+      try {
+        sessionStorage.setItem(
+          `nexform:tab-visited:${href.replace("/", "")}`,
+          "1"
+        );
+      } catch {
+        /* ignore */
+      }
+      if (tabNav && (MAIN_TABS as readonly string[]).includes(href)) {
+        tabNav.navigateMainTab(href);
+        return;
+      }
       router.prefetch(href);
       router.push(href);
     },
-    [pathname, router]
+    [pathname, router, tabNav]
   );
 
   if (shouldHideBottomNav(pathname)) return null;
@@ -57,7 +77,8 @@ export const BottomNav = memo(function BottomNav() {
     >
       <div className="mx-auto w-full max-w-[430px] flex items-stretch justify-between px-1 pt-1 pb-1.5">
         {ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = isNavActive(pathname, href);
+          const active =
+            tabNav?.activeTab === href || isNavActive(pathname, href);
           return (
             <button
               key={href}

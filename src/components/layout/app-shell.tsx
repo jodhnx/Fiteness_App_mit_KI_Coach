@@ -16,6 +16,7 @@ import { ServiceWorkerProvider } from "@/components/providers/service-worker-pro
 import { PhoneSensorWarmup } from "@/components/health/phone-sensor-warmup";
 import { MealReminderWarmup } from "@/components/nutrition/meal-reminder-warmup";
 import { FeatureTour } from "@/components/guide/feature-tour";
+import { PersistentTabProvider } from "@/components/layout/persistent-tab-provider";
 import { cn } from "@/lib/utils";
 
 function isImmersiveRoute(pathname: string) {
@@ -55,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
             >
               <GuestUpgradeBanner />
-              {children}
+              <PersistentTabProvider>{children}</PersistentTabProvider>
             </main>
           </div>
           <BottomNav />

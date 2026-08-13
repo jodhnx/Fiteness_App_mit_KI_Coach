@@ -38,6 +38,14 @@ export default function HomePage() {
   const [workoutCleared, setWorkoutCleared] = useState(false);
   const hasInitialCache = useMemo(() => getCached(HOME_DATA_CACHE_KEY) != null, []);
 
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("nexform:tab-visited:home", "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const { data: rawData } = useCachedFetch<HomeDataPayload>(
     HOME_DATA_CACHE_KEY,
     "/api/home",

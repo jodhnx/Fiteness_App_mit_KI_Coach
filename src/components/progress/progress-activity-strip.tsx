@@ -33,7 +33,10 @@ export const ProgressActivityStrip = memo(function ProgressActivityStrip() {
     <PremiumCard padding="sm" className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-white">Aktivität heute</h2>
-        <Link href="/geraete" className="text-xs text-accent flex items-center gap-1">
+        <Link
+          href="/settings#settings-geraete"
+          className="text-xs text-accent flex items-center gap-1"
+        >
           <Watch className="h-3.5 w-3.5" /> Geräte
         </Link>
       </div>
@@ -78,7 +81,7 @@ export const ProgressActivityStrip = memo(function ProgressActivityStrip() {
       {health.steps === 0 && (
         <p className="text-xs text-zinc-500">
           Schritte werden automatisch von Smartwatch oder Smartphone erfasst.{" "}
-          <Link href="/geraete" className="text-accent underline">
+          <Link href="/settings#settings-geraete" className="text-accent underline">
             Gerät verbinden
           </Link>
         </p>

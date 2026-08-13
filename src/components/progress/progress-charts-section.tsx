@@ -36,7 +36,9 @@ const RANGES: { id: ChartRange; label: string }[] = [
 const WEIGHT_PERIODS: { id: WeightPeriod; label: string }[] = [
   { id: "7d", label: "7T" },
   { id: "30d", label: "30T" },
-  { id: "90d", label: "90T" },
+  { id: "90d", label: "3M" },
+  { id: "180d", label: "6M" },
+  { id: "365d", label: "1J" },
   { id: "all", label: "Alle" },
 ];
 
