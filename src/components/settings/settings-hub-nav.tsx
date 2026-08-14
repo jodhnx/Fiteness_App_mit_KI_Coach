@@ -20,33 +20,27 @@ const HUB_PRIMARY: {
   icon: LucideIcon;
 }[] = [
   {
-    href: "#settings-konto",
+    href: "/settings?view=konto",
     label: "Konto",
-    description: "Persönliche Daten, E-Mail, Körperdaten, Ziele, Abmelden",
+    description: "Name, Benutzername, Körperdaten, Ziele, Passwort, Abmelden",
     icon: User,
   },
   {
-    href: "#settings-geraete",
+    href: "/geraete",
     label: "Geräte & Gesundheit",
-    description: "Apple Health, Health Connect, Smartwatch, Sync",
+    description: "Apple Health, Health Connect, Smartwatch, Sync, Berechtigungen",
     icon: Watch,
   },
 ];
 
 const HUB_SECONDARY: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "#settings-datenschutz", label: "Datenschutz", icon: Lock },
+  { href: "/settings?view=privacy", label: "Datenschutz", icon: Lock },
   { href: "/settings/support", label: "Support & Feedback", icon: MessageCircle },
-  { href: "#settings-benachrichtigungen", label: "Benachrichtigungen", icon: Bell },
-  { href: "#settings-app", label: "Über die App", icon: Info },
+  { href: "/settings?view=notifications", label: "Benachrichtigungen", icon: Bell },
+  { href: "/settings?view=about", label: "Über die App", icon: Info },
 ];
 
-function scrollToHash(hash: string) {
-  if (!hash.startsWith("#")) return;
-  const el = document.getElementById(hash.slice(1));
-  el?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-/** Clean settings landing — two primary areas + compact secondary links. */
+/** Settings landing — clear hub, deep links to real destinations. */
 export function SettingsHubNav({ className }: { className?: string }) {
   return (
     <div className={cn("space-y-3", className)}>
@@ -54,13 +48,10 @@ export function SettingsHubNav({ className }: { className?: string }) {
         {HUB_PRIMARY.map((item) => {
           const Icon = item.icon;
           return (
-            <a
+            <Link
               key={item.href}
               href={item.href}
-              onClick={(e) => {
-                e.preventDefault();
-                scrollToHash(item.href);
-              }}
+              prefetch
               className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-zinc-900/80 p-4 active:bg-zinc-800/80"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
@@ -73,7 +64,7 @@ export function SettingsHubNav({ className }: { className?: string }) {
                 </span>
               </span>
               <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" />
-            </a>
+            </Link>
           );
         })}
       </div>
@@ -81,35 +72,17 @@ export function SettingsHubNav({ className }: { className?: string }) {
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden divide-y divide-white/[0.06]">
         {HUB_SECONDARY.map((item) => {
           const Icon = item.icon;
-          const isRoute = item.href.startsWith("/");
-          const className =
-            "flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.04]";
-          const inner = (
-            <>
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              prefetch
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.04]"
+            >
               <Icon className="h-4 w-4 text-zinc-400 shrink-0" />
               <span className="flex-1 text-sm font-medium text-zinc-200">{item.label}</span>
               <ChevronRight className="h-3.5 w-3.5 text-zinc-600" />
-            </>
-          );
-          if (isRoute) {
-            return (
-              <Link key={item.href} href={item.href} prefetch className={className}>
-                {inner}
-              </Link>
-            );
-          }
-          return (
-            <a
-              key={item.href}
-              href={item.href}
-              className={className}
-              onClick={(e) => {
-                e.preventDefault();
-                scrollToHash(item.href);
-              }}
-            >
-              {inner}
-            </a>
+            </Link>
           );
         })}
       </div>

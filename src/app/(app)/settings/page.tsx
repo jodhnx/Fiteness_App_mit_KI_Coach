@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { previewTargetsFromForm } from "@/lib/calorie-target";
 import { fetchJson } from "@/lib/fetch-json";
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
@@ -33,14 +34,14 @@ import { signOut } from "next-auth/react";
 import { usePreferences } from "@/components/providers/preferences-provider";
 import { APP_THEMES, UI_DENSITY_OPTIONS, COLOR_MODE_OPTIONS } from "@/lib/themes";
 import { SettingsHubNav } from "@/components/settings/settings-hub-nav";
-import {
-  SettingsCategoryNav,
-  type SettingsCategoryId,
-} from "@/components/settings/settings-category-nav";
 import { SettingsProfileHero } from "@/components/settings/settings-profile-hero";
+import { SettingsPrivacyPanel } from "@/components/settings/settings-privacy-panel";
+import { SettingsNotificationsPanel } from "@/components/settings/settings-notifications-panel";
+import { SettingsAboutPanel } from "@/components/settings/settings-about-panel";
+import { SettingsSecurityPanel } from "@/components/settings/settings-security-panel";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { LifeBuoy } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { formatNumField } from "@/lib/mobile-input-scroll";
 import {
@@ -101,10 +102,27 @@ function applyProfileToForm(d: ProfileApiResponse) {
 }
 
 export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="animate-pulse space-y-4 max-w-2xl">
+          <div className="h-8 w-48 bg-zinc-800 rounded" />
+          <div className="h-40 bg-zinc-800 rounded-xl" />
+        </div>
+      }
+    >
+      <SettingsPageInner />
+    </Suspense>
+  );
+}
+
+function SettingsPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const view = searchParams.get("view");
   const { theme, uiDensity, colorMode, setTheme, setUiDensity, setColorMode } =
     usePreferences();
-  const [category, setCategory] = useState<SettingsCategoryId>("ziele");
-  const [editingPersonal, setEditingPersonal] = useState(false);
+  const [editingPersonal, setEditingPersonal] = useState(view === "konto");
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<CalcPreview | null>(null);
   const [form, setForm] = useState({
@@ -364,6 +382,10 @@ export default function SettingsPage() {
     }
   }
 
+  useEffect(() => {
+    if (view === "konto") setEditingPersonal(true);
+  }, [view]);
+
   if (loading && !getCached<ProfileApiResponse>(PROFILE_CACHE_KEY)) {
     return (
       <div className="animate-pulse space-y-4 max-w-2xl">
@@ -373,24 +395,74 @@ export default function SettingsPage() {
     );
   }
 
+  if (!view) {
+    return (
+      <div className="space-y-5 max-w-2xl pb-24">
+        <PageHeader
+          title="Einstellungen"
+          subtitle="Konto, Geräte & App — klar und übersichtlich"
+        />
+        {(form.name || form.username) && (
+          <SettingsProfileHero
+            form={form}
+            userImage={userImage}
+            calorieTarget={preview?.calorieTarget ?? null}
+            editing={false}
+            onEdit={() => router.push("/settings?view=konto")}
+            onImageUpdated={(url) => setUserImage(url)}
+          />
+        )}
+        <SettingsHubNav />
+      </div>
+    );
+  }
+
+  const backLink = (
+    <Link
+      href="/settings"
+      prefetch
+      className="inline-flex items-center gap-1 text-sm font-medium text-accent active:opacity-80 -ml-1 py-1"
+    >
+      <ChevronLeft className="h-5 w-5" />
+      Einstellungen
+    </Link>
+  );
+
+  if (view === "privacy") {
+    return (
+      <div className="space-y-4 max-w-2xl pb-24">
+        {backLink}
+        <SettingsPrivacyPanel />
+        <SettingsSecurityPanel mode="delete" />
+      </div>
+    );
+  }
+
+  if (view === "notifications") {
+    return (
+      <div className="space-y-4 max-w-2xl pb-24">
+        {backLink}
+        <SettingsNotificationsPanel />
+      </div>
+    );
+  }
+
+  if (view === "about") {
+    return (
+      <div className="space-y-4 max-w-2xl pb-24">
+        {backLink}
+        <SettingsAboutPanel />
+      </div>
+    );
+  }
+
+  // view === "konto" (default for any other view string)
   return (
     <div className="space-y-6 max-w-2xl pb-24">
+      {backLink}
       <PageHeader
-        title="Einstellungen"
-        subtitle="Konto, Geräte & App — alles an einem Ort"
-      />
-
-      <SettingsHubNav />
-
-      <SettingsCategoryNav
-        active={category}
-        onSelect={(id) => {
-          setCategory(id);
-          if (id === "ziele") setEditingPersonal(true);
-          requestAnimationFrame(() => {
-            document.getElementById(`settings-${id}`)?.scrollIntoView({ behavior: "auto", block: "start" });
-          });
-        }}
+        title="Konto bearbeiten"
+        subtitle="Persönliche Daten, Ziele & Sicherheit"
       />
 
       {preview && (
@@ -473,6 +545,18 @@ export default function SettingsPage() {
                   autoComplete="username"
                 />
               </div>
+            </div>
+            <div>
+              <Label>E-Mail</Label>
+              <Input
+                value={form.email}
+                readOnly
+                className="mt-1 opacity-80"
+                autoComplete="email"
+              />
+              <p className="text-[11px] text-zinc-500 mt-1">
+                Login-E-Mail — Änderung nur über Support möglich
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -892,67 +976,10 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section id="settings-geraete" className="card-premium p-4 space-y-4 settings-section scroll-mt-4">
-        <h2 className="font-semibold text-white text-lg">Geräte & Gesundheit</h2>
-        <p className="text-sm text-zinc-400">
-          Apple Health / HealthKit, Health Connect, Smartwatches und Fitness-Tracker
-          verbinden, Synchronisation starten und Berechtigungen verwalten.
-        </p>
-        <ul className="text-sm text-zinc-300 space-y-1 list-disc pl-5">
-          <li>Apple Health / HealthKit</li>
-          <li>Health Connect (Android)</li>
-          <li>Smartwatch & verbundene Geräte</li>
-          <li>Synchronisation & Gesundheitsdaten</li>
-        </ul>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Link href="/geraete">
-            <Button variant="premium" className="w-full">
-              Geräte & Sync öffnen
-            </Button>
-          </Link>
-          <Link href="/gesundheit">
-            <Button variant="outline" className="w-full">
-              Gesundheitsdaten
-            </Button>
-          </Link>
-        </div>
-      </section>
-
-      <section id="settings-datenschutz" className="card-premium p-4 space-y-3 settings-section scroll-mt-4">
-        <h2 className="font-semibold text-white text-lg">Datenschutz</h2>
-        <p className="text-sm text-zinc-400">
-          Gesundheitsdaten bleiben unter deiner Kontrolle. Pro Kategorie kannst du Sync und
-          Freigaben unter Geräte & Gesundheit steuern.
-        </p>
-        <ul className="text-sm text-zinc-300 space-y-1.5 list-disc pl-5">
-          <li>Keine Weitergabe deiner Trainings- und Ernährungsdaten an Dritte zu Werbezwecken</li>
-          <li>Wearable-Zugriffe kannst du jederzeit widerrufen</li>
-          <li>Gastmodus speichert Daten nur lokal auf diesem Gerät bis zur Registrierung</li>
-        </ul>
-        <Link href="/geraete">
-          <Button variant="outline" className="w-full mt-1">
-            Sync-Berechtigungen verwalten
-          </Button>
-        </Link>
-      </section>
-
-      <section id="settings-benachrichtigungen" className="card-premium p-4 space-y-3 settings-section scroll-mt-4">
-        <h2 className="font-semibold text-white text-lg">Benachrichtigungen</h2>
-        <p className="text-sm text-zinc-400">
-          Aktive Kanäle: In-App-Center (Glocke), Coach-Hinweise und optionale
-          Essenserinnerungen unter Ernährung. System-Push für Training/Wasser folgt mit der
-          nativen App.
-        </p>
-        <ul className="text-sm text-zinc-300 space-y-1.5 list-disc pl-5">
-          <li>In-App-Benachrichtigungen über die Glocke im Header</li>
-          <li>Coach-Empfehlungen auf dem Home-Bildschirm</li>
-          <li>Gamification-Freischaltungen als Toast</li>
-          <li>Support-Bestätigungen per E-Mail (wenn konfiguriert)</li>
-        </ul>
-      </section>
+      <SettingsSecurityPanel mode="password" />
 
       <section id="settings-konto" className="card-premium p-4 space-y-4 settings-section scroll-mt-4">
-        <h2 className="font-semibold text-white text-lg">Konto</h2>
+        <h2 className="font-semibold text-white text-lg">Konto-Übersicht</h2>
         <p className="text-xs text-zinc-500">Persönliche Daten, Körperdaten & Ziele</p>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
@@ -1036,47 +1063,9 @@ export default function SettingsPage() {
         </Button>
       </section>
 
-      <section id="settings-app" className="card-premium p-4 space-y-3 settings-section scroll-mt-4">
-        <h2 className="font-semibold text-white text-lg">Über die App</h2>
-        <dl className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">App</dt>
-            <dd className="font-medium text-white mt-0.5">NEXFORM</dd>
-          </div>
-          <div>
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Version</dt>
-            <dd className="font-medium text-white mt-0.5">3.0</dd>
-          </div>
-          <div className="col-span-2">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Plattformen</dt>
-            <dd className="text-zinc-300 mt-0.5 text-xs leading-relaxed">
-              Apple Health · Health Connect · Google Fit · Fitbit · Garmin · Polar · COROS · Samsung · Huawei · Wear OS · Smartphone-Sensoren
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="card-premium p-4 settings-section">
-        <Link
-          href="/settings/support"
-          className="flex items-center gap-3 rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-3.5 active:opacity-90"
-        >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-400">
-            <LifeBuoy className="h-5 w-5" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-white">Support</p>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              Kontakt, Feedback, Probleme & Feature-Wünsche
-            </p>
-          </div>
-          <span className="text-zinc-500 text-sm">→</span>
-        </Link>
-      </section>
-
       <Button
         type="button"
-        className="w-full h-12 text-base"
+        className="w-full h-12 text-base sticky bottom-20 z-10 shadow-lg"
         onClick={() => void save()}
         disabled={saving || !profileLoaded}
       >

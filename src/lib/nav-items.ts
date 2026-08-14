@@ -32,13 +32,12 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/coach", label: "Coach", icon: Bot },
 ];
 
-/** Profile panel — only two primary settings areas. */
+/** Profile panel — Einstellungen + Geräte (real routes). */
 export const PROFILE_MENU_NAV: NavItem[] = [
   { href: "/settings", label: "Einstellungen", icon: Settings },
-  { href: "/settings#settings-geraete", label: "Geräte & Gesundheit", icon: Watch },
+  { href: "/geraete", label: "Geräte & Gesundheit", icon: Watch },
 ];
 
-/** Keep Community & Erfolge as existing features. */
 export const MORE_NAV: NavItem[] = [
   { href: "/social", label: "Community", icon: Users },
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
@@ -51,7 +50,7 @@ export const ADMIN_NAV: NavItem = {
 };
 
 export const PRIVACY_NAV: NavItem = {
-  href: "/settings#settings-datenschutz",
+  href: "/settings?view=privacy",
   label: "Datenschutz",
   icon: Lock,
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { PremiumCard } from "@/components/ui/premium-card";
@@ -17,6 +18,7 @@ import {
   BatteryLow,
   Clock,
   Smartphone,
+  ChevronLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -126,11 +128,16 @@ export default function GeraetePage() {
   }
 
   async function disconnect(providerId: string) {
-    await fetch("/api/wearables/disconnect", {
+    const res = await fetch("/api/wearables/disconnect", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ provider: providerId }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data?.error ?? "Trennen fehlgeschlagen");
+      return;
+    }
     toast.success("Gerät getrennt");
     void load();
   }
@@ -191,6 +198,15 @@ export default function GeraetePage() {
         </Button>
       }
     >
+      <Link
+        href="/settings"
+        prefetch
+        className="inline-flex items-center gap-1 text-sm font-medium text-accent active:opacity-80 -mt-2 -ml-1 py-1 w-fit"
+      >
+        <ChevronLeft className="h-5 w-5" />
+        Einstellungen
+      </Link>
+
       <PageIntro pageId="geraete" />
 
       {lastSync && (
