@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { usePathname } from "next/navigation";
 
 const BOOT_DONE_KEY = "nexform:boot-done";
 
@@ -21,12 +20,11 @@ function dismissBoot() {
 }
 
 /**
- * Boot splash ONLY on cold start. Never on menu switches.
- * Auth pages dismiss immediately. App pages wait for session resolve (no fake delay).
+ * Boot splash ONLY on cold start. Uses window.location (not usePathname)
+ * to avoid router coupling in the root layout tree.
  */
 export function AppBootSplash() {
   const { status } = useSession();
-  const pathname = usePathname() ?? "";
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -42,18 +40,19 @@ export function AppBootSplash() {
       /* ignore */
     }
 
+    const path = typeof window !== "undefined" ? window.location.pathname : "";
     const isAuthSurface =
-      pathname === "/" ||
-      pathname.startsWith("/login") ||
-      pathname.startsWith("/register") ||
-      pathname.startsWith("/reset-password") ||
-      pathname.startsWith("/verify-email");
+      path === "/" ||
+      path.startsWith("/login") ||
+      path.startsWith("/register") ||
+      path.startsWith("/reset-password") ||
+      path.startsWith("/verify-email");
 
     if (isAuthSurface || status !== "loading") {
       dismissBoot();
       setDone(true);
     }
-  }, [status, pathname, done]);
+  }, [status, done]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {

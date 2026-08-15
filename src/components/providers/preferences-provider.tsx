@@ -32,33 +32,45 @@ type PreferencesContextValue = {
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
-  const stored = readStoredPreferences();
-  const [theme, setThemeState] = useState<AppThemeId>(stored.theme);
-  const [uiDensity, setUiDensityState] = useState<UiDensity>(stored.density);
-  const [colorMode, setColorModeState] = useState<ColorMode>(stored.colorMode);
+  // SSR-safe defaults — hydrate from localStorage only after mount (avoids mismatch crashes)
+  const [theme, setThemeState] = useState<AppThemeId>(DEFAULT_THEME);
+  const [uiDensity, setUiDensityState] = useState<UiDensity>(DEFAULT_DENSITY);
+  const [colorMode, setColorModeState] = useState<ColorMode>(DEFAULT_COLOR_MODE);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    applyThemeToDocument(theme, uiDensity, colorMode);
-  }, [theme, uiDensity, colorMode]);
+    const stored = readStoredPreferences();
+    setThemeState(stored.theme);
+    setUiDensityState(stored.density);
+    setColorModeState(stored.colorMode);
+    applyThemeToDocument(stored.theme, stored.density, stored.colorMode);
 
-  useEffect(() => {
+    let cancelled = false;
     fetch("/api/user/preferences")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.theme) {
-          setThemeState(d.theme);
-          setUiDensityState(d.uiDensity ?? DEFAULT_DENSITY);
-          setColorModeState(d.colorMode === "light" ? "light" : "dark");
-          applyThemeToDocument(
-            d.theme,
-            d.uiDensity ?? DEFAULT_DENSITY,
-            d.colorMode === "light" ? "light" : "dark"
-          );
-        }
+        if (cancelled || !d?.theme) return;
+        const nextDensity = d.uiDensity ?? DEFAULT_DENSITY;
+        const nextMode = d.colorMode === "light" ? "light" : "dark";
+        setThemeState(d.theme);
+        setUiDensityState(nextDensity);
+        setColorModeState(nextMode);
+        applyThemeToDocument(d.theme, nextDensity, nextMode);
       })
-      .finally(() => setReady(true));
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    applyThemeToDocument(theme, uiDensity, colorMode);
+  }, [theme, uiDensity, colorMode, ready]);
 
   const persist = useCallback(
     (next: { theme?: AppThemeId; uiDensity?: UiDensity; colorMode?: ColorMode }) => {

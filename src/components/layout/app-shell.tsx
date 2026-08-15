@@ -12,7 +12,6 @@ import { GamificationUnlockToast } from "@/components/gamification/gamification-
 import { RoutePrefetcher } from "@/components/layout/route-prefetcher";
 import { GuestUpgradeBanner } from "@/components/auth/guest-upgrade-banner";
 import { SidebarProvider } from "@/components/layout/sidebar-provider";
-import { ServiceWorkerProvider } from "@/components/providers/service-worker-provider";
 import { SessionCacheGuard } from "@/components/providers/session-cache-guard";
 import { PhoneSensorWarmup } from "@/components/health/phone-sensor-warmup";
 import { MealReminderWarmup } from "@/components/nutrition/meal-reminder-warmup";
@@ -41,7 +40,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <NotificationProvider>
         <SessionCacheGuard />
-        <ServiceWorkerProvider />
         <PhoneSensorWarmup />
         <MealReminderWarmup />
         <PersistentTabProvider>

@@ -64,15 +64,23 @@ export function readStoredPreferences(): {
       colorMode: DEFAULT_COLOR_MODE,
     };
   }
-  const theme = (localStorage.getItem(STORAGE_THEME) as AppThemeId) || DEFAULT_THEME;
-  const density = (localStorage.getItem(STORAGE_DENSITY) as UiDensity) || DEFAULT_DENSITY;
-  const colorMode =
-    (localStorage.getItem(STORAGE_COLOR_MODE) as ColorMode) || DEFAULT_COLOR_MODE;
-  return {
-    theme: APP_THEMES.some((t) => t.id === theme) ? theme : DEFAULT_THEME,
-    density: UI_DENSITY_OPTIONS.some((d) => d.id === density) ? density : DEFAULT_DENSITY,
-    colorMode: colorMode === "light" ? "light" : "dark",
-  };
+  try {
+    const theme = (localStorage.getItem(STORAGE_THEME) as AppThemeId) || DEFAULT_THEME;
+    const density = (localStorage.getItem(STORAGE_DENSITY) as UiDensity) || DEFAULT_DENSITY;
+    const colorMode =
+      (localStorage.getItem(STORAGE_COLOR_MODE) as ColorMode) || DEFAULT_COLOR_MODE;
+    return {
+      theme: APP_THEMES.some((t) => t.id === theme) ? theme : DEFAULT_THEME,
+      density: UI_DENSITY_OPTIONS.some((d) => d.id === density) ? density : DEFAULT_DENSITY,
+      colorMode: colorMode === "light" ? "light" : "dark",
+    };
+  } catch {
+    return {
+      theme: DEFAULT_THEME,
+      density: DEFAULT_DENSITY,
+      colorMode: DEFAULT_COLOR_MODE,
+    };
+  }
 }
 
 export function applyThemeToDocument(
@@ -81,12 +89,16 @@ export function applyThemeToDocument(
   colorMode: ColorMode = DEFAULT_COLOR_MODE
 ) {
   if (typeof document === "undefined") return;
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.dataset.density = density;
-  document.documentElement.dataset.colorMode = colorMode;
-  document.documentElement.classList.toggle("light", colorMode === "light");
-  document.documentElement.classList.toggle("dark", colorMode !== "light");
-  localStorage.setItem(STORAGE_THEME, theme);
-  localStorage.setItem(STORAGE_DENSITY, density);
-  localStorage.setItem(STORAGE_COLOR_MODE, colorMode);
+  try {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.density = density;
+    document.documentElement.dataset.colorMode = colorMode;
+    document.documentElement.classList.toggle("light", colorMode === "light");
+    document.documentElement.classList.toggle("dark", colorMode !== "light");
+    localStorage.setItem(STORAGE_THEME, theme);
+    localStorage.setItem(STORAGE_DENSITY, density);
+    localStorage.setItem(STORAGE_COLOR_MODE, colorMode);
+  } catch {
+    /* private mode / storage blocked */
+  }
 }

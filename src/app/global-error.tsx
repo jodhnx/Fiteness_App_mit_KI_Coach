@@ -11,6 +11,42 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error("[global-error]", error);
+    try {
+      sessionStorage.setItem(
+        "nexform:last-error",
+        JSON.stringify({
+          label: "global",
+          name: error.name,
+          message: error.message,
+          digest: error.digest,
+          at: Date.now(),
+        })
+      );
+    } catch {
+      /* ignore */
+    }
+
+    const msg = `${error.name} ${error.message}`;
+    const chunk =
+      /ChunkLoadError|Loading chunk|dynamically imported module/i.test(msg);
+    if (chunk) {
+      try {
+        if (!sessionStorage.getItem("nexform:chunk-reload")) {
+          sessionStorage.setItem("nexform:chunk-reload", "1");
+          // Clear stale SW/caches then reload once
+          if ("serviceWorker" in navigator) {
+            void navigator.serviceWorker
+              .getRegistrations()
+              .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+              .finally(() => window.location.reload());
+            return;
+          }
+          window.location.reload();
+        }
+      } catch {
+        /* ignore */
+      }
+    }
   }, [error]);
 
   return (
@@ -27,7 +63,14 @@ export default function GlobalError({
           </p>
           <button
             type="button"
-            onClick={reset}
+            onClick={() => {
+              try {
+                sessionStorage.removeItem("nexform:chunk-reload");
+              } catch {
+                /* ignore */
+              }
+              reset();
+            }}
             className="w-full h-12 rounded-2xl bg-cyan-400 text-zinc-950 font-semibold"
           >
             Erneut versuchen

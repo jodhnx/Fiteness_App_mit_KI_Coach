@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
 
 export default function AppSegmentError({
   error,
@@ -20,19 +19,22 @@ export default function AppSegmentError({
       <p className="text-sm text-zinc-400 leading-relaxed">
         Navigation und andere Menüs bleiben nutzbar. Bitte erneut versuchen.
       </p>
-      <Button type="button" variant="premium" className="w-full" onClick={reset}>
-        Erneut versuchen
-      </Button>
-      <Button
+      <button
         type="button"
-        variant="outline"
-        className="w-full"
+        className="w-full h-12 rounded-2xl bg-cyan-400 text-zinc-950 font-semibold"
+        onClick={reset}
+      >
+        Erneut versuchen
+      </button>
+      <button
+        type="button"
+        className="w-full h-11 rounded-2xl border border-zinc-700 text-zinc-200"
         onClick={() => {
           window.location.href = "/home";
         }}
       >
         Zur Startseite
-      </Button>
+      </button>
     </div>
   );
 }

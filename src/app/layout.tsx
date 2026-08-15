@@ -4,6 +4,8 @@ import { Toaster } from "sonner";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { PreferencesProvider } from "@/components/providers/preferences-provider";
 import { AppBootSplash } from "@/components/layout/app-boot-splash";
+import { RootProvidersBoundary } from "@/components/layout/root-providers-boundary";
+import { ServiceWorkerProvider } from "@/components/providers/service-worker-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -108,17 +110,14 @@ export default function RootLayout({
           }}
         />
         <AuthSessionProvider>
-          <PreferencesProvider>
-            <AppBootSplash />
-            {children}
-            <Toaster
-              theme="dark"
-              position="bottom-center"
-              richColors
-              offset="calc(5.5rem + env(safe-area-inset-bottom, 0px))"
-              mobileOffset="calc(5.5rem + env(safe-area-inset-bottom, 0px))"
-            />
-          </PreferencesProvider>
+          <RootProvidersBoundary>
+            <ServiceWorkerProvider />
+            <PreferencesProvider>
+              <AppBootSplash />
+              {children}
+              <Toaster theme="dark" position="bottom-center" richColors offset={88} />
+            </PreferencesProvider>
+          </RootProvidersBoundary>
         </AuthSessionProvider>
       </body>
     </html>
