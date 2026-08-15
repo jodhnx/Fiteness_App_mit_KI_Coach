@@ -25,7 +25,12 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 export function useSidebar() {
   const ctx = useContext(SidebarContext);
   if (!ctx) {
-    throw new Error("useSidebar must be used within SidebarProvider");
+    // Soft fallback — throwing here crashed into global-error on shell remount races
+    return {
+      open: false,
+      setOpen: () => {},
+      toggle: () => {},
+    };
   }
   return ctx;
 }

@@ -13,12 +13,14 @@ import { warmFoodHistoryCache } from "@/lib/food-history-cache";
 
 /**
  * Ensures client caches belong to the authenticated user.
- * Clears all client state on user change / logout so A→B never flashes.
+ * Does NOT wipe caches on a brief session flicker during soft navigation
+ * (that caused shell crashes / "Unerwarteter Fehler").
  */
 export function SessionCacheGuard() {
   const { data: session, status } = useSession();
   const lastUserId = useRef<string | null>(null);
   const warmedFor = useRef<string | null>(null);
+  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -26,12 +28,23 @@ export function SessionCacheGuard() {
     const userId = session?.user?.id ?? null;
 
     if (!userId) {
-      if (lastUserId.current || getCacheOwner()) {
-        clearAllUserClientState();
-      }
-      lastUserId.current = null;
-      warmedFor.current = null;
-      return;
+      // Debounce logout wipe — ignore transient null during nav/refetch
+      if (clearTimer.current) clearTimeout(clearTimer.current);
+      clearTimer.current = setTimeout(() => {
+        if (lastUserId.current || getCacheOwner()) {
+          clearAllUserClientState();
+        }
+        lastUserId.current = null;
+        warmedFor.current = null;
+      }, 800);
+      return () => {
+        if (clearTimer.current) clearTimeout(clearTimer.current);
+      };
+    }
+
+    if (clearTimer.current) {
+      clearTimeout(clearTimer.current);
+      clearTimer.current = null;
     }
 
     const owner = getCacheOwner();

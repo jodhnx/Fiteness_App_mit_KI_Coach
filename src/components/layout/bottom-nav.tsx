@@ -24,7 +24,8 @@ const ITEMS = [
   { href: "/coach", label: "Coach", icon: Bot },
 ] as const satisfies ReadonlyArray<{ href: MainTab; label: string; icon: typeof Home }>;
 
-function shouldHideBottomNav(pathname: string) {
+function shouldHideBottomNav(pathname: string | null) {
+  if (!pathname) return false;
   return (
     pathname.includes("/workouts/live/") ||
     pathname.includes("/nutrition/add/") ||

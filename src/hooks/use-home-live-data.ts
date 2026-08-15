@@ -17,18 +17,24 @@ import { getCached } from "@/lib/client-cache";
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import { buildHomeCoachFromNutrition } from "@/lib/nutrition-coach";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
-import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
+import {
+  createEmptyNutritionDashboard,
+  isValidDashboardPayload,
+} from "@/lib/nutrition-defaults";
 import { isNutritionDashboardToday } from "@/lib/nutrition-day";
 
 function mergeHomeWithNutrition(
   home: HomeDataPayload,
   nutrition: NutritionDashboardPayload
 ): HomeDataPayload {
+  const safe = isValidDashboardPayload(nutrition)
+    ? nutrition
+    : createEmptyNutritionDashboard();
   return normalizeHomeData({
     ...home,
-    ...nutritionDashboardToHomeMacros(nutrition),
-    nutrition,
-    coach: buildHomeCoachFromNutrition(nutrition),
+    ...nutritionDashboardToHomeMacros(safe),
+    nutrition: safe,
+    coach: buildHomeCoachFromNutrition(safe),
   });
 }
 

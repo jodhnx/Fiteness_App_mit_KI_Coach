@@ -140,7 +140,7 @@ export const ProfileDashboardPanel = memo(function ProfileDashboardPanel({
                 icon={item.icon}
                 active={
                   item.href.includes("#")
-                    ? pathname.startsWith("/settings")
+                    ? (pathname ?? "").startsWith("/settings")
                     : isNavActive(pathname, item.href)
                 }
                 onNavigate={close}
@@ -168,7 +168,7 @@ export const ProfileDashboardPanel = memo(function ProfileDashboardPanel({
                 href={ADMIN_NAV.href}
                 label={ADMIN_NAV.label}
                 icon={ADMIN_NAV.icon}
-                active={pathname.startsWith("/admin")}
+                active={(pathname ?? "").startsWith("/admin")}
                 onNavigate={close}
               />
             )}

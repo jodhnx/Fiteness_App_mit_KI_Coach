@@ -21,7 +21,8 @@ import { PersistentTabProvider } from "@/components/layout/persistent-tab-provid
 import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import { cn } from "@/lib/utils";
 
-function isImmersiveRoute(pathname: string) {
+function isImmersiveRoute(pathname: string | null) {
+  if (!pathname) return false;
   return (
     pathname.includes("/workouts/live/") ||
     pathname.includes("/nutrition/add/") ||
@@ -52,7 +53,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 !immersive && "pb-[calc(4.5rem+env(safe-area-inset-bottom))]"
               )}
             >
-              {!immersive && <Header userName={headerName} userImage={headerImage} />}
+              {!immersive && (
+                <AppErrorBoundary label="header">
+                  <Header userName={headerName} userImage={headerImage} />
+                </AppErrorBoundary>
+              )}
               <main
                 className={cn(
                   "app-page-content flex-1 min-w-0",
@@ -63,12 +68,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <AppErrorBoundary label="page">{children}</AppErrorBoundary>
               </main>
             </div>
-            <BottomNav />
-            <ProfileDashboardPanel
-              userName={headerName}
-              userImage={headerImage}
-              isAdmin={isAdmin}
-            />
+            <AppErrorBoundary label="nav">
+              <BottomNav />
+            </AppErrorBoundary>
+            <AppErrorBoundary label="profile">
+              <ProfileDashboardPanel
+                userName={headerName}
+                userImage={headerImage}
+                isAdmin={isAdmin}
+              />
+            </AppErrorBoundary>
             <NotificationCenter />
             <GamificationUnlockToast />
             <FeatureTour />

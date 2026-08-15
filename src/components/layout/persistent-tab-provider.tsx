@@ -4,7 +4,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useTransition,
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,7 +18,8 @@ export const MAIN_TABS = [
 
 export type MainTab = (typeof MAIN_TABS)[number];
 
-export function matchMainTab(pathname: string): MainTab | null {
+export function matchMainTab(pathname: string | null): MainTab | null {
+  if (!pathname) return null;
   if (
     pathname.includes("/workouts/live/") ||
     pathname.includes("/nutrition/add/") ||
@@ -47,32 +47,27 @@ export function useMainTabNav() {
 }
 
 /**
- * Stable tab navigation — does NOT cache React trees across routes.
- * Caching children caused client-side crashes ("Etwas ist schiefgelaufen")
- * when stale/hidden page trees threw during session/cache updates.
- *
- * Instant feel comes from: no route loading.tsx, router cache (staleTimes),
- * prefetch, and client data caches — not from keeping dead route trees alive.
+ * Stable tab navigation helpers. No React-tree caching (that caused crashes).
+ * Instant switches = router cache + client data caches + no loading.tsx.
  */
 export function PersistentTabProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const activeTab = matchMainTab(pathname);
 
   const navigateMainTab = useCallback(
     (href: MainTab) => {
       if (matchMainTab(pathname) === href) return;
       router.prefetch(href);
-      startTransition(() => {
-        router.push(href);
-      });
+      router.push(href);
     },
     [pathname, router]
   );
 
   return (
-    <TabNavContext.Provider value={{ activeTab, navigateMainTab, isPending }}>
+    <TabNavContext.Provider
+      value={{ activeTab, navigateMainTab, isPending: false }}
+    >
       {children}
     </TabNavContext.Provider>
   );

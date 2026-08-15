@@ -40,21 +40,32 @@ export function GamificationUnlockToast() {
   const [visible, setVisible] = useState(false);
 
   function showNext() {
-    const raw = sessionStorage.getItem(QUEUE_KEY);
-    const queue: UnlockPayload[] = raw ? JSON.parse(raw) : [];
-    if (queue.length === 0) {
+    try {
+      const raw = sessionStorage.getItem(QUEUE_KEY);
+      const queue: UnlockPayload[] = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(queue) || queue.length === 0) {
+        setVisible(false);
+        setCurrent(null);
+        return;
+      }
+      const [next, ...rest] = queue;
+      sessionStorage.setItem(QUEUE_KEY, JSON.stringify(rest));
+      setCurrent(next);
+      setVisible(true);
+      window.setTimeout(() => {
+        setVisible(false);
+        window.setTimeout(showNext, 200);
+      }, 2800);
+    } catch (e) {
+      console.error("[gamification-toast]", e);
+      try {
+        sessionStorage.removeItem(QUEUE_KEY);
+      } catch {
+        /* ignore */
+      }
       setVisible(false);
       setCurrent(null);
-      return;
     }
-    const [next, ...rest] = queue;
-    sessionStorage.setItem(QUEUE_KEY, JSON.stringify(rest));
-    setCurrent(next);
-    setVisible(true);
-    window.setTimeout(() => {
-      setVisible(false);
-      window.setTimeout(showNext, 200);
-    }, 2800);
   }
 
   useEffect(() => {

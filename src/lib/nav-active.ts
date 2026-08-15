@@ -1,5 +1,6 @@
 /** Shared bottom-nav / sidebar active state — avoids false matches between tabs. */
-export function isNavActive(pathname: string, href: string): boolean {
+export function isNavActive(pathname: string | null | undefined, href: string): boolean {
+  if (!pathname) return false;
   if (href === "/home") {
     return pathname === "/home" || pathname === "/dashboard";
   }

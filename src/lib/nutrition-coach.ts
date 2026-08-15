@@ -123,12 +123,26 @@ export function buildNutritionCoachTipsWithWater(
 export function buildHomeCoachFromNutrition(
   d: NutritionDashboardPayload
 ): HomeCoachPayload {
+  const consumed = d?.consumed ?? { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 };
+  const targets = d?.targets ?? {
+    calories: 0,
+    proteinG: 0,
+    carbsG: 0,
+    fatG: 0,
+    nutritionGoal: null,
+  };
+  const water = d?.water ?? { consumedMl: 0, targetMl: 2500 };
   const tips = buildNutritionCoachTipsWithWater(
-    d.consumed,
-    d.targets,
-    d.targets.nutritionGoal,
-    d.water.consumedMl,
-    d.water.targetMl
+    consumed,
+    {
+      calories: targets.calories ?? 0,
+      proteinG: targets.proteinG ?? 0,
+      carbsG: targets.carbsG ?? 0,
+      fatG: targets.fatG ?? 0,
+    },
+    targets.nutritionGoal ?? null,
+    water.consumedMl ?? 0,
+    water.targetMl ?? 2500
   );
   return {
     summary: tips[0]?.message ?? "Gute Balance heute – weiter so und regelmäßig tracken.",
