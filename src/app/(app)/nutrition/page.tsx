@@ -16,8 +16,6 @@ import {
 import { PageShell } from "@/components/layout/page-shell";
 import { NutritionOrbitOverview } from "@/components/nutrition/nutrition-orbit-overview";
 import { NutritionDaySummary } from "@/components/nutrition/nutrition-day-summary";
-import { NutritionDayExtras } from "@/components/nutrition/nutrition-day-extras";
-import { NutritionQuickFoods } from "@/components/nutrition/nutrition-quick-foods";
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
 import { FoodAddPopup } from "@/components/nutrition/food-add-popup";
@@ -33,13 +31,7 @@ import { RefreshCw, AlertCircle, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { warmNutritionSearchCaches } from "@/lib/nav-cache-warmer";
-import {
-  getCachedFoodHistory,
-  warmFoodHistoryCache,
-  refreshFoodHistoryCache,
-} from "@/lib/food-history-cache";
-import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
-import type { FoodProduct } from "@/lib/food/food-product-types";
+import { warmFoodHistoryCache, refreshFoodHistoryCache } from "@/lib/food-history-cache";
 import { resetBodyScroll } from "@/lib/scroll-lock";
 
 const VALID_MEALS = new Set<string>(MEAL_TYPE_ORDER);
@@ -49,13 +41,11 @@ export default function NutritionPage() {
   const searchParams = useSearchParams();
   const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
   const [addInitialQuery, setAddInitialQuery] = useState("");
-  const [quickHistory, setQuickHistory] = useState(() => getCachedFoodHistory());
 
   useEffect(() => {
+    // Prefetch + menu history so Favoriten / Häufig / Zuletzt open instantly
     warmNutritionSearchCaches();
     warmFoodHistoryCache(true);
-    const t = window.setTimeout(() => setQuickHistory(getCachedFoodHistory()), 600);
-    return () => window.clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -82,7 +72,6 @@ export default function NutritionPage() {
   const onFoodAdded = useCallback(() => {
     closeAddPopup();
     refreshFoodHistoryCache();
-    window.setTimeout(() => setQuickHistory(getCachedFoodHistory()), 400);
     toast.success("Lebensmittel hinzugefügt ✓", { duration: 1600 });
   }, [closeAddPopup]);
 
@@ -91,14 +80,6 @@ export default function NutritionPage() {
     applyDashboard,
     onSuccess: onFoodAdded,
   });
-
-  const quickPickFood = useCallback(
-    (food: FoodProduct) => {
-      const grams = getDefaultQuickAddGrams(food);
-      void quickAdd(food, grams, "SNACK");
-    },
-    [quickAdd]
-  );
 
   const refreshAll = useCallback(() => {
     invalidateAllNutritionCaches();
@@ -251,24 +232,11 @@ export default function NutritionPage() {
 
       <PageIntro pageId="nutrition" />
 
-      {/* 1–2: Kalorien-Kreis + Makros */}
-      <NutritionOrbitOverview dashboard={dashboard} />
-
-      <NutritionDayExtras
+      <NutritionOrbitOverview
         dashboard={dashboard}
         onAddMeal={(meal) => setAddSheetMeal(meal)}
       />
 
-      {quickHistory && (
-        <NutritionQuickFoods
-          favorites={quickHistory.favorites}
-          recents={quickHistory.recents}
-          frequent={quickHistory.frequent}
-          onPick={quickPickFood}
-        />
-      )}
-
-      {/* 3: Mahlzeiten */}
       <section className="pt-0.5">
         <h2 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.15em] mb-1.5 px-0.5">
           Mahlzeiten
@@ -282,7 +250,6 @@ export default function NutritionPage() {
         />
       </section>
 
-      {/* 4: Tagesübersicht */}
       <NutritionDaySummary dashboard={dashboard} />
 
       <WaterTracker
@@ -291,10 +258,7 @@ export default function NutritionPage() {
         onAdd={addWater}
       />
 
-      {/* Tools kompakt */}
       <NutritionExtrasPanel />
-
-      {/* 5: Einkaufsliste ganz unten */}
       <NutritionShoppingList />
 
       {addSheetMeal && (

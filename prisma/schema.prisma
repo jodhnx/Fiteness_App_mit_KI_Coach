@@ -48,6 +48,7 @@ model User {
   progressPhotos        ProgressPhoto[]
   recentExercises       RecentExercise[]
   recipes               Recipe[]
+  recipeCatalogFavorites RecipeCatalogFavorite[]
   sessions              Session[]
   trainingStreak        TrainingStreak?
   userAchievements      UserAchievement[]
@@ -482,6 +483,18 @@ model Recipe {
   updatedAt      DateTime           @updatedAt
   user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   ingredients    RecipeIngredient[]
+}
+
+/** Favorites for the shared fitness recipe catalog (slug = FitnessRecipe.id). */
+model RecipeCatalogFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([userId])
 }
 
 model RecipeIngredient {

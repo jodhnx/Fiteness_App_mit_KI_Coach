@@ -24,6 +24,7 @@ const LOCAL_KEYS = [
   "nexform-coach-chat",
   "nexform:guest-credentials",
   "nexform:cache-owner",
+  "nexform:cache:recipe-catalog-favorites",
 ] as const;
 
 const SESSION_KEYS = [
@@ -54,6 +55,7 @@ export function clearAllUserClientState(): void {
   if (typeof window === "undefined") return;
 
   invalidateCache();
+  invalidateCache("recipe-catalog");
   clearCacheOwner();
   clearCachedCoachChat();
   clearExercisePickerListsCache();

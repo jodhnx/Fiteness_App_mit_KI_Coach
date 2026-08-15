@@ -11,6 +11,8 @@ type Props = {
   className?: string;
   label?: string;
   ringId?: string;
+  /** "remaining" (default) or "target" — personal calorie goal in the center */
+  centerMode?: "remaining" | "target";
 };
 
 export const CalorieRing = memo(function CalorieRing({
@@ -21,6 +23,7 @@ export const CalorieRing = memo(function CalorieRing({
   className,
   label = "ÜBRIG",
   ringId,
+  centerMode = "remaining",
 }: Props) {
   const autoId = useId();
   const gradientId = ringId ?? `kcal-ring-${autoId.replace(/:/g, "")}`;
@@ -30,7 +33,6 @@ export const CalorieRing = memo(function CalorieRing({
   const kcalTarget = Math.round(target);
   const overBy = hasTarget ? Math.max(0, kcalConsumed - kcalTarget) : 0;
   const isOver = overBy > 0;
-  // Fill ring to 100% when over; otherwise normal progress
   const pct = hasTarget
     ? Math.min(100, Math.round((kcalConsumed / safeTarget) * 100))
     : 0;
@@ -39,12 +41,15 @@ export const CalorieRing = memo(function CalorieRing({
   const offset = c - (pct / 100) * c;
   const strokeW = size >= 200 ? 12 : size >= 140 ? 10 : 8;
 
+  const showTarget = centerMode === "target" && hasTarget && !isOver;
   const centerValue = isOver
     ? overBy
-    : hasTarget
-      ? Math.max(0, Math.round(remaining))
-      : 0;
-  const centerLabel = isOver ? "ÜBER ZIEL" : label;
+    : showTarget
+      ? kcalTarget
+      : hasTarget
+        ? Math.max(0, Math.round(remaining))
+        : 0;
+  const centerLabel = isOver ? "ÜBER ZIEL" : showTarget ? label || "TAGESZIEL" : label;
 
   const numberSizeClass = useMemo(() => {
     const digits = String(centerValue).length;
@@ -118,12 +123,19 @@ export const CalorieRing = memo(function CalorieRing({
           >
             {hasTarget ? centerValue.toLocaleString("de-DE") : "—"}
           </p>
+          {showTarget && (
+            <p className="text-[10px] font-medium text-zinc-400 mt-0.5 leading-none">kcal</p>
+          )}
           <p className="text-[10px] text-zinc-500 mt-1 tabular-nums leading-tight whitespace-nowrap max-w-full">
             {hasTarget ? (
-              <>
-                {kcalConsumed.toLocaleString("de-DE")} /{" "}
-                {kcalTarget.toLocaleString("de-DE")} kcal
-              </>
+              showTarget ? (
+                <>{kcalConsumed.toLocaleString("de-DE")} verbraucht</>
+              ) : (
+                <>
+                  {kcalConsumed.toLocaleString("de-DE")} /{" "}
+                  {kcalTarget.toLocaleString("de-DE")} kcal
+                </>
+              )
             ) : (
               "Ziel fehlt"
             )}

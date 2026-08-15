@@ -5,6 +5,7 @@ import {
   Watch,
   Users,
   Trophy,
+  CookingPot,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -32,10 +33,11 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/coach", label: "Coach", icon: Bot },
 ];
 
-/** Profile panel — Einstellungen + Geräte (real routes). */
+/** Profile panel — Einstellungen, Geräte, Rezepte. */
 export const PROFILE_MENU_NAV: NavItem[] = [
   { href: "/settings", label: "Einstellungen", icon: Settings },
   { href: "/geraete", label: "Geräte & Gesundheit", icon: Watch },
+  { href: "/rezepte", label: "Rezepte", icon: CookingPot },
 ];
 
 export const MORE_NAV: NavItem[] = [

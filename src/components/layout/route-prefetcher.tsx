@@ -16,6 +16,7 @@ const NAV_ROUTES = [
   "/gesundheit",
   "/geraete",
   "/settings",
+  "/rezepte",
 ] as const;
 
 export function RoutePrefetcher() {

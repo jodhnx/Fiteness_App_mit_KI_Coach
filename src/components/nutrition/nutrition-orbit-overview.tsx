@@ -2,17 +2,38 @@
 
 import { memo } from "react";
 import Link from "next/link";
+import type { MealType } from "@prisma/client";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets, nutritionProfileIncomplete } from "@/lib/nutrition-defaults";
 import { CalorieRing } from "@/components/nutrition/calorie-ring";
+import { TRACK_MEAL_ORDER, MEAL_TYPE_LABELS } from "@/lib/meal-types";
+import { cn } from "@/lib/utils";
 
-/** Clean calorie hero + compact P / KH / F row (Yazio / MFP style). */
+const MEAL_EMOJI: Record<string, string> = {
+  BREAKFAST: "🍳",
+  LUNCH: "🍗",
+  DINNER: "🥗",
+  SNACK: "🍎",
+};
+
+const MEAL_POS: Record<string, string> = {
+  BREAKFAST: "top-0 left-1/2 -translate-x-1/2",
+  LUNCH: "top-1/2 right-0 -translate-y-1/2",
+  DINNER: "bottom-0 left-1/2 -translate-x-1/2",
+  SNACK: "top-1/2 left-0 -translate-y-1/2",
+};
+
+type Props = {
+  dashboard: NutritionDashboardPayload;
+  onAddMeal?: (meal: MealType) => void;
+};
+
+/** Calorie ring with personal target + meal slots arranged around it. */
 export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   dashboard,
-}: {
-  dashboard: NutritionDashboardPayload;
-}) {
-  const { consumed, targets, remaining } = dashboard;
+  onAddMeal,
+}: Props) {
+  const { consumed, targets, remaining, mealsByType } = dashboard;
   const ready = hasNutritionTargets(dashboard);
   const incomplete = nutritionProfileIncomplete(dashboard);
 
@@ -62,18 +83,66 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     },
   ] as const;
 
-  return (
-    <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/95 to-zinc-950/90 px-3 pt-4 pb-3 space-y-3">
-      <CalorieRing
-        consumed={consumed.calories}
-        target={targets.calories}
-        remaining={remaining.calories}
-        size={176}
-        ringId="nutrition-kcal-ring"
-        label="ÜBRIG"
-      />
+  const slots = TRACK_MEAL_ORDER.map((type) => {
+    const found = mealsByType.find((m) => m.mealType === type);
+    const items = found?.items.length ?? 0;
+    const kcal = Math.round(found?.totals.calories ?? 0);
+    return { type, items, kcal, open: items === 0 };
+  });
 
-      <div className="grid grid-cols-3 gap-2">
+  return (
+    <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/95 to-zinc-950/90 px-2 pt-3 pb-3 space-y-3">
+      {/* Orbit: meals around personal calorie target */}
+      <div className="relative mx-auto w-full max-w-[320px] aspect-square">
+        {slots.map((s) => (
+          <button
+            key={s.type}
+            type="button"
+            onClick={() => onAddMeal?.(s.type)}
+            className={cn(
+              "absolute z-10 w-[88px] rounded-2xl border px-1.5 py-2 text-center",
+              "active:scale-[0.97] transition-transform",
+              MEAL_POS[s.type],
+              s.open
+                ? "border-white/[0.08] bg-zinc-950/90"
+                : "border-accent/35 bg-accent/10"
+            )}
+          >
+            <span className="text-base leading-none" aria-hidden>
+              {MEAL_EMOJI[s.type] ?? "🍽"}
+            </span>
+            <p className="text-[10px] font-medium text-zinc-300 mt-0.5 truncate leading-tight">
+              {MEAL_TYPE_LABELS[s.type]}
+            </p>
+            <p
+              className={cn(
+                "text-[11px] font-bold tabular-nums mt-0.5 leading-none",
+                s.open ? "text-zinc-500" : "text-white"
+              )}
+            >
+              {s.kcal.toLocaleString("de-DE")}
+              <span className="text-[9px] font-medium text-zinc-500"> kcal</span>
+            </p>
+            <p className="text-[9px] text-zinc-600 mt-0.5">
+              {s.open ? "offen" : `${s.items}×`}
+            </p>
+          </button>
+        ))}
+
+        <div className="absolute inset-[18%] flex items-center justify-center">
+          <CalorieRing
+            consumed={consumed.calories}
+            target={targets.calories}
+            remaining={remaining.calories}
+            size={168}
+            ringId="nutrition-kcal-ring"
+            centerMode="target"
+            label="TAGESZIEL"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 px-1">
         {macros.map((m) => {
           const pct =
             m.target > 0 ? Math.min(100, Math.round((m.value / m.target) * 100)) : 0;
