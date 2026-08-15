@@ -8,10 +8,13 @@ export {
   searchFitnessRecipes,
   recipeServingGrams,
   recipeMacrosPer100g,
+  recipeTotalMinutes,
+  groupRecipeIngredients,
   type FitnessRecipe,
   type RecipeMealSlot,
   type RecipeTag,
   type RecipeIngredient,
   type RecipeDifficulty,
   type RecipeSourceMeta,
+  type RecipeVariation,
 } from "@/data/recipes";

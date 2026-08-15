@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -11,12 +11,17 @@ import {
   Plus,
   Users,
   Gauge,
+  Lightbulb,
+  Sparkles,
+  Flame,
 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import {
   getFitnessRecipe,
   recipeServingGrams,
+  groupRecipeIngredients,
+  recipeTotalMinutes,
 } from "@/data/fitness-recipes";
 import { MEAL_TYPE_LABELS, TRACK_MEAL_ORDER } from "@/lib/meal-types";
 import { cn } from "@/lib/utils";
@@ -115,6 +120,11 @@ export default function RezeptDetailPage() {
     [recipe, adding, router]
   );
 
+  const groups = useMemo(
+    () => (recipe ? groupRecipeIngredients(recipe.ingredients ?? []) : []),
+    [recipe]
+  );
+
   if (!recipe) {
     return (
       <PageShell title="Rezept" className="pb-24">
@@ -127,6 +137,7 @@ export default function RezeptDetailPage() {
   }
 
   const servingG = recipeServingGrams(recipe);
+  const totalMin = recipeTotalMinutes(recipe);
 
   return (
     <PageShell className="space-y-5 pb-28" maxWidth="2xl">
@@ -208,23 +219,32 @@ export default function RezeptDetailPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
-          <Clock className="h-4 w-4 text-cyan-400" />
+          <Clock className="h-4 w-4 shrink-0 text-cyan-400" />
           <div>
-            <p className="text-[10px] text-zinc-500">Zeit</p>
-            <p className="text-xs font-semibold text-white">{recipe.prepMinutes} Min</p>
+            <p className="text-[10px] text-zinc-500">Gesamt</p>
+            <p className="text-xs font-semibold text-white">{totalMin} Min</p>
           </div>
         </div>
         <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
-          <Users className="h-4 w-4 text-cyan-400" />
+          <Flame className="h-4 w-4 shrink-0 text-cyan-400" />
+          <div>
+            <p className="text-[10px] text-zinc-500">Kochen</p>
+            <p className="text-xs font-semibold text-white">
+              {recipe.cookMinutes != null ? `${recipe.cookMinutes} Min` : "—"}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
+          <Users className="h-4 w-4 shrink-0 text-cyan-400" />
           <div>
             <p className="text-[10px] text-zinc-500">Portionen</p>
             <p className="text-xs font-semibold text-white">{recipe.servings ?? 1}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
-          <Gauge className="h-4 w-4 text-cyan-400" />
+          <Gauge className="h-4 w-4 shrink-0 text-cyan-400" />
           <div>
             <p className="text-[10px] text-zinc-500">Level</p>
             <p className="text-xs font-semibold text-white">
@@ -235,23 +255,54 @@ export default function RezeptDetailPage() {
       </div>
 
       <p className="text-xs tabular-nums text-zinc-500">
-        Gesamtgewicht ca. {servingG} g
+        Prep {recipe.prepMinutes} Min
+        {recipe.cookMinutes != null ? ` · Kochen ${recipe.cookMinutes} Min` : ""}
+        {recipe.restMinutes != null ? ` · Ruhe ${recipe.restMinutes} Min` : ""}
+        {recipe.ovenTempC != null ? ` · Ofen ${recipe.ovenTempC} °C` : ""}
+        {` · ca. ${servingG} g`}
         {recipe.fiberG != null ? ` · Ballaststoffe ${recipe.fiberG} g` : ""}
       </p>
 
-      <section className="space-y-2">
+      {recipe.spices && recipe.spices.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-white">Gewürze</h2>
+          <div className="flex flex-wrap gap-1.5">
+            {recipe.spices.map((s) => (
+              <span
+                key={s}
+                className="rounded-full border border-white/[0.08] bg-zinc-900/80 px-2.5 py-1 text-[11px] font-medium text-zinc-300"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="space-y-3">
         <h2 className="text-sm font-semibold text-white">Zutaten</h2>
-        <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-900/80">
-          {(recipe.ingredients ?? []).map((ing) => (
-            <li
-              key={ing.name + ing.amount}
-              className="flex justify-between gap-3 px-4 py-3 text-sm"
-            >
-              <span className="text-zinc-200">{ing.name}</span>
-              <span className="shrink-0 tabular-nums text-zinc-400">{ing.amount}</span>
-            </li>
-          ))}
-        </ul>
+        {groups.map((g) => (
+          <div key={g.label} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-900/80">
+            {g.label !== "Zutaten" && (
+              <p className="border-b border-white/[0.06] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-400/90">
+                {g.label}
+              </p>
+            )}
+            <ul className="divide-y divide-white/[0.06]">
+              {g.items.map((ing) => (
+                <li
+                  key={ing.name + ing.amount}
+                  className="flex justify-between gap-3 px-4 py-2.5 text-sm"
+                >
+                  <span className="text-zinc-200">{ing.name}</span>
+                  <span className="shrink-0 tabular-nums text-zinc-400">
+                    {ing.amount}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
 
       <section className="space-y-2">
@@ -270,6 +321,66 @@ export default function RezeptDetailPage() {
           ))}
         </ol>
       </section>
+
+      {recipe.tips && recipe.tips.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-white">
+            <Lightbulb className="h-4 w-4 text-amber-400" />
+            Tipps
+          </h2>
+          <ul className="space-y-2">
+            {recipe.tips.map((tip) => (
+              <li
+                key={tip}
+                className="rounded-2xl border border-amber-500/15 bg-amber-500/5 px-4 py-3 text-sm leading-relaxed text-zinc-300"
+              >
+                {tip}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {recipe.variations && recipe.variations.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-white">
+            <Sparkles className="h-4 w-4 text-violet-400" />
+            Variationen
+          </h2>
+          <div className="space-y-2">
+            {recipe.variations.map((v) => (
+              <div
+                key={v.title}
+                className="rounded-2xl border border-white/[0.08] bg-zinc-900/70 px-4 py-3"
+              >
+                <p className="text-xs font-bold uppercase tracking-wide text-violet-300">
+                  {v.title}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                  {v.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {(recipe.storageNote || recipe.mealPrepNote) && (
+        <section className="space-y-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-4 py-3 text-sm text-zinc-400">
+          {recipe.storageNote && (
+            <p>
+              <span className="font-semibold text-zinc-300">Aufbewahrung: </span>
+              {recipe.storageNote}
+            </p>
+          )}
+          {recipe.mealPrepNote && (
+            <p>
+              <span className="font-semibold text-zinc-300">Meal Prep: </span>
+              {recipe.mealPrepNote}
+            </p>
+          )}
+        </section>
+      )}
 
       {!pickMeal ? (
         <div className="sticky bottom-20 z-10 space-y-2">

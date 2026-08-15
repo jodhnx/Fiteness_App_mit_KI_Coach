@@ -17,9 +17,17 @@ import type { HomeDataPayload } from "@/lib/home-defaults";
 import {
   publishNutritionDashboard,
   HOME_DATA_CACHE_KEY,
+  HOME_DATA_EVENT,
+  NUTRITION_DASHBOARD_CACHE_KEY,
   PROFILE_CACHE_KEY,
 } from "@/lib/nutrition-sync";
-import { setCached } from "@/lib/client-cache";
+import {
+  bindCacheOwner,
+  getCached,
+  getCacheOwner,
+  hydratePersistentCaches,
+  setCached,
+} from "@/lib/client-cache";
 import {
   isValidDashboardPayload,
   normalizeNutritionDashboard,
@@ -30,8 +38,8 @@ import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
 import { warmFoodHistoryCache } from "@/lib/food-history-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 
-/** Hard cap — never block the UI longer than this (not a minimum). */
-const BOOT_MAX_MS = 2_800;
+/** Absolute max — prefer finishing earlier when cache or critical data is ready. */
+const BOOT_MAX_MS = 1_500;
 
 async function fetchOk(url: string) {
   const res = await fetch(url, { credentials: "same-origin" });
@@ -39,9 +47,31 @@ async function fetchOk(url: string) {
   return res.json();
 }
 
+function hasCriticalHomeReady(): boolean {
+  const home = getCached(HOME_DATA_CACHE_KEY, { allowStale: true });
+  const dash = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
+    allowStale: true,
+  });
+  const dashOk =
+    dash != null &&
+    isValidDashboardPayload(dash) &&
+    isNutritionDashboardToday(dash.date);
+  return home != null && dashOk;
+}
+
+function applyHomePayload(home: HomeDataPayload) {
+  const normalized = normalizeHomeData(home);
+  setCached(HOME_DATA_CACHE_KEY, normalized, 900_000);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent(HOME_DATA_EVENT, { detail: normalized })
+    );
+  }
+}
+
 /**
- * Stable app shell — one-shot boot ≤3s, parallel critical data.
- * Never remounts providers on menu switches.
+ * Cache-first boot: if this account already has Home+Nutrition cached,
+ * show the app immediately and refresh in the background.
  */
 export function AppClientShell({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
@@ -49,8 +79,11 @@ export function AppClientShell({ children }: { children: ReactNode }) {
   const loadedFor = useRef<string | null>(null);
   const booting = useRef(false);
 
-  const [splashVisible, setSplashVisible] = useState(true);
-  const [bootProgress, setBootProgress] = useState(0.08);
+  const [splashVisible, setSplashVisible] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !hasBootSplashCompleted();
+  });
+  const [bootProgress, setBootProgress] = useState(0.1);
 
   useEffect(() => {
     if (hasBootSplashCompleted()) {
@@ -61,7 +94,7 @@ export function AppClientShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (status === "loading") {
-      setBootProgress((p) => Math.max(p, 0.12));
+      setBootProgress((p) => Math.max(p, 0.15));
       return;
     }
 
@@ -97,54 +130,100 @@ export function AppClientShell({ children }: { children: ReactNode }) {
       booting.current = false;
     };
 
+    // Bind + hydrate disk cache for THIS user before deciding to wait
+    const owner = getCacheOwner();
+    if (owner && owner !== userId) {
+      /* SessionCacheGuard clears on mismatch; don't hydrate foreign data */
+    } else {
+      bindCacheOwner(userId);
+      hydratePersistentCaches(userId);
+    }
+
+    // Warm path: cached Home already usable → show app now
+    if (hasCriticalHomeReady()) {
+      setBootProgress(0.85);
+      finish();
+      // Background refresh (non-blocking)
+      void Promise.all([
+        fetchOk("/api/home"),
+        fetchOk("/api/nutrition/dashboard"),
+        fetchOk("/api/profile"),
+      ]).then(([home, dash, profile]) => {
+        if (cancelled) return;
+        if (home) applyHomePayload(home as HomeDataPayload);
+        if (
+          dash &&
+          isValidDashboardPayload(dash) &&
+          isNutritionDashboardToday((dash as NutritionDashboardPayload).date)
+        ) {
+          publishNutritionDashboard(
+            normalizeNutritionDashboard(dash as NutritionDashboardPayload)
+          );
+        }
+        if (
+          profile &&
+          ((profile as ProfileServerPrefetch).user ||
+            (profile as ProfileServerPrefetch).profile)
+        ) {
+          setCached(PROFILE_CACHE_KEY, profile, 900_000);
+        }
+      });
+      void Promise.all([
+        fetchOk("/api/progress"),
+        fetchOk("/api/workouts/sessions?active=1"),
+      ]).then(([progress, active]) => {
+        if (progress) setCached(PROGRESS_CACHE_KEY, progress, 600_000);
+        if (active) setCached("workouts-active", active, 180_000);
+      });
+      return;
+    }
+
     const deadline = window.setTimeout(finish, BOOT_MAX_MS);
 
     void (async () => {
       try {
-        setBootProgress(0.2);
+        setBootProgress(0.25);
 
-        // Critical path: home + nutrition + profile in parallel
-        const critical = Promise.all([
+        const [home, dash, profile] = await Promise.all([
           fetchOk("/api/home"),
           fetchOk("/api/nutrition/dashboard"),
           fetchOk("/api/profile"),
-        ]).then(([home, dash, profile]) => {
-          if (cancelled) return;
-          setBootProgress(0.55);
+        ]);
 
-          if (home) {
-            setCached(HOME_DATA_CACHE_KEY, normalizeHomeData(home as HomeDataPayload), 900_000);
-          }
-          if (
-            dash &&
-            isValidDashboardPayload(dash) &&
-            isNutritionDashboardToday((dash as NutritionDashboardPayload).date)
-          ) {
-            publishNutritionDashboard(
-              normalizeNutritionDashboard(dash as NutritionDashboardPayload)
-            );
-          }
-          if (profile && ((profile as ProfileServerPrefetch).user || (profile as ProfileServerPrefetch).profile)) {
-            setCached(PROFILE_CACHE_KEY, profile, 900_000);
-          }
-          setBootProgress(0.75);
-        });
+        if (cancelled) return;
+        setBootProgress(0.7);
 
-        // Secondary: progress + workouts (don't block past deadline)
-        const secondary = Promise.all([
+        if (home) applyHomePayload(home as HomeDataPayload);
+        if (
+          dash &&
+          isValidDashboardPayload(dash) &&
+          isNutritionDashboardToday((dash as NutritionDashboardPayload).date)
+        ) {
+          publishNutritionDashboard(
+            normalizeNutritionDashboard(dash as NutritionDashboardPayload)
+          );
+        }
+        if (
+          profile &&
+          ((profile as ProfileServerPrefetch).user ||
+            (profile as ProfileServerPrefetch).profile)
+        ) {
+          setCached(PROFILE_CACHE_KEY, profile, 900_000);
+        }
+
+        setBootProgress(0.9);
+        finish();
+
+        void Promise.all([
           fetchOk("/api/progress"),
           fetchOk("/api/workouts/sessions?active=1"),
-          fetchOk("/api/recipes/catalog?limit=24&page=1"),
+          fetchOk("/api/recipes/catalog?limit=12&page=1"),
         ]).then(([progress, active, recipes]) => {
           if (cancelled) return;
           if (progress) setCached(PROGRESS_CACHE_KEY, progress, 600_000);
           if (active) setCached("workouts-active", active, 180_000);
           if (recipes) setCached("recipe-catalog-page:1", recipes, 300_000);
         });
-
-        await critical;
-        if (!cancelled) finish();
-        void secondary.catch(() => undefined);
       } catch (e) {
         console.error("[AppClientShell] boot load failed", e);
         finish();

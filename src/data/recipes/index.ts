@@ -10,6 +10,7 @@ import { SNACK_RECIPES } from "./snacks";
 import { EXTRA_RECIPES } from "./extra";
 import { MEGA_RECIPES } from "./mega";
 import { resolveRecipeImageUrl } from "./images";
+import { recipeTotalMinutes } from "./types";
 
 export * from "./types";
 export { resolveRecipeImageUrl, RECIPE_IMAGE_BY_ID } from "./images";
@@ -53,7 +54,7 @@ export function searchFitnessRecipes(
         return r.mealSlot === f;
       }
       if (f === "under-500") return r.calories < 500;
-      if (f === "under-30") return r.prepMinutes < 30;
+      if (f === "under-30") return recipeTotalMinutes(r) < 30;
       return r.tags.includes(f as FitnessRecipe["tags"][number]);
     });
   });

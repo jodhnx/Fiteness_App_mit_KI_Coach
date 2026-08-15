@@ -5,6 +5,7 @@
 
 import {
   FITNESS_RECIPES,
+  recipeTotalMinutes,
   type FitnessRecipe,
   type RecipeMealSlot,
   type RecipeTag,
@@ -17,6 +18,7 @@ export type RecipeListItem = Pick<
   | "mealSlot"
   | "tags"
   | "prepMinutes"
+  | "cookMinutes"
   | "calories"
   | "proteinG"
   | "carbsG"
@@ -43,6 +45,7 @@ function toListItem(r: FitnessRecipe): RecipeListItem {
     mealSlot: r.mealSlot,
     tags: r.tags,
     prepMinutes: r.prepMinutes,
+    cookMinutes: r.cookMinutes,
     calories: r.calories,
     proteinG: r.proteinG,
     carbsG: r.carbsG,
@@ -63,7 +66,7 @@ function matchesFilters(r: FitnessRecipe, filters: string[]): boolean {
       return r.mealSlot === (f as RecipeMealSlot);
     }
     if (f === "under-500") return r.calories < 500;
-    if (f === "under-30") return r.prepMinutes < 30;
+    if (f === "under-30") return recipeTotalMinutes(r) < 30;
     return r.tags.includes(f as RecipeTag);
   });
 }

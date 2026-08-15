@@ -13,6 +13,7 @@ type CardRecipe = Pick<
   | "name"
   | "mealSlot"
   | "prepMinutes"
+  | "cookMinutes"
   | "calories"
   | "proteinG"
   | "emoji"
@@ -31,6 +32,8 @@ export const RecipeCard = memo(function RecipeCard({
   onToggleFavorite?: (id: string) => void;
   priority?: boolean;
 }) {
+  const timeMin =
+    (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0) || recipe.prepMinutes;
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-900/70 transition-colors hover:border-white/[0.14]">
       <Link href={`/rezepte/${recipe.id}`} prefetch className="block active:opacity-95">
@@ -75,7 +78,7 @@ export const RecipeCard = memo(function RecipeCard({
             </span>
             <span className="inline-flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {recipe.prepMinutes} Min
+              {timeMin} Min
             </span>
           </div>
         </div>
