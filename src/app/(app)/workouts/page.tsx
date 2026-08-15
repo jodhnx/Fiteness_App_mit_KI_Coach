@@ -27,13 +27,9 @@ export default function WorkoutsHubPage() {
   const [activeCleared, setActiveCleared] = useState(false);
   const fetchOpts = { revalidateOnMount: false, staleRatio: 0.95 } as const;
 
-  const { data: sessionData } = useCachedFetch<{ session: { id: string; name?: string } | null }>(
-    "workouts-active",
-    "/api/workouts/sessions?active=1",
-    90_000,
-    6_000,
-    fetchOpts
-  );
+  const { data: sessionData } = useCachedFetch<{
+    session: { id: string; name?: string } | null;
+  }>("workouts-active", "/api/workouts/sessions?active=1", 90_000, 6_000, fetchOpts);
   const { data: plansData } = useCachedFetch<{
     plans: { id: string; name: string; lastSessionAt?: string | null }[];
   }>("workouts-my-plans-hub", "/api/workouts/plans", 120_000, 6_000, fetchOpts);
@@ -75,71 +71,87 @@ export default function WorkoutsHubPage() {
   const recoveryMuscles = filterDisplayMuscles(recoveryData?.recovery ?? []);
 
   return (
-    <PageShell className="-mt-1 pb-24" bottomNav={false}>
+    <PageShell title="Training" className="space-y-4 pb-24" bottomNav={false}>
       <PageIntro pageId="workouts" />
 
       {activeSession && (
-        <div className="rounded-3xl border border-cyan-500/30 bg-cyan-500/10 p-4 mb-1">
-          <p className="text-xs text-cyan-300/80 uppercase tracking-wide font-medium">Läuft gerade</p>
-          <p className="text-lg font-bold text-white mt-1">{activeSession.name ?? "Training"}</p>
+        <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-300/80">
+            Läuft gerade
+          </p>
+          <p className="mt-1 text-lg font-bold text-white">
+            {activeSession.name ?? "Training"}
+          </p>
           <Button
-            className="w-full mt-3 h-14 text-base rounded-2xl"
+            className="mt-3 h-12 w-full rounded-2xl text-base"
             onClick={() => router.push(`/workouts/live/${activeSession.id}`)}
           >
-            <Play className="h-5 w-5 mr-2" />
+            <Play className="mr-2 h-5 w-5" />
             Fortsetzen
           </Button>
         </div>
       )}
 
-      <TrainingChoiceCard
-        href="/workouts/my-plans"
-        title="Meine Pläne"
-        description="Eigene Trainingspläne · Schnell starten"
-        icon={FolderOpen}
-        iconClassName="bg-violet-500/15 text-violet-400"
-        meta={lastPlanLabel}
-      />
-      <TrainingChoiceCard
-        href="/workouts/catalog"
-        title="Vorgefertigte Pläne"
-        description="Push/Pull · Ober/Unter · Ganzkörper · Anfänger · Muskelaufbau"
-        icon={BookOpen}
-        iconClassName="bg-cyan-500/15 text-cyan-400"
-      />
-      <TrainingChoiceCard
-        href="/workouts/quick"
-        title="Quick Workout"
-        description="Sofort starten · Übungen auswählen · Kein Plan nötig"
-        icon={Zap}
-        iconClassName="bg-amber-500/15 text-amber-400"
-      />
-      <TrainingChoiceCard
-        href="/workouts/journey"
-        title="Historie"
-        description="Vergangene Workouts · Kalender · Streak · Volumen"
-        icon={Map}
-        iconClassName="bg-emerald-500/15 text-emerald-400"
-        meta={
-          streak > 0
-            ? `${streak} Tage Streak · ${sessions30} Trainings (30T)`
-            : `${sessions30} Trainings in 30 Tagen`
-        }
-      />
-      <TrainingChoiceCard
-        href="/workouts/records"
-        title="Rekorde"
-        description="Persönliche Bestleistungen & Highlights"
-        icon={Trophy}
-        iconClassName="bg-yellow-500/15 text-yellow-400"
-      />
-      <TrainingChoiceCard
-        href="/workouts/exercises"
-        title="Übungen durchsuchen"
-        description="Suche · Muskelgruppen · Favoriten"
-        icon={Dumbbell}
-        iconClassName="bg-rose-500/15 text-rose-400"
-      />
+      <section className="space-y-2.5">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500">
+          Schnellstart
+        </h2>
+        <TrainingChoiceCard
+          href="/workouts/quick"
+          title="Quick Workout"
+          description="Sofort starten · Kein Plan nötig"
+          icon={Zap}
+          iconClassName="bg-amber-500/15 text-amber-400"
+          featured
+        />
+        <TrainingChoiceCard
+          href="/workouts/my-plans"
+          title="Meine Pläne"
+          description="Eigene Pläne · Schnell starten"
+          icon={FolderOpen}
+          iconClassName="bg-violet-500/15 text-violet-400"
+          meta={lastPlanLabel}
+        />
+        <TrainingChoiceCard
+          href="/workouts/catalog"
+          title="Vorgefertigte Pläne"
+          description="Push/Pull · Ganzkörper · Muskelaufbau"
+          icon={BookOpen}
+          iconClassName="bg-cyan-500/15 text-cyan-400"
+        />
+      </section>
+
+      <section className="space-y-2.5">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500">
+          Übersicht
+        </h2>
+        <TrainingChoiceCard
+          href="/workouts/journey"
+          title="Historie"
+          description="Kalender · Streak · Volumen"
+          icon={Map}
+          iconClassName="bg-emerald-500/15 text-emerald-400"
+          meta={
+            streak > 0
+              ? `${streak} Tage Streak · ${sessions30} Trainings (30T)`
+              : `${sessions30} Trainings in 30 Tagen`
+          }
+        />
+        <TrainingChoiceCard
+          href="/workouts/records"
+          title="Rekorde"
+          description="Persönliche Bestleistungen"
+          icon={Trophy}
+          iconClassName="bg-yellow-500/15 text-yellow-400"
+        />
+        <TrainingChoiceCard
+          href="/workouts/exercises"
+          title="Übungen"
+          description="Suche · Muskelgruppen · Favoriten"
+          icon={Dumbbell}
+          iconClassName="bg-rose-500/15 text-rose-400"
+        />
+      </section>
 
       <MuscleRecoveryPanel muscles={recoveryMuscles} variant="section" />
     </PageShell>

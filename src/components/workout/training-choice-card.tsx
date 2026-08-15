@@ -13,6 +13,7 @@ type Props = {
   iconClassName?: string;
   meta?: string;
   onClick?: () => void;
+  featured?: boolean;
 };
 
 export function TrainingChoiceCard({
@@ -23,28 +24,35 @@ export function TrainingChoiceCard({
   iconClassName,
   meta,
   onClick,
+  featured,
 }: Props) {
   const inner = (
     <>
       <div
         className={cn(
-          "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl",
+          "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
           iconClassName ?? "bg-cyan-500/15 text-cyan-400"
         )}
       >
-        <Icon className="h-7 w-7" />
+        <Icon className="h-6 w-6" />
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xl font-bold text-white">{title}</p>
-        <p className="text-sm text-zinc-400 mt-0.5">{description}</p>
-        {meta && <p className="text-xs text-cyan-400/80 mt-2 font-medium">{meta}</p>}
+      <div className="min-w-0 flex-1">
+        <p className="text-base font-bold text-white">{title}</p>
+        <p className="mt-0.5 text-sm leading-snug text-zinc-400">{description}</p>
+        {meta && (
+          <p className="mt-1.5 text-xs font-medium text-cyan-400/85">{meta}</p>
+        )}
       </div>
-      <ChevronRight className="h-6 w-6 text-zinc-600 shrink-0" />
+      <ChevronRight className="h-5 w-5 shrink-0 text-zinc-600" />
     </>
   );
 
-  const className =
-    "flex items-center gap-4 w-full rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5 text-left transition-all active:scale-[0.98] hover:border-cyan-500/30 hover:bg-zinc-900";
+  const className = cn(
+    "flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition-all active:scale-[0.99]",
+    featured
+      ? "border-cyan-500/25 bg-gradient-to-br from-cyan-500/10 to-zinc-900/80 hover:border-cyan-500/40"
+      : "border-white/[0.08] bg-zinc-900/70 hover:border-white/[0.14] hover:bg-zinc-900"
+  );
 
   if (onClick) {
     return (

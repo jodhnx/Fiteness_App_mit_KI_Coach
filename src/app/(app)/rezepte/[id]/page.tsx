@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -8,6 +9,8 @@ import {
   Clock,
   Heart,
   Plus,
+  Users,
+  Gauge,
 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
@@ -25,6 +28,12 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import type { MealType } from "@prisma/client";
 
 const FAV_CACHE = "recipe-catalog-favorites";
+
+const DIFFICULTY: Record<string, string> = {
+  easy: "Einfach",
+  medium: "Mittel",
+  hard: "Anspruchsvoll",
+};
 
 export default function RezeptDetailPage() {
   const params = useParams();
@@ -68,6 +77,8 @@ export default function RezeptDetailPage() {
       setFavorited(!next);
       setCached(FAV_CACHE, prev, 180_000);
       toast.error("Favorit konnte nicht gespeichert werden");
+    } else {
+      toast.success(next ? "Zu Favoriten hinzugefügt" : "Favorit entfernt");
     }
   }, [favorited, id]);
 
@@ -108,7 +119,7 @@ export default function RezeptDetailPage() {
     return (
       <PageShell title="Rezept" className="pb-24">
         <p className="text-zinc-400">Rezept nicht gefunden.</p>
-        <Link href="/rezepte" className="text-accent text-sm mt-4 inline-block">
+        <Link href="/rezepte" className="mt-4 inline-block text-sm text-accent">
           ← Zurück zu Rezepten
         </Link>
       </PageShell>
@@ -118,16 +129,21 @@ export default function RezeptDetailPage() {
   const servingG = recipeServingGrams(recipe);
 
   return (
-    <PageShell
-      title={recipe.name}
-      className="pb-28 space-y-5"
-      maxWidth="2xl"
-      action={
+    <PageShell className="space-y-5 pb-28" maxWidth="2xl">
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href="/rezepte"
+          prefetch
+          className="inline-flex items-center gap-1 text-sm font-medium text-accent"
+        >
+          <ChevronLeft className="h-5 w-5" />
+          Rezepte
+        </Link>
         <button
           type="button"
           onClick={() => void toggleFavorite()}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700"
-          aria-label="Favorit"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900/80"
+          aria-label="Favorisieren"
         >
           <Heart
             className={cn(
@@ -136,64 +152,43 @@ export default function RezeptDetailPage() {
             )}
           />
         </button>
-      }
-    >
-      <Link
-        href="/rezepte"
-        prefetch
-        className="inline-flex items-center gap-1 text-sm font-medium text-accent -mt-2"
-      >
-        <ChevronLeft className="h-5 w-5" />
-        Rezepte
-      </Link>
+      </div>
 
-      <div
-        className={cn(
-          "rounded-3xl h-40 flex items-center justify-center bg-gradient-to-br border border-white/[0.08]",
-          recipe.accent
+      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-3xl border border-white/[0.08] bg-zinc-800">
+        {recipe.imageUrl ? (
+          <Image
+            src={recipe.imageUrl}
+            alt={recipe.name}
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 672px"
+            className="object-cover"
+          />
+        ) : (
+          <div
+            className={cn(
+              "absolute inset-0 flex items-center justify-center bg-gradient-to-br",
+              recipe.accent
+            )}
+          >
+            <span className="text-6xl" aria-hidden>
+              {recipe.emoji}
+            </span>
+          </div>
         )}
-      >
-        <span className="text-6xl" aria-hidden>
-          {recipe.emoji}
-        </span>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-transparent to-transparent" />
       </div>
 
       <div>
-        <p className="text-xs text-zinc-500 uppercase tracking-wide">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
           {MEAL_TYPE_LABELS[recipe.mealSlot]}
         </p>
-        <h1 className="text-2xl font-bold text-white mt-1">{recipe.name}</h1>
-        <p className="text-sm text-zinc-400 mt-2 leading-relaxed">{recipe.description}</p>
-        <p className="flex items-center gap-1.5 text-sm text-zinc-400 mt-3 flex-wrap">
-          <Clock className="h-4 w-4" />
-          {recipe.prepMinutes ?? "—"} Min · {recipe.servings ?? 1} Portion
-          {(recipe.servings ?? 1) !== 1 ? "en" : ""} ·{" "}
-          {recipe.difficulty === "easy"
-            ? "Einfach"
-            : recipe.difficulty === "medium"
-              ? "Mittel"
-              : recipe.difficulty === "hard"
-                ? "Anspruchsvoll"
-                : "—"}
-          · {servingG} g
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-white">
+          {recipe.name}
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+          {recipe.description}
         </p>
-        {recipe.source && (
-          <p className="text-xs text-zinc-500 mt-2">
-            Quelle:{" "}
-            {recipe.source.url ? (
-              <a
-                href={recipe.source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent underline"
-              >
-                {recipe.source.name}
-              </a>
-            ) : (
-              recipe.source.name
-            )}
-          </p>
-        )}
       </div>
 
       <div className="grid grid-cols-4 gap-2">
@@ -207,27 +202,53 @@ export default function RezeptDetailPage() {
             key={m.l}
             className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 px-2 py-3 text-center"
           >
-            <p className="text-[10px] text-zinc-500 uppercase">{m.l}</p>
-            <p className="text-sm font-bold text-white tabular-nums mt-1">{m.v}</p>
+            <p className="text-[10px] uppercase tracking-wide text-zinc-500">{m.l}</p>
+            <p className="mt-1 text-sm font-bold tabular-nums text-white">{m.v}</p>
           </div>
         ))}
       </div>
-      {recipe.fiberG != null && (
-        <p className="text-xs text-zinc-500 tabular-nums -mt-2">
-          Ballaststoffe: {recipe.fiberG} g
-        </p>
-      )}
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
+          <Clock className="h-4 w-4 text-cyan-400" />
+          <div>
+            <p className="text-[10px] text-zinc-500">Zeit</p>
+            <p className="text-xs font-semibold text-white">{recipe.prepMinutes} Min</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
+          <Users className="h-4 w-4 text-cyan-400" />
+          <div>
+            <p className="text-[10px] text-zinc-500">Portionen</p>
+            <p className="text-xs font-semibold text-white">{recipe.servings ?? 1}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
+          <Gauge className="h-4 w-4 text-cyan-400" />
+          <div>
+            <p className="text-[10px] text-zinc-500">Level</p>
+            <p className="text-xs font-semibold text-white">
+              {DIFFICULTY[recipe.difficulty] ?? "—"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <p className="text-xs tabular-nums text-zinc-500">
+        Gesamtgewicht ca. {servingG} g
+        {recipe.fiberG != null ? ` · Ballaststoffe ${recipe.fiberG} g` : ""}
+      </p>
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-white">Zutaten</h2>
-        <ul className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 divide-y divide-white/[0.06]">
+        <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-900/80">
           {(recipe.ingredients ?? []).map((ing) => (
             <li
               key={ing.name + ing.amount}
               className="flex justify-between gap-3 px-4 py-3 text-sm"
             >
               <span className="text-zinc-200">{ing.name}</span>
-              <span className="text-zinc-400 tabular-nums shrink-0">{ing.amount}</span>
+              <span className="shrink-0 tabular-nums text-zinc-400">{ing.amount}</span>
             </li>
           ))}
         </ul>
@@ -241,28 +262,44 @@ export default function RezeptDetailPage() {
               key={i}
               className="flex gap-3 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-4 py-3"
             >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent text-xs font-bold">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent">
                 {i + 1}
               </span>
-              <p className="text-sm text-zinc-300 leading-relaxed pt-0.5">{step}</p>
+              <p className="pt-0.5 text-sm leading-relaxed text-zinc-300">{step}</p>
             </li>
           ))}
         </ol>
       </section>
 
       {!pickMeal ? (
-        <Button
-          type="button"
-          variant="premium"
-          className="w-full h-12 sticky bottom-20 z-10"
-          onClick={() => setPickMeal(true)}
-        >
-          <Plus className="h-4 w-4 mr-1.5" />
-          Zur Ernährung hinzufügen
-        </Button>
+        <div className="sticky bottom-20 z-10 space-y-2">
+          <Button
+            type="button"
+            variant="premium"
+            className="h-12 w-full"
+            onClick={() => setPickMeal(true)}
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            Zur Ernährung hinzufügen
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-full"
+            onClick={() => void toggleFavorite()}
+          >
+            <Heart
+              className={cn(
+                "mr-1.5 h-4 w-4",
+                favorited && "fill-rose-500 text-rose-500"
+              )}
+            />
+            {favorited ? "Favorisiert" : "Favorisieren"}
+          </Button>
+        </div>
       ) : (
-        <div className="rounded-2xl border border-accent/30 bg-zinc-900/95 p-4 space-y-2 sticky bottom-20 z-10 shadow-xl">
-          <p className="text-sm font-medium text-white mb-2">Mahlzeit wählen</p>
+        <div className="sticky bottom-20 z-10 space-y-2 rounded-2xl border border-accent/30 bg-zinc-900/95 p-4 shadow-xl">
+          <p className="mb-2 text-sm font-medium text-white">Mahlzeit wählen</p>
           <div className="grid grid-cols-2 gap-2">
             {TRACK_MEAL_ORDER.map((m) => (
               <Button

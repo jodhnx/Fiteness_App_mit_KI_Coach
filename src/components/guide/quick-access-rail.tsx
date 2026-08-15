@@ -2,39 +2,34 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import {
-  Dumbbell,
-  Plus,
-  Camera,
-  Watch,
-  MessageCircle,
-  Users,
-} from "lucide-react";
+import { Dumbbell, Plus, Scale, Footprints, MessageCircle, BookOpen } from "lucide-react";
 import { hapticTap } from "@/lib/haptic";
 
 const ACTIONS = [
-  { href: "/workouts/quick", label: "Training", icon: Dumbbell },
-  { href: "/nutrition?add=LUNCH", label: "Essen", icon: Plus },
-  { href: "/progress#photos", label: "Foto", icon: Camera },
-  { href: "/geraete", label: "Geräte", icon: Watch },
+  { href: "/nutrition?add=LUNCH", label: "Mahlzeit", icon: Plus },
+  { href: "/workouts/quick", label: "Workout", icon: Dumbbell },
+  { href: "/progress?log=1", label: "Gewicht", icon: Scale },
+  { href: "/rezepte", label: "Rezepte", icon: BookOpen },
+  { href: "/geraete", label: "Schritte", icon: Footprints },
   { href: "/coach", label: "Coach", icon: MessageCircle },
-  { href: "/social", label: "Social", icon: Users },
 ] as const;
 
-/** Compact quick-access rail for frequent actions. */
+/** Compact quick-access rail — primary actions first. */
 export const QuickAccessRail = memo(function QuickAccessRail() {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
       {ACTIONS.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}
           prefetch
           onClick={() => hapticTap()}
-          className="shrink-0 flex flex-col items-center gap-1.5 min-w-[64px] rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5 active:scale-95 transition-transform"
+          className="flex min-w-[68px] shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-white/[0.08] bg-zinc-900/60 px-3 py-2.5 transition-transform active:scale-95"
         >
-          <Icon className="h-5 w-5 text-accent" />
-          <span className="text-[10px] font-medium text-zinc-300">{label}</span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/12">
+            <Icon className="h-4 w-4 text-accent" />
+          </span>
+          <span className="text-[10px] font-semibold text-zinc-300">{label}</span>
         </Link>
       ))}
     </div>

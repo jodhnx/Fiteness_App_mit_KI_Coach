@@ -10,6 +10,7 @@ import { PENDING_LIVE_SESSION_KEY } from "@/lib/workout-cache-sync";
 import { resetNavCacheWarmer } from "@/lib/nav-cache-warmer";
 import { clearExercisePickerListsCache } from "@/lib/exercise-picker-cache";
 import { clearExerciseSearchCache } from "@/lib/exercise-search-cache";
+import { clearBootSplashFlag } from "@/lib/boot-splash";
 
 const LOCAL_KEYS = [
   "nexform:shopping-list-v1",
@@ -61,6 +62,7 @@ export function clearAllUserClientState(): void {
   clearExercisePickerListsCache();
   clearExerciseSearchCache();
   resetNavCacheWarmer();
+  clearBootSplashFlag();
 
   try {
     clearPhoneSensorConsent();

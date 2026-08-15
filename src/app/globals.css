@@ -11,6 +11,10 @@ html[data-theme="turquoise"] {
   --accent-ring: rgba(34, 211, 238, 0.4);
   --card: rgba(255, 255, 255, 0.05);
   --border: rgba(255, 255, 255, 0.1);
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.5rem;
 }
 
 html[data-theme="blue"] {

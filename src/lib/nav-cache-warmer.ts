@@ -93,6 +93,22 @@ export function warmNavDataCaches() {
         120_000
       ).catch(() => {});
     }
+    if (isCacheStale("recipe-catalog-api", 0.9)) {
+      void fetchCached(
+        "recipe-catalog-api",
+        async () => {
+          const d = await fetchJson<{ favoriteIds?: string[] }>(
+            "/api/recipes/catalog"
+          );
+          if (Array.isArray(d.favoriteIds)) {
+            const { setCached } = await import("@/lib/client-cache");
+            setCached("recipe-catalog-favorites", d.favoriteIds, 180_000);
+          }
+          return d;
+        },
+        180_000
+      ).catch(() => {});
+    }
   });
 }
 

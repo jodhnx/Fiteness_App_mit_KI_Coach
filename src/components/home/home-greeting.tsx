@@ -18,14 +18,15 @@ export const HomeGreeting = memo(function HomeGreeting({
   const first = name?.trim()?.split(/\s+/)[0];
 
   return (
-    <div className="pt-0.5 pb-1">
-      <h1 className="text-[1.65rem] leading-tight font-bold text-white tracking-tight">
+    <div className="pb-1 pt-0.5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+        Heute
+      </p>
+      <h1 className="mt-0.5 text-[1.55rem] font-bold leading-tight tracking-tight text-white">
         {first ? (
           <>
-            Guten {part}{" "}
-            <span className="bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
-              {first}
-            </span>
+            Guten {part},{" "}
+            <span className="text-accent">{first}</span>
           </>
         ) : (
           "Willkommen zurück"

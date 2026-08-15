@@ -17,18 +17,18 @@ export type HomeWidgetConfig = {
   visible: boolean;
 };
 
-const STORAGE_KEY = "nexform:home-widgets-v1";
+const STORAGE_KEY = "nexform:home-widgets-v2";
 
 export const DEFAULT_HOME_WIDGETS: HomeWidgetConfig[] = [
+  { id: "dashboard", label: "Tagesstatus", visible: true },
   { id: "quickAccess", label: "Schnellzugriffe", visible: true },
-  { id: "dashboard", label: "Tages-Dashboard", visible: true },
+  { id: "training", label: "Training heute", visible: true },
   { id: "dayGoals", label: "Tagesziele", visible: true },
-  { id: "health", label: "Gesundheit", visible: true },
-  { id: "training", label: "Training", visible: true },
-  { id: "dayFocus", label: "Fokus", visible: true },
   { id: "progress", label: "Fortschritt", visible: true },
-  { id: "daySummary", label: "Tageszusammenfassung", visible: true },
-  { id: "achievements", label: "Erfolge", visible: true },
+  { id: "health", label: "Gesundheit", visible: false },
+  { id: "dayFocus", label: "Fokus", visible: false },
+  { id: "daySummary", label: "Tageszusammenfassung", visible: false },
+  { id: "achievements", label: "Erfolge", visible: false },
 ];
 
 export function loadHomeWidgets(): HomeWidgetConfig[] {
