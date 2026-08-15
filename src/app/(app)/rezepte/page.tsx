@@ -106,7 +106,12 @@ export default function RezeptePage() {
   }, [query, filters, results]);
 
   return (
-    <PageShell title="Rezepte" subtitle="Fitness-Rezepte für deinen Tag" maxWidth="2xl" className="pb-28 space-y-4">
+    <PageShell
+      title="Rezepte"
+      subtitle={`${FITNESS_RECIPES.length} Fitness-Rezepte · Filter & Favoriten`}
+      maxWidth="2xl"
+      className="pb-28 space-y-4"
+    >
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
         <Input

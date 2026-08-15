@@ -3,10 +3,8 @@
 import { memo } from "react";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
-import { PremiumCard } from "@/components/ui/premium-card";
-import { MEAL_TYPE_LABELS } from "@/lib/meal-types";
 
-/** Compact end-of-day summary under meals — Apple Fitness style. */
+/** Slim daily snapshot — meals already shown as chips above. */
 export const NutritionDaySummary = memo(function NutritionDaySummary({
   dashboard,
 }: {
@@ -14,72 +12,52 @@ export const NutritionDaySummary = memo(function NutritionDaySummary({
 }) {
   if (!hasNutritionTargets(dashboard)) return null;
 
-  const { consumed, targets, remaining, mealsByType, water } = dashboard;
-
-  const mealCounts = mealsByType.map((slot) => ({
-    type: slot.mealType,
-    label: MEAL_TYPE_LABELS[slot.mealType],
-    items: slot.items.length,
-    kcal: Math.round(slot.totals.calories),
-  }));
-
-  const loggedMeals = mealCounts.filter((m) => m.items > 0).length;
+  const { consumed, targets, remaining, water, mealsByType } = dashboard;
+  const logged = mealsByType.filter((m) => m.items.length > 0).length;
+  const total = mealsByType.length;
   const caloriePct = targets.calories
     ? Math.min(100, Math.round((consumed.calories / targets.calories) * 100))
     : 0;
+  const over = Math.max(0, Math.round(consumed.calories - targets.calories));
 
   return (
-    <PremiumCard className="space-y-4">
-      <div>
-        <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em]">
-          Tageszusammenfassung
-        </h2>
-        <p className="text-sm text-zinc-300 mt-1">
-          {loggedMeals} von {mealCounts.length} Mahlzeiten · {caloriePct}% des
-          Kalorienziels
+    <div className="rounded-2xl border border-white/[0.07] bg-zinc-900/60 px-3.5 py-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.14em]">
+          Übersicht
+        </p>
+        <p className="text-[11px] text-zinc-400 tabular-nums">
+          {logged}/{total} Mahlzeiten · {caloriePct}%
         </p>
       </div>
-
-      <div className="grid grid-cols-2 gap-3 text-sm">
+      <div className="grid grid-cols-3 gap-2 text-center">
         <div>
-          <p className="text-[10px] text-zinc-500 uppercase">Verbraucht</p>
-          <p className="font-semibold text-white tabular-nums">
-            {Math.round(consumed.calories).toLocaleString("de-DE")} kcal
+          <p className="text-[9px] text-zinc-500 uppercase">Gegessen</p>
+          <p className="text-sm font-semibold text-white tabular-nums">
+            {Math.round(consumed.calories).toLocaleString("de-DE")}
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-zinc-500 uppercase">Übrig</p>
-          <p className="font-semibold text-accent tabular-nums">
-            {Math.round(remaining.calories).toLocaleString("de-DE")} kcal
+          <p className="text-[9px] text-zinc-500 uppercase">
+            {over > 0 ? "Über" : "Übrig"}
+          </p>
+          <p
+            className={`text-sm font-semibold tabular-nums ${
+              over > 0 ? "text-red-400" : "text-accent"
+            }`}
+          >
+            {over > 0
+              ? `+${over}`
+              : Math.round(remaining.calories).toLocaleString("de-DE")}
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-zinc-500 uppercase">Protein</p>
-          <p className="font-medium text-zinc-200 tabular-nums">
-            {Math.round(consumed.proteinG)} / {Math.round(targets.proteinG)} g
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] text-zinc-500 uppercase">Wasser</p>
-          <p className="font-medium text-zinc-200 tabular-nums">
-            {Math.round(water.consumedMl)} / {Math.round(water.targetMl)} ml
+          <p className="text-[9px] text-zinc-500 uppercase">Wasser</p>
+          <p className="text-sm font-semibold text-white tabular-nums">
+            {Math.round(water.consumedMl / 100) / 10}l
           </p>
         </div>
       </div>
-
-      <ul className="space-y-1.5 border-t border-white/5 pt-3">
-        {mealCounts.map((m) => (
-          <li
-            key={m.type}
-            className="flex items-center justify-between text-xs text-zinc-400"
-          >
-            <span>{m.label}</span>
-            <span className="tabular-nums text-zinc-300">
-              {m.items > 0 ? `${m.items} · ${m.kcal} kcal` : "—"}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </PremiumCard>
+    </div>
   );
 });

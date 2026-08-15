@@ -164,10 +164,34 @@ export default function RezeptDetailPage() {
         </p>
         <h1 className="text-2xl font-bold text-white mt-1">{recipe.name}</h1>
         <p className="text-sm text-zinc-400 mt-2 leading-relaxed">{recipe.description}</p>
-        <p className="flex items-center gap-1.5 text-sm text-zinc-400 mt-3">
+        <p className="flex items-center gap-1.5 text-sm text-zinc-400 mt-3 flex-wrap">
           <Clock className="h-4 w-4" />
-          {recipe.prepMinutes} Minuten · {servingG} g Portion
+          {recipe.prepMinutes} Min · {recipe.servings} Portion
+          {recipe.servings !== 1 ? "en" : ""} ·{" "}
+          {recipe.difficulty === "easy"
+            ? "Einfach"
+            : recipe.difficulty === "medium"
+              ? "Mittel"
+              : "Anspruchsvoll"}
+          · {servingG} g
         </p>
+        {recipe.source && (
+          <p className="text-xs text-zinc-500 mt-2">
+            Quelle:{" "}
+            {recipe.source.url ? (
+              <a
+                href={recipe.source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent underline"
+              >
+                {recipe.source.name}
+              </a>
+            ) : (
+              recipe.source.name
+            )}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-4 gap-2">
@@ -232,7 +256,7 @@ export default function RezeptDetailPage() {
           onClick={() => setPickMeal(true)}
         >
           <Plus className="h-4 w-4 mr-1.5" />
-          Zu Mahlzeit hinzufügen
+          Zur Ernährung hinzufügen
         </Button>
       ) : (
         <div className="rounded-2xl border border-accent/30 bg-zinc-900/95 p-4 space-y-2 sticky bottom-20 z-10 shadow-xl">
