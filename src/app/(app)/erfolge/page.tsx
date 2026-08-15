@@ -76,7 +76,7 @@ export default function ErfolgePage() {
 
     const levelKey = "erfolge-last-level";
     const prevLevel = sessionStorage.getItem(levelKey);
-    const curLevel = rawData.level.level;
+    const curLevel = rawData.level?.level ?? 0;
     if (prevLevel != null && Number(prevLevel) < curLevel) {
       pushLevelUpEvent(curLevel);
     }

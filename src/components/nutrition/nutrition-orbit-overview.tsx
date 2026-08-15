@@ -18,7 +18,7 @@ const MEAL_EMOJI: Record<string, string> = {
 };
 
 type Props = {
-  dashboard: NutritionDashboardPayload;
+  dashboard: NutritionDashboardPayload | null | undefined;
   onAddMeal?: (meal: MealType) => void;
 };
 
@@ -30,7 +30,36 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   dashboard,
   onAddMeal,
 }: Props) {
-  const { consumed, targets, remaining, mealsByType } = dashboard;
+  if (!dashboard) {
+    return (
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 px-6 py-8 text-center">
+        <p className="text-sm text-zinc-400">Daten werden geladen …</p>
+      </div>
+    );
+  }
+
+  const consumed = dashboard.consumed ?? {
+    calories: 0,
+    proteinG: 0,
+    carbsG: 0,
+    fatG: 0,
+  };
+  const targets = dashboard.targets ?? {
+    calories: 0,
+    proteinG: 0,
+    carbsG: 0,
+    fatG: 0,
+  };
+  const remaining = dashboard.remaining ?? {
+    calories: 0,
+    proteinG: 0,
+    carbsG: 0,
+    fatG: 0,
+  };
+  const mealsByType = Array.isArray(dashboard.mealsByType)
+    ? dashboard.mealsByType
+    : [];
+
   const ready = hasNutritionTargets(dashboard);
   const incomplete = nutritionProfileIncomplete(dashboard);
 
@@ -50,15 +79,15 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     );
   }
 
-  const kcalTarget = Math.round(targets.calories);
-  const kcalConsumed = Math.round(consumed.calories);
+  const kcalTarget = Math.round(targets.calories ?? 0);
+  const kcalConsumed = Math.round(consumed.calories ?? 0);
   const overBy = Math.max(0, kcalConsumed - kcalTarget);
   const isOver = overBy > 0;
 
   const slots = TRACK_MEAL_ORDER.map((type) => {
     const found = mealsByType.find((m) => m.mealType === type);
-    const items = found?.items.length ?? 0;
-    const kcal = Math.round(found?.totals.calories ?? 0);
+    const items = Array.isArray(found?.items) ? found.items.length : 0;
+    const kcal = Math.round(found?.totals?.calories ?? 0);
     return { type, items, kcal, open: items === 0 };
   });
 
@@ -66,24 +95,24 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     {
       key: "p",
       label: "Protein",
-      value: Math.round(consumed.proteinG),
-      target: Math.round(targets.proteinG),
+      value: Math.round(consumed.proteinG ?? 0),
+      target: Math.round(targets.proteinG ?? 0),
       bar: "bg-rose-400",
       tint: "text-rose-400",
     },
     {
       key: "c",
       label: "KH",
-      value: Math.round(consumed.carbsG),
-      target: Math.round(targets.carbsG),
+      value: Math.round(consumed.carbsG ?? 0),
+      target: Math.round(targets.carbsG ?? 0),
       bar: "bg-amber-400",
       tint: "text-amber-400",
     },
     {
       key: "f",
       label: "Fett",
-      value: Math.round(consumed.fatG),
-      target: Math.round(targets.fatG),
+      value: Math.round(consumed.fatG ?? 0),
+      target: Math.round(targets.fatG ?? 0),
       bar: "bg-sky-400",
       tint: "text-sky-400",
     },

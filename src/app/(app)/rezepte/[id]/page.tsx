@@ -166,13 +166,15 @@ export default function RezeptDetailPage() {
         <p className="text-sm text-zinc-400 mt-2 leading-relaxed">{recipe.description}</p>
         <p className="flex items-center gap-1.5 text-sm text-zinc-400 mt-3 flex-wrap">
           <Clock className="h-4 w-4" />
-          {recipe.prepMinutes} Min · {recipe.servings} Portion
-          {recipe.servings !== 1 ? "en" : ""} ·{" "}
+          {recipe.prepMinutes ?? "—"} Min · {recipe.servings ?? 1} Portion
+          {(recipe.servings ?? 1) !== 1 ? "en" : ""} ·{" "}
           {recipe.difficulty === "easy"
             ? "Einfach"
             : recipe.difficulty === "medium"
               ? "Mittel"
-              : "Anspruchsvoll"}
+              : recipe.difficulty === "hard"
+                ? "Anspruchsvoll"
+                : "—"}
           · {servingG} g
         </p>
         {recipe.source && (
@@ -219,7 +221,7 @@ export default function RezeptDetailPage() {
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-white">Zutaten</h2>
         <ul className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 divide-y divide-white/[0.06]">
-          {recipe.ingredients.map((ing) => (
+          {(recipe.ingredients ?? []).map((ing) => (
             <li
               key={ing.name + ing.amount}
               className="flex justify-between gap-3 px-4 py-3 text-sm"
@@ -234,7 +236,7 @@ export default function RezeptDetailPage() {
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-white">Zubereitung</h2>
         <ol className="space-y-2">
-          {recipe.steps.map((step, i) => (
+          {(recipe.steps ?? []).map((step, i) => (
             <li
               key={i}
               className="flex gap-3 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-4 py-3"

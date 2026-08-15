@@ -41,10 +41,14 @@ export const MealTrackList = memo(function MealTrackList({
   onDeleteMeal,
   onAddClick,
 }: Props) {
+  const slots = Array.isArray(meals) ? meals : [];
+
   return (
     <div className="space-y-2">
-      {meals.map((slot) => {
+      {slots.map((slot) => {
         const emoji = MEAL_EMOJI[slot.mealType] ?? "🍽";
+        const items = Array.isArray(slot.items) ? slot.items : [];
+        const totals = slot.totals ?? { calories: 0, proteinG: 0 };
         return (
           <div
             key={slot.mealType}
@@ -56,31 +60,31 @@ export const MealTrackList = memo(function MealTrackList({
               </span>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-white text-[15px]">
-                  {MEAL_TYPE_LABELS[slot.mealType]}
+                  {MEAL_TYPE_LABELS[slot.mealType] ?? slot.mealType}
                 </p>
                 <p className="text-xs text-zinc-500 tabular-nums mt-0.5">
-                  {Math.round(slot.totals.calories)} kcal
-                  {slot.totals.proteinG > 0 && ` · P ${Math.round(slot.totals.proteinG)}g`}
-                  {(slot.totals.carbsG ?? 0) > 0 && ` · KH ${Math.round(slot.totals.carbsG!)}g`}
-                  {(slot.totals.fatG ?? 0) > 0 && ` · F ${Math.round(slot.totals.fatG!)}g`}
+                  {Math.round(totals.calories ?? 0)} kcal
+                  {(totals.proteinG ?? 0) > 0 && ` · P ${Math.round(totals.proteinG)}g`}
+                  {(totals.carbsG ?? 0) > 0 && ` · KH ${Math.round(totals.carbsG!)}g`}
+                  {(totals.fatG ?? 0) > 0 && ` · F ${Math.round(totals.fatG!)}g`}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => onAddClick?.(slot.mealType)}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white active:opacity-90"
-                aria-label={`Lebensmittel zu ${MEAL_TYPE_LABELS[slot.mealType]} hinzufügen`}
+                aria-label={`Lebensmittel zu ${MEAL_TYPE_LABELS[slot.mealType] ?? "Mahlzeit"} hinzufügen`}
               >
                 <Plus className="h-5 w-5 stroke-[2.5]" />
               </button>
             </div>
 
-            {slot.items.length > 0 && (
+            {items.length > 0 && (
               <ul className="border-t border-zinc-800/80 px-4 py-2 space-y-1.5">
-                {slot.items.map((item) => (
+                {items.map((item) => (
                   <li key={item.id} className="flex items-center gap-2 text-sm py-1">
                     <span className="text-zinc-300 truncate flex-1 min-w-0">
-                      {item.food.name}
+                      {item.food?.name ?? "Lebensmittel"}
                       <span className="text-zinc-600 ml-1">· {item.quantityG}g</span>
                     </span>
                     <span className="text-zinc-500 tabular-nums text-xs shrink-0">
@@ -109,7 +113,7 @@ export const MealTrackList = memo(function MealTrackList({
               </ul>
             )}
 
-            {slot.items.length === 0 && (
+            {items.length === 0 && (
               <button
                 type="button"
                 onClick={() => onAddClick?.(slot.mealType)}
@@ -119,7 +123,7 @@ export const MealTrackList = memo(function MealTrackList({
               </button>
             )}
 
-            {slot.mealId && onDeleteMeal && slot.items.length > 0 && (
+            {slot.mealId && onDeleteMeal && items.length > 0 && (
               <div className="px-4 pb-2">
                 <button
                   type="button"

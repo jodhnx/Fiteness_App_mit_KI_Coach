@@ -18,6 +18,7 @@ import { PhoneSensorWarmup } from "@/components/health/phone-sensor-warmup";
 import { MealReminderWarmup } from "@/components/nutrition/meal-reminder-warmup";
 import { FeatureTour } from "@/components/guide/feature-tour";
 import { PersistentTabProvider } from "@/components/layout/persistent-tab-provider";
+import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import { cn } from "@/lib/utils";
 
 function isImmersiveRoute(pathname: string) {
@@ -58,7 +59,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
             >
               <GuestUpgradeBanner />
-              <PersistentTabProvider>{children}</PersistentTabProvider>
+              <AppErrorBoundary label="page">
+                <PersistentTabProvider>{children}</PersistentTabProvider>
+              </AppErrorBoundary>
             </main>
           </div>
           <BottomNav />

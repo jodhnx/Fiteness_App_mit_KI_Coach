@@ -8,12 +8,16 @@ import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 export const NutritionDaySummary = memo(function NutritionDaySummary({
   dashboard,
 }: {
-  dashboard: NutritionDashboardPayload;
+  dashboard: NutritionDashboardPayload | null | undefined;
 }) {
-  if (!hasNutritionTargets(dashboard)) return null;
+  if (!dashboard || !hasNutritionTargets(dashboard)) return null;
 
-  const { consumed, targets, remaining, water, mealsByType } = dashboard;
-  const logged = mealsByType.filter((m) => m.items.length > 0).length;
+  const consumed = dashboard.consumed ?? { calories: 0 };
+  const targets = dashboard.targets ?? { calories: 0 };
+  const remaining = dashboard.remaining ?? { calories: 0 };
+  const water = dashboard.water ?? { consumedMl: 0, targetMl: 2500 };
+  const mealsByType = Array.isArray(dashboard.mealsByType) ? dashboard.mealsByType : [];
+  const logged = mealsByType.filter((m) => (m.items?.length ?? 0) > 0).length;
   const total = mealsByType.length;
   const caloriePct = targets.calories
     ? Math.min(100, Math.round((consumed.calories / targets.calories) * 100))

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect, useRef } from "react";
+import { Suspense, useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
@@ -83,6 +83,22 @@ type ProgressPayload = {
 
 /** Progress — Übersicht → Diagramme → Details */
 export default function ProgressPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="animate-pulse space-y-4 max-w-2xl py-4">
+          <div className="h-8 w-40 bg-zinc-800 rounded" />
+          <div className="h-36 bg-zinc-800/80 rounded-2xl" />
+          <div className="h-48 bg-zinc-800/60 rounded-2xl" />
+        </div>
+      }
+    >
+      <ProgressPageInner />
+    </Suspense>
+  );
+}
+
+function ProgressPageInner() {
   const searchParams = useSearchParams();
   const logRef = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<WeightPeriod>("30d");
@@ -244,9 +260,9 @@ export default function ProgressPage() {
             <section className="space-y-3">
               <h2 className="text-sm font-semibold text-white px-0.5">Diagramme</h2>
               <ProgressChartsSection
-                nutritionTrend={dashboard.nutritionTrend}
-                calorieTarget={dashboard.calorieTarget}
-                proteinTargetG={dashboard.proteinTargetG}
+                nutritionTrend={dashboard.nutritionTrend ?? []}
+                calorieTarget={dashboard.calorieTarget ?? 0}
+                proteinTargetG={dashboard.proteinTargetG ?? 0}
                 weightChartPoints={analytics.chartPoints}
                 weightPeriod={period}
                 onWeightPeriodChange={setPeriod}
@@ -329,11 +345,11 @@ export default function ProgressPage() {
             {dashboard && (
               <>
                 <ProgressStatsSection
-                  trainingHistory={dashboard.trainingHistory}
-                  streaks={dashboard.streaks}
-                  personalRecords={dashboard.personalRecords}
+                  trainingHistory={dashboard.trainingHistory ?? []}
+                  streaks={dashboard.streaks ?? { training: null, active: null }}
+                  personalRecords={dashboard.personalRecords ?? []}
                 />
-                <TrainingHistorySection sessions={dashboard.trainingHistory} />
+                <TrainingHistorySection sessions={dashboard.trainingHistory ?? []} />
               </>
             )}
           </section>

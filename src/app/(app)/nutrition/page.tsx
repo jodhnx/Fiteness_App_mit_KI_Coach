@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
 import { useFoodFavorites } from "@/hooks/use-food-favorites";
@@ -37,6 +37,22 @@ import { resetBodyScroll } from "@/lib/scroll-lock";
 const VALID_MEALS = new Set<string>(MEAL_TYPE_ORDER);
 
 export default function NutritionPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="animate-pulse space-y-3 max-w-lg py-4">
+          <div className="h-8 w-40 bg-zinc-800 rounded" />
+          <div className="h-56 bg-zinc-800/80 rounded-3xl" />
+          <div className="h-24 bg-zinc-800/60 rounded-2xl" />
+        </div>
+      }
+    >
+      <NutritionPageInner />
+    </Suspense>
+  );
+}
+
+function NutritionPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
@@ -221,7 +237,7 @@ export default function NutritionPage() {
         </div>
       )}
 
-      {!dashboard.profileComplete && dashboard.targets.calories <= 0 && (
+      {!dashboard?.profileComplete && (dashboard?.targets?.calories ?? 0) <= 0 && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
           Ziele fehlen —{" "}
           <Link href="/settings" className="underline font-medium">
@@ -242,7 +258,7 @@ export default function NutritionPage() {
           Mahlzeiten
         </h2>
         <MealTrackList
-          meals={dashboard.mealsByType}
+          meals={dashboard?.mealsByType ?? []}
           onRemove={removeItem}
           onEdit={editItemQuantity}
           onDeleteMeal={deleteMeal}
@@ -253,8 +269,8 @@ export default function NutritionPage() {
       <NutritionDaySummary dashboard={dashboard} />
 
       <WaterTracker
-        consumedMl={dashboard.water.consumedMl}
-        targetMl={dashboard.water.targetMl}
+        consumedMl={dashboard?.water?.consumedMl ?? 0}
+        targetMl={dashboard?.water?.targetMl ?? 2500}
         onAdd={addWater}
       />
 

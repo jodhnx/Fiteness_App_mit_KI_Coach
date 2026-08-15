@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
@@ -67,6 +67,22 @@ function syncLabel(status?: string, error?: string | null) {
 }
 
 export default function GeraetePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="animate-pulse space-y-4 max-w-lg py-4">
+          <div className="h-8 w-48 bg-zinc-800 rounded" />
+          <div className="h-32 bg-zinc-800/80 rounded-2xl" />
+          <div className="h-24 bg-zinc-800/60 rounded-2xl" />
+        </div>
+      }
+    >
+      <GeraetePageInner />
+    </Suspense>
+  );
+}
+
+function GeraetePageInner() {
   const searchParams = useSearchParams();
   const [providers, setProviders] = useState<ProviderMeta[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
