@@ -2,6 +2,10 @@
 
 import { useEffect } from "react";
 
+/**
+ * Shows actionable detail so production crashes are diagnosable.
+ * Chunk errors auto-recover once by clearing SW + reload.
+ */
 export default function GlobalError({
   error,
   reset,
@@ -10,7 +14,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[global-error]", error);
+    console.error("[global-error]", error.name, error.message, error.digest, error.stack);
     try {
       sessionStorage.setItem(
         "nexform:last-error",
@@ -33,7 +37,6 @@ export default function GlobalError({
       try {
         if (!sessionStorage.getItem("nexform:chunk-reload")) {
           sessionStorage.setItem("nexform:chunk-reload", "1");
-          // Clear stale SW/caches then reload once
           if ("serviceWorker" in navigator) {
             void navigator.serviceWorker
               .getRegistrations()
@@ -57,9 +60,9 @@ export default function GlobalError({
             NX
           </div>
           <p className="text-lg font-semibold">Unerwarteter Fehler</p>
-          <p className="text-sm text-zinc-400">
-            Bitte erneut versuchen. Wenn das Problem bleibt, App einmal vollständig schließen und
-            neu öffnen.
+          <p className="text-xs text-zinc-500 break-words font-mono">
+            {error.name}: {error.message}
+            {error.digest ? ` · ${error.digest}` : ""}
           </p>
           <button
             type="button"

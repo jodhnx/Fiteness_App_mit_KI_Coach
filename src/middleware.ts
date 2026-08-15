@@ -81,6 +81,13 @@ export default auth((req) => {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  // Document navigations must not be cached across deploys (prevents ChunkLoadError)
+  if (!path.startsWith("/api/")) {
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, max-age=0, must-revalidate"
+    );
+  }
   return response;
 });
 

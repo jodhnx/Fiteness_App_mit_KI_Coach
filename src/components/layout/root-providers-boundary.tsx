@@ -15,8 +15,8 @@ function isChunkError(error: Error) {
 }
 
 /**
- * Catches crashes in root providers (Preferences, Toaster, BootSplash)
- * before they escalate to Next.js global-error.tsx.
+ * Last client-side net before Next.js global-error.tsx.
+ * Plain HTML only — never import UI kits here.
  */
 export class RootProvidersBoundary extends Component<Props, State> {
   state: State = { error: null };
@@ -26,12 +26,34 @@ export class RootProvidersBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[RootProvidersBoundary]", error, info.componentStack);
+    console.error("[RootProvidersBoundary]", error.message, info.componentStack);
+    try {
+      sessionStorage.setItem(
+        "nexform:last-error",
+        JSON.stringify({
+          label: "root-providers",
+          name: error.name,
+          message: error.message,
+          stack: error.stack?.slice(0, 500),
+          at: Date.now(),
+        })
+      );
+    } catch {
+      /* ignore */
+    }
+
     if (typeof window !== "undefined" && isChunkError(error)) {
       try {
         if (!sessionStorage.getItem("nexform:chunk-reload")) {
           sessionStorage.setItem("nexform:chunk-reload", "1");
-          window.location.reload();
+          if ("serviceWorker" in navigator) {
+            void navigator.serviceWorker
+              .getRegistrations()
+              .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+              .finally(() => window.location.reload());
+          } else {
+            window.location.reload();
+          }
         }
       } catch {
         /* ignore */
@@ -41,6 +63,7 @@ export class RootProvidersBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
+      const msg = this.state.error.message || "Unbekannter Fehler";
       return (
         <div
           style={{
@@ -55,12 +78,12 @@ export class RootProvidersBoundary extends Component<Props, State> {
             textAlign: "center",
           }}
         >
-          <div style={{ maxWidth: 360 }}>
+          <div style={{ maxWidth: 380 }}>
             <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-              Kurz etwas schiefgelaufen
+              Bereich konnte nicht geladen werden
             </p>
-            <p style={{ fontSize: 14, color: "#a1a1aa", marginBottom: 20 }}>
-              Die App konnte diesen Schritt nicht laden. Bitte erneut versuchen.
+            <p style={{ fontSize: 13, color: "#a1a1aa", marginBottom: 12, wordBreak: "break-word" }}>
+              {msg}
             </p>
             <button
               type="button"

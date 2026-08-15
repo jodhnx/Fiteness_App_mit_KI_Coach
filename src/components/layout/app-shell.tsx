@@ -63,7 +63,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <GuestUpgradeBanner />
-                <AppErrorBoundary label="page">{children}</AppErrorBoundary>
+                {/* key=pathname resets boundary on nav so a crashed page doesn't stick */}
+                <AppErrorBoundary key={pathname ?? "page"} label="page">
+                  {children}
+                </AppErrorBoundary>
               </main>
             </div>
             <AppErrorBoundary label="nav">
@@ -76,9 +79,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 isAdmin={isAdmin}
               />
             </AppErrorBoundary>
-            <NotificationCenter />
-            <GamificationUnlockToast />
-            <FeatureTour />
+            <AppErrorBoundary label="overlays">
+              <NotificationCenter />
+              <GamificationUnlockToast />
+              <FeatureTour />
+            </AppErrorBoundary>
           </div>
         </PersistentTabProvider>
       </NotificationProvider>

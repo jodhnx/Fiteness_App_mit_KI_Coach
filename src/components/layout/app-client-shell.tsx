@@ -6,7 +6,6 @@ import { NutritionDataProvider } from "@/components/providers/nutrition-data-pro
 import { ProfileDataProvider } from "@/components/providers/profile-data-provider";
 import { HomeDataProvider } from "@/components/providers/home-data-provider";
 import { AppShell } from "@/components/layout/app-shell";
-import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 import { publishNutritionDashboard } from "@/lib/nutrition-sync";
@@ -16,10 +15,9 @@ import { isValidDashboardPayload, normalizeNutritionDashboard } from "@/lib/nutr
 import { isNutritionDashboardToday } from "@/lib/nutrition-day";
 
 /**
- * Client-owned app data shell.
- * Critical: does NOT re-seed from server layout props on every soft navigation
- * (that caused shell-level crashes → global-error "Unerwarteter Fehler").
- * Loads once when the authenticated user is known, then relies on client caches.
+ * Stable app shell — loads account data once after auth, never remounts
+ * providers on menu switches. No outer shell error boundary that would
+ * replace the entire UI (page boundary lives inside AppShell).
  */
 export function AppClientShell({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
@@ -68,7 +66,6 @@ export function AppClientShell({ children }: { children: ReactNode }) {
     };
   }, [userId, status]);
 
-  // Reset loader when user switches accounts
   useEffect(() => {
     if (status === "unauthenticated") {
       loadedFor.current = null;
@@ -76,14 +73,12 @@ export function AppClientShell({ children }: { children: ReactNode }) {
   }, [status]);
 
   return (
-    <AppErrorBoundary label="shell">
-      <ProfileDataProvider initialProfile={null}>
-        <NutritionDataProvider initialDashboard={null}>
-          <HomeDataProvider initialHome={null}>
-            <AppShell>{children}</AppShell>
-          </HomeDataProvider>
-        </NutritionDataProvider>
-      </ProfileDataProvider>
-    </AppErrorBoundary>
+    <ProfileDataProvider initialProfile={null}>
+      <NutritionDataProvider initialDashboard={null}>
+        <HomeDataProvider initialHome={null}>
+          <AppShell>{children}</AppShell>
+        </HomeDataProvider>
+      </NutritionDataProvider>
+    </ProfileDataProvider>
   );
 }

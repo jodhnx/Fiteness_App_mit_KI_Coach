@@ -119,7 +119,15 @@ export const NotificationCenter = memo(function NotificationCenter() {
                 <p className="text-sm font-semibold text-white mt-2">{n.title}</p>
                 <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{n.message}</p>
                 <p className="text-[10px] text-zinc-600 mt-2">
-                  {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: de })}
+                  {(() => {
+                    try {
+                      const d = new Date(n.createdAt);
+                      if (Number.isNaN(d.getTime())) return "";
+                      return formatDistanceToNow(d, { addSuffix: true, locale: de });
+                    } catch {
+                      return "";
+                    }
+                  })()}
                 </p>
               </div>
             );

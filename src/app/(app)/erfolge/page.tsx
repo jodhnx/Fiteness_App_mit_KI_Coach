@@ -58,30 +58,40 @@ export default function ErfolgePage() {
 
   useEffect(() => {
     if (!rawData) return;
-    const stored = sessionStorage.getItem("erfolge-unlocked-count");
-    const prev = stored ? Number(stored) : null;
-    if (prev != null && rawData.unlockedCount > prev) {
-      const newly = rawData.achievements.filter((a) => a.earned && a.earnedAt);
-      const latest = newly.sort((a, b) => (b.earnedAt ?? "").localeCompare(a.earnedAt ?? ""))[0];
-      if (latest) {
-        pushUnlockEvent({
-          name: latest.name,
-          icon: latest.icon,
-          tier: latest.tier,
-          xpReward: latest.xpReward,
-        });
+    try {
+      const stored = sessionStorage.getItem("erfolge-unlocked-count");
+      const prev = stored ? Number(stored) : null;
+      const unlocked = rawData.unlockedCount ?? 0;
+      const achievements = Array.isArray(rawData.achievements)
+        ? rawData.achievements
+        : [];
+      if (prev != null && unlocked > prev) {
+        const newly = achievements.filter((a) => a.earned && a.earnedAt);
+        const latest = newly.sort((a, b) =>
+          (b.earnedAt ?? "").localeCompare(a.earnedAt ?? "")
+        )[0];
+        if (latest) {
+          pushUnlockEvent({
+            name: latest.name,
+            icon: latest.icon,
+            tier: latest.tier,
+            xpReward: latest.xpReward,
+          });
+        }
       }
-    }
-    sessionStorage.setItem("erfolge-unlocked-count", String(rawData.unlockedCount));
+      sessionStorage.setItem("erfolge-unlocked-count", String(unlocked));
 
-    const levelKey = "erfolge-last-level";
-    const prevLevel = sessionStorage.getItem(levelKey);
-    const curLevel = rawData.level?.level ?? 0;
-    if (prevLevel != null && Number(prevLevel) < curLevel) {
-      pushLevelUpEvent(curLevel);
+      const levelKey = "erfolge-last-level";
+      const prevLevel = sessionStorage.getItem(levelKey);
+      const curLevel = rawData.level?.level ?? 0;
+      if (prevLevel != null && Number(prevLevel) < curLevel) {
+        pushLevelUpEvent(curLevel);
+      }
+      sessionStorage.setItem(levelKey, String(curLevel));
+    } catch (e) {
+      console.error("[erfolge] unlock tracking failed", e);
     }
-    sessionStorage.setItem(levelKey, String(curLevel));
-  }, [rawData?.unlockedCount, rawData?.achievements, rawData?.level.level]);
+  }, [rawData?.unlockedCount, rawData?.achievements, rawData?.level?.level]);
 
   const filtered = useMemo(() => {
     if (!data?.achievements) return [];

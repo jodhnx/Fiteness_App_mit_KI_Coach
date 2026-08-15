@@ -18,6 +18,7 @@ function isChunkError(error: Error) {
 /**
  * Isolates render crashes. Fallback uses plain HTML only — never imports UI
  * kits — so a failed chunk cannot break the recovery UI into global-error.
+ * Remount via key={pathname} on the page boundary to clear sticky errors.
  */
 export class AppErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
@@ -52,7 +53,30 @@ export class AppErrorBoundary extends Component<Props, State> {
       try {
         if (!sessionStorage.getItem(key)) {
           sessionStorage.setItem(key, "1");
-          window.location.reload();
+          if ("serviceWorker" in navigator) {
+            void navigator.serviceWorker
+              .getRegistrations()
+              .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+              .finally(() => {
+                try {
+                  void caches.keys().then((keys) =>
+                    Promise.all(
+                      keys
+                        .filter(
+                          (k) =>
+                            k.startsWith("nexform-") || k.startsWith("workbox-")
+                        )
+                        .map((k) => caches.delete(k))
+                    )
+                  );
+                } catch {
+                  /* ignore */
+                }
+                window.location.reload();
+              });
+          } else {
+            window.location.reload();
+          }
         }
       } catch {
         /* ignore */
@@ -66,19 +90,23 @@ export class AppErrorBoundary extends Component<Props, State> {
       return (
         <div className="mx-auto max-w-md px-2 py-10 text-center space-y-4">
           <p className="text-base font-semibold text-white">
-            {chunk ? "App-Update wird geladen…" : "Bereich konnte nicht geladen werden"}
+            {chunk
+              ? "App-Update wird geladen…"
+              : "Bereich konnte nicht geladen werden"}
           </p>
-          <p className="text-sm text-zinc-400 leading-relaxed">
+          <p className="text-sm text-zinc-400 leading-relaxed break-words">
             {chunk
               ? "Eine neue Version ist verfügbar. Bitte kurz neu laden."
-              : "Die Navigation bleibt nutzbar. Bitte diesen Bereich erneut versuchen."}
+              : `${this.state.error.name}: ${this.state.error.message}`}
           </p>
           <button
             type="button"
             className="w-full h-11 rounded-2xl bg-cyan-400 text-zinc-950 font-semibold"
             onClick={() => {
               this.setState({ error: null });
-              if (chunk && typeof window !== "undefined") window.location.reload();
+              if (chunk && typeof window !== "undefined") {
+                window.location.reload();
+              }
             }}
           >
             Erneut versuchen
@@ -88,7 +116,9 @@ export class AppErrorBoundary extends Component<Props, State> {
             className="w-full h-11 rounded-2xl border border-zinc-700 text-zinc-200"
             onClick={() => {
               this.setState({ error: null });
-              if (typeof window !== "undefined") window.location.href = "/home";
+              if (typeof window !== "undefined") {
+                window.location.href = "/home";
+              }
             }}
           >
             Zur Startseite

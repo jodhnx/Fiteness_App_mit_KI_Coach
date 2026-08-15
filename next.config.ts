@@ -32,11 +32,23 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Hashed assets — long cache is safe
         source: "/_next/static/:path*",
         headers: [
           {
             key: "Cache-Control",
             value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        // Never cache HTML shells — stale HTML + new chunks = ChunkLoadError → global-error
+        // Exclude hashed Next assets (already covered above)
+        source: "/((?!_next/static|_next/image|favicon.ico).*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, no-cache, no-store, max-age=0, must-revalidate",
           },
         ],
       },
@@ -58,7 +70,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=86400",
+            value: "public, max-age=0, must-revalidate",
           },
         ],
       },

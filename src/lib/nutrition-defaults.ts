@@ -84,7 +84,12 @@ export function createEmptyNutritionDashboard(
     date: format(day, "yyyy-MM-dd"),
     targets,
     consumed,
-    remaining: { ...targets },
+    remaining: {
+      calories: targets.calories,
+      proteinG: targets.proteinG,
+      carbsG: targets.carbsG,
+      fatG: targets.fatG,
+    },
     water: { consumedMl: 0, targetMl: targets.waterTargetMl },
     mealsByType: mealTypes.map((mealType) => ({
       mealType,

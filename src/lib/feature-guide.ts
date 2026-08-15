@@ -59,20 +59,36 @@ export const PAGE_INTROS: Record<
 
 export function hasSeenGuide(id: string): boolean {
   if (typeof window === "undefined") return true;
-  return localStorage.getItem(SEEN_PREFIX + id) === "1";
+  try {
+    return localStorage.getItem(SEEN_PREFIX + id) === "1";
+  } catch {
+    return true;
+  }
 }
 
 export function markGuideSeen(id: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SEEN_PREFIX + id, "1");
+  try {
+    localStorage.setItem(SEEN_PREFIX + id, "1");
+  } catch {
+    /* ignore */
+  }
 }
 
 export function isFeatureTourDone(): boolean {
   if (typeof window === "undefined") return true;
-  return localStorage.getItem(TOUR_DONE) === "1";
+  try {
+    return localStorage.getItem(TOUR_DONE) === "1";
+  } catch {
+    return true;
+  }
 }
 
 export function markFeatureTourDone() {
   if (typeof window === "undefined") return;
-  localStorage.setItem(TOUR_DONE, "1");
+  try {
+    localStorage.setItem(TOUR_DONE, "1");
+  } catch {
+    /* ignore */
+  }
 }
