@@ -4,9 +4,12 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useRef,
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 
 export const MAIN_TABS = [
   "/home",
@@ -17,6 +20,13 @@ export const MAIN_TABS = [
 ] as const;
 
 export type MainTab = (typeof MAIN_TABS)[number];
+
+const KEEP_ALIVE = new Set<MainTab>([
+  "/home",
+  "/workouts",
+  "/nutrition",
+  "/progress",
+]);
 
 export function matchMainTab(pathname: string | null): MainTab | null {
   if (!pathname) return null;
@@ -46,10 +56,7 @@ export function useMainTabNav() {
   return useContext(TabNavContext);
 }
 
-/**
- * Stable tab navigation helpers. No React-tree caching (that caused crashes).
- * Instant switches = router cache + client data caches + no loading.tsx.
- */
+/** Nav helpers only — wrap the whole shell so BottomNav can navigate. */
 export function PersistentTabProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -57,7 +64,7 @@ export function PersistentTabProvider({ children }: { children: ReactNode }) {
 
   const navigateMainTab = useCallback(
     (href: MainTab) => {
-      if (matchMainTab(pathname) === href) return;
+      if (pathname === href) return;
       router.prefetch(href);
       router.push(href);
     },
@@ -70,5 +77,53 @@ export function PersistentTabProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </TabNavContext.Provider>
+  );
+}
+
+/**
+ * Keep-alive for main tab PAGE trees only (not header/nav).
+ * Place around route `children` inside <main>.
+ */
+export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const activeTab = matchMainTab(pathname);
+  const keepActive =
+    activeTab != null && KEEP_ALIVE.has(activeTab) && pathname === activeTab;
+
+  const panels = useRef<Partial<Record<MainTab, ReactNode>>>({});
+
+  if (keepActive && activeTab && !panels.current[activeTab]) {
+    panels.current[activeTab] = children;
+  }
+
+  useEffect(() => {
+    const clear = () => {
+      panels.current = {};
+    };
+    window.addEventListener("nexform:user-state-cleared", clear);
+    return () => window.removeEventListener("nexform:user-state-cleared", clear);
+  }, []);
+
+  return (
+    <>
+      {MAIN_TABS.filter((t) => KEEP_ALIVE.has(t)).map((tab) => {
+        const node = panels.current[tab];
+        if (!node) return null;
+        const show = keepActive && activeTab === tab;
+        return (
+          <div
+            key={tab}
+            hidden={!show}
+            aria-hidden={!show}
+            style={show ? undefined : { display: "none" }}
+          >
+            <AppErrorBoundary label={`tab:${tab}`}>{node}</AppErrorBoundary>
+          </div>
+        );
+      })}
+      {!keepActive ? (
+        <AppErrorBoundary label="page">{children}</AppErrorBoundary>
+      ) : null}
+    </>
   );
 }

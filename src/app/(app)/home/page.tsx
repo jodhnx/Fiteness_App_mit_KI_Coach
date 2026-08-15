@@ -29,14 +29,12 @@ import { PageIntro } from "@/components/guide/page-intro";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
-import { getCached } from "@/lib/client-cache";
 import { isSameDay } from "date-fns";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 
 export default function HomePage() {
   const { status: sessionStatus } = useSession();
   const [workoutCleared, setWorkoutCleared] = useState(false);
-  const hasInitialCache = useMemo(() => getCached(HOME_DATA_CACHE_KEY) != null, []);
 
   useEffect(() => {
     try {
@@ -49,9 +47,9 @@ export default function HomePage() {
   const { data: rawData } = useCachedFetch<HomeDataPayload>(
     HOME_DATA_CACHE_KEY,
     "/api/home",
-    120_000,
+    900_000,
     6_000,
-    { revalidateOnMount: !hasInitialCache, staleRatio: 0.88 }
+    { revalidateOnMount: true, staleRatio: 0.5 }
   );
 
   const data = useHomeLiveData(rawData);

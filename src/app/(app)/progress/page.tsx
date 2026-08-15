@@ -104,16 +104,18 @@ function ProgressPageInner() {
   const [period, setPeriod] = useState<WeightPeriod>("30d");
 
   const hadCache = useMemo(
-    () => getCached<ProgressPayload>(PROGRESS_CACHE_KEY) != null || hasScreenLoaded("progress"),
+    () =>
+      getCached<ProgressPayload>(PROGRESS_CACHE_KEY, { allowStale: true }) !=
+        null || hasScreenLoaded("progress"),
     []
   );
 
   const { data: progressData, loading, reload } = useCachedFetch<ProgressPayload>(
     PROGRESS_CACHE_KEY,
     "/api/progress",
-    180_000,
+    600_000,
     6_000,
-    { revalidateOnMount: !hadCache, staleRatio: 0.85 }
+    { revalidateOnMount: true, staleRatio: 0.55 }
   );
 
   const [nutritionRev, setNutritionRev] = useState(0);

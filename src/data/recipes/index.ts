@@ -8,6 +8,7 @@ import { LUNCH_RECIPES } from "./lunch";
 import { DINNER_RECIPES } from "./dinner";
 import { SNACK_RECIPES } from "./snacks";
 import { EXTRA_RECIPES } from "./extra";
+import { MEGA_RECIPES } from "./mega";
 import { resolveRecipeImageUrl } from "./images";
 
 export * from "./types";
@@ -16,7 +17,7 @@ export { resolveRecipeImageUrl, RECIPE_IMAGE_BY_ID } from "./images";
 function withImages(list: FitnessRecipe[]): FitnessRecipe[] {
   return list.map((r) => ({
     ...r,
-    imageUrl: resolveRecipeImageUrl(r.id, r.imageUrl) ?? undefined,
+    imageUrl: resolveRecipeImageUrl(r.id, r.imageUrl, r.mealSlot) ?? undefined,
   }));
 }
 
@@ -26,6 +27,7 @@ export const FITNESS_RECIPES: FitnessRecipe[] = withImages([
   ...DINNER_RECIPES,
   ...SNACK_RECIPES,
   ...EXTRA_RECIPES,
+  ...MEGA_RECIPES,
 ]);
 
 const byId = new Map(FITNESS_RECIPES.map((r) => [r.id, r]));

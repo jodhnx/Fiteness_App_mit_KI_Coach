@@ -57,14 +57,38 @@ export function bindCacheOwner(userId: string): boolean {
   return false;
 }
 
-export function getCached<T>(key: string): T | null {
+export function getCached<T>(key: string, opts?: { allowStale?: boolean }): T | null {
   const entry = store.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expires) {
+  if (entry) {
+    if (Date.now() <= entry.expires) return entry.data as T;
+    if (opts?.allowStale) return entry.data as T;
     store.delete(key);
-    return null;
   }
-  return entry.data as T;
+
+  // Memory miss — try persistent disk cache (account-bound via hydrate/owner)
+  if (typeof window !== "undefined") {
+    try {
+      const hit = readPersistentCache(key);
+      if (hit) {
+        const remaining = hit.expires - Date.now();
+        if (remaining > 0) {
+          store.set(key, {
+            data: hit.data,
+            cachedAt: hit.expires - remaining,
+            expires: hit.expires,
+          });
+          return hit.data as T;
+        }
+        if (opts?.allowStale) {
+          return hit.data as T;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return null;
 }
 
 export function getCacheAgeMs(key: string): number | null {

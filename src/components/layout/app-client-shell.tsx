@@ -6,9 +6,7 @@ import { NutritionDataProvider } from "@/components/providers/nutrition-data-pro
 import { ProfileDataProvider } from "@/components/providers/profile-data-provider";
 import { HomeDataProvider } from "@/components/providers/home-data-provider";
 import { AppShell } from "@/components/layout/app-shell";
-import {
-  AppBootSplash,
-} from "@/components/layout/app-boot-splash";
+import { AppBootSplash } from "@/components/layout/app-boot-splash";
 import {
   hasBootSplashCompleted,
   markBootSplashCompleted,
@@ -30,9 +28,19 @@ import { isNutritionDashboardToday } from "@/lib/nutrition-day";
 import { normalizeHomeData } from "@/lib/home-defaults";
 import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
 import { warmFoodHistoryCache } from "@/lib/food-history-cache";
+import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
+
+/** Hard cap — never block the UI longer than this (not a minimum). */
+const BOOT_MAX_MS = 2_800;
+
+async function fetchOk(url: string) {
+  const res = await fetch(url, { credentials: "same-origin" });
+  if (!res.ok) return null;
+  return res.json();
+}
 
 /**
- * Stable app shell — one-shot boot splash on cold open only.
+ * Stable app shell — one-shot boot ≤3s, parallel critical data.
  * Never remounts providers on menu switches.
  */
 export function AppClientShell({ children }: { children: ReactNode }) {
@@ -41,7 +49,6 @@ export function AppClientShell({ children }: { children: ReactNode }) {
   const loadedFor = useRef<string | null>(null);
   const booting = useRef(false);
 
-  // Assume splash until we know this session already finished boot (avoids home flash)
   const [splashVisible, setSplashVisible] = useState(true);
   const [bootProgress, setBootProgress] = useState(0.08);
 
@@ -54,7 +61,7 @@ export function AppClientShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (status === "loading") {
-      setBootProgress((p) => Math.max(p, 0.15));
+      setBootProgress((p) => Math.max(p, 0.12));
       return;
     }
 
@@ -77,67 +84,78 @@ export function AppClientShell({ children }: { children: ReactNode }) {
     loadedFor.current = userId;
 
     let cancelled = false;
-    let steps = 0;
-    const TOTAL = 4;
-    const tick = () => {
-      steps += 1;
-      if (!cancelled) setBootProgress(Math.min(0.95, steps / TOTAL));
+    let finished = false;
+
+    const finish = () => {
+      if (cancelled || finished) return;
+      finished = true;
+      setBootProgress(1);
+      markBootSplashCompleted();
+      setSplashVisible(false);
+      warmNavDataCaches();
+      warmFoodHistoryCache();
+      booting.current = false;
     };
+
+    const deadline = window.setTimeout(finish, BOOT_MAX_MS);
 
     void (async () => {
       try {
-        setBootProgress(0.22);
+        setBootProgress(0.2);
 
-        const [homeRes, dashRes, profileRes] = await Promise.all([
-          fetch("/api/home", { credentials: "same-origin" }),
-          fetch("/api/nutrition/dashboard", { credentials: "same-origin" }),
-          fetch("/api/profile", { credentials: "same-origin" }),
-        ]);
+        // Critical path: home + nutrition + profile in parallel
+        const critical = Promise.all([
+          fetchOk("/api/home"),
+          fetchOk("/api/nutrition/dashboard"),
+          fetchOk("/api/profile"),
+        ]).then(([home, dash, profile]) => {
+          if (cancelled) return;
+          setBootProgress(0.55);
 
-        if (cancelled) return;
-        tick();
-
-        if (homeRes.ok) {
-          const home = (await homeRes.json()) as HomeDataPayload;
-          setCached(HOME_DATA_CACHE_KEY, normalizeHomeData(home), 120_000);
-        }
-        tick();
-
-        if (dashRes.ok) {
-          const dash = (await dashRes.json()) as NutritionDashboardPayload;
+          if (home) {
+            setCached(HOME_DATA_CACHE_KEY, normalizeHomeData(home as HomeDataPayload), 900_000);
+          }
           if (
+            dash &&
             isValidDashboardPayload(dash) &&
-            isNutritionDashboardToday(dash.date)
+            isNutritionDashboardToday((dash as NutritionDashboardPayload).date)
           ) {
-            publishNutritionDashboard(normalizeNutritionDashboard(dash));
+            publishNutritionDashboard(
+              normalizeNutritionDashboard(dash as NutritionDashboardPayload)
+            );
           }
-        }
-        tick();
+          if (profile && ((profile as ProfileServerPrefetch).user || (profile as ProfileServerPrefetch).profile)) {
+            setCached(PROFILE_CACHE_KEY, profile, 900_000);
+          }
+          setBootProgress(0.75);
+        });
 
-        if (profileRes.ok) {
-          const profile = (await profileRes.json()) as ProfileServerPrefetch;
-          if (profile?.user || profile?.profile) {
-            setCached(PROFILE_CACHE_KEY, profile, 120_000);
-          }
-        }
-        tick();
+        // Secondary: progress + workouts (don't block past deadline)
+        const secondary = Promise.all([
+          fetchOk("/api/progress"),
+          fetchOk("/api/workouts/sessions?active=1"),
+          fetchOk("/api/recipes/catalog?limit=24&page=1"),
+        ]).then(([progress, active, recipes]) => {
+          if (cancelled) return;
+          if (progress) setCached(PROGRESS_CACHE_KEY, progress, 600_000);
+          if (active) setCached("workouts-active", active, 180_000);
+          if (recipes) setCached("recipe-catalog-page:1", recipes, 300_000);
+        });
+
+        await critical;
+        if (!cancelled) finish();
+        void secondary.catch(() => undefined);
       } catch (e) {
         console.error("[AppClientShell] boot load failed", e);
+        finish();
       } finally {
-        if (!cancelled) {
-          setBootProgress(1);
-          markBootSplashCompleted();
-          setSplashVisible(false);
-          // Background warm — never blocks splash
-          warmNavDataCaches();
-          warmFoodHistoryCache();
-        }
-        booting.current = false;
+        window.clearTimeout(deadline);
       }
     })();
 
     return () => {
       cancelled = true;
+      window.clearTimeout(deadline);
     };
   }, [userId, status]);
 

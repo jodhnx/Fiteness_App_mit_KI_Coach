@@ -16,7 +16,7 @@ import { SessionCacheGuard } from "@/components/providers/session-cache-guard";
 import { PhoneSensorWarmup } from "@/components/health/phone-sensor-warmup";
 import { MealReminderWarmup } from "@/components/nutrition/meal-reminder-warmup";
 import { FeatureTour } from "@/components/guide/feature-tour";
-import { PersistentTabProvider } from "@/components/layout/persistent-tab-provider";
+import { PersistentTabProvider, TabKeepAliveOutlet } from "@/components/layout/persistent-tab-provider";
 import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import { cn } from "@/lib/utils";
 
@@ -63,10 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <GuestUpgradeBanner />
-                {/* key=pathname resets boundary on nav so a crashed page doesn't stick */}
-                <AppErrorBoundary key={pathname ?? "page"} label="page">
-                  {children}
-                </AppErrorBoundary>
+                <TabKeepAliveOutlet>{children}</TabKeepAliveOutlet>
               </main>
             </div>
             <AppErrorBoundary label="nav">

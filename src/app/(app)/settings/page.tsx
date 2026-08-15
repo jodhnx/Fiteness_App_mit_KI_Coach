@@ -322,45 +322,70 @@ function SettingsPageInner() {
       };
       setCached(PROFILE_CACHE_KEY, nextProfile, 120_000);
 
-      invalidateCache(NUTRITION_DASHBOARD_CACHE_KEY);
-      invalidateCache(HOME_DATA_CACHE_KEY);
+      // Capture dash BEFORE invalidate so we can patch targets immediately
+      const prevDash = getCached<NutritionDashboardPayload>(
+        NUTRITION_DASHBOARD_CACHE_KEY,
+        { allowStale: true }
+      );
+      const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
+        allowStale: true,
+      });
 
-      if (data.calculations) {
-        const dash = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
-        if (dash?.profileComplete) {
-          const targets = {
-            calories: data.calculations.calorieTarget,
-            proteinG: data.calculations.proteinTargetG,
-            carbsG: data.calculations.carbsTargetG,
-            fatG: data.calculations.fatTargetG,
-          };
-          publishNutritionDashboard({
-            ...dash,
-            targets: { ...dash.targets, ...targets, fiberG: dash.targets.fiberG },
-            remaining: {
-              calories: Math.max(0, targets.calories - dash.consumed.calories),
-              proteinG: Math.max(0, targets.proteinG - dash.consumed.proteinG),
-              carbsG: Math.max(0, targets.carbsG - dash.consumed.carbsG),
-              fatG: Math.max(0, targets.fatG - dash.consumed.fatG),
+      if (data.calculations && prevDash) {
+        const targets = {
+          calories: data.calculations.calorieTarget,
+          proteinG: data.calculations.proteinTargetG,
+          carbsG: data.calculations.carbsTargetG,
+          fatG: data.calculations.fatTargetG,
+        };
+        publishNutritionDashboard({
+          ...prevDash,
+          profileComplete: true,
+          targets: {
+            ...prevDash.targets,
+            ...targets,
+            fiberG: prevDash.targets.fiberG,
+            waterTargetMl: prevDash.targets.waterTargetMl,
+            nutritionGoal:
+              (data.profile?.nutritionGoal as typeof prevDash.targets.nutritionGoal) ??
+              prevDash.targets.nutritionGoal,
+          },
+          remaining: {
+            calories: Math.max(0, targets.calories - prevDash.consumed.calories),
+            proteinG: Math.max(0, targets.proteinG - prevDash.consumed.proteinG),
+            carbsG: Math.max(0, targets.carbsG - prevDash.consumed.carbsG),
+            fatG: Math.max(0, targets.fatG - prevDash.consumed.fatG),
+          },
+        });
+        const updatedDash = getCached<NutritionDashboardPayload>(
+          NUTRITION_DASHBOARD_CACHE_KEY
+        );
+        if (prevHome && updatedDash) {
+          setCached(
+            HOME_DATA_CACHE_KEY,
+            {
+              ...prevHome,
+              ...nutritionDashboardToHomeMacros(updatedDash),
+              userName: data.user?.name ?? prevHome.userName ?? null,
             },
-          });
-          const updatedDash = getCached<NutritionDashboardPayload>(
-            NUTRITION_DASHBOARD_CACHE_KEY
+            900_000
           );
-          const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
-          if (prevHome && updatedDash) {
-            setCached(
-              HOME_DATA_CACHE_KEY,
-              {
-                ...prevHome,
-                ...nutritionDashboardToHomeMacros(updatedDash),
-                userName: data.user?.name ?? prevHome.userName ?? null,
-              },
-              120_000
-            );
-          }
         }
       }
+
+      // Fresh server truth in background (does not wipe optimistic UI)
+      void fetch("/api/nutrition/dashboard", { credentials: "same-origin" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((dash) => {
+          if (dash) publishNutritionDashboard(dash);
+        })
+        .catch(() => undefined);
+      void fetch("/api/home", { credentials: "same-origin" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((home) => {
+          if (home) setCached(HOME_DATA_CACHE_KEY, home, 900_000);
+        })
+        .catch(() => undefined);
 
       if (data.user?.image !== undefined) {
         setUserImage(data.user.image);

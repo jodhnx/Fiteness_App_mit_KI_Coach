@@ -81,9 +81,23 @@ export const RECIPE_IMAGE_BY_ID: Record<string, string> = {
   "hummus-veggie": u("photo-1571066811602-716837d681de"),
 };
 
+/** Fallback by meal slot when a recipe has no dedicated photo. */
+export const RECIPE_IMAGE_BY_SLOT: Record<string, string> = {
+  BREAKFAST: u("photo-1533089860892-a7c6f0a88666"),
+  LUNCH: u("photo-1546069901-ba9599a7e63c"),
+  DINNER: u("photo-1467003909585-2f8a72700288"),
+  SNACK: u("photo-1488477181946-6428a0291777"),
+};
+
 export function resolveRecipeImageUrl(
   id: string,
-  fallback?: string | null
+  fallback?: string | null,
+  mealSlot?: string
 ): string | null {
-  return fallback || RECIPE_IMAGE_BY_ID[id] || null;
+  return (
+    fallback ||
+    RECIPE_IMAGE_BY_ID[id] ||
+    (mealSlot ? RECIPE_IMAGE_BY_SLOT[mealSlot] : null) ||
+    null
+  );
 }

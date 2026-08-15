@@ -21,8 +21,12 @@ export function useCachedFetch<T>(
 ) {
   const revalidateOnMount = options?.revalidateOnMount ?? false;
   const staleRatio = options?.staleRatio ?? 0.9;
-  const [data, setData] = useState<T | null>(() => getCached<T>(key));
-  const [loading, setLoading] = useState(() => getCached<T>(key) === null);
+  const [data, setData] = useState<T | null>(() =>
+    getCached<T>(key, { allowStale: true })
+  );
+  const [loading, setLoading] = useState(
+    () => getCached<T>(key, { allowStale: true }) === null
+  );
   const [error, setError] = useState<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
   const mounted = useRef(true);

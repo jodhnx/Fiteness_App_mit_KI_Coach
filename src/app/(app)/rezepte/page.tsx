@@ -1,57 +1,87 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Heart } from "lucide-react";
+import { Search, Heart, Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Input } from "@/components/ui/input";
 import { RecipeCard } from "@/components/recipes/recipe-card";
-import {
-  FITNESS_RECIPES,
-  RECIPE_FILTERS,
-  searchFitnessRecipes,
-  type FitnessRecipe,
-} from "@/data/fitness-recipes";
+import { RECIPE_FILTERS } from "@/data/fitness-recipes";
+import type { RecipeListItem } from "@/lib/recipes/catalog-query";
 import { getCached, setCached } from "@/lib/client-cache";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { hapticTap } from "@/lib/haptic";
+import { Button } from "@/components/ui/button";
 
 const FAV_CACHE = "recipe-catalog-favorites";
-const LIST_CACHE = "recipe-catalog-list";
 
-type CatalogPayload = {
-  recipes: FitnessRecipe[];
+type CatalogResponse = {
+  recipes: RecipeListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
   favoriteIds: string[];
+  catalogTotal: number;
 };
 
 export default function RezeptePage() {
   const [query, setQuery] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [filters, setFilters] = useState<string[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>(
     () => getCached<string[]>(FAV_CACHE) ?? []
   );
+  const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [catalogTotal, setCatalogTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setCached(LIST_CACHE, FITNESS_RECIPES, 3_600_000);
+    const t = window.setTimeout(() => setDebouncedQ(query.trim()), 220);
+    return () => window.clearTimeout(t);
+  }, [query]);
 
-    void fetch("/api/recipes/catalog", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: CatalogPayload | null) => {
-        if (!d) return;
-        setFavoriteIds(d.favoriteIds ?? []);
-        setCached(FAV_CACHE, d.favoriteIds ?? [], 180_000);
-      })
-      .catch(() => undefined);
-  }, []);
+  const load = useCallback(
+    async (pageNum: number, append: boolean) => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("page", String(pageNum));
+        params.set("limit", "24");
+        if (debouncedQ) params.set("q", debouncedQ);
+        for (const f of filters) params.append("filter", f);
 
-  const results = useMemo(
-    () => searchFitnessRecipes(query, filters),
-    [query, filters]
+        const res = await fetch(`/api/recipes/catalog?${params}`, {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Laden fehlgeschlagen");
+        const data = (await res.json()) as CatalogResponse;
+        setRecipes((prev) => (append ? [...prev, ...data.recipes] : data.recipes));
+        setHasMore(data.hasMore);
+        setTotal(data.total);
+        setCatalogTotal(data.catalogTotal ?? data.total);
+        setPage(data.page);
+        setFavoriteIds(data.favoriteIds ?? []);
+        setCached(FAV_CACHE, data.favoriteIds ?? [], 180_000);
+      } catch {
+        toast.error("Rezepte konnten nicht geladen werden");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [debouncedQ, filters]
   );
 
+  useEffect(() => {
+    void load(1, false);
+  }, [load]);
+
   const favorites = useMemo(
-    () => FITNESS_RECIPES.filter((r) => favoriteIds.includes(r.id)),
-    [favoriteIds]
+    () => recipes.filter((r) => favoriteIds.includes(r.id)),
+    [recipes, favoriteIds]
   );
 
   const toggleFilter = useCallback((id: string) => {
@@ -79,37 +109,20 @@ export default function RezeptePage() {
       if (!res.ok) {
         setFavoriteIds(favoriteIds);
         setCached(FAV_CACHE, favoriteIds, 180_000);
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error ?? "Favorit konnte nicht gespeichert werden");
+        toast.error("Favorit konnte nicht gespeichert werden");
       }
     },
     [favoriteIds]
   );
 
-  const grouped = useMemo(() => {
-    const order = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const;
-    const labels = {
-      BREAKFAST: "Frühstück",
-      LUNCH: "Mittagessen",
-      DINNER: "Abendessen",
-      SNACK: "Snacks",
-    };
-    if (query || filters.length > 0) {
-      return [{ key: "results", label: "Ergebnisse", items: results }];
-    }
-    return order.map((key) => ({
-      key,
-      label: labels[key],
-      items: FITNESS_RECIPES.filter((r) => r.mealSlot === key),
-    }));
-  }, [query, filters, results]);
-
-  let cardIndex = 0;
-
   return (
     <PageShell
       title="Rezepte"
-      subtitle={`${FITNESS_RECIPES.length} Fitness-Rezepte · Suche & Filter`}
+      subtitle={
+        catalogTotal > 0
+          ? `${catalogTotal} Rezepte · Suche, Filter & Favoriten`
+          : "Fitness-Rezepte"
+      }
       maxWidth="2xl"
       className="space-y-4 pb-28"
     >
@@ -118,7 +131,7 @@ export default function RezeptePage() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rezept suchen…"
+          placeholder="Rezept oder Zutat suchen…"
           className="h-12 rounded-2xl pl-10"
           autoComplete="off"
         />
@@ -145,57 +158,71 @@ export default function RezeptePage() {
         })}
       </div>
 
-      {favorites.length > 0 && !query && filters.length === 0 && (
+      {favorites.length > 0 && !debouncedQ && filters.length === 0 && (
         <section className="space-y-2.5">
           <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
             <Heart className="h-3.5 w-3.5 text-rose-400" />
-            Meine Favoriten
+            Favoriten (geladen)
           </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {favorites.map((r) => {
-              const priority = cardIndex++ < 4;
-              return (
-                <RecipeCard
-                  key={`fav-${r.id}`}
-                  recipe={r}
-                  favorited
-                  priority={priority}
-                  onToggleFavorite={toggleFavorite}
-                />
-              );
-            })}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+            {favorites.slice(0, 8).map((r, i) => (
+              <RecipeCard
+                key={`fav-${r.id}`}
+                recipe={r}
+                favorited
+                priority={i < 2}
+                onToggleFavorite={toggleFavorite}
+              />
+            ))}
           </div>
         </section>
       )}
 
-      {grouped.map((g) =>
-        g.items.length === 0 ? null : (
-          <section key={g.key} className="space-y-2.5">
-            <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
-              {g.label}
-            </h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {g.items.map((r) => {
-                const priority = cardIndex++ < 4;
-                return (
-                  <RecipeCard
-                    key={r.id}
-                    recipe={r}
-                    favorited={favoriteIds.includes(r.id)}
-                    priority={priority}
-                    onToggleFavorite={toggleFavorite}
-                  />
-                );
-              })}
-            </div>
-          </section>
-        )
+      <section className="space-y-2.5">
+        <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
+          {debouncedQ || filters.length > 0
+            ? `${total} Ergebnisse`
+            : "Entdecken"}
+        </h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+          {recipes.map((r, i) => (
+            <RecipeCard
+              key={r.id}
+              recipe={r}
+              favorited={favoriteIds.includes(r.id)}
+              priority={i < 4}
+              onToggleFavorite={toggleFavorite}
+            />
+          ))}
+        </div>
+      </section>
+
+      {loading && recipes.length === 0 && (
+        <div className="flex justify-center py-12 text-zinc-500">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
       )}
 
-      {results.length === 0 && (query || filters.length > 0) && (
+      {!loading && recipes.length === 0 && (
         <p className="py-10 text-center text-sm text-zinc-500">
           Keine Rezepte gefunden
         </p>
+      )}
+
+      {hasMore && (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 w-full"
+          disabled={loading}
+          onClick={() => void load(page + 1, true)}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            "Mehr laden"
+          )}
+        </Button>
       )}
     </PageShell>
   );
