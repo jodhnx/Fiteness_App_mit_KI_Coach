@@ -14,6 +14,7 @@ import {
   redirectAfterLogin,
 } from "@/lib/auth-flow";
 import { warmPostLoginCaches } from "@/lib/post-login-cache";
+import { clearAllUserClientState } from "@/lib/clear-user-client-state";
 import {
   AuthScreenLayout,
   GuestContinueButton,
@@ -120,7 +121,10 @@ function LoginForm() {
         variant="outline"
         className="w-full h-12 mt-3 rounded-xl border-zinc-700"
         disabled={loading}
-        onClick={() => signIn("google", { callbackUrl: DEFAULT_POST_LOGIN, redirect: true })}
+        onClick={() => {
+          clearAllUserClientState();
+          void signIn("google", { callbackUrl: DEFAULT_POST_LOGIN, redirect: true });
+        }}
       >
         Mit Google anmelden
       </Button>

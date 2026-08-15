@@ -6,17 +6,13 @@ import { Input } from "@/components/ui/input";
 import { useExerciseLibrarySearch, type LibraryExercise } from "@/hooks/use-exercise-library-search";
 import { cn } from "@/lib/utils";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
+import {
+  getExercisePickerListsCache,
+  setExercisePickerListsCache,
+} from "@/lib/exercise-picker-cache";
 
 type Tab = "favorites" | "recent" | "frequent";
 
-type ListsCache = {
-  recent: LibraryExercise[];
-  favorites: LibraryExercise[];
-  frequent: LibraryExercise[];
-  loadedAt: number;
-};
-
-let listsCache: ListsCache | null = null;
 const LISTS_TTL_MS = 120_000;
 
 type Props = {
@@ -62,9 +58,15 @@ function ExerciseRow({
 export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: Props) {
   const [tab, setTab] = useState<Tab>("favorites");
   const [search, setSearch] = useState("");
-  const [recent, setRecent] = useState<LibraryExercise[]>(listsCache?.recent ?? []);
-  const [favorites, setFavorites] = useState<LibraryExercise[]>(listsCache?.favorites ?? []);
-  const [frequent, setFrequent] = useState<LibraryExercise[]>(listsCache?.frequent ?? []);
+  const seed = getExercisePickerListsCache() as {
+    recent: LibraryExercise[];
+    favorites: LibraryExercise[];
+    frequent: LibraryExercise[];
+    loadedAt: number;
+  } | null;
+  const [recent, setRecent] = useState<LibraryExercise[]>(seed?.recent ?? []);
+  const [favorites, setFavorites] = useState<LibraryExercise[]>(seed?.favorites ?? []);
+  const [frequent, setFrequent] = useState<LibraryExercise[]>(seed?.frequent ?? []);
 
   const exclude = useMemo(() => new Set(excludeIds), [excludeIds]);
 
@@ -77,6 +79,12 @@ export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: 
   );
 
   const loadLists = useCallback(async () => {
+    const listsCache = getExercisePickerListsCache() as {
+      recent: LibraryExercise[];
+      favorites: LibraryExercise[];
+      frequent: LibraryExercise[];
+      loadedAt: number;
+    } | null;
     if (listsCache && Date.now() - listsCache.loadedAt < LISTS_TTL_MS) {
       setRecent(listsCache.recent);
       setFavorites(listsCache.favorites);
@@ -98,12 +106,12 @@ export function ExercisePickerSheet({ open, onClose, onPick, excludeIds = [] }: 
       const nextRecent = (recentData.exercises ?? []) as LibraryExercise[];
       const nextFavorites = (favData.exercises ?? []) as LibraryExercise[];
       const nextFrequent = (popData.exercises ?? []) as LibraryExercise[];
-      listsCache = {
+      setExercisePickerListsCache({
         recent: nextRecent,
         favorites: nextFavorites,
         frequent: nextFrequent,
         loadedAt: Date.now(),
-      };
+      });
       setRecent(nextRecent);
       setFavorites(nextFavorites);
       setFrequent(nextFrequent);

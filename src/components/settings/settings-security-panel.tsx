@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
+import { logoutAndClear } from "@/lib/auth-logout";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,7 +79,7 @@ export function SettingsSecurityPanel({
         return;
       }
       toast.success("Konto gelöscht");
-      await signOut({ callbackUrl: "/login", redirect: true });
+      await logoutAndClear("/login");
     } catch {
       toast.error("Netzwerkfehler");
     } finally {

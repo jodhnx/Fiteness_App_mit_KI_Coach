@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
 import { warmTrainingCaches } from "@/lib/cache-manager";
-import { hydratePersistentCaches } from "@/lib/client-cache";
 import { warmHealthSync } from "@/lib/health-sync-warmer";
 
 /** Reihenfolge = Hauptmenü: Home → Training → Ernährung → Fortschritt → Coach */
@@ -27,7 +26,8 @@ export function RoutePrefetcher() {
     if (done.current) return;
     done.current = true;
 
-    hydratePersistentCaches();
+    // Hydration of account caches is handled by SessionCacheGuard
+    // once the authenticated userId is known — never hydrate blindly.
 
     for (const href of NAV_ROUTES.slice(0, 5)) {
       router.prefetch(href);

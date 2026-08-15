@@ -25,6 +25,8 @@ import {
 import { recalculateProfileTargets } from "@/lib/profile-calculations";
 import { storageGetJson, storageSetJson } from "@/lib/storage-service";
 import { warmTrainingCaches } from "@/lib/cache-manager";
+import { warmPostLoginCaches } from "@/lib/post-login-cache";
+import { clearAllUserClientState } from "@/lib/clear-user-client-state";
 import { startGuestSession } from "@/lib/guest-client";
 import { isGuestEmail } from "@/lib/guest-utils";
 import {
@@ -243,11 +245,13 @@ export function RegistrationFlow() {
         return;
       }
       toast.success("Profil gespeichert");
+      warmPostLoginCaches();
       router.replace("/home");
       setSubmitting(false);
       return;
     }
 
+    clearAllUserClientState();
     const r = await startGuestSession(ob);
     setSubmitting(false);
     if (!r.ok) {
@@ -255,6 +259,7 @@ export function RegistrationFlow() {
       return;
     }
     storageSetJson(ONBOARDING_DRAFT_KEY, null);
+    warmPostLoginCaches();
     toast.success("Willkommen bei NEXFORM!");
     router.replace("/home");
   }
@@ -265,6 +270,7 @@ export function RegistrationFlow() {
     const isGuestUser = session?.user?.email && isGuestEmail(session.user.email);
 
     try {
+      clearAllUserClientState();
       if (isGuestUser) {
         const conv = await fetch("/api/auth/convert-guest", {
           method: "POST",
@@ -328,6 +334,7 @@ export function RegistrationFlow() {
       await update({ onboardingComplete: true });
       storageSetJson(ONBOARDING_DRAFT_KEY, null);
       warmTrainingCaches(true);
+      warmPostLoginCaches();
       toast.success("Dein Plan ist bereit!");
       router.replace("/home");
     } finally {

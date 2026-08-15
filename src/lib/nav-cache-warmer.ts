@@ -6,6 +6,7 @@ import {
   HOME_DATA_CACHE_KEY,
   NUTRITION_DASHBOARD_CACHE_KEY,
 } from "@/lib/nutrition-sync";
+import { warmFoodHistoryCache } from "@/lib/food-history-cache";
 
 let warmed = false;
 
@@ -13,6 +14,11 @@ async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { credentials: "same-origin" });
   if (!res.ok) throw new Error(`Warm ${url} failed`);
   return res.json() as Promise<T>;
+}
+
+/** Reset after logout / account switch so next user gets a fresh warm. */
+export function resetNavCacheWarmer() {
+  warmed = false;
 }
 
 /** Prefetch progress data — call on tab hover or app start. */
@@ -30,7 +36,8 @@ export function warmProgressCache() {
 
 /** Background prefetch for instant tab switches — skips work when cache is fresh. */
 export function warmNavDataCaches() {
-  if (warmed || typeof window === "undefined") return;
+  if (typeof window === "undefined") return;
+  if (warmed) return;
   warmed = true;
 
   if (isCacheStale(HOME_DATA_CACHE_KEY, 0.88)) {
@@ -75,9 +82,11 @@ export function warmNavDataCaches() {
   });
 }
 
-/** Warm food search only when user opens nutrition (avoids 4 API calls on app start). */
+/** Warm food search + history when user opens nutrition (instant + button). */
 export function warmNutritionSearchCaches() {
   if (typeof window === "undefined") return;
+  warmFoodHistoryCache();
+
   const idle =
     typeof requestIdleCallback !== "undefined"
       ? requestIdleCallback

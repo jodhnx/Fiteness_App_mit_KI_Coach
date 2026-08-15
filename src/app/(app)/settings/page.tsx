@@ -30,7 +30,7 @@ import {
 } from "@/lib/nutrition-sync";
 import { invalidateCache } from "@/lib/client-cache";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
-import { signOut } from "next-auth/react";
+import { logoutAndClear } from "@/lib/auth-logout";
 import { usePreferences } from "@/components/providers/preferences-provider";
 import { APP_THEMES, UI_DENSITY_OPTIONS, COLOR_MODE_OPTIONS } from "@/lib/themes";
 import { SettingsHubNav } from "@/components/settings/settings-hub-nav";
@@ -1053,7 +1053,7 @@ function SettingsPageInner() {
           onClick={async () => {
             setLoggingOut(true);
             try {
-              await signOut({ callbackUrl: "/login", redirect: true });
+              await logoutAndClear("/login");
             } finally {
               setLoggingOut(false);
             }

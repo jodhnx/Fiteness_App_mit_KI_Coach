@@ -10,6 +10,53 @@ type CacheEntry<T> = { data: T; expires: number; cachedAt: number };
 const store = new Map<string, CacheEntry<unknown>>();
 const inflight = new Map<string, Promise<unknown>>();
 
+const OWNER_KEY = "nexform:cache-owner";
+
+export function getCacheOwner(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(OWNER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setCacheOwner(userId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(OWNER_KEY, userId);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearCacheOwner() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(OWNER_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Bind caches to the authenticated user. If another user owns the cache,
+ * wipe everything first so no A→B leak occurs.
+ * Returns true if caches were cleared due to owner mismatch.
+ */
+export function bindCacheOwner(userId: string): boolean {
+  const prev = getCacheOwner();
+  if (prev && prev !== userId) {
+    store.clear();
+    inflight.clear();
+    clearPersistentCache();
+    setCacheOwner(userId);
+    return true;
+  }
+  if (!prev) setCacheOwner(userId);
+  return false;
+}
+
 export function getCached<T>(key: string): T | null {
   const entry = store.get(key);
   if (!entry) return null;
@@ -100,7 +147,8 @@ export function refreshCached<T>(
   onError?: (e: unknown) => void
 ): void {
   if (inflight.has(key)) {
-    inflight.get(key)!
+    inflight
+      .get(key)!
       .then((d) => onDone?.(d as T))
       .catch(onError);
     return;
@@ -108,9 +156,27 @@ export function refreshCached<T>(
   runDeduped(key, fetcher, ttlMs).then(onDone).catch(onError);
 }
 
-/** Restore Home / Progress / Nutrition from localStorage on cold start. */
-export function hydratePersistentCaches() {
+/**
+ * Restore Home / Progress / Nutrition from localStorage on cold start.
+ * Only hydrates when cache owner matches the current user (or owner unknown
+ * and caller will bind immediately after).
+ */
+export function hydratePersistentCaches(expectedUserId?: string | null) {
   if (typeof window === "undefined") return;
+  if (expectedUserId) {
+    const owner = getCacheOwner();
+    if (owner && owner !== expectedUserId) {
+      clearPersistentCache();
+      store.clear();
+      setCacheOwner(expectedUserId);
+      return;
+    }
+    if (!owner) setCacheOwner(expectedUserId);
+  } else {
+    // Without a known user, never hydrate account data from disk
+    return;
+  }
+
   const keys = ["home-data", "progress-main", "nutrition-dashboard"] as const;
   for (const key of keys) {
     if (store.has(key)) continue;

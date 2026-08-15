@@ -21,6 +21,12 @@ import { FoodQuickRow } from "@/components/nutrition/food-quick-row";
 import { FoodDetailPopup } from "@/components/nutrition/food-detail-popup";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { resetBodyScroll } from "@/lib/scroll-lock";
+import {
+  FOOD_HISTORY_CACHE_KEY,
+  getCachedFoodHistory,
+  warmFoodHistoryCache,
+  type FoodHistoryPayload,
+} from "@/lib/food-history-cache";
 
 type Props = {
   open: boolean;
@@ -38,110 +44,21 @@ type Props = {
 };
 
 const SEARCH_CACHE_TTL = 300_000;
-const FALLBACK_FREQUENT: FoodProduct[] = [
-  {
-    name: "Whey Protein",
-    brand: null,
-    calories: 400,
-    proteinG: 80,
-    carbsG: 8,
-    fatG: 6,
-    fiberG: 0,
-    servingG: 100,
-    source: "local",
-  },
-  {
-    name: "Banane",
-    brand: null,
-    calories: 89,
-    proteinG: 1.1,
-    carbsG: 23,
-    fatG: 0.3,
-    fiberG: 2.6,
-    servingG: 100,
-    source: "local",
-  },
-  {
-    name: "Haferflocken",
-    brand: null,
-    calories: 379,
-    proteinG: 13,
-    carbsG: 67,
-    fatG: 7,
-    fiberG: 10,
-    servingG: 100,
-    source: "local",
-  },
-  {
-    name: "Hähnchenbrust",
-    brand: null,
-    calories: 165,
-    proteinG: 31,
-    carbsG: 0,
-    fatG: 3.6,
-    fiberG: 0,
-    servingG: 100,
-    source: "local",
-  },
-  {
-    name: "Reis",
-    brand: null,
-    calories: 130,
-    proteinG: 2.7,
-    carbsG: 28,
-    fatG: 0.3,
-    fiberG: 0.4,
-    servingG: 100,
-    source: "local",
-  },
-];
 
-const FALLBACK_RECENT: FoodProduct[] = [
-  {
-    name: "Pizza Salami",
-    brand: "Standardgericht",
-    calories: 290,
-    proteinG: 12,
-    carbsG: 30,
-    fatG: 14,
-    fiberG: 2,
-    servingG: 100,
-    source: "local",
-  },
-  {
-    name: "Protein Pudding",
-    brand: null,
-    calories: 75,
-    proteinG: 10,
-    carbsG: 6,
-    fatG: 1,
-    fiberG: 0,
-    servingG: 100,
-    source: "local",
-  },
-  {
-    name: "Skyr",
-    brand: null,
-    calories: 63,
-    proteinG: 11,
-    carbsG: 4,
-    fatG: 0.2,
-    fiberG: 0,
-    servingG: 100,
-    source: "local",
-  },
-  {
-    name: "Ei",
-    brand: null,
-    calories: 155,
-    proteinG: 13,
-    carbsG: 1.1,
-    fatG: 11,
-    fiberG: 0,
-    servingG: 100,
-    source: "local",
-  },
-];
+function emptyHistory(): FoodHistoryPayload {
+  return { frequent: [], recents: [], favorites: [] };
+}
+
+function applyHistoryPayload(
+  d: FoodHistoryPayload,
+  setHistoryFoods: (h: FoodHistoryPayload) => void,
+  setBrowseTab: (t: "favorites" | "recent" | "frequent") => void
+) {
+  setHistoryFoods(d);
+  if (d.favorites.length > 0) setBrowseTab("favorites");
+  else if (d.recents.length > 0) setBrowseTab("recent");
+  else setBrowseTab("frequent");
+}
 
 function cacheKey(q: string) {
   return `food-search:${q.toLowerCase()}`;
@@ -178,11 +95,9 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const debouncedQ = useDebounce(q, 30);
   const [result, setResult] = useState<FoodSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [historyFoods, setHistoryFoods] = useState<{
-    frequent: FoodProduct[];
-    recents: FoodProduct[];
-    favorites: FoodProduct[];
-  }>({ frequent: [], recents: [], favorites: [] });
+  const [historyFoods, setHistoryFoods] = useState<FoodHistoryPayload>(() =>
+    getCachedFoodHistory() ?? emptyHistory()
+  );
   const [browseTab, setBrowseTab] = useState<"favorites" | "recent" | "frequent">(
     "frequent"
   );
@@ -198,6 +113,8 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     if (!open) return;
     setQ(initialQuery.trim());
     setDetailProduct(null);
+    const cached = getCachedFoodHistory();
+    if (cached) applyHistoryPayload(cached, setHistoryFoods, setBrowseTab);
     const t = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(t);
   }, [open, initialQuery]);
@@ -220,28 +137,33 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
   useEffect(() => {
     if (!open) return;
-    fetch("/api/food/history")
-      .then((r) => r.json())
+    // Instant from cache; soft-refresh in background
+    const cached = getCachedFoodHistory();
+    if (cached) applyHistoryPayload(cached, setHistoryFoods, setBrowseTab);
+    else warmFoodHistoryCache(true);
+
+    let cancelled = false;
+    fetch("/api/food/history", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
+        if (cancelled || !d) return;
         const rec = (d.recents ?? []) as FoodProduct[];
-        const frequent = ((d.frequent ?? rec) as FoodProduct[]).slice(0, 12);
-        const favorites = ((d.favorites ?? []) as FoodProduct[]).slice(0, 24);
-        setHistoryFoods({
-          frequent: frequent.length > 0 ? frequent : FALLBACK_FREQUENT,
-          recents: rec.length > 0 ? rec.slice(0, 12) : FALLBACK_RECENT,
-          favorites,
-        });
-        if (favorites.length > 0) setBrowseTab("favorites");
-        else if (rec.length > 0) setBrowseTab("recent");
-        else setBrowseTab("frequent");
+        const next: FoodHistoryPayload = {
+          frequent: ((d.frequent ?? rec) as FoodProduct[]).slice(0, 12),
+          recents: rec.slice(0, 12),
+          favorites: ((d.favorites ?? []) as FoodProduct[]).slice(0, 24),
+        };
+        setCached(FOOD_HISTORY_CACHE_KEY, next, 180_000);
+        applyHistoryPayload(next, setHistoryFoods, setBrowseTab);
       })
       .catch(() => {
-        setHistoryFoods({
-          frequent: FALLBACK_FREQUENT,
-          recents: FALLBACK_RECENT,
-          favorites: [],
-        });
+        if (!getCachedFoodHistory()) {
+          setHistoryFoods(emptyHistory());
+        }
       });
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   const search = useCallback(async (query: string) => {
@@ -412,12 +334,24 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                   )}
                   {browseTab === "recent" && (
                     <FoodSection title="Zuletzt verwendet">
-                      {historyFoods.recents.map((food) => renderRow(food))}
+                      {historyFoods.recents.length === 0 ? (
+                        <p className="text-sm text-zinc-500 py-4 text-center px-2">
+                          Noch keine Einträge — suche ein Lebensmittel und füge es hinzu.
+                        </p>
+                      ) : (
+                        historyFoods.recents.map((food) => renderRow(food))
+                      )}
                     </FoodSection>
                   )}
                   {browseTab === "frequent" && (
                     <FoodSection title="Häufig verwendet">
-                      {historyFoods.frequent.map((food) => renderRow(food))}
+                      {historyFoods.frequent.length === 0 ? (
+                        <p className="text-sm text-zinc-500 py-4 text-center px-2">
+                          Häufige Lebensmittel erscheinen nach ein paar Einträgen.
+                        </p>
+                      ) : (
+                        historyFoods.frequent.map((food) => renderRow(food))
+                      )}
                     </FoodSection>
                   )}
                 </>

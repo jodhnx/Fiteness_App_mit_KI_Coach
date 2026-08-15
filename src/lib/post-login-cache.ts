@@ -1,4 +1,5 @@
-import { setCached } from "@/lib/client-cache";
+import { setCached, bindCacheOwner } from "@/lib/client-cache";
+import { clearAllUserClientState } from "@/lib/clear-user-client-state";
 import { normalizeHomeData, type HomeDataPayload } from "@/lib/home-defaults";
 import {
   isValidDashboardPayload,
@@ -11,10 +12,17 @@ import {
   publishNutritionDashboard,
   HOME_DATA_EVENT,
 } from "@/lib/nutrition-sync";
+import { warmFoodHistoryCache } from "@/lib/food-history-cache";
 
-/** Fire-and-forget — seeds client caches while navigating to /home after login. */
-export function warmPostLoginCaches(): void {
+/**
+ * Clear previous account caches, then seed the new user's data.
+ * Fire-and-forget while navigating to /home after login.
+ */
+export function warmPostLoginCaches(userId?: string | null): void {
   if (typeof window === "undefined") return;
+
+  clearAllUserClientState();
+  if (userId) bindCacheOwner(userId);
 
   void Promise.all([
     fetch("/api/nutrition/dashboard", { credentials: "include" }).then((r) =>
@@ -28,6 +36,7 @@ export function warmPostLoginCaches(): void {
     ),
   ])
     .then(([nutrition, profile, home]) => {
+      if (userId) bindCacheOwner(userId);
       if (nutrition && isValidDashboardPayload(nutrition)) {
         publishNutritionDashboard(nutrition);
         setCached(NUTRITION_DASHBOARD_CACHE_KEY, nutrition, 120_000);
@@ -40,6 +49,7 @@ export function warmPostLoginCaches(): void {
           new CustomEvent(HOME_DATA_EVENT, { detail: normalized })
         );
       }
+      warmFoodHistoryCache(true);
     })
     .catch(() => undefined);
 }

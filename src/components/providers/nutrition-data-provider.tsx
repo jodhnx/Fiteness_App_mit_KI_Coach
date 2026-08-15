@@ -48,17 +48,8 @@ function resolveInitialDashboard(
     isValidDashboardPayload(initialDashboard) &&
     isNutritionDashboardToday(initialDashboard.date);
 
-  if (serverValid && cacheValid) {
-    if (initialDashboard.profileComplete && !cached.profileComplete) {
-      return initialDashboard;
-    }
-    if (initialDashboard.targets.calories > 0 && cached.targets.calories <= 0) {
-      return initialDashboard;
-    }
-    return cached;
-  }
-  if (cacheValid) return cached;
   if (serverValid) return initialDashboard;
+  if (cacheValid) return cached;
   return { ...createEmptyNutritionDashboard(), date: nutritionDayKey() };
 }
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { memo, useCallback } from "react";
-import { signOut } from "next-auth/react";
+import { logoutAndClear } from "@/lib/auth-logout";
 import { MobileBottomSheet } from "@/components/ui/mobile-bottom-sheet";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { useSidebar } from "@/components/layout/sidebar-provider";
@@ -65,7 +65,7 @@ export const ProfileMenuSheet = memo(function ProfileMenuSheet({
 
   const handleLogout = useCallback(async () => {
     close();
-    await signOut({ callbackUrl: "/login", redirect: true });
+    await logoutAndClear("/login");
   }, [close]);
 
   return (

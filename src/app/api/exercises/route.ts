@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 
     const dbCount = await ensureExerciseLibrarySeeded(prisma);
 
-    const cacheKey = exerciseCacheKey(req.nextUrl.searchParams);
+    const cacheKey = exerciseCacheKey(req.nextUrl.searchParams, session.user.id);
     const cached = getExerciseCache<{
       exercises: unknown[];
       total: number;

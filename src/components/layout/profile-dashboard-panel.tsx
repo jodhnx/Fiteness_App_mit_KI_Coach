@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { memo, useCallback, useEffect } from "react";
-import { signOut } from "next-auth/react";
+import { logoutAndClear } from "@/lib/auth-logout";
 import { X } from "lucide-react";
 import { UserAvatar } from "@/components/user/user-avatar";
 import { useSidebar } from "@/components/layout/sidebar-provider";
@@ -77,7 +77,7 @@ export const ProfileDashboardPanel = memo(function ProfileDashboardPanel({
 
   const handleLogout = useCallback(async () => {
     close();
-    await signOut({ callbackUrl: "/login", redirect: true });
+    await logoutAndClear("/login");
   }, [close]);
 
   if (!open) return null;
