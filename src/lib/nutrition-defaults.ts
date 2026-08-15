@@ -108,3 +108,79 @@ export function isValidDashboardPayload(data: unknown): data is NutritionDashboa
     typeof d.consumed?.calories === "number"
   );
 }
+
+/** Fill missing fields so stale/partial caches never crash the UI. */
+export function normalizeNutritionDashboard(
+  data: Partial<NutritionDashboardPayload> | null | undefined
+): NutritionDashboardPayload {
+  const empty = createEmptyNutritionDashboard();
+  if (!data || typeof data !== "object") return empty;
+
+  const targets = {
+    ...empty.targets,
+    ...(data.targets ?? {}),
+    calories: Number(data.targets?.calories) || 0,
+    proteinG: Number(data.targets?.proteinG) || 0,
+    carbsG: Number(data.targets?.carbsG) || 0,
+    fatG: Number(data.targets?.fatG) || 0,
+    fiberG: Number(data.targets?.fiberG) || 0,
+    waterTargetMl: Number(data.targets?.waterTargetMl) || 2500,
+  };
+
+  const consumed = {
+    ...empty.consumed,
+    ...(data.consumed ?? {}),
+    calories: Number(data.consumed?.calories) || 0,
+    proteinG: Number(data.consumed?.proteinG) || 0,
+    carbsG: Number(data.consumed?.carbsG) || 0,
+    fatG: Number(data.consumed?.fatG) || 0,
+    fiberG: Number(data.consumed?.fiberG) || 0,
+  };
+
+  const remaining = {
+    calories: Number(data.remaining?.calories ?? targets.calories - consumed.calories) || 0,
+    proteinG: Number(data.remaining?.proteinG ?? targets.proteinG - consumed.proteinG) || 0,
+    carbsG: Number(data.remaining?.carbsG ?? targets.carbsG - consumed.carbsG) || 0,
+    fatG: Number(data.remaining?.fatG ?? targets.fatG - consumed.fatG) || 0,
+  };
+
+  const water = {
+    consumedMl: Number(data.water?.consumedMl) || 0,
+    targetMl: Number(data.water?.targetMl ?? targets.waterTargetMl) || 2500,
+  };
+
+  const mealsByType = Array.isArray(data.mealsByType)
+    ? data.mealsByType.map((slot) => ({
+        mealType: slot.mealType,
+        mealId: slot.mealId ?? null,
+        totals: {
+          calories: Number(slot.totals?.calories) || 0,
+          proteinG: Number(slot.totals?.proteinG) || 0,
+          carbsG: Number(slot.totals?.carbsG) || 0,
+          fatG: Number(slot.totals?.fatG) || 0,
+        },
+        items: Array.isArray(slot.items)
+          ? slot.items.map((item) => ({
+              ...item,
+              food: { name: item.food?.name ?? "Lebensmittel" },
+              calories: Number(item.calories) || 0,
+              proteinG: Number(item.proteinG) || 0,
+              quantityG: Number(item.quantityG) || 0,
+            }))
+          : [],
+      }))
+    : empty.mealsByType;
+
+  return {
+    date: typeof data.date === "string" ? data.date : empty.date,
+    targets,
+    consumed,
+    remaining,
+    water,
+    mealsByType,
+    favorites: Array.isArray(data.favorites) ? data.favorites : [],
+    recents: Array.isArray(data.recents) ? data.recents : [],
+    profileComplete: Boolean(data.profileComplete),
+    empty: Boolean(data.empty),
+  };
+}

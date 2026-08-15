@@ -79,6 +79,20 @@ export function warmNavDataCaches() {
         120_000
       ).catch(() => {});
     }
+    if (isCacheStale("workouts-active", 0.9)) {
+      void fetchCached(
+        "workouts-active",
+        () => fetchJson("/api/workouts/sessions?active=1"),
+        90_000
+      ).catch(() => {});
+    }
+    if (isCacheStale("workouts-my-plans-hub", 0.9)) {
+      void fetchCached(
+        "workouts-my-plans-hub",
+        () => fetchJson("/api/workouts/plans"),
+        120_000
+      ).catch(() => {});
+    }
   });
 }
 

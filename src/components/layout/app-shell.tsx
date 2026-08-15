@@ -43,37 +43,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <ServiceWorkerProvider />
         <PhoneSensorWarmup />
         <MealReminderWarmup />
-        <div className="gradient-mesh min-h-[100dvh] overflow-x-hidden">
-          <RoutePrefetcher />
-          <div
-            className={cn(
-              "mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col",
-              !immersive && "pb-[calc(4.5rem+env(safe-area-inset-bottom))]"
-            )}
-          >
-            {!immersive && <Header userName={headerName} userImage={headerImage} />}
-            <main
+        <PersistentTabProvider>
+          <div className="gradient-mesh min-h-[100dvh] overflow-x-hidden">
+            <RoutePrefetcher />
+            <div
               className={cn(
-                "app-page-content flex-1 min-w-0",
-                immersive ? "px-3 pb-4 pt-2" : "px-4 pb-4"
+                "mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col",
+                !immersive && "pb-[calc(4.5rem+env(safe-area-inset-bottom))]"
               )}
             >
-              <GuestUpgradeBanner />
-              <AppErrorBoundary label="page">
-                <PersistentTabProvider>{children}</PersistentTabProvider>
-              </AppErrorBoundary>
-            </main>
+              {!immersive && <Header userName={headerName} userImage={headerImage} />}
+              <main
+                className={cn(
+                  "app-page-content flex-1 min-w-0",
+                  immersive ? "px-3 pb-4 pt-2" : "px-4 pb-4"
+                )}
+              >
+                <GuestUpgradeBanner />
+                <AppErrorBoundary label="page">{children}</AppErrorBoundary>
+              </main>
+            </div>
+            <BottomNav />
+            <ProfileDashboardPanel
+              userName={headerName}
+              userImage={headerImage}
+              isAdmin={isAdmin}
+            />
+            <NotificationCenter />
+            <GamificationUnlockToast />
+            <FeatureTour />
           </div>
-          <BottomNav />
-          <ProfileDashboardPanel
-            userName={headerName}
-            userImage={headerImage}
-            isAdmin={isAdmin}
-          />
-          <NotificationCenter />
-          <GamificationUnlockToast />
-          <FeatureTour />
-        </div>
+        </PersistentTabProvider>
       </NotificationProvider>
     </SidebarProvider>
   );

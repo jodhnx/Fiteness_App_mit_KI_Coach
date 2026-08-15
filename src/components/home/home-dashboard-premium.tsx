@@ -88,20 +88,18 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   trainingLabel,
 }: Props) {
   const ready = hasNutritionTargets(nutrition);
-  const kcalLeft = ready ? Math.max(0, Math.round(nutrition.remaining.calories)) : 0;
-  const kcalTarget = Math.round(nutrition.targets.calories);
+  const remainingCal = nutrition.remaining?.calories ?? 0;
+  const consumedCal = nutrition.consumed?.calories ?? 0;
+  const targetCal = nutrition.targets?.calories ?? 0;
+  const waterConsumed = nutrition.water?.consumedMl ?? 0;
+  const waterTarget = nutrition.water?.targetMl ?? 2500;
+  const kcalLeft = ready ? Math.max(0, Math.round(remainingCal)) : 0;
+  const kcalTarget = Math.round(targetCal);
   const kcalPct =
-    kcalTarget > 0
-      ? Math.min(100, Math.round((nutrition.consumed.calories / kcalTarget) * 100))
-      : 0;
+    kcalTarget > 0 ? Math.min(100, Math.round((consumedCal / kcalTarget) * 100)) : 0;
   const stepPct = stepGoal > 0 ? Math.min(100, Math.round((steps / stepGoal) * 100)) : 0;
   const waterPct =
-    nutrition.water.targetMl > 0
-      ? Math.min(
-          100,
-          Math.round((nutrition.water.consumedMl / nutrition.water.targetMl) * 100)
-        )
-      : 0;
+    waterTarget > 0 ? Math.min(100, Math.round((waterConsumed / waterTarget) * 100)) : 0;
 
   const trainMeta = {
     active: { label: "Läuft", color: "text-cyan-400", Icon: Play },
@@ -175,7 +173,7 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
             <span className="text-[9px] uppercase text-zinc-500">Wasser</span>
           </div>
           <p className="text-base font-bold text-white tabular-nums">
-            {Math.round(nutrition.water.consumedMl / 100) / 10}L
+            {Math.round(waterConsumed / 100) / 10}L
           </p>
           <div className="mt-1.5 h-1 rounded-full bg-zinc-800 overflow-hidden">
             <div

@@ -4,6 +4,7 @@ import { useContext } from "react";
 import { NutritionDataContext } from "@/components/providers/nutrition-data-provider";
 import {
   createEmptyNutritionDashboard,
+  normalizeNutritionDashboard,
   type NutritionDashboardPayload,
 } from "@/lib/nutrition-defaults";
 
@@ -22,5 +23,8 @@ export function useCentralNutrition(): {
       applyDashboard: () => {},
     };
   }
-  return ctx;
+  return {
+    dashboard: normalizeNutritionDashboard(ctx.dashboard),
+    applyDashboard: ctx.applyDashboard,
+  };
 }

@@ -154,12 +154,12 @@ export default function HomePage() {
           ),
           dayGoals: (
             <HomeDayGoals
-              caloriesConsumed={nutrition.consumed.calories}
-              calorieTarget={nutrition.targets.calories}
+              caloriesConsumed={nutrition.consumed?.calories ?? 0}
+              calorieTarget={nutrition.targets?.calories ?? 0}
               steps={steps}
               stepGoal={stepGoal}
-              waterMl={nutrition.water.consumedMl}
-              waterTargetMl={nutrition.water.targetMl}
+              waterMl={nutrition.water?.consumedMl ?? 0}
+              waterTargetMl={nutrition.water?.targetMl ?? 2500}
               trainingDone={trainingStatus === "done" || trainingStatus === "active"}
             />
           ),

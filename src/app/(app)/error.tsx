@@ -16,9 +16,9 @@ export default function AppSegmentError({
 
   return (
     <div className="mx-auto max-w-md px-4 py-16 text-center space-y-4">
-      <p className="text-lg font-semibold text-white">Etwas ist schiefgelaufen</p>
+      <p className="text-lg font-semibold text-white">Bereich konnte nicht geladen werden</p>
       <p className="text-sm text-zinc-400 leading-relaxed">
-        Die Seite konnte nicht geladen werden. Bitte erneut versuchen.
+        Navigation und andere Menüs bleiben nutzbar. Bitte erneut versuchen.
       </p>
       <Button type="button" variant="premium" className="w-full" onClick={reset}>
         Erneut versuchen

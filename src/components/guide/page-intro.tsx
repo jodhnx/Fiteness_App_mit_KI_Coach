@@ -18,10 +18,11 @@ export const PageIntro = memo(function PageIntro({ pageId }: { pageId: GuidePage
   const intro = PAGE_INTROS[pageId];
 
   useEffect(() => {
+    if (!intro) return;
     if (!hasSeenGuide(`page:${pageId}`)) setShow(true);
-  }, [pageId]);
+  }, [pageId, intro]);
 
-  if (!show) return null;
+  if (!show || !intro) return null;
 
   return (
     <PremiumCard className="relative border-accent/20 bg-accent/5 animate-in-fade">

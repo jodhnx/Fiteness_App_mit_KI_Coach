@@ -20,9 +20,10 @@ export default function GlobalError({
           <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-zinc-950 font-extrabold tracking-wide">
             NX
           </div>
-          <p className="text-lg font-semibold">Etwas ist schiefgelaufen</p>
+          <p className="text-lg font-semibold">Unerwarteter Fehler</p>
           <p className="text-sm text-zinc-400">
-            NEXFORM konnte nicht geladen werden. Bitte erneut versuchen.
+            Bitte erneut versuchen. Wenn das Problem bleibt, App einmal vollständig schließen und
+            neu öffnen.
           </p>
           <button
             type="button"
@@ -30,6 +31,15 @@ export default function GlobalError({
             className="w-full h-12 rounded-2xl bg-cyan-400 text-zinc-950 font-semibold"
           >
             Erneut versuchen
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = "/home";
+            }}
+            className="w-full h-11 rounded-2xl border border-zinc-700 text-zinc-200"
+          >
+            Zur Startseite
           </button>
         </div>
       </body>

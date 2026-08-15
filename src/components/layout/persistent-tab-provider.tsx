@@ -4,9 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useRef,
-  useState,
+  useTransition,
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -39,6 +37,7 @@ export function matchMainTab(pathname: string): MainTab | null {
 type TabNavContextValue = {
   activeTab: MainTab | null;
   navigateMainTab: (href: MainTab) => void;
+  isPending: boolean;
 };
 
 const TabNavContext = createContext<TabNavContextValue | null>(null);
@@ -48,65 +47,33 @@ export function useMainTabNav() {
 }
 
 /**
- * Keeps visited main-tab trees mounted (hidden) so returning to a tab paints
- * the last real screen instantly — no intermediate loading preview.
+ * Stable tab navigation — does NOT cache React trees across routes.
+ * Caching children caused client-side crashes ("Etwas ist schiefgelaufen")
+ * when stale/hidden page trees threw during session/cache updates.
+ *
+ * Instant feel comes from: no route loading.tsx, router cache (staleTimes),
+ * prefetch, and client data caches — not from keeping dead route trees alive.
  */
 export function PersistentTabProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const routeTab = matchMainTab(pathname);
-  const [optimisticTab, setOptimisticTab] = useState<MainTab | null>(null);
-  const cacheRef = useRef<Partial<Record<MainTab, ReactNode>>>({});
-  const [, bump] = useState(0);
-
-  const activeTab = optimisticTab ?? routeTab;
-
-  useEffect(() => {
-    if (optimisticTab && routeTab === optimisticTab) {
-      setOptimisticTab(null);
-    }
-  }, [routeTab, optimisticTab]);
-
-  // Cache only when URL has settled on this tab (never overwrite with foreign children)
-  if (routeTab && (!optimisticTab || optimisticTab === routeTab) && children != null) {
-    if (cacheRef.current[routeTab] !== children) {
-      cacheRef.current[routeTab] = children;
-    }
-  }
+  const [isPending, startTransition] = useTransition();
+  const activeTab = matchMainTab(pathname);
 
   const navigateMainTab = useCallback(
     (href: MainTab) => {
-      setOptimisticTab(href);
-      bump((n) => n + 1);
+      if (matchMainTab(pathname) === href) return;
       router.prefetch(href);
-      router.push(href);
+      startTransition(() => {
+        router.push(href);
+      });
     },
-    [router]
+    [pathname, router]
   );
 
-  const value: TabNavContextValue = { activeTab, navigateMainTab };
-
   return (
-    <TabNavContext.Provider value={value}>
-      {MAIN_TABS.map((tab) => {
-        const panel = cacheRef.current[tab];
-        const isActive = activeTab === tab;
-        // Prefer cached real screen; only use live children when route matches this tab
-        const content =
-          panel ?? (isActive && routeTab === tab ? children : null);
-        if (!content) return null;
-        return (
-          <div
-            key={tab}
-            hidden={!isActive}
-            aria-hidden={!isActive}
-            style={isActive ? undefined : { display: "none" }}
-          >
-            {content}
-          </div>
-        );
-      })}
-      {activeTab == null ? children : null}
+    <TabNavContext.Provider value={{ activeTab, navigateMainTab, isPending }}>
+      {children}
     </TabNavContext.Provider>
   );
 }

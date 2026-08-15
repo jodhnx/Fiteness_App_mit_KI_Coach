@@ -6,6 +6,7 @@ import {
   type NutritionDashboardPayload,
   isValidDashboardPayload,
   createEmptyNutritionDashboard,
+  normalizeNutritionDashboard,
 } from "@/lib/nutrition-defaults";
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import type { HomeDataPayload } from "@/lib/home-defaults";
@@ -93,9 +94,9 @@ function patchProgressNutritionToday(nutrition: NutritionDashboardPayload) {
 
 /** Push fresh dashboard to all client caches + notify mounted pages */
 export function publishNutritionDashboard(dashboard: NutritionDashboardPayload) {
-  const nutrition = isValidDashboardPayload(dashboard)
-    ? dashboard
-    : createEmptyNutritionDashboard();
+  const nutrition = normalizeNutritionDashboard(
+    isValidDashboardPayload(dashboard) ? dashboard : createEmptyNutritionDashboard()
+  );
 
   if (!isNutritionDashboardToday(nutrition.date)) {
     return;

@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 type Props = { children: ReactNode; label?: string };
 type State = { error: Error | null };
 
-/** Catches render errors so one broken panel does not take down the whole app. */
+/**
+ * Isolates a single page/section crash so the shell (nav, header) stays usable.
+ * Logs the real error — does not paper over bugs silently.
+ */
 export class AppErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 
@@ -15,26 +18,26 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error(`[AppErrorBoundary${this.props.label ? `:${this.props.label}` : ""}]`, error, info.componentStack);
+    console.error(
+      `[AppErrorBoundary${this.props.label ? `:${this.props.label}` : ""}]`,
+      error,
+      info.componentStack
+    );
   }
 
   render() {
     if (this.state.error) {
       return (
-        <div className="mx-auto max-w-md px-4 py-16 text-center space-y-4">
-          <p className="text-lg font-semibold text-white">Etwas ist schiefgelaufen</p>
+        <div className="mx-auto max-w-md px-2 py-10 text-center space-y-4">
+          <p className="text-base font-semibold text-white">Bereich konnte nicht geladen werden</p>
           <p className="text-sm text-zinc-400 leading-relaxed">
-            Dieser Bereich konnte nicht geladen werden. Deine Daten sind sicher — bitte erneut
-            versuchen.
+            Die restliche App funktioniert weiter. Bitte diesen Bereich erneut versuchen.
           </p>
           <Button
             type="button"
             variant="premium"
             className="w-full"
-            onClick={() => {
-              this.setState({ error: null });
-              if (typeof window !== "undefined") window.location.reload();
-            }}
+            onClick={() => this.setState({ error: null })}
           >
             Erneut versuchen
           </Button>
@@ -42,9 +45,12 @@ export class AppErrorBoundary extends Component<Props, State> {
             type="button"
             variant="ghost"
             className="w-full"
-            onClick={() => this.setState({ error: null })}
+            onClick={() => {
+              this.setState({ error: null });
+              if (typeof window !== "undefined") window.location.href = "/home";
+            }}
           >
-            Bereich neu rendern
+            Zur Startseite
           </Button>
         </div>
       );

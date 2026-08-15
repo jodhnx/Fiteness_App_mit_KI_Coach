@@ -102,6 +102,11 @@ export default function RootLayout({
             </div>
           </div>
         </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(sessionStorage.getItem("nexform:boot-done")==="1"){var e=document.getElementById("nexform-boot");if(e)e.remove();document.documentElement.classList.add("nexform-booted");}}catch(e){}`,
+          }}
+        />
         <AuthSessionProvider>
           <PreferencesProvider>
             <AppBootSplash />

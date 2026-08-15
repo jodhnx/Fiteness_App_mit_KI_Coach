@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   isValidDashboardPayload,
+  normalizeNutritionDashboard,
   type NutritionDashboardPayload,
 } from "@/lib/nutrition-defaults";
 import {
@@ -48,9 +49,12 @@ function resolveInitialDashboard(
     isValidDashboardPayload(initialDashboard) &&
     isNutritionDashboardToday(initialDashboard.date);
 
-  if (serverValid) return initialDashboard;
-  if (cacheValid) return cached;
-  return { ...createEmptyNutritionDashboard(), date: nutritionDayKey() };
+  if (serverValid) return normalizeNutritionDashboard(initialDashboard);
+  if (cacheValid) return normalizeNutritionDashboard(cached);
+  return normalizeNutritionDashboard({
+    ...createEmptyNutritionDashboard(),
+    date: nutritionDayKey(),
+  });
 }
 
 export function NutritionDataProvider({
@@ -93,7 +97,7 @@ export function NutritionDataProvider({
         isValidDashboardPayload(detail) &&
         isNutritionDashboardToday(detail.date)
       ) {
-        setDashboard(detail);
+        setDashboard(normalizeNutritionDashboard(detail));
       }
     };
     window.addEventListener(NUTRITION_DASHBOARD_EVENT, handler);
@@ -101,8 +105,9 @@ export function NutritionDataProvider({
   }, []);
 
   const applyDashboard = useCallback((next: NutritionDashboardPayload) => {
-    publishNutritionDashboard(next);
-    setDashboard(next);
+    const normalized = normalizeNutritionDashboard(next);
+    publishNutritionDashboard(normalized);
+    setDashboard(normalized);
   }, []);
 
   return (
