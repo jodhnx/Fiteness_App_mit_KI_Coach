@@ -19,13 +19,26 @@ import {
   Clock,
   Smartphone,
   ChevronLeft,
+  Footprints,
+  Moon,
+  Heart,
+  Flame,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { ProviderMeta } from "@/lib/health/types";
 import { HEALTH_CATEGORY_LABELS, type HealthMetricCategory } from "@/lib/health/types";
+import type { ExtendedHealthDashboard } from "@/lib/health/health-dashboard";
 import { PhoneSensorPanel } from "@/components/health/phone-sensor-panel";
 import { PageIntro } from "@/components/guide/page-intro";
+import { getCached, setCached } from "@/lib/client-cache";
+
+type ProviderAvailability = ProviderMeta & {
+  connectable?: boolean;
+  availabilityNote?: string;
+  mode?: "oauth" | "native_bridge" | "unavailable";
+};
 
 type Connection = {
   provider: string;
@@ -41,6 +54,9 @@ type Connection = {
 
 type Prefs = Record<HealthMetricCategory, boolean>;
 
+const WEARABLES_CACHE = "wearables-list";
+const HEALTH_CACHE = "health-dashboard";
+
 function formatDate(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("de-DE", {
@@ -50,6 +66,13 @@ function formatDate(iso: string | null | undefined) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatSleep(h: number | null | undefined) {
+  if (h == null || !Number.isFinite(h)) return null;
+  const hours = Math.floor(h);
+  const mins = Math.round((h - hours) * 60);
+  return `${hours} h ${String(mins).padStart(2, "0")} min`;
 }
 
 function syncLabel(status?: string, error?: string | null) {
@@ -64,6 +87,34 @@ function syncLabel(status?: string, error?: string | null) {
     default:
       return "Verbunden";
   }
+}
+
+function MetricTile({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: typeof Footprints;
+}) {
+  const unavailable = value === "Nicht verfügbar";
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 min-h-[72px]">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <Icon className="h-3 w-3" />
+        {label}
+      </div>
+      <p
+        className={cn(
+          "mt-1.5 text-[15px] font-bold tabular-nums leading-snug",
+          unavailable ? "text-zinc-500" : "text-white"
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  );
 }
 
 export default function GeraetePage() {
@@ -84,22 +135,58 @@ export default function GeraetePage() {
 
 function GeraetePageInner() {
   const searchParams = useSearchParams();
-  const [providers, setProviders] = useState<ProviderMeta[]>([]);
-  const [connections, setConnections] = useState<Connection[]>([]);
-  const [prefs, setPrefs] = useState<Partial<Prefs>>({});
+  const cachedWearables = getCached<{
+    providers?: ProviderAvailability[];
+    connections?: Connection[];
+    preferences?: Partial<Prefs>;
+  }>(WEARABLES_CACHE, { allowStale: true });
+  const cachedHealth = getCached<ExtendedHealthDashboard>(HEALTH_CACHE, {
+    allowStale: true,
+  });
+
+  const [providers, setProviders] = useState<ProviderAvailability[]>(
+    () => cachedWearables?.providers ?? []
+  );
+  const [connections, setConnections] = useState<Connection[]>(
+    () => cachedWearables?.connections ?? []
+  );
+  const [prefs, setPrefs] = useState<Partial<Prefs>>(
+    () => cachedWearables?.preferences ?? {}
+  );
+  const [health, setHealth] = useState<ExtendedHealthDashboard | null>(
+    () => cachedHealth
+  );
   const [syncing, setSyncing] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const res = await fetch("/api/wearables");
+  const loadWearables = useCallback(async () => {
+    const res = await fetch("/api/wearables", { credentials: "include" });
     const data = await res.json();
     setProviders(data.providers ?? []);
     setConnections(data.connections ?? []);
     if (data.preferences) setPrefs(data.preferences);
+    setCached(
+      WEARABLES_CACHE,
+      {
+        providers: data.providers ?? [],
+        connections: data.connections ?? [],
+        preferences: data.preferences ?? {},
+      },
+      120_000
+    );
+  }, []);
+
+  const loadHealth = useCallback(async () => {
+    const res = await fetch("/api/health/dashboard", { credentials: "include" });
+    if (!res.ok) return;
+    const data = (await res.json()) as ExtendedHealthDashboard;
+    setHealth(data);
+    setCached(HEALTH_CACHE, data, 120_000);
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadWearables();
+    void loadHealth();
+  }, [loadWearables, loadHealth]);
 
   useEffect(() => {
     const connected = searchParams.get("connected");
@@ -120,7 +207,18 @@ function GeraetePageInner() {
     .sort()
     .pop();
 
+  const statusLabel = hasWearable
+    ? activeConnections
+        .map((c) => c.deviceName ?? c.provider.replace(/_/g, " "))
+        .join(", ") + " verbunden"
+    : "Keine Geräte verbunden";
+
   async function connect(providerId: string) {
+    const meta = providers.find((p) => p.id === providerId);
+    if (meta && meta.connectable === false) {
+      toast.error(meta.availabilityNote ?? "Integration nicht verfügbar");
+      return;
+    }
     const res = await fetch("/api/wearables", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -137,10 +235,10 @@ function GeraetePageInner() {
     }
     toast.success(
       data.nativeBridge
-        ? "Verbunden — Sync über HealthKit / Health Connect"
+        ? "Verbunden — Sync über HealthKit / Health Connect Companion"
         : "Gerät verbunden"
     );
-    void load();
+    void loadWearables();
   }
 
   async function disconnect(providerId: string) {
@@ -155,7 +253,8 @@ function GeraetePageInner() {
       return;
     }
     toast.success("Gerät getrennt");
-    void load();
+    void loadWearables();
+    void loadHealth();
   }
 
   async function syncOne(providerId?: string) {
@@ -177,7 +276,8 @@ function GeraetePageInner() {
       toast.success(
         total > 0 ? `${total} Datensätze synchronisiert` : "Synchronisation abgeschlossen"
       );
-      void load();
+      void loadWearables();
+      void loadHealth();
     } catch {
       toast.error("Sync fehlgeschlagen");
     } finally {
@@ -195,12 +295,59 @@ function GeraetePageInner() {
     });
   }
 
+  const t = health?.today;
+  const metrics = [
+    {
+      label: "Schritte",
+      value:
+        t && t.steps > 0 ? t.steps.toLocaleString("de-DE") : "Nicht verfügbar",
+      icon: Footprints,
+    },
+    {
+      label: "Schlaf",
+      value: formatSleep(t?.sleepHours) ?? "Nicht verfügbar",
+      icon: Moon,
+    },
+    {
+      label: "Ruhepuls",
+      value:
+        t?.restingHeartRate != null
+          ? `${t.restingHeartRate} bpm`
+          : "Nicht verfügbar",
+      icon: Heart,
+    },
+    {
+      label: "Aktivität",
+      value:
+        t && (t.activeCalories != null || t.caloriesBurned > 0)
+          ? `${Math.round(t.activeCalories ?? t.caloriesBurned).toLocaleString("de-DE")} kcal`
+          : "Nicht verfügbar",
+      icon: Flame,
+    },
+    {
+      label: "Regeneration",
+      value:
+        t?.recoveryScore != null
+          ? `${Math.round(t.recoveryScore)} %`
+          : "Nicht verfügbar",
+      icon: Activity,
+    },
+    {
+      label: "Trainingszeit",
+      value:
+        t && t.activeMinutes > 0
+          ? `${t.activeMinutes} min`
+          : "Nicht verfügbar",
+      icon: Clock,
+    },
+  ];
+
   return (
     <PageShell
-      title="Geräte & Gesundheit"
-      subtitle="Smartwatches, Health-Apps & Smartphone"
+      title="Gesundheit"
+      subtitle="Geräte, Sync & Tageswerte"
       maxWidth="2xl"
-      className="pb-28"
+      className="pb-28 space-y-4"
       bottomNav={false}
       action={
         <Button
@@ -225,20 +372,36 @@ function GeraetePageInner() {
 
       <PageIntro pageId="geraete" />
 
-      {lastSync && (
-        <p className="text-xs text-zinc-500 -mt-4">
-          Letzte Synchronisation: {formatDate(lastSync)}
+      <section className="rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-zinc-900/95 to-zinc-950 px-4 py-4 space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          Gerätestatus
         </p>
-      )}
-
-      <PremiumCard glow>
-        <p className="text-sm text-zinc-300">
-          Verbinde Apple Health, Health Connect, Fitbit, Garmin und mehr.
-          Ohne Smartwatch nutzt NEXFORM automatisch dein Smartphone — nach deiner Zustimmung.
+        <p
+          className={cn(
+            "text-base font-semibold",
+            hasWearable ? "text-emerald-400" : "text-zinc-300"
+          )}
+        >
+          {statusLabel}
         </p>
-      </PremiumCard>
+        {lastSync && (
+          <p className="text-xs text-zinc-500">
+            Letzte Synchronisation: {formatDate(lastSync)}
+          </p>
+        )}
+      </section>
 
-      {/* Connected devices management */}
+      <section className="space-y-2.5">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 px-0.5">
+          Heute
+        </h2>
+        <div className="grid grid-cols-2 gap-2">
+          {metrics.map((m) => (
+            <MetricTile key={m.label} {...m} />
+          ))}
+        </div>
+      </section>
+
       {activeConnections.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] px-0.5">
@@ -260,12 +423,11 @@ function GeraetePageInner() {
         </section>
       )}
 
-      {/* Phone fallback — always available, highlighted when no watch */}
       <section className="space-y-2">
         {!hasWearable && (
           <div className="flex items-center gap-2 text-xs text-accent px-0.5">
             <Smartphone className="h-3.5 w-3.5" />
-            Keine Smartwatch — Smartphone als Sensor empfohlen
+            Keine Smartwatch — Smartphone-Sensoren nutzen
           </div>
         )}
         <PhoneSensorPanel hasWearable={hasWearable} />
@@ -273,7 +435,7 @@ function GeraetePageInner() {
 
       <section className="space-y-3">
         <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.15em] px-0.5">
-          Plattformen verbinden
+          Gerät hinzufügen
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {providers.map((p) => {
@@ -302,7 +464,7 @@ function GeraetePageInner() {
           {(Object.keys(HEALTH_CATEGORY_LABELS) as HealthMetricCategory[]).map((key) => (
             <label
               key={key}
-              className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0"
+              className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0 min-h-[44px]"
             >
               <span className="text-sm text-zinc-300">{HEALTH_CATEGORY_LABELS[key]}</span>
               <input
@@ -401,11 +563,11 @@ const ConnectedDeviceCard = memo(function ConnectedDeviceCard({
           onClick={onSync}
         >
           <RefreshCw className={cn("h-4 w-4 mr-1", syncing && "animate-spin")} />
-          Neu synchronisieren
+          Synchronisieren
         </Button>
         <Button variant="secondary" size="sm" onClick={onDisconnect}>
           <Unlink className="h-4 w-4 mr-1" />
-          Trennen
+          Entfernen
         </Button>
       </div>
     </PremiumCard>
@@ -420,13 +582,15 @@ const ProviderCard = memo(function ProviderCard({
   onConnect,
   onDisconnect,
 }: {
-  provider: ProviderMeta;
+  provider: ProviderAvailability;
   connected: boolean;
   lastSyncAt: string | null;
   lastSyncError: string | null;
   onConnect: () => void;
   onDisconnect: () => void;
 }) {
+  const unavailable = provider.connectable === false;
+
   return (
     <PremiumCard className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
@@ -437,10 +601,14 @@ const ProviderCard = memo(function ProviderCard({
           </div>
           <p className="text-[10px] text-zinc-600 mt-0.5">{provider.manufacturer}</p>
           <p className="text-xs text-zinc-500 mt-1">{provider.description}</p>
-          <p className="text-[10px] text-zinc-600 mt-1">{provider.apiNote}</p>
+          <p className="text-[10px] text-zinc-500 mt-1.5 leading-snug">
+            {provider.availabilityNote ?? provider.apiNote}
+          </p>
         </div>
         {connected ? (
           <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+        ) : unavailable ? (
+          <AlertCircle className="h-5 w-5 text-zinc-600 shrink-0" />
         ) : null}
       </div>
 
@@ -456,14 +624,17 @@ const ProviderCard = memo(function ProviderCard({
       )}
 
       <Button
-        variant={connected ? "secondary" : "premium"}
+        variant={connected ? "secondary" : unavailable ? "outline" : "premium"}
         className="w-full mt-auto"
+        disabled={unavailable && !connected}
         onClick={connected ? onDisconnect : onConnect}
       >
         {connected ? (
           <>
             <Unlink className="h-4 w-4 mr-1" /> Trennen
           </>
+        ) : unavailable ? (
+          "Nicht verfügbar"
         ) : (
           <>
             <Link2 className="h-4 w-4 mr-1" /> Verbinden

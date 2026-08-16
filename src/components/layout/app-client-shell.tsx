@@ -39,7 +39,7 @@ import { warmFoodHistoryCache } from "@/lib/food-history-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 
 /** Absolute max — prefer finishing earlier when cache or critical data is ready. */
-const BOOT_MAX_MS = 1_500;
+const BOOT_MAX_MS = 900;
 
 async function fetchOk(url: string) {
   const res = await fetch(url, { credentials: "same-origin" });
@@ -217,12 +217,34 @@ export function AppClientShell({ children }: { children: ReactNode }) {
         void Promise.all([
           fetchOk("/api/progress"),
           fetchOk("/api/workouts/sessions?active=1"),
-          fetchOk("/api/recipes/catalog?limit=12&page=1"),
-        ]).then(([progress, active, recipes]) => {
+          fetchOk("/api/recipes/catalog?limit=24&page=1"),
+        ]).then(async ([progress, active, recipes]) => {
           if (cancelled) return;
           if (progress) setCached(PROGRESS_CACHE_KEY, progress, 600_000);
           if (active) setCached("workouts-active", active, 180_000);
-          if (recipes) setCached("recipe-catalog-page:1", recipes, 300_000);
+          if (recipes) {
+            const d = recipes as {
+              recipes?: import("@/lib/recipes/catalog-query").RecipeListItem[];
+              total?: number;
+              catalogTotal?: number;
+              page?: number;
+              hasMore?: boolean;
+              favoriteIds?: string[];
+            };
+            const { writeRecipeCatalogCache } = await import(
+              "@/lib/recipe-catalog-cache"
+            );
+            writeRecipeCatalogCache({
+              recipes: d.recipes ?? [],
+              total: d.total ?? 0,
+              catalogTotal: d.catalogTotal ?? d.total ?? 0,
+              page: d.page ?? 1,
+              hasMore: Boolean(d.hasMore),
+              favoriteIds: d.favoriteIds ?? [],
+              q: "",
+              filters: [],
+            });
+          }
         });
       } catch (e) {
         console.error("[AppClientShell] boot load failed", e);

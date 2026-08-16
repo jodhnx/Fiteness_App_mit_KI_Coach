@@ -3,102 +3,55 @@
 import {
   Dumbbell,
   Apple,
-  Calculator,
-  Beef,
+  Scale,
   TrendingUp,
-  TrendingDown,
-  Moon,
-  Heart,
-  Footprints,
   LineChart,
   Sparkles,
-  RefreshCw,
+  Utensils,
 } from "lucide-react";
 
 const ACTIONS = [
   {
-    label: "Trainingsanalyse",
+    label: "Was soll ich heute trainieren?",
     prompt:
-      "Analysiere mein Training der letzten 7–14 Tage: Frequenz, Volumen, Muskelgruppen-Balance, Regeneration und mögliche Überlastung. Gib 3 konkrete Anpassungen.",
+      "Was soll ich heute trainieren? Berücksichtige mein Ziel, letzte Sessions, Regeneration und verfügbare Muskelgruppen. Gib einen konkreten Plan für heute.",
     icon: Dumbbell,
   },
   {
-    label: "Ernährungsanalyse",
+    label: "Was soll ich heute essen?",
     prompt:
-      "Analysiere meine heutige und wöchentliche Ernährung: Kalorien, Protein, Timing. Vergleiche mit meinem Ziel und gib 3 Verbesserungen.",
-    icon: Apple,
+      "Was soll ich heute noch essen? Nutze meine aktuellen Kalorien/Makros und mein Ziel. Schlage 2–3 konkrete Mahlzeiten oder Snacks vor.",
+    icon: Utensils,
   },
   {
-    label: "Plateau checken",
+    label: "Warum nehme ich nicht ab?",
     prompt:
-      "Prüfe ob ich in einem Plateau stecke (Gewicht, Kraft, Schritte). Falls ja: Ursachen und 3 Strategien zum Durchbrechen.",
-    icon: LineChart,
+      "Warum nehme ich nicht ab? Analysiere Kalorien, Protein, Schritte, Schlaf und Training der letzten Wochen. Nenne die wahrscheinlichsten Ursachen und 3 konkrete Fixes.",
+    icon: Scale,
   },
   {
-    label: "Schlaf analysieren",
+    label: "Wie kann ich Muskeln aufbauen?",
     prompt:
-      "Analysiere meinen Schlaf der letzten Woche und den Einfluss auf Training & Erholung. Gib konkrete Schlaf-Hygiene-Tipps.",
-    icon: Moon,
-  },
-  {
-    label: "Schritte & NEAT",
-    prompt:
-      "Bewerte meine Schrittzahl und alltägliche Bewegung (NEAT) im Kontext Kalorienziel. Wie viele Schritte brauche ich heute noch?",
-    icon: Footprints,
-  },
-  {
-    label: "Herzfrequenz",
-    prompt:
-      "Interpretiere meinen Ruhepuls / Herzfrequenz-Kontext für Trainingstauglichkeit heute. Intensität empfehlen (leicht/moderat/intensiv).",
-    icon: Heart,
-  },
-  {
-    label: "Regeneration",
-    prompt:
-      "Bewerte meine Regeneration (Schlaf, Ruhepuls, Muskel-Recovery). Soll ich heute hart trainieren, leicht oder pausieren?",
-    icon: RefreshCw,
-  },
-  {
-    label: "Ziel anpassen",
-    prompt:
-      "Schlage eine automatische Zielanpassung vor (Kalorien/Protein/Trainingstage) basierend auf meinem aktuellen Fortschritt und Compliance.",
-    icon: Sparkles,
-  },
-  {
-    label: "Kalorien berechnen",
-    prompt:
-      "Wie viele Kalorien soll ich täglich essen? Berechne individuell aus meinem Gewicht, Größe, Alter, Geschlecht, Aktivität und Ziel (Bulk/Cut/Maintain). Gib konkrete kcal.",
-    icon: Calculator,
-  },
-  {
-    label: "Makros berechnen",
-    prompt:
-      "Berechne meine optimalen Makros (Protein, Kohlenhydrate, Fett) für mein aktuelles Ziel. Nutze meine Profildaten und gib Gramm pro Tag.",
-    icon: Apple,
-  },
-  {
-    label: "Protein berechnen",
-    prompt:
-      "Wie viel Protein brauche ich täglich? Berechne aus Gewicht und Ziel, vergleiche mit meinem heutigen Verzehr und nenne 3 konkrete Proteinquellen.",
-    icon: Beef,
-  },
-  {
-    label: "Bulk analysieren",
-    prompt:
-      "Analysiere ob mein aktueller Bulk optimal läuft: Kalorienüberschuss, Protein, Gewichtstrend, Training. Gib 3 Verbesserungen.",
+      "Wie kann ich Muskeln aufbauen? Orientiere dich an meinem Ziel, Training, Protein und Kalorien. Gib einen konkreten 7-Tage-Fokus.",
     icon: TrendingUp,
   },
   {
-    label: "Cut analysieren",
+    label: "Analysiere meine Woche",
     prompt:
-      "Analysiere meinen Cut: Kaloriendefizit, Makros, Gewichtstrend, Muskel-Erhalt. Rate Defizit-Stärke und gib 3 Tipps.",
-    icon: TrendingDown,
+      "Analysiere meine Woche: Gewicht, Kalorien, Protein, Training, Schritte, Schlaf, Regeneration und Fortschritt. Gib 3–5 konkrete Empfehlungen.",
+    icon: LineChart,
   },
   {
-    label: "Wochenbericht",
+    label: "Optimiere meinen Trainingsplan",
     prompt:
-      "Erstelle einen persönlichen Wochenbericht: Training, Ernährung, Schlaf, Schritte, Gewicht. Motiviere und setze 3 Fokus-Punkte für nächste Woche.",
-    icon: LineChart,
+      "Optimiere meinen Trainingsplan anhand Frequenz, Volumen, Muskelbalance und Regeneration. Schlage konkrete Anpassungen vor.",
+    icon: Dumbbell,
+  },
+  {
+    label: "Optimiere meine Ernährung",
+    prompt:
+      "Optimiere meine Ernährung für mein aktuelles Ziel: Kalorien, Protein, Carbs, Fett und Timing. Gib konkrete Tagesziele und 3 Verbesserungen.",
+    icon: Apple,
   },
   {
     label: "Motivation",
@@ -120,7 +73,7 @@ export function CoachQuickActions({
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
       <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">
-        Coach 2.0 · Schnellaktionen
+        Schnellzugriffe
       </p>
       <div className={cnGrid(compact)}>
         {ACTIONS.map(({ label, prompt, icon: Icon }) => (
@@ -142,6 +95,6 @@ export function CoachQuickActions({
 
 function cnGrid(compact?: boolean) {
   return compact
-    ? "grid grid-cols-2 gap-2"
+    ? "grid grid-cols-1 gap-2"
     : "grid grid-cols-1 sm:grid-cols-2 gap-2";
 }

@@ -93,20 +93,54 @@ export function warmNavDataCaches() {
         120_000
       ).catch(() => {});
     }
-    if (isCacheStale("recipe-catalog-api", 0.9)) {
-      void fetchCached(
-        "recipe-catalog-api",
-        async () => {
-          const d = await fetchJson<{ favoriteIds?: string[] }>(
-            "/api/recipes/catalog"
+    if (isCacheStale("recipe-catalog-list", 0.9)) {
+      void fetchJson<{
+        recipes: unknown[];
+        total: number;
+        catalogTotal?: number;
+        page: number;
+        hasMore: boolean;
+        favoriteIds?: string[];
+      }>("/api/recipes/catalog?page=1&limit=24")
+        .then(async (d) => {
+          const { writeRecipeCatalogCache } = await import(
+            "@/lib/recipe-catalog-cache"
           );
-          if (Array.isArray(d.favoriteIds)) {
-            const { setCached } = await import("@/lib/client-cache");
-            setCached("recipe-catalog-favorites", d.favoriteIds, 180_000);
-          }
-          return d;
-        },
-        180_000
+          writeRecipeCatalogCache({
+            recipes: (d.recipes ?? []) as import("@/lib/recipes/catalog-query").RecipeListItem[],
+            total: d.total,
+            catalogTotal: d.catalogTotal ?? d.total,
+            page: d.page ?? 1,
+            hasMore: Boolean(d.hasMore),
+            favoriteIds: d.favoriteIds ?? [],
+            q: "",
+            filters: [],
+          });
+        })
+        .catch(() => {});
+    }
+
+    if (isCacheStale("coach-insights", 0.85)) {
+      void fetchCached(
+        "coach-insights",
+        () => fetchJson("/api/coach/insights"),
+        90_000
+      ).catch(() => {});
+    }
+
+    if (isCacheStale("health-dashboard", 0.85)) {
+      void fetchCached(
+        "health-dashboard",
+        () => fetchJson("/api/health/dashboard"),
+        120_000
+      ).catch(() => {});
+    }
+
+    if (isCacheStale("wearables-list", 0.9)) {
+      void fetchCached(
+        "wearables-list",
+        () => fetchJson("/api/wearables"),
+        120_000
       ).catch(() => {});
     }
   });

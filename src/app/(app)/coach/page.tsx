@@ -6,7 +6,7 @@ import { Send, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { CoachQuickActions } from "@/components/coach/coach-quick-actions";
-import { CoachInsightsPanel } from "@/components/coach/coach-insights-panel";
+import { CoachStatusDashboard } from "@/components/coach/coach-status-dashboard";
 import { PageIntro } from "@/components/guide/page-intro";
 import {
   loadCachedCoachChat,
@@ -213,7 +213,7 @@ export default function CoachPage() {
 
       <div className="shrink-0 mb-3 space-y-3">
         <PageIntro pageId="coach" />
-        <CoachInsightsPanel />
+        <CoachStatusDashboard onAsk={(t) => void sendMessage(t)} />
         <div className="card-premium p-3">
           <CoachQuickActions onAsk={(t) => void sendMessage(t)} disabled={busy} compact />
         </div>

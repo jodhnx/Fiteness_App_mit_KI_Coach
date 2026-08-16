@@ -21,11 +21,15 @@ export const MAIN_TABS = [
 
 export type MainTab = (typeof MAIN_TABS)[number];
 
-const KEEP_ALIVE = new Set<MainTab>([
+/** Exact paths kept mounted so returning is instant (no remount / refetch flash). */
+const PATH_KEEP_ALIVE = new Set<string>([
   "/home",
   "/workouts",
   "/nutrition",
   "/progress",
+  "/coach",
+  "/rezepte",
+  "/geraete",
 ]);
 
 export function matchMainTab(pathname: string | null): MainTab | null {
@@ -81,24 +85,21 @@ export function PersistentTabProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Keep-alive for main tab PAGE trees only (not header/nav).
- * Place around route `children` inside <main>.
+ * Keep-alive for exact page trees (Home, Nutrition, Recipes list, Coach, …).
+ * Detail routes (e.g. /rezepte/[id]) render normally while the list stays mounted.
  */
 export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const activeTab = matchMainTab(pathname);
-  const keepActive =
-    activeTab != null && KEEP_ALIVE.has(activeTab) && pathname === activeTab;
+  const keepActive = pathname != null && PATH_KEEP_ALIVE.has(pathname);
+  const panels = useRef<Map<string, ReactNode>>(new Map());
 
-  const panels = useRef<Partial<Record<MainTab, ReactNode>>>({});
-
-  if (keepActive && activeTab && !panels.current[activeTab]) {
-    panels.current[activeTab] = children;
+  if (keepActive && pathname && !panels.current.has(pathname)) {
+    panels.current.set(pathname, children);
   }
 
   useEffect(() => {
     const clear = () => {
-      panels.current = {};
+      panels.current.clear();
     };
     window.addEventListener("nexform:user-state-cleared", clear);
     return () => window.removeEventListener("nexform:user-state-cleared", clear);
@@ -106,18 +107,18 @@ export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {MAIN_TABS.filter((t) => KEEP_ALIVE.has(t)).map((tab) => {
-        const node = panels.current[tab];
+      {[...PATH_KEEP_ALIVE].map((path) => {
+        const node = panels.current.get(path);
         if (!node) return null;
-        const show = keepActive && activeTab === tab;
+        const show = keepActive && pathname === path;
         return (
           <div
-            key={tab}
+            key={path}
             hidden={!show}
             aria-hidden={!show}
             style={show ? undefined : { display: "none" }}
           >
-            <AppErrorBoundary label={`tab:${tab}`}>{node}</AppErrorBoundary>
+            <AppErrorBoundary label={`keep:${path}`}>{node}</AppErrorBoundary>
           </div>
         );
       })}

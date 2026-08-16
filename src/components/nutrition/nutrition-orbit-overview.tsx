@@ -23,8 +23,7 @@ type Props = {
 };
 
 /**
- * Compact calorie hero: ring + 4 slim meal chips (not a large orbit square).
- * Empty → „Hinzufügen“; filled → kcal. Over-target uses red ring messaging.
+ * Premium nutrition hero: large calorie ring + macros + compact meal chips.
  */
 export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   dashboard,
@@ -32,7 +31,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
 }: Props) {
   if (!dashboard) {
     return (
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 px-6 py-8 text-center">
+      <div className="rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-zinc-950/95 px-6 py-10 text-center">
         <p className="text-sm text-zinc-400">Daten werden geladen …</p>
       </div>
     );
@@ -68,7 +67,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
       <Link
         href="/settings"
         prefetch
-        className="block rounded-2xl border border-zinc-800 bg-zinc-900/80 px-6 py-8 text-center"
+        className="block rounded-[1.75rem] border border-white/[0.08] bg-zinc-900/80 px-6 py-10 text-center"
       >
         <p className="text-sm text-zinc-300">
           {incomplete
@@ -83,12 +82,14 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   const kcalConsumed = Math.round(consumed.calories ?? 0);
   const overBy = Math.max(0, kcalConsumed - kcalTarget);
   const isOver = overBy > 0;
+  const left = Math.max(0, Math.round(remaining.calories ?? 0));
 
   const slots = TRACK_MEAL_ORDER.map((type) => {
     const found = mealsByType.find((m) => m.mealType === type);
     const items = Array.isArray(found?.items) ? found.items.length : 0;
     const kcal = Math.round(found?.totals?.calories ?? 0);
-    return { type, items, kcal, open: items === 0 };
+    const protein = Math.round(found?.totals?.proteinG ?? 0);
+    return { type, items, kcal, protein, open: items === 0 };
   });
 
   const macros = [
@@ -102,7 +103,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     },
     {
       key: "c",
-      label: "KH",
+      label: "Carbs",
       value: Math.round(consumed.carbsG ?? 0),
       target: Math.round(targets.carbsG ?? 0),
       bar: "bg-amber-400",
@@ -119,105 +120,117 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   ] as const;
 
   return (
-    <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/95 to-zinc-950/90 px-3 pt-3 pb-3 space-y-3">
-      <div className="flex items-center justify-between gap-2 px-0.5">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-            Tagesziel
-          </p>
-          <p className="text-sm font-bold text-white tabular-nums">
-            {kcalTarget.toLocaleString("de-DE")}{" "}
-            <span className="text-zinc-500 font-medium">kcal</span>
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-            {isOver ? "Über Ziel" : "Übrig"}
-          </p>
-          <p
-            className={cn(
-              "text-sm font-bold tabular-nums",
-              isOver ? "text-red-400" : "text-accent"
-            )}
-          >
-            {isOver
-              ? `+${overBy.toLocaleString("de-DE")}`
-              : Math.max(0, Math.round(remaining.calories)).toLocaleString("de-DE")}{" "}
-            <span className="text-zinc-500 font-medium">kcal</span>
-          </p>
-        </div>
+    <div
+      className={cn(
+        "rounded-[1.75rem] border px-3.5 pt-4 pb-3.5 space-y-4",
+        "bg-gradient-to-b from-zinc-900/95 via-zinc-950/90 to-zinc-950",
+        isOver
+          ? "border-red-500/35 shadow-[0_0_40px_-18px_rgba(239,68,68,0.45)]"
+          : "border-white/[0.08]"
+      )}
+    >
+      <div className="text-center space-y-0.5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+          Heute
+        </p>
+        <p className="text-[15px] font-semibold text-white tabular-nums">
+          {kcalConsumed.toLocaleString("de-DE")}
+          <span className="text-zinc-500 font-medium">
+            {" "}
+            / {kcalTarget.toLocaleString("de-DE")} kcal
+          </span>
+        </p>
       </div>
 
       <CalorieRing
         consumed={consumed.calories}
         target={targets.calories}
         remaining={remaining.calories}
-        size={148}
+        size={188}
         ringId="nutrition-kcal-ring"
         centerMode="remaining"
-        label="ÜBRIG"
+        label={isOver ? "ÜBER ZIEL" : "ÜBRIG"}
       />
 
-      {/* Compact 2×2 meal chips — low height, tap to add */}
-      <div className="grid grid-cols-2 gap-1.5">
-        {slots.map((s) => (
-          <button
-            key={s.type}
-            type="button"
-            onClick={() => onAddMeal?.(s.type)}
-            className={cn(
-              "flex items-center gap-2 rounded-2xl border px-2.5 py-2 text-left",
-              "active:scale-[0.98] transition-transform min-h-[44px]",
-              s.open
-                ? "border-white/[0.07] bg-white/[0.02]"
-                : "border-accent/25 bg-accent/[0.08]"
-            )}
-          >
-            <span className="text-lg leading-none shrink-0" aria-hidden>
-              {MEAL_EMOJI[s.type]}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[11px] font-semibold text-zinc-200 truncate">
-                {MEAL_TYPE_LABELS[s.type]}
-              </span>
-              {s.open ? (
-                <span className="inline-flex items-center gap-0.5 text-[10px] text-accent mt-0.5">
-                  <Plus className="h-3 w-3" />
-                  Hinzufügen
-                </span>
-              ) : (
-                <span className="block text-[11px] font-bold text-white tabular-nums mt-0.5">
-                  {s.kcal.toLocaleString("de-DE")} kcal
-                  <span className="text-zinc-500 font-medium"> · {s.items}</span>
-                </span>
-              )}
-            </span>
-          </button>
-        ))}
-      </div>
+      <p
+        className={cn(
+          "text-center text-sm font-semibold tabular-nums -mt-1",
+          isOver ? "text-red-400" : "text-zinc-300"
+        )}
+      >
+        {isOver
+          ? `${overBy.toLocaleString("de-DE")} kcal über Ziel`
+          : `${left.toLocaleString("de-DE")} kcal übrig`}
+      </p>
 
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-3 gap-2">
         {macros.map((m) => {
           const pct =
             m.target > 0 ? Math.min(100, Math.round((m.value / m.target) * 100)) : 0;
           return (
             <div
               key={m.key}
-              className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-2 py-2 text-center"
+              className="rounded-2xl border border-white/[0.06] bg-white/[0.025] px-2.5 py-2.5 text-center"
             >
-              <p className={`text-[9px] font-semibold uppercase tracking-wide ${m.tint}`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wide ${m.tint}`}>
                 {m.label}
               </p>
-              <p className="text-sm font-bold text-white tabular-nums mt-0.5 leading-none">
+              <p className="mt-1 text-[13px] font-bold text-white tabular-nums leading-none">
                 {m.value}
-                <span className="text-[9px] text-zinc-500">/{m.target}g</span>
+                <span className="text-[10px] font-medium text-zinc-500">
+                  {" "}
+                  / {m.target} g
+                </span>
               </p>
-              <div className="mt-1.5 h-0.5 rounded-full bg-zinc-800 overflow-hidden">
-                <div className={`h-full rounded-full ${m.bar}`} style={{ width: `${pct}%` }} />
+              <div className="mt-2 h-1 rounded-full bg-zinc-800 overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${m.bar}`}
+                  style={{ width: `${pct}%` }}
+                />
               </div>
             </div>
           );
         })}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {slots.map((s) => (
+          <button
+            key={s.type}
+            type="button"
+            onClick={() => onAddMeal?.(s.type)}
+            className={cn(
+              "flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left",
+              "active:scale-[0.98] transition-transform min-h-[52px]",
+              s.open
+                ? "border-white/[0.07] bg-white/[0.02]"
+                : "border-accent/25 bg-accent/[0.07]"
+            )}
+          >
+            <span className="text-xl leading-none shrink-0" aria-hidden>
+              {MEAL_EMOJI[s.type]}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11px] font-bold uppercase tracking-wide text-zinc-400">
+                {MEAL_TYPE_LABELS[s.type]}
+              </span>
+              {s.open ? (
+                <span className="inline-flex items-center gap-0.5 text-[12px] text-accent mt-0.5 font-medium">
+                  <Plus className="h-3.5 w-3.5" />
+                  Lebensmittel
+                </span>
+              ) : (
+                <span className="block text-[13px] font-bold text-white tabular-nums mt-0.5">
+                  {s.kcal.toLocaleString("de-DE")} kcal
+                  <span className="text-zinc-500 font-medium">
+                    {" "}
+                    · {s.protein} g P
+                  </span>
+                </span>
+              )}
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );

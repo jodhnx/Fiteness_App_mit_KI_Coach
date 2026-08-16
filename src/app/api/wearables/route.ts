@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { ALL_PROVIDER_IDS, HEALTH_PROVIDERS } from "@/lib/health/providers/registry";
+import { getProviderAvailabilityList } from "@/lib/health/provider-availability";
 import type { WearableProvider } from "@prisma/client";
 import { getProviderOAuthUrl } from "@/lib/health/providers/oauth-dispatcher";
 import { createWearableOAuthState } from "@/lib/health/oauth-state";
@@ -65,7 +66,7 @@ export async function GET() {
           metadata: meta,
         };
       }),
-      providers: HEALTH_PROVIDERS,
+      providers: getProviderAvailabilityList(),
       preferences: prefs,
     });
   } catch (e) {

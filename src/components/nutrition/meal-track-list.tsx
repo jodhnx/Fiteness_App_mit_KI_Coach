@@ -54,28 +54,30 @@ export const MealTrackList = memo(function MealTrackList({
             key={slot.mealType}
             className="rounded-2xl bg-zinc-900/80 border border-zinc-800 overflow-hidden"
           >
-            <div className="flex items-center gap-3 px-4 py-3">
+            <div className="flex items-center gap-3 px-4 py-3.5">
               <span className="text-2xl leading-none shrink-0" aria-hidden>
                 {emoji}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-white text-[15px]">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
                   {MEAL_TYPE_LABELS[slot.mealType] ?? slot.mealType}
                 </p>
-                <p className="text-xs text-zinc-500 tabular-nums mt-0.5">
+                <p className="text-[15px] font-semibold text-white tabular-nums mt-0.5">
                   {Math.round(totals.calories ?? 0)} kcal
-                  {(totals.proteinG ?? 0) > 0 && ` · P ${Math.round(totals.proteinG)}g`}
-                  {(totals.carbsG ?? 0) > 0 && ` · KH ${Math.round(totals.carbsG!)}g`}
-                  {(totals.fatG ?? 0) > 0 && ` · F ${Math.round(totals.fatG!)}g`}
+                  <span className="text-zinc-500 font-medium text-sm">
+                    {(totals.proteinG ?? 0) > 0 &&
+                      ` · ${Math.round(totals.proteinG)} g Protein`}
+                  </span>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => onAddClick?.(slot.mealType)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white active:opacity-90"
+                className="inline-flex h-11 items-center gap-1.5 shrink-0 rounded-xl bg-orange-500 px-3 text-sm font-semibold text-white active:opacity-90"
                 aria-label={`Lebensmittel zu ${MEAL_TYPE_LABELS[slot.mealType] ?? "Mahlzeit"} hinzufügen`}
               >
-                <Plus className="h-5 w-5 stroke-[2.5]" />
+                <Plus className="h-4 w-4 stroke-[2.5]" />
+                <span className="hidden xs:inline">Lebensmittel</span>
               </button>
             </div>
 

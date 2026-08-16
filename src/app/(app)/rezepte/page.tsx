@@ -1,19 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Search, Heart, Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Input } from "@/components/ui/input";
 import { RecipeCard } from "@/components/recipes/recipe-card";
 import { RECIPE_FILTERS } from "@/data/fitness-recipes";
 import type { RecipeListItem } from "@/lib/recipes/catalog-query";
-import { getCached, setCached } from "@/lib/client-cache";
+import { getCached } from "@/lib/client-cache";
+import {
+  patchRecipeFavoriteIds,
+  readRecipeCatalogCache,
+  readDefaultRecipeCatalog,
+  readRecipeUiState,
+  writeRecipeCatalogCache,
+  writeRecipeUiState,
+  RECIPE_FAV_CACHE_KEY,
+} from "@/lib/recipe-catalog-cache";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { hapticTap } from "@/lib/haptic";
 import { Button } from "@/components/ui/button";
-
-const FAV_CACHE = "recipe-catalog-favorites";
 
 type CatalogResponse = {
   recipes: RecipeListItem[];
@@ -25,28 +32,78 @@ type CatalogResponse = {
   catalogTotal: number;
 };
 
+function hydrateInitial() {
+  const ui = readRecipeUiState();
+  const q = ui?.query ?? "";
+  const filters = ui?.filters ?? [];
+  const cached =
+    readRecipeCatalogCache(q, filters) ??
+    (!q && filters.length === 0 ? readDefaultRecipeCatalog() : null);
+  const favs = getCached<string[]>(RECIPE_FAV_CACHE_KEY, { allowStale: true }) ?? [];
+
+  if (cached?.recipes?.length) {
+    return {
+      recipes: cached.recipes,
+      page: cached.page,
+      hasMore: cached.hasMore,
+      total: cached.total,
+      catalogTotal: cached.catalogTotal,
+      favoriteIds: cached.favoriteIds?.length ? cached.favoriteIds : favs,
+      query: q,
+      filters,
+      loading: false,
+    };
+  }
+
+  return {
+    recipes: [] as RecipeListItem[],
+    page: 1,
+    hasMore: false,
+    total: 0,
+    catalogTotal: 0,
+    favoriteIds: favs,
+    query: q,
+    filters,
+    loading: true,
+  };
+}
+
 export default function RezeptePage() {
-  const [query, setQuery] = useState("");
-  const [debouncedQ, setDebouncedQ] = useState("");
-  const [filters, setFilters] = useState<string[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(
-    () => getCached<string[]>(FAV_CACHE) ?? []
-  );
-  const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [total, setTotal] = useState(0);
-  const [catalogTotal, setCatalogTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const initial = useRef(hydrateInitial()).current;
+  const [query, setQuery] = useState(initial.query);
+  const [debouncedQ, setDebouncedQ] = useState(initial.query.trim());
+  const [filters, setFilters] = useState<string[]>(initial.filters);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(initial.favoriteIds);
+  const [recipes, setRecipes] = useState<RecipeListItem[]>(initial.recipes);
+  const recipesRef = useRef(recipes);
+  recipesRef.current = recipes;
+  const [page, setPage] = useState(initial.page);
+  const [hasMore, setHasMore] = useState(initial.hasMore);
+  const [total, setTotal] = useState(initial.total);
+  const [catalogTotal, setCatalogTotal] = useState(initial.catalogTotal);
+  const [loading, setLoading] = useState(initial.loading);
+  const [softLoading, setSoftLoading] = useState(false);
+  const skipFirstDebounce = useRef(true);
 
   useEffect(() => {
+    if (skipFirstDebounce.current) {
+      skipFirstDebounce.current = false;
+      return;
+    }
     const t = window.setTimeout(() => setDebouncedQ(query.trim()), 220);
     return () => window.clearTimeout(t);
   }, [query]);
 
+  useEffect(() => {
+    writeRecipeUiState({ query, filters });
+  }, [query, filters]);
+
   const load = useCallback(
-    async (pageNum: number, append: boolean) => {
-      setLoading(true);
+    async (pageNum: number, append: boolean, opts?: { soft?: boolean }) => {
+      const soft = Boolean(opts?.soft && !append && recipesRef.current.length > 0);
+      if (soft) setSoftLoading(true);
+      else if (!append) setLoading(true);
+
       try {
         const params = new URLSearchParams();
         params.set("page", String(pageNum));
@@ -59,25 +116,54 @@ export default function RezeptePage() {
         });
         if (!res.ok) throw new Error("Laden fehlgeschlagen");
         const data = (await res.json()) as CatalogResponse;
-        setRecipes((prev) => (append ? [...prev, ...data.recipes] : data.recipes));
+        const nextRecipes = append
+          ? [...recipesRef.current, ...data.recipes]
+          : data.recipes;
+        setRecipes(nextRecipes);
         setHasMore(data.hasMore);
         setTotal(data.total);
         setCatalogTotal(data.catalogTotal ?? data.total);
         setPage(data.page);
         setFavoriteIds(data.favoriteIds ?? []);
-        setCached(FAV_CACHE, data.favoriteIds ?? [], 180_000);
+        writeRecipeCatalogCache({
+          recipes: nextRecipes,
+          total: data.total,
+          catalogTotal: data.catalogTotal ?? data.total,
+          page: data.page,
+          hasMore: data.hasMore,
+          favoriteIds: data.favoriteIds ?? [],
+          q: debouncedQ,
+          filters,
+        });
       } catch {
-        toast.error("Rezepte konnten nicht geladen werden");
+        if (!recipesRef.current.length) {
+          toast.error("Rezepte konnten nicht geladen werden");
+        }
       } finally {
         setLoading(false);
+        setSoftLoading(false);
       }
     },
     [debouncedQ, filters]
   );
 
   useEffect(() => {
+    const cached = readRecipeCatalogCache(debouncedQ, filters);
+    if (cached?.recipes?.length) {
+      setRecipes(cached.recipes);
+      setHasMore(cached.hasMore);
+      setTotal(cached.total);
+      setCatalogTotal(cached.catalogTotal);
+      setPage(cached.page);
+      setFavoriteIds(cached.favoriteIds);
+      setLoading(false);
+      if (Date.now() - cached.fetchedAt > 120_000) {
+        void load(1, false, { soft: true });
+      }
+      return;
+    }
     void load(1, false);
-  }, [load]);
+  }, [debouncedQ, filters, load]);
 
   const favorites = useMemo(
     () => recipes.filter((r) => favoriteIds.includes(r.id)),
@@ -99,7 +185,7 @@ export default function RezeptePage() {
         ? favoriteIds.filter((id) => id !== recipeId)
         : [recipeId, ...favoriteIds];
       setFavoriteIds(next);
-      setCached(FAV_CACHE, next, 180_000);
+      patchRecipeFavoriteIds(next);
 
       const res = await fetch("/api/recipes/catalog", {
         method: "POST",
@@ -108,7 +194,7 @@ export default function RezeptePage() {
       });
       if (!res.ok) {
         setFavoriteIds(favoriteIds);
-        setCached(FAV_CACHE, favoriteIds, 180_000);
+        patchRecipeFavoriteIds(favoriteIds);
         toast.error("Favorit konnte nicht gespeichert werden");
       }
     },
@@ -135,6 +221,9 @@ export default function RezeptePage() {
           className="h-12 rounded-2xl pl-10"
           autoComplete="off"
         />
+        {softLoading && (
+          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-zinc-600" />
+        )}
       </div>
 
       <div className="scrollbar-none -mx-0.5 flex gap-2 overflow-x-auto px-0.5 pb-1">
@@ -162,7 +251,7 @@ export default function RezeptePage() {
         <section className="space-y-2.5">
           <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
             <Heart className="h-3.5 w-3.5 text-rose-400" />
-            Favoriten (geladen)
+            Favoriten
           </h2>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {favorites.slice(0, 8).map((r, i) => (
@@ -214,7 +303,7 @@ export default function RezeptePage() {
           type="button"
           variant="outline"
           className="h-11 w-full"
-          disabled={loading}
+          disabled={loading || softLoading}
           onClick={() => void load(page + 1, true)}
         >
           {loading ? (

@@ -18,6 +18,18 @@ export type CoachInsightsResult = {
   summary: string;
   tips: CoachInsight[];
   weeklyReportText?: string;
+  /** Structured status for the Coach dashboard UI */
+  status?: {
+    trainingDoneToday: boolean;
+    trainingLabel: string;
+    calories: { consumed: number; target: number } | null;
+    protein: { consumed: number; target: number } | null;
+    steps: number | null;
+    sleepHours: number | null;
+    recoveryPct: number | null;
+    goal: string | null;
+  };
+  recommendations?: string[];
 };
 
 type CoachContext = {
@@ -314,10 +326,56 @@ export function buildCoachInsightsFromContext(ctx: CoachContext): CoachInsightsR
       (weeklyReport.goalReached ? " — Wochenziel erreicht ✓" : ".")
     : undefined;
 
+  const trainingDoneToday =
+    lastSession?.completedAt != null &&
+    startOfDay(lastSession.completedAt).getTime() === startOfDay(new Date()).getTime();
+
+  const recoveryPct =
+    recovery?.muscles?.length
+      ? Math.round(
+          recovery.muscles.reduce((s, m) => s + m.recoveryPercent, 0) /
+            recovery.muscles.length
+        )
+      : null;
+
+  const status = {
+    trainingDoneToday,
+    trainingLabel: trainingDoneToday
+      ? "✓ erledigt"
+      : daysSinceWorkout == null
+        ? "Noch kein Training getrackt"
+        : daysSinceWorkout === 0
+          ? "✓ erledigt"
+          : `Vor ${daysSinceWorkout} Tag${daysSinceWorkout === 1 ? "" : "en"}`,
+    calories: nutrition
+      ? {
+          consumed: Math.round(nutrition.consumed.calories),
+          target: Math.round(nutrition.targets.calories),
+        }
+      : null,
+    protein: nutrition
+      ? {
+          consumed: Math.round(nutrition.consumed.proteinG),
+          target: Math.round(nutrition.targets.proteinG),
+        }
+      : null,
+    steps: health?.today?.steps ?? null,
+    sleepHours: sleepStats?.avgHours ?? null,
+    recoveryPct,
+    goal: profile?.trainingGoal ?? profile?.nutritionGoal ?? null,
+  };
+
+  const recommendations = tips
+    .filter((t) => t.priority === "high" || t.priority === "medium")
+    .slice(0, 5)
+    .map((t) => t.message);
+
   return {
     summary,
     tips: tips.slice(0, 8),
     weeklyReportText,
+    status,
+    recommendations,
   };
 }
 
