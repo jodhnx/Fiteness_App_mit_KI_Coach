@@ -110,13 +110,13 @@ export default function ErfolgePage() {
 
   if ((error || timedOut) && !rawData) {
     return (
-      <div className="py-12 max-w-md mx-auto text-center space-y-4">
+      <div className="py-12 max-w-md mx-auto text-center space-y-4 px-4">
         <AlertCircle className="h-10 w-10 text-amber-400 mx-auto" />
-        <h2 className="text-lg font-semibold text-white">Erfolge konnten nicht geladen werden</h2>
-        <p className="text-sm text-zinc-400">{error ?? "Zeitüberschreitung"}</p>
-        <p className="text-xs text-zinc-600">
-          Prüfe die Konsole (F12) und ob die Datenbank migriert ist:{" "}
-          <code className="text-zinc-500">npx prisma db push</code>
+        <h2 className="text-lg font-semibold text-white">
+          Erfolge konnten nicht geladen werden
+        </h2>
+        <p className="text-sm text-zinc-400">
+          Bitte prüfe deine Verbindung und versuche es erneut.
         </p>
         <Button type="button" onClick={() => reload()} className="gap-2">
           <RefreshCw className="h-4 w-4" />
@@ -127,25 +127,23 @@ export default function ErfolgePage() {
   }
 
   const display = data ?? createEmptyGamificationPayload();
+  const rare = display.achievements.filter(
+    (a) =>
+      a.earned &&
+      (a.tier === "diamond" || a.tier === "legendary" || a.tier === "mythic")
+  );
+  const nextUp = display.achievements
+    .filter((a) => !a.earned)
+    .sort((a, b) => b.progressPercent - a.progressPercent)
+    .slice(0, 5);
 
   return (
     <div className="space-y-6 pb-4">
-      {display._degraded && display._error && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>
-            Teilweise Daten nicht verfügbar ({display._error}). Anzeige mit Standardwerten.
-          </span>
-        </div>
-      )}
-
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <span>🏆</span> Erfolge
-          </h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Erfolge</h1>
           <p className="text-sm text-zinc-500 mt-1">
-            Level, XP, Badges und Challenges – dein Fortschritt
+            Level, Badges, Challenges und Rekorde
           </p>
         </div>
         <Link
@@ -157,7 +155,7 @@ export default function ErfolgePage() {
         </Link>
       </div>
 
-      <div className="card-premium p-4 space-y-3">
+      <div className="rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-zinc-900/95 to-zinc-950 p-4 space-y-3">
         <LevelProgressBar
           level={display.level.level}
           totalXP={display.totalXP}
@@ -165,21 +163,23 @@ export default function ErfolgePage() {
           xpToNext={display.level.xpToNext}
         />
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="rounded-lg bg-white/5 py-2">
-            <p className="text-zinc-500">Erfolge</p>
-            <p className="text-lg font-bold text-white">
+          <div className="rounded-2xl bg-white/[0.04] py-2.5 border border-white/[0.05]">
+            <p className="text-zinc-500">Freigeschaltet</p>
+            <p className="text-lg font-bold text-white tabular-nums">
               {display.unlockedCount}/{display.totalAchievements}
             </p>
           </div>
-          <div className="rounded-lg bg-white/5 py-2">
+          <div className="rounded-2xl bg-white/[0.04] py-2.5 border border-white/[0.05]">
             <p className="text-zinc-500">Streak</p>
-            <p className="text-lg font-bold text-orange-400">
+            <p className="text-lg font-bold text-orange-400 tabular-nums">
               {display.streak?.currentDays ?? 0}d
             </p>
           </div>
-          <div className="rounded-lg bg-white/5 py-2">
+          <div className="rounded-2xl bg-white/[0.04] py-2.5 border border-white/[0.05]">
             <p className="text-zinc-500">Challenges</p>
-            <p className="text-lg font-bold text-cyan-400">{display.challenges.length}</p>
+            <p className="text-lg font-bold text-cyan-400 tabular-nums">
+              {display.challenges.length}
+            </p>
           </div>
         </div>
       </div>
@@ -223,7 +223,33 @@ export default function ErfolgePage() {
 
       {tab === "overview" && (
         <div className="space-y-4">
-          {inProgress.length > 0 && (
+          {nextUp.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                <Target className="h-4 w-4 text-cyan-400" />
+                Nächste erreichbare Erfolge
+              </h2>
+              <div className="space-y-2">
+                {nextUp.map((a) => (
+                  <AchievementRow key={a.id} a={a} />
+                ))}
+              </div>
+            </section>
+          )}
+          {rare.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-violet-400" />
+                Seltene Erfolge
+              </h2>
+              <div className="space-y-2">
+                {rare.slice(0, 4).map((a) => (
+                  <AchievementRow key={a.id} a={a} />
+                ))}
+              </div>
+            </section>
+          )}
+          {inProgress.length > 0 && nextUp.length === 0 && (
             <section>
               <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-violet-400" />
@@ -241,7 +267,9 @@ export default function ErfolgePage() {
           )}
           {earned.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-white mb-2">Zuletzt freigeschaltet</h2>
+              <h2 className="text-sm font-semibold text-white mb-2">
+                Freigeschaltet
+              </h2>
               <div className="space-y-2">
                 {earned
                   .filter((a) => a.earnedAt)
@@ -314,7 +342,22 @@ export default function ErfolgePage() {
       {tab === "challenges" && (
         <div className="space-y-4">
           {display.challenges.length === 0 ? (
-            <p className="text-sm text-zinc-500 text-center py-6">Keine Challenges vorhanden.</p>
+            <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/60 px-4 py-8 text-center space-y-2">
+              <p className="text-sm text-zinc-300">Noch keine Challenges geladen</p>
+              <p className="text-xs text-zinc-500">
+                Tippe auf Aktualisieren — Challenges werden automatisch eingerichtet.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => reload()}
+              >
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                Aktualisieren
+              </Button>
+            </div>
           ) : (
             (["daily", "weekly", "monthly"] as const).map((period) => {
               const list = display.challenges.filter((c) => c.period === period);

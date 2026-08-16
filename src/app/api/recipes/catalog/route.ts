@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     if (!(await tableExists("RecipeCatalogFavorite"))) {
       return jsonError(
-        'Tabelle „RecipeCatalogFavorite“ fehlt. Bitte: npx prisma db push',
+        'Favoriten speichern ist vorübergehend nicht verfügbar.',
         503
       );
     }

@@ -395,7 +395,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
               )}
             </div>
             <div className="p-3 space-y-2">
-              <div className="grid grid-cols-[4.5rem_1fr_1fr_3.5rem_3.5rem] gap-2 text-[10px] uppercase tracking-wide text-zinc-500 px-0.5">
+              <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)_3.25rem_3.25rem] gap-2 text-[10px] uppercase tracking-wide text-zinc-500 px-0.5">
                 <span>Satz</span>
                 <span>Gewicht</span>
                 <span>Wdh</span>
@@ -405,67 +405,93 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
               {sets.map((set, index) => (
                 <div
                   key={set.id}
-                  className={`grid grid-cols-[4.5rem_1fr_1fr_3.5rem_3.5rem] gap-2 items-center rounded-xl p-1.5 ${
+                  className={`grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)_3.25rem_3.25rem] gap-2 items-center rounded-xl p-1.5 ${
                     set.completed
                       ? "bg-cyan-500/15 border border-cyan-500/35"
                       : "bg-zinc-800/50"
                   }`}
                 >
-                  <span className="text-base font-semibold text-zinc-300 pl-2 tabular-nums">
+                  <span className="text-base font-semibold text-zinc-300 pl-1 tabular-nums">
                     {index + 1}
                   </span>
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
-                    className="h-14 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
-                    value={set.weightKg ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setSession((prev) => {
-                        if (!prev) return prev;
-                        return {
-                          ...prev,
-                          sets: prev.sets.map((s) =>
-                            s.id === set.id
-                              ? { ...s, weightKg: v === "" ? null : Number(v) }
-                              : s
-                          ),
-                        };
-                      });
-                    }}
-                    onBlur={(e) => {
-                      const v = e.target.value;
-                      patchSet(set.id, {
-                        weightKg: v === "" ? null : Number(v),
-                      });
-                    }}
-                  />
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
-                    className="h-14 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
-                    value={set.reps ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setSession((prev) => {
-                        if (!prev) return prev;
-                        return {
-                          ...prev,
-                          sets: prev.sets.map((s) =>
-                            s.id === set.id
-                              ? { ...s, reps: v === "" ? null : Number(v) }
-                              : s
-                          ),
-                        };
-                      });
-                    }}
-                    onBlur={(e) => {
-                      const v = e.target.value;
-                      patchSet(set.id, { reps: v === "" ? null : Number(v) });
-                    }}
-                  />
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      pattern="[0-9]*[.,]?[0-9]*"
+                      placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
+                      className="h-14 min-w-0 flex-1 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
+                      value={set.weightKg ?? ""}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
+                        const v = raw;
+                        setSession((prev) => {
+                          if (!prev) return prev;
+                          return {
+                            ...prev,
+                            sets: prev.sets.map((s) =>
+                              s.id === set.id
+                                ? {
+                                    ...s,
+                                    weightKg:
+                                      v === "" || v === "."
+                                        ? null
+                                        : Number(v),
+                                  }
+                                : s
+                            ),
+                          };
+                        });
+                      }}
+                      onBlur={(e) => {
+                        const raw = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
+                        const v = raw;
+                        patchSet(set.id, {
+                          weightKg:
+                            v === "" || v === "." ? null : Number(v),
+                        });
+                      }}
+                    />
+                    <span className="text-xs font-semibold text-zinc-500 shrink-0 w-6">
+                      KG
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
+                      className="h-14 min-w-0 flex-1 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
+                      value={set.reps ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/[^0-9]/g, "");
+                        setSession((prev) => {
+                          if (!prev) return prev;
+                          return {
+                            ...prev,
+                            sets: prev.sets.map((s) =>
+                              s.id === set.id
+                                ? {
+                                    ...s,
+                                    reps: v === "" ? null : Number(v),
+                                  }
+                                : s
+                            ),
+                          };
+                        });
+                      }}
+                      onBlur={(e) => {
+                        const v = e.target.value.replace(/[^0-9]/g, "");
+                        patchSet(set.id, {
+                          reps: v === "" ? null : Number(v),
+                        });
+                      }}
+                    />
+                    <span className="text-[10px] font-semibold text-zinc-500 shrink-0 w-8">
+                      REPS
+                    </span>
+                  </div>
                   <Button
                     size="icon"
                     variant={set.completed ? "default" : "secondary"}

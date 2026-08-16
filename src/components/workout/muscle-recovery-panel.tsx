@@ -15,29 +15,10 @@ type Props = {
   variant?: "default" | "section";
 };
 
-function statusMeta(percent: number) {
-  if (percent >= 85) {
-    return {
-      emoji: "🟢",
-      label: "Erholt",
-      bar: "bg-emerald-500",
-      text: "text-emerald-400",
-    };
-  }
-  if (percent >= 50) {
-    return {
-      emoji: "🟡",
-      label: "Teilweise erholt",
-      bar: "bg-amber-400",
-      text: "text-amber-400",
-    };
-  }
-  return {
-    emoji: "🔴",
-    label: "Noch nicht vollständig erholt",
-    bar: "bg-red-500",
-    text: "text-red-400",
-  };
+function hoursRemaining(livePct: number, requiredHours: number): number | null {
+  if (requiredHours <= 0 || livePct >= 100) return null;
+  const elapsed = (livePct / 100) * requiredHours;
+  return Math.max(0, Math.round(requiredHours - elapsed));
 }
 
 function RecoveryRow({
@@ -49,26 +30,36 @@ function RecoveryRow({
   live: number;
   premium?: boolean;
 }) {
-  const meta = statusMeta(live);
+  const ready = live >= 100;
+  const hrs = hoursRemaining(live, row.recoveryHoursRequired);
+  const bar =
+    live >= 85 ? "bg-emerald-500" : live >= 50 ? "bg-amber-400" : "bg-red-500";
+  const text =
+    live >= 85
+      ? "text-emerald-400"
+      : live >= 50
+        ? "text-amber-400"
+        : "text-red-400";
 
   return (
     <div className={cn("space-y-1.5", premium && "space-y-2")}>
       <div className="flex items-center justify-between gap-2">
         <span
           className={cn(
-            "text-zinc-300 font-medium shrink-0 flex items-center gap-1.5",
+            "text-zinc-200 font-medium shrink-0",
             premium ? "text-sm min-w-[5.5rem]" : "text-sm min-w-[5rem]"
           )}
         >
-          <span aria-hidden>{meta.emoji}</span>
           {row.label}
         </span>
-        <span className={cn("text-[10px] truncate flex-1", meta.text)}>{meta.label}</span>
+        <span className={cn("text-[11px] tabular-nums font-semibold", text)}>
+          {ready ? "Bereit" : hrs != null ? `≈ ${hrs} h` : `${live} %`}
+        </span>
         <span
           className={cn(
             "tabular-nums font-bold text-right shrink-0",
             premium ? "text-sm w-12" : "text-xs w-10",
-            meta.text
+            text
           )}
         >
           {live}%
@@ -81,8 +72,8 @@ function RecoveryRow({
         )}
       >
         <div
-          className={cn("h-full rounded-full transition-all duration-700", meta.bar)}
-          style={{ width: `${live}%` }}
+          className={cn("h-full rounded-full transition-all duration-700", bar)}
+          style={{ width: `${Math.min(100, live)}%` }}
         />
       </div>
     </div>
@@ -93,7 +84,7 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
   muscles,
   compact = false,
   showLink = false,
-  title = "Muskel-Regeneration",
+  title = "Muskelregeneration",
   variant = "default",
 }: Props) {
   const isSection = variant === "section";
@@ -114,6 +105,27 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
     [muscles, tick]
   );
 
+  if (liveMuscles.length === 0) {
+    return (
+      <div
+        className={cn(
+          isSection
+            ? "rounded-3xl border border-zinc-700/50 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 p-5 mt-2"
+            : "rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4"
+        )}
+      >
+        <p className="text-sm font-semibold uppercase tracking-wide text-zinc-300 flex items-center gap-1.5">
+          <Activity className="h-4 w-4 text-cyan-400" />
+          {title}
+        </p>
+        <p className="text-xs text-zinc-500 mt-2">
+          Nach dem ersten Workout siehst du hier die Regeneration deiner
+          Muskelgruppen.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -130,7 +142,9 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
             isSection ? "text-sm text-zinc-300" : "text-xs text-zinc-400"
           )}
         >
-          <Activity className={cn("text-cyan-400", isSection ? "h-4 w-4" : "h-3.5 w-3.5")} />
+          <Activity
+            className={cn("text-cyan-400", isSection ? "h-4 w-4" : "h-3.5 w-3.5")}
+          />
           {title}
         </p>
         {showLink && (
@@ -140,7 +154,7 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
         )}
       </div>
       <p className="text-[10px] text-zinc-500 mb-3 leading-relaxed">
-        Basierend auf deinen abgeschlossenen Workouts (Muskelgruppen, Sätze, Volumen,
+        Basierend auf abgeschlossenen Workouts (Muskelgruppen, Volumen,
         Intensität).
       </p>
       <div
@@ -151,7 +165,12 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
         )}
       >
         {liveMuscles.map((row) => (
-          <RecoveryRow key={row.muscle} row={row} live={row.live} premium={isSection} />
+          <RecoveryRow
+            key={row.muscle}
+            row={row}
+            live={row.live}
+            premium={isSection}
+          />
         ))}
       </div>
     </div>

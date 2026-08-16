@@ -30,6 +30,8 @@ const PATH_KEEP_ALIVE = new Set<string>([
   "/coach",
   "/rezepte",
   "/geraete",
+  "/erfolge",
+  "/social",
 ]);
 
 export function matchMainTab(pathname: string | null): MainTab | null {

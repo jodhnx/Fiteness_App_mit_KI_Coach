@@ -3,6 +3,7 @@ import { getUserTotalXP } from "@/lib/gamification";
 import { getLevelFromXP } from "@/lib/level-system";
 import { loadAchievementsWithProgress } from "@/lib/achievement-engine";
 import { loadChallengesWithProgress } from "@/lib/challenge-progress";
+import { ensureChallengeCatalog } from "@/lib/ensure-challenge-catalog";
 import {
   createEmptyGamificationPayload,
   type GamificationApiPayload,
@@ -35,12 +36,14 @@ export async function loadGamificationPayload(
       .catch((e) => console.warn("[gamification] unlock check skipped", e));
   }
 
+  await ensureChallengeCatalog().catch(() => undefined);
+
   let totalXP = 0;
   try {
     totalXP = await getUserTotalXP(userId);
   } catch (e) {
     console.error("[gamification] getUserTotalXP", e);
-    errors.push("XP");
+    errors.push("xp");
   }
 
   const level = getLevelFromXP(totalXP);
@@ -48,20 +51,13 @@ export async function loadGamificationPayload(
   const [achievements, challenges, streak, xpHistory] = await Promise.all([
     loadAchievementsWithProgress(userId).catch((e) => {
       console.error("[gamification] achievements", e);
-      if (isSchemaMismatchError(e)) {
-        errors.push("Achievement-Tabelle/Spalte fehlt (db push)");
-      } else {
-        errors.push("Erfolge");
-      }
+      errors.push("achievements");
       return [];
     }),
     loadChallengesWithProgress(userId, { syncDb: true }).catch((e) => {
       console.error("[gamification] challenges", e);
-      if (isSchemaMismatchError(e)) {
-        errors.push("Challenge-Tabelle/Spalte fehlt (db push)");
-      } else {
-        errors.push("Challenges");
-      }
+      if (isSchemaMismatchError(e)) errors.push("challenges_unavailable");
+      else errors.push("challenges");
       return [];
     }),
     prisma.streak
@@ -78,7 +74,7 @@ export async function loadGamificationPayload(
       })
       .catch((e) => {
         console.error("[gamification] xpHistory", e);
-        errors.push("XP-Historie");
+        errors.push("history");
         return [];
       }),
   ]);
@@ -92,16 +88,21 @@ export async function loadGamificationPayload(
 
   const activeChallenges = challenges.filter((c) => c.status !== "COMPLETED");
   const activeChallenge = activeChallenges.sort(
-    (a, b) => b.progress / Math.max(1, b.targetDays) - a.progress / Math.max(1, a.targetDays)
+    (a, b) =>
+      b.progress / Math.max(1, b.targetDays) -
+      a.progress / Math.max(1, a.targetDays)
   )[0];
 
   const open = achievements
     .filter((a) => !a.earned)
     .sort((a, b) => b.progressPercent - a.progressPercent)[0];
 
-  let nearestAchievement: GamificationApiPayload["summary"]["nearestAchievement"] = null;
+  let nearestAchievement: GamificationApiPayload["summary"]["nearestAchievement"] =
+    null;
   if (open) {
-    const approxCurrent = Math.floor((open.progressPercent / 100) * open.targetValue);
+    const approxCurrent = Math.floor(
+      (open.progressPercent / 100) * open.targetValue
+    );
     nearestAchievement = {
       name: open.name,
       remaining: Math.max(0, open.targetValue - approxCurrent),
@@ -144,17 +145,17 @@ export async function loadGamificationPayload(
     })),
     unlockedCount,
     totalAchievements,
-    ...(errors.length > 0
-      ? { _degraded: true, _error: errors.join("; ") }
-      : {}),
+    // Never expose technical details to the client UI
+    ...(errors.length > 0 ? { _degraded: true, _error: "partial" } : {}),
   };
 
   return payload;
 }
 
 export function degradedPayload(message: string): GamificationApiPayload {
+  console.error("[gamification] degraded", message);
   return createEmptyGamificationPayload({
     _degraded: true,
-    _error: message,
+    _error: "partial",
   });
 }

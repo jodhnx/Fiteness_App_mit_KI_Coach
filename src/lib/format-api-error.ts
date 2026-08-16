@@ -22,26 +22,21 @@ export function formatConnectionErrorMessage(error: unknown): string | null {
   return null;
 }
 
-/** Human-readable API error — no false "migrate deploy" hints. */
+/** Human-readable API error — never expose migration commands to end users. */
 export function formatApiErrorMessage(error: unknown): string {
   const connectionDetail = formatConnectionErrorMessage(error);
-  if (connectionDetail) return connectionDetail;
+  if (connectionDetail) {
+    // Strip developer-only env dumps for client responses when possible
+    console.error("[api] connection", connectionDetail);
+    return "Verbindung zur Datenbank fehlgeschlagen. Bitte später erneut versuchen.";
+  }
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    const model = error.meta?.modelName ? String(error.meta.modelName) : "";
-    const table = error.meta?.table ? String(error.meta.table) : model;
-
     switch (error.code) {
       case "P2021":
-        return table
-          ? `Datenbanktabelle „${table}" fehlt. Schema synchronisieren: npx prisma db push`
-          : "Eine benötigte Datenbanktabelle fehlt. Schema synchronisieren: npx prisma db push";
-      case "P2022": {
-        const column = error.meta?.column ? String(error.meta.column) : "";
-        return column
-          ? `Datenbankspalte „${column}" fehlt${model ? ` (${model})` : ""}. npx prisma db push`
-          : "Eine benötigte Datenbankspalte fehlt. npx prisma db push";
-      }
+      case "P2022":
+        console.error("[api] schema mismatch", error.code, error.meta);
+        return "Einige Daten sind vorübergehend nicht verfügbar. Bitte später erneut versuchen.";
       case "P2002":
         return "Dieser Eintrag existiert bereits.";
       case "P2003":
@@ -49,23 +44,29 @@ export function formatApiErrorMessage(error: unknown): string {
       case "P2025":
         return "Datensatz nicht gefunden.";
       default:
-        return error.message;
+        console.error("[api] prisma", error.code, error.message);
+        return "Etwas ist schiefgelaufen. Bitte erneut versuchen.";
     }
   }
 
   if (isDatabaseConnectionError(error)) {
-    const env = validateSupabaseDatabaseEnv();
-    if (!env.ok) return env.issues.join(" ");
-    return "Datenbank nicht erreichbar. Prüfe DATABASE_URL in der .env.";
+    console.error("[api] db connection", error);
+    return "Datenbank vorübergehend nicht erreichbar. Bitte später erneut versuchen.";
   }
 
   if (error instanceof Prisma.PrismaClientInitializationError) {
-    const env = validateSupabaseDatabaseEnv();
-    if (!env.ok) return env.issues.join(" ");
-    return "Datenbankverbindung fehlgeschlagen. Prüfe DATABASE_URL.";
+    console.error("[api] prisma init", error.message);
+    return "Datenbankverbindung fehlgeschlagen. Bitte später erneut versuchen.";
   }
 
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    // Never forward raw prisma / stack messages to clients
+    if (/prisma|db push|migrate|P20\d{2}|relation .* does not exist/i.test(error.message)) {
+      console.error("[api] suppressed technical error", error.message);
+      return "Daten vorübergehend nicht verfügbar. Bitte erneut versuchen.";
+    }
+    return error.message;
+  }
   return "Interner Serverfehler";
 }
 

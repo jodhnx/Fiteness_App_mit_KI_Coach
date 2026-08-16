@@ -32,7 +32,7 @@ async function activitiesAvailable(): Promise<boolean> {
 export async function createActivity(userId: string, input: ActivityInput) {
   if (!(await activitiesAvailable())) {
     throw new Error(
-      "Aktivitäten-Tabelle fehlt. Bitte Datenbank migrieren: npx prisma db push"
+      "Aktivitäten sind vorübergehend nicht verfügbar."
     );
   }
   const avgSpeedKmh =

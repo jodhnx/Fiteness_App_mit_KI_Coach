@@ -137,6 +137,9 @@ export async function loadChallengesWithProgress(
 ): Promise<ChallengeWithProgress[]> {
   const syncDb = options?.syncDb !== false;
 
+  const { ensureChallengeCatalog } = await import("@/lib/ensure-challenge-catalog");
+  await ensureChallengeCatalog();
+
   const defs = await prisma.challenge
     .findMany({ orderBy: [{ period: "asc" }, { category: "asc" }] })
     .catch(() => prisma.challenge.findMany({ orderBy: { category: "asc" } }));
