@@ -17,9 +17,10 @@ export function useCachedFetch<T>(
   url: string,
   ttlMs = 60_000,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-  options?: { revalidateOnMount?: boolean; staleRatio?: number }
+  options?: { revalidateOnMount?: boolean; staleRatio?: number; cacheOnly?: boolean }
 ) {
   const revalidateOnMount = options?.revalidateOnMount ?? false;
+  const cacheOnly = options?.cacheOnly ?? false;
   const staleRatio = options?.staleRatio ?? 0.9;
   const [data, setData] = useState<T | null>(() =>
     getCached<T>(key, { allowStale: true })
@@ -91,12 +92,12 @@ export function useCachedFetch<T>(
 
   useEffect(() => {
     mounted.current = true;
-    const hit = getCached<T>(key);
+    const hit = getCached<T>(key, { allowStale: !cacheOnly });
 
     if (hit !== null) {
       setData(hit);
       setLoading(false);
-      if (revalidateOnMount && isCacheStale(key, staleRatio)) {
+      if (!cacheOnly && revalidateOnMount && isCacheStale(key, staleRatio)) {
         refreshCached(
           key,
           fetcher,
@@ -114,11 +115,18 @@ export function useCachedFetch<T>(
       };
     }
 
+    if (cacheOnly) {
+      setLoading(false);
+      return () => {
+        mounted.current = false;
+      };
+    }
+
     reload();
     return () => {
       mounted.current = false;
     };
-  }, [key, reload, revalidateOnMount, staleRatio, fetcher, ttlMs]);
+  }, [key, reload, revalidateOnMount, staleRatio, fetcher, ttlMs, cacheOnly]);
 
   return { data, loading, error, timedOut, reload };
 }

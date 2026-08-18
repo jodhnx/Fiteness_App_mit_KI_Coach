@@ -2,12 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
-import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
+import { HOME_DATA_EVENT } from "@/lib/nutrition-sync";
 import { WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
-import { type HomeDataPayload } from "@/lib/home-defaults";
-import { useHomeLiveData } from "@/hooks/use-home-live-data";
+import { useBootHomeData } from "@/hooks/use-boot-home-data";
 import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
 import { useDisplayName } from "@/hooks/use-display-name";
 import { PageShell } from "@/components/layout/page-shell";
@@ -44,21 +42,13 @@ export default function HomePage() {
     }
   }, []);
 
-  const { data: rawData } = useCachedFetch<HomeDataPayload>(
-    HOME_DATA_CACHE_KEY,
-    "/api/home",
-    900_000,
-    6_000,
-    { revalidateOnMount: false, staleRatio: 0.85 }
-  );
-
-  const data = useHomeLiveData(rawData);
+  const data = useBootHomeData();
   const { dashboard: nutrition } = useCentralNutrition();
   const displayName = useDisplayName(data.userName);
 
   useEffect(() => {
-    if (rawData) hydrateHomeSectionCaches(rawData);
-  }, [rawData]);
+    hydrateHomeSectionCaches(data);
+  }, [data]);
 
   useEffect(() => {
     const onWorkout = () => setWorkoutCleared(true);

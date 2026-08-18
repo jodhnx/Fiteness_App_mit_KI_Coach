@@ -103,7 +103,7 @@ export default function ProgressPage() {
     "/api/progress",
     600_000,
     6_000,
-    { revalidateOnMount: false, staleRatio: 0.9 }
+    { revalidateOnMount: false, staleRatio: 0.95, cacheOnly: true }
   );
 
   const [nutritionRev, setNutritionRev] = useState(0);
