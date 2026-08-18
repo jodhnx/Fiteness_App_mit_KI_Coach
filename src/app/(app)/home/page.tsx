@@ -131,11 +131,7 @@ export default function HomePage() {
 
   return (
     <PageShell>
-      <HomeGreeting
-        name={displayName}
-        image={data.userImage}
-        streakDays={trainingStreakDays}
-      />
+      <HomeGreeting name={displayName} streakDays={trainingStreakDays} />
       <PageIntro pageId="home" />
       <HomePhoneStepsHint />
 

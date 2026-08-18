@@ -42,6 +42,9 @@ import { normalizeHomeData } from "@/lib/home-defaults";
 import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
 import { warmFoodHistoryCache } from "@/lib/food-history-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
+import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
+import { runBootSecondaryPrefetch } from "@/lib/boot-prefetch";
+import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 
 /** Absolute last-resort only — prefer finishing when critical data is ready. */
 const BOOT_HARD_CAP_MS = 2_000;
@@ -73,12 +76,16 @@ function hasCriticalHomeReady(): boolean {
     isValidDashboardPayload(dash) &&
     isNutritionDashboardToday(dash.date);
   if (!isHomePayloadUsable(home) || !dashOk) return false;
-  // Identity + training snapshot must be resolved (null values are valid)
+
+  const macrosReady =
+    !dash.profileComplete || hasNutritionTargets(dash);
+
   return (
     "userName" in home &&
     "userImage" in home &&
     "nextWorkout" in home &&
     "weightKg" in home &&
+    macrosReady &&
     (home.trainingStreak != null || home.streak != null || home.calorieTarget >= 0)
   );
 }
@@ -193,6 +200,7 @@ export function AppClientShell({ children }: { children: ReactNode }) {
       setSplashVisible(false);
       warmNavDataCaches();
       warmFoodHistoryCache();
+      runBootSecondaryPrefetch();
       booting.current = false;
     };
 
@@ -206,23 +214,17 @@ export function AppClientShell({ children }: { children: ReactNode }) {
       setBootProgress(0.9);
       finish();
       void Promise.all([
+        fetchOk("/api/progress"),
         fetchOk("/api/home"),
         fetchOk("/api/nutrition/dashboard"),
         fetchOk("/api/profile"),
-      ]).then(([home, dash, profile]) => {
+      ]).then(([progress, home, dash, profile]) => {
         if (cancelled) return;
+        if (progress) {
+          setCached(PROGRESS_CACHE_KEY, progress, 600_000);
+          void prefetchProgressCharts(true);
+        }
         applyBootPayloads(home, dash, profile);
-      });
-      void Promise.all([
-        fetchOk("/api/progress"),
-        fetchOk("/api/workouts/sessions?active=1"),
-        fetchOk("/api/workouts/recovery"),
-        fetchOk("/api/gamification"),
-      ]).then(([progress, active, recovery, gamification]) => {
-        if (progress) setCached(PROGRESS_CACHE_KEY, progress, 600_000);
-        if (active) setCached("workouts-active", active, 180_000);
-        if (recovery) setCached("workouts-recovery-hub", recovery, 120_000);
-        if (gamification) setCached("gamification-full", gamification, 120_000);
       });
       return;
     }
@@ -241,46 +243,15 @@ export function AppClientShell({ children }: { children: ReactNode }) {
         ]);
         if (cancelled) return;
         setBootProgress(0.75);
-        if (progress) setCached(PROGRESS_CACHE_KEY, progress, 600_000);
+        if (progress) {
+          setCached(PROGRESS_CACHE_KEY, progress, 600_000);
+          void prefetchProgressCharts(true);
+        }
         applyBootPayloads(home, dash, profile);
         setBootProgress(0.95);
         if (hasCriticalHomeReady()) finish();
 
-        void Promise.all([
-          fetchOk("/api/workouts/sessions?active=1"),
-          fetchOk("/api/workouts/recovery"),
-          fetchOk("/api/recipes/catalog?limit=24&page=1"),
-          fetchOk("/api/gamification"),
-        ]).then(async ([active, recovery, recipes, gamification]) => {
-          if (cancelled) return;
-          if (active) setCached("workouts-active", active, 180_000);
-          if (recovery) setCached("workouts-recovery-hub", recovery, 120_000);
-          if (gamification) setCached("gamification-full", gamification, 120_000);
-          if (recipes) {
-            const d = recipes as {
-              recipes?: import("@/lib/recipes/catalog-query").RecipeListItem[];
-              total?: number;
-              catalogTotal?: number;
-              page?: number;
-              hasMore?: boolean;
-              favoriteIds?: string[];
-            };
-            const { writeRecipeCatalogCache } = await import(
-              "@/lib/recipe-catalog-cache"
-            );
-            writeRecipeCatalogCache({
-              recipes: d.recipes ?? [],
-              total: d.total ?? 0,
-              catalogTotal: d.catalogTotal ?? d.total ?? 0,
-              page: d.page ?? 1,
-              hasMore: Boolean(d.hasMore),
-              favoriteIds: d.favoriteIds ?? [],
-              q: "",
-              filters: [],
-            });
-          }
-          if (!finished && hasCriticalHomeReady()) finish();
-        });
+        runBootSecondaryPrefetch();
       } catch (e) {
         console.error("[AppClientShell] boot load failed", e);
         if (!finished) finish({ force: true });
@@ -302,7 +273,7 @@ export function AppClientShell({ children }: { children: ReactNode }) {
           {homeReady || !splashVisible ? (
             <AppShell>{children}</AppShell>
           ) : (
-            <div className="min-h-dvh bg-zinc-950" aria-hidden />
+            <div className="min-h-dvh gradient-mesh" aria-hidden />
           )}
         </HomeDataProvider>
       </NutritionDataProvider>

@@ -1,12 +1,11 @@
 "use client";
 
-import { Suspense, useCallback, useMemo, useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
-import { invalidateCache, getCached } from "@/lib/client-cache";
-import { NUTRITION_DASHBOARD_EVENT } from "@/lib/nutrition-sync";
+import { getCached, invalidateCache, setCached } from "@/lib/client-cache";
+import { HOME_DATA_CACHE_KEY, NUTRITION_DASHBOARD_EVENT } from "@/lib/nutrition-sync";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
 import { buildWeightAnalytics, type WeightPeriod } from "@/lib/weight-analytics";
@@ -24,7 +23,8 @@ import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
 import { ProgressOverviewCards } from "@/components/progress/progress-overview-cards";
 import { BodyMeasurementsCard } from "@/components/progress/body-measurements-card";
 import { PageIntro } from "@/components/guide/page-intro";
-import { hasScreenLoaded } from "@/lib/storage-service";
+import { markScreenLoaded } from "@/lib/storage-service";
+import type { HomeDataPayload } from "@/lib/home-defaults";
 
 type ProgressPayload = {
   entries: {
@@ -83,42 +83,31 @@ type ProgressPayload = {
 
 /** Progress — Übersicht → Diagramme → Details */
 export default function ProgressPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="animate-pulse space-y-4 max-w-2xl py-4">
-          <div className="h-8 w-40 bg-zinc-800 rounded" />
-          <div className="h-36 bg-zinc-800/80 rounded-2xl" />
-          <div className="h-48 bg-zinc-800/60 rounded-2xl" />
-        </div>
-      }
-    >
-      <ProgressPageInner />
-    </Suspense>
-  );
-}
-
-function ProgressPageInner() {
-  const searchParams = useSearchParams();
   const logRef = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<WeightPeriod>("30d");
 
-  const hadCache = useMemo(
-    () =>
-      getCached<ProgressPayload>(PROGRESS_CACHE_KEY, { allowStale: true }) !=
-        null || hasScreenLoaded("progress"),
-    []
-  );
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("nexform:tab-visited:progress", "1");
+    } catch {
+      /* ignore */
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("log") === "1" && logRef.current) {
+      logRef.current.scrollIntoView({ block: "start" });
+    }
+  }, []);
 
   const { data: progressData, loading, reload } = useCachedFetch<ProgressPayload>(
     PROGRESS_CACHE_KEY,
     "/api/progress",
     600_000,
     6_000,
-    { revalidateOnMount: !hadCache, staleRatio: 0.85 }
+    { revalidateOnMount: false, staleRatio: 0.9 }
   );
 
   const [nutritionRev, setNutritionRev] = useState(0);
+  const [cacheRev, setCacheRev] = useState(0);
 
   useEffect(() => {
     const onNutrition = (e: Event) => {
@@ -131,10 +120,12 @@ function ProgressPageInner() {
   }, []);
 
   const displayData = useMemo(() => {
-    return progressData ?? getCached<ProgressPayload>(PROGRESS_CACHE_KEY);
-    // nutritionRev forces re-read when macros change elsewhere
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional cache bump
-  }, [progressData, nutritionRev]);
+    return (
+      progressData ??
+      getCached<ProgressPayload>(PROGRESS_CACHE_KEY, { allowStale: true })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cacheRev bumps optimistic writes
+  }, [progressData, nutritionRev, cacheRev]);
 
   const entries = useMemo(
     () => displayData?.entries ?? [],
@@ -167,35 +158,54 @@ function ProgressPageInner() {
 
   useEffect(() => {
     if (displayData) {
-      import("@/lib/storage-service").then(({ markScreenLoaded }) => markScreenLoaded("progress"));
+      markScreenLoaded("progress");
       void prefetchProgressCharts();
     }
   }, [displayData]);
 
-  useEffect(() => {
-    if (searchParams.get("log") === "1" && logRef.current) {
-      logRef.current.scrollIntoView({ block: "start" });
-    }
-  }, [searchParams]);
-
   const saveWeight = useCallback(
     async (weightKg: number, waistCm?: number) => {
+      const prev = getCached<ProgressPayload>(PROGRESS_CACHE_KEY, { allowStale: true });
+      const today = format(new Date(), "yyyy-MM-dd");
+
+      if (prev) {
+        const next: ProgressPayload = {
+          ...prev,
+          profile: prev.profile
+            ? { ...prev.profile, weightKg }
+            : { weightKg, targetWeightKg: null, targetWeightDate: null },
+          entries: [
+            {
+              id: `optimistic-${Date.now()}`,
+              date: today,
+              weightKg,
+              waistCm,
+            },
+            ...prev.entries.filter((e) => e.date !== today),
+          ],
+        };
+        setCached(PROGRESS_CACHE_KEY, next, 600_000);
+        setCacheRev((v) => v + 1);
+      }
+
+      const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
+      if (home) {
+        setCached(HOME_DATA_CACHE_KEY, { ...home, weightKg }, 900_000);
+      }
+
       const res = await fetch("/api/progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date: format(new Date(), "yyyy-MM-dd"),
-          weightKg,
-          waistCm,
-        }),
+        body: JSON.stringify({ date: today, weightKg, waistCm }),
       });
       if (!res.ok) {
         toast.error("Speichern fehlgeschlagen");
+        if (prev) setCached(PROGRESS_CACHE_KEY, prev, 600_000);
         return;
       }
       toast.success("Gewicht gespeichert");
       invalidateCache(PROGRESS_CACHE_KEY);
-      invalidateCache("home-data");
+      invalidateCache(HOME_DATA_CACHE_KEY);
       reload();
     },
     [reload]
@@ -216,7 +226,7 @@ function ProgressPageInner() {
     reload();
   }
 
-  const showSkeleton = loading && !displayData && !hadCache;
+  const showSkeleton = loading && !displayData;
   const lastWeight = analytics.currentKg ?? profile?.weightKg;
 
   return (

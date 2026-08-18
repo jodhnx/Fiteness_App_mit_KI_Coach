@@ -5,7 +5,9 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -86,47 +88,61 @@ export function PersistentTabProvider({ children }: { children: ReactNode }) {
   );
 }
 
+function isRenderablePanel(node: ReactNode): boolean {
+  return node != null && node !== false;
+}
+
 /**
- * Keep-alive for exact page trees (Home, Nutrition, Recipes list, Coach, …).
- * Detail routes (e.g. /rezepte/[id]) render normally while the list stays mounted.
+ * Keep-alive for main tabs — revisiting shows cached tree instantly.
+ * First visit renders live `children`; after mount the tree is frozen in cache.
  */
 export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const keepActive = pathname != null && PATH_KEEP_ALIVE.has(pathname);
   const panels = useRef<Map<string, ReactNode>>(new Map());
+  const [readyPaths, setReadyPaths] = useState<Set<string>>(() => new Set());
 
-  if (keepActive && pathname && !panels.current.has(pathname)) {
+  useLayoutEffect(() => {
+    if (!keepActive || !pathname || !isRenderablePanel(children)) return;
     panels.current.set(pathname, children);
-  }
+    setReadyPaths((prev) => {
+      if (prev.has(pathname)) return prev;
+      const next = new Set(prev);
+      next.add(pathname);
+      return next;
+    });
+  }, [keepActive, pathname, children]);
 
   useEffect(() => {
     const clear = () => {
       panels.current.clear();
+      setReadyPaths(new Set());
     };
     window.addEventListener("nexform:user-state-cleared", clear);
     return () => window.removeEventListener("nexform:user-state-cleared", clear);
   }, []);
 
+  if (!keepActive || !pathname) {
+    return <AppErrorBoundary label="page">{children}</AppErrorBoundary>;
+  }
+
+  const cached = panels.current.get(pathname);
+  const hasCached = readyPaths.has(pathname) && isRenderablePanel(cached);
+  const visible = hasCached ? cached : children;
+
   return (
     <>
       {[...PATH_KEEP_ALIVE].map((path) => {
+        if (path === pathname) return null;
         const node = panels.current.get(path);
-        if (!node) return null;
-        const show = keepActive && pathname === path;
+        if (!node || !readyPaths.has(path)) return null;
         return (
-          <div
-            key={path}
-            hidden={!show}
-            aria-hidden={!show}
-            style={show ? undefined : { display: "none" }}
-          >
+          <div key={path} hidden aria-hidden style={{ display: "none" }}>
             <AppErrorBoundary label={`keep:${path}`}>{node}</AppErrorBoundary>
           </div>
         );
       })}
-      {!keepActive ? (
-        <AppErrorBoundary label="page">{children}</AppErrorBoundary>
-      ) : null}
+      <AppErrorBoundary label={`keep:${pathname}`}>{visible}</AppErrorBoundary>
     </>
   );
 }

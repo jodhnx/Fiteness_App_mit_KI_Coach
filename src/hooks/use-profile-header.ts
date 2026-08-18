@@ -4,29 +4,43 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { getCached, isCacheStale, setCached } from "@/lib/client-cache";
 import { usePrefetchedProfile } from "@/components/providers/profile-data-provider";
-import { PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
+import { HOME_DATA_CACHE_KEY, PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
+import type { HomeDataPayload } from "@/lib/home-defaults";
 
 type ProfileCache = {
   user?: { name?: string | null; image?: string | null };
 };
 
+function readHeaderFromCaches(): { name: string | null; image: string | null } {
+  const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
+  const profile = getCached<ProfileCache>(PROFILE_CACHE_KEY, { allowStale: true });
+  return {
+    name: home?.userName ?? profile?.user?.name ?? null,
+    image: home?.userImage ?? profile?.user?.image ?? null,
+  };
+}
+
 /**
- * Avatar/name from cache or SSR prefetch — avoids duplicate /api/profile when cache is fresh.
+ * Avatar/name from home + profile cache — no visible header flash on boot.
  */
 export function useProfileHeader() {
   const { data: session, status } = useSession();
   const prefetched = usePrefetchedProfile();
   const [name, setName] = useState<string | null>(() => {
-    const cached = getCached<ProfileCache>(PROFILE_CACHE_KEY);
-    return cached?.user?.name ?? prefetched?.user?.name ?? null;
+    const fromCache = readHeaderFromCaches();
+    return fromCache.name ?? prefetched?.user?.name ?? null;
   });
   const [image, setImage] = useState<string | null>(() => {
-    const cached = getCached<ProfileCache>(PROFILE_CACHE_KEY);
-    return cached?.user?.image ?? prefetched?.user?.image ?? null;
+    const fromCache = readHeaderFromCaches();
+    return fromCache.image ?? prefetched?.user?.image ?? null;
   });
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.id) return;
+
+    const fromCache = readHeaderFromCaches();
+    if (fromCache.name) setName(fromCache.name);
+    if (fromCache.image) setImage(fromCache.image);
 
     if (prefetched?.user?.name) setName(prefetched.user.name);
     if (prefetched?.user?.image) setImage(prefetched.user.image);
@@ -50,7 +64,7 @@ export function useProfileHeader() {
         setCached(
           PROFILE_CACHE_KEY,
           { ...prev, ...data, user: { ...(prev?.user as object), ...data.user } },
-          120_000
+          900_000
         );
       })
       .catch(() => undefined);
