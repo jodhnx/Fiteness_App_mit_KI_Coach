@@ -44,7 +44,7 @@ import { warmFoodHistoryCache } from "@/lib/food-history-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 
 /** Absolute last-resort only — prefer finishing when critical data is ready. */
-const BOOT_HARD_CAP_MS = 4_000;
+const BOOT_HARD_CAP_MS = 2_000;
 
 async function fetchOk(url: string) {
   const res = await fetch(url, { credentials: "same-origin" });
@@ -64,7 +64,7 @@ function isHomePayloadUsable(home: unknown): home is HomeDataPayload {
 }
 
 function hasCriticalHomeReady(): boolean {
-  const home = getCached(HOME_DATA_CACHE_KEY, { allowStale: true });
+  const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
   const dash = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
     allowStale: true,
   });
@@ -72,7 +72,15 @@ function hasCriticalHomeReady(): boolean {
     dash != null &&
     isValidDashboardPayload(dash) &&
     isNutritionDashboardToday(dash.date);
-  return isHomePayloadUsable(home) && dashOk;
+  if (!isHomePayloadUsable(home) || !dashOk) return false;
+  // Identity + training snapshot must be resolved (null values are valid)
+  return (
+    "userName" in home &&
+    "userImage" in home &&
+    "nextWorkout" in home &&
+    "weightKg" in home &&
+    (home.trainingStreak != null || home.streak != null || home.calorieTarget >= 0)
+  );
 }
 
 function applyHomePayload(home: HomeDataPayload) {
@@ -171,12 +179,14 @@ export function AppClientShell({ children }: { children: ReactNode }) {
 
     let cancelled = false;
     let finished = false;
+    let deadline = 0;
 
     const finish = (opts?: { force?: boolean }) => {
       if (cancelled || finished) return;
       const ready = hasCriticalHomeReady();
       if (!ready && !opts?.force) return;
       finished = true;
+      if (deadline) window.clearTimeout(deadline);
       setBootProgress(1);
       markBootSplashCompleted();
       setHomeReady(true);
@@ -218,31 +228,31 @@ export function AppClientShell({ children }: { children: ReactNode }) {
     }
 
     // Hard cap only forces show if network hung — still better than infinite splash
-    const deadline = window.setTimeout(() => finish({ force: true }), BOOT_HARD_CAP_MS);
+    deadline = window.setTimeout(() => finish({ force: true }), BOOT_HARD_CAP_MS);
 
     void (async () => {
       try {
         setBootProgress(0.3);
-        const [home, dash, profile] = await Promise.all([
+        const [home, dash, profile, progress] = await Promise.all([
           fetchOk("/api/home"),
           fetchOk("/api/nutrition/dashboard"),
           fetchOk("/api/profile"),
+          fetchOk("/api/progress"),
         ]);
         if (cancelled) return;
         setBootProgress(0.75);
+        if (progress) setCached(PROGRESS_CACHE_KEY, progress, 600_000);
         applyBootPayloads(home, dash, profile);
         setBootProgress(0.95);
-        finish({ force: !hasCriticalHomeReady() });
+        if (hasCriticalHomeReady()) finish();
 
         void Promise.all([
-          fetchOk("/api/progress"),
           fetchOk("/api/workouts/sessions?active=1"),
           fetchOk("/api/workouts/recovery"),
           fetchOk("/api/recipes/catalog?limit=24&page=1"),
           fetchOk("/api/gamification"),
-        ]).then(async ([progress, active, recovery, recipes, gamification]) => {
+        ]).then(async ([active, recovery, recipes, gamification]) => {
           if (cancelled) return;
-          if (progress) setCached(PROGRESS_CACHE_KEY, progress, 600_000);
           if (active) setCached("workouts-active", active, 180_000);
           if (recovery) setCached("workouts-recovery-hub", recovery, 120_000);
           if (gamification) setCached("gamification-full", gamification, 120_000);
@@ -269,12 +279,11 @@ export function AppClientShell({ children }: { children: ReactNode }) {
               filters: [],
             });
           }
+          if (!finished && hasCriticalHomeReady()) finish();
         });
       } catch (e) {
         console.error("[AppClientShell] boot load failed", e);
-        finish({ force: true });
-      } finally {
-        window.clearTimeout(deadline);
+        if (!finished) finish({ force: true });
       }
     })();
 

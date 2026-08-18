@@ -49,7 +49,7 @@ export default function HomePage() {
     "/api/home",
     900_000,
     6_000,
-    { revalidateOnMount: true, staleRatio: 0.5 }
+    { revalidateOnMount: false, staleRatio: 0.85 }
   );
 
   const data = useHomeLiveData(rawData);
@@ -131,7 +131,11 @@ export default function HomePage() {
 
   return (
     <PageShell>
-      <HomeGreeting name={displayName} />
+      <HomeGreeting
+        name={displayName}
+        image={data.userImage}
+        streakDays={trainingStreakDays}
+      />
       <PageIntro pageId="home" />
       <HomePhoneStepsHint />
 

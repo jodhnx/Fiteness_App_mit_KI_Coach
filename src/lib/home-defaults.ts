@@ -35,6 +35,8 @@ export type HomeDataPayload = {
     dayName: string;
     planId: string;
     dayId?: string;
+    /** 1-based index among training days in the active plan */
+    dayNumber?: number;
     exerciseCount?: number;
     estimatedDurationMin?: number;
   } | null;

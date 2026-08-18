@@ -115,7 +115,7 @@ function ProgressPageInner() {
     "/api/progress",
     600_000,
     6_000,
-    { revalidateOnMount: true, staleRatio: 0.55 }
+    { revalidateOnMount: !hadCache, staleRatio: 0.85 }
   );
 
   const [nutritionRev, setNutritionRev] = useState(0);

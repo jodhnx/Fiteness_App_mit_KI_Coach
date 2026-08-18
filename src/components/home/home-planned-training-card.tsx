@@ -103,6 +103,16 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
           <p className="text-base font-bold text-white mb-3 truncate">{lastCompleted.name}</p>
         )}
 
+        {nextWorkout?.dayName && (
+          <p className="text-xs text-emerald-300/80 mb-4">
+            Nächster Trainingstag:{" "}
+            <span className="font-semibold text-emerald-200">
+              {nextWorkout.dayNumber != null ? `Tag ${nextWorkout.dayNumber} · ` : ""}
+              {nextWorkout.dayName}
+            </span>
+          </p>
+        )}
+
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="rounded-xl bg-zinc-900/60 border border-zinc-800/80 px-2 py-2.5 text-center">
             <Timer className="h-4 w-4 text-emerald-400 mx-auto mb-1" />
@@ -155,7 +165,9 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
       )}
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-3">
-        Heute geplant
+        {nextWorkout?.dayNumber != null
+          ? `Heute geplant · Tag ${nextWorkout.dayNumber}`
+          : "Heute geplant"}
       </p>
 
       {nextWorkout?.dayId ? (
