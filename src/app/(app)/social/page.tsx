@@ -106,15 +106,10 @@ function timeAgo(iso: string) {
 
 export default function SocialPage() {
   const [tab, setTab] = useState<Tab>("feed");
-  const [friends, setFriends] = useState<FriendRow[]>(
-    () => getCached<FriendRow[]>("social-friends", { allowStale: true }) ?? []
-  );
-  const [challenges, setChallenges] = useState<ChallengeRow[]>(
-    () => getCached<ChallengeRow[]>("social-challenges", { allowStale: true }) ?? []
-  );
-  const [feed, setFeed] = useState<FeedItem[]>(
-    () => getCached<FeedItem[]>("social-feed", { allowStale: true }) ?? []
-  );
+  // Empty on first render to avoid SSR/hydration mismatch — populated from cache in useEffect
+  const [friends, setFriends] = useState<FriendRow[]>([]);
+  const [challenges, setChallenges] = useState<ChallengeRow[]>([]);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderRow[]>([]);
   const [rankMetric, setRankMetric] = useState("workouts");
   const [query, setQuery] = useState("");
@@ -123,6 +118,16 @@ export default function SocialPage() {
   const [myId, setMyId] = useState<string | null>(null);
   const [loadingFeed, setLoadingFeed] = useState(false);
   const debouncedQ = useDebounce(query, 250);
+
+  // Hydrate from client cache on mount (avoids SSR hydration mismatch)
+  useEffect(() => {
+    const cachedFriends = getCached<FriendRow[]>("social-friends", { allowStale: true });
+    const cachedChallenges = getCached<ChallengeRow[]>("social-challenges", { allowStale: true });
+    const cachedFeed = getCached<FeedItem[]>("social-feed", { allowStale: true });
+    if (cachedFriends?.length) setFriends(cachedFriends);
+    if (cachedChallenges?.length) setChallenges(cachedChallenges);
+    if (cachedFeed?.length) setFeed(cachedFeed);
+  }, []);
 
   const load = useCallback(() => {
     setLoadingFeed(true);

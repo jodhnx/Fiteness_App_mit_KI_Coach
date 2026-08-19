@@ -65,7 +65,17 @@ export function AppBootSplash({ progress, visible }: Props) {
           <p className="text-xl font-bold tracking-[0.28em] text-white">
             NEX<span className="text-cyan-400">FORM</span>
           </p>
-          <p className="text-sm text-zinc-500">Deine Daten werden vorbereitet …</p>
+          <p className="text-sm text-zinc-500">
+            {pct < 30
+              ? "Starte …"
+              : pct < 50
+                ? "Profil wird geladen …"
+                : pct < 70
+                  ? "Trainingsdaten …"
+                  : pct < 88
+                    ? "Ernährung & Fortschritt …"
+                    : "App wird vorbereitet …"}
+          </p>
         </div>
 
         <div className="w-44">

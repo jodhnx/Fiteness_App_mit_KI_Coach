@@ -98,12 +98,18 @@ export default function ProgressPage() {
     }
   }, []);
 
+  // Cache-first: if no cache, fetch immediately; otherwise show stale + revalidate in background
+  const hasCachedProgress = getCached(PROGRESS_CACHE_KEY, { allowStale: true }) != null;
   const { data: progressData, loading, reload } = useCachedFetch<ProgressPayload>(
     PROGRESS_CACHE_KEY,
     "/api/progress",
     600_000,
-    6_000,
-    { revalidateOnMount: false, staleRatio: 0.95, cacheOnly: true }
+    8_000,
+    {
+      revalidateOnMount: !hasCachedProgress,
+      staleRatio: 0.9,
+      cacheOnly: false,
+    }
   );
 
   const [nutritionRev, setNutritionRev] = useState(0);

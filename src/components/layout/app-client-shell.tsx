@@ -89,7 +89,7 @@ export function AppClientShell({ children }: { children: ReactNode }) {
     };
 
     bootPerfMark("auth_end");
-    setBootProgress(0.25);
+    setBootProgress(0.20);
 
     void (async () => {
       safetyTimer = window.setTimeout(() => {
@@ -99,10 +99,14 @@ export function AppClientShell({ children }: { children: ReactNode }) {
         }
       }, BOOT_SAFETY_CAP_MS);
 
-      const result = await initializeApp(userId);
+      setBootProgress(0.30); // session ready
+
+      const result = await initializeApp(userId, (p) => {
+        if (!cancelled) setBootProgress(p);
+      });
       if (cancelled) return;
       window.clearTimeout(safetyTimer);
-      setBootProgress(0.92);
+      setBootProgress(0.97);
 
       if (result.payload) {
         finish(result.payload);
