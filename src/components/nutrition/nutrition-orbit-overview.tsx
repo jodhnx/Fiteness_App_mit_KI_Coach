@@ -6,20 +6,11 @@ import type { MealType } from "@prisma/client";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets, nutritionProfileIncomplete } from "@/lib/nutrition-defaults";
 import { CalorieRing } from "@/components/nutrition/calorie-ring";
-import { TRACK_MEAL_ORDER, MEAL_TYPE_LABELS } from "@/lib/meal-types";
 import { cn } from "@/lib/utils";
-import { Plus } from "lucide-react";
-
-const MEAL_EMOJI: Record<string, string> = {
-  BREAKFAST: "🍳",
-  LUNCH: "🍗",
-  DINNER: "🥗",
-  SNACK: "🍎",
-};
 
 type Props = {
   dashboard: NutritionDashboardPayload | null | undefined;
-  onAddMeal?: (meal: MealType) => void;
+  onAddMeal?: (meal: MealType) => void; // kept for API compat
 };
 
 /**
@@ -27,7 +18,7 @@ type Props = {
  */
 export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   dashboard,
-  onAddMeal,
+  onAddMeal: _onAddMeal,
 }: Props) {
   if (!dashboard) {
     return (
@@ -55,10 +46,6 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     carbsG: 0,
     fatG: 0,
   };
-  const mealsByType = Array.isArray(dashboard.mealsByType)
-    ? dashboard.mealsByType
-    : [];
-
   const ready = hasNutritionTargets(dashboard);
   const incomplete = nutritionProfileIncomplete(dashboard);
 
@@ -83,14 +70,6 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   const overBy = Math.max(0, kcalConsumed - kcalTarget);
   const isOver = overBy > 0;
   const left = Math.max(0, Math.round(remaining.calories ?? 0));
-
-  const slots = TRACK_MEAL_ORDER.map((type) => {
-    const found = mealsByType.find((m) => m.mealType === type);
-    const items = Array.isArray(found?.items) ? found.items.length : 0;
-    const kcal = Math.round(found?.totals?.calories ?? 0);
-    const protein = Math.round(found?.totals?.proteinG ?? 0);
-    return { type, items, kcal, protein, open: items === 0 };
-  });
 
   const macros = [
     {
@@ -193,45 +172,6 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        {slots.map((s) => (
-          <button
-            key={s.type}
-            type="button"
-            onClick={() => onAddMeal?.(s.type)}
-            className={cn(
-              "flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left",
-              "active:scale-[0.98] transition-transform min-h-[52px]",
-              s.open
-                ? "border-white/[0.07] bg-white/[0.02]"
-                : "border-accent/25 bg-accent/[0.07]"
-            )}
-          >
-            <span className="text-xl leading-none shrink-0" aria-hidden>
-              {MEAL_EMOJI[s.type]}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[11px] font-bold uppercase tracking-wide text-zinc-400">
-                {MEAL_TYPE_LABELS[s.type]}
-              </span>
-              {s.open ? (
-                <span className="inline-flex items-center gap-0.5 text-[12px] text-accent mt-0.5 font-medium">
-                  <Plus className="h-3.5 w-3.5" />
-                  Lebensmittel
-                </span>
-              ) : (
-                <span className="block text-[13px] font-bold text-white tabular-nums mt-0.5">
-                  {s.kcal.toLocaleString("de-DE")} kcal
-                  <span className="text-zinc-500 font-medium">
-                    {" "}
-                    · {s.protein} g P
-                  </span>
-                </span>
-              )}
-            </span>
-          </button>
-        ))}
-      </div>
     </div>
   );
 });

@@ -45,7 +45,7 @@ export const MealTrackList = memo(function MealTrackList({
   const slots = Array.isArray(meals) ? meals : [];
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="space-y-2">
       {slots.map((slot) => {
         const emoji = MEAL_EMOJI[slot.mealType] ?? "🍽";
         const items = Array.isArray(slot.items) ? slot.items : [];
@@ -58,107 +58,103 @@ export const MealTrackList = memo(function MealTrackList({
           <div
             key={slot.mealType}
             className={cn(
-              "rounded-2xl border overflow-hidden flex flex-col",
+              "rounded-2xl border overflow-hidden",
               hasItems
-                ? "border-accent/20 bg-gradient-to-b from-zinc-900/90 to-zinc-950"
-                : "border-zinc-800/70 bg-zinc-900/50"
+                ? "border-white/[0.09] bg-zinc-900/80"
+                : "border-zinc-800/60 bg-zinc-900/40"
             )}
           >
-            {/* Header */}
-            <button
-              type="button"
-              onClick={() => onAddClick?.(slot.mealType)}
-              className="flex items-center gap-2.5 px-3 pt-3 pb-2 w-full text-left"
-              aria-label={`${MEAL_TYPE_LABELS[slot.mealType] ?? slot.mealType} öffnen`}
-            >
-              <span className="text-xl leading-none shrink-0" aria-hidden>
+            {/* Header row */}
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              <span className="text-2xl leading-none shrink-0" aria-hidden>
                 {emoji}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500 leading-tight">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
                   {MEAL_TYPE_LABELS[slot.mealType] ?? slot.mealType}
                 </p>
                 {hasItems ? (
-                  <p className="text-[13px] font-bold text-white tabular-nums mt-0.5 leading-tight">
+                  <p className="text-[15px] font-semibold text-white tabular-nums mt-0.5">
                     {kcal.toLocaleString("de-DE")} kcal
                     {proteinG > 0 && (
-                      <span className="text-zinc-500 font-medium text-[11px]">
+                      <span className="text-zinc-500 font-medium text-sm">
                         {" "}· {proteinG} g P
                       </span>
                     )}
                   </p>
                 ) : (
-                  <p className="text-[12px] text-accent/70 mt-0.5 font-medium leading-tight flex items-center gap-0.5">
-                    <Plus className="h-3 w-3" />
-                    Lebensmittel
-                  </p>
+                  <p className="text-[13px] text-zinc-600 mt-0.5">Noch nichts erfasst</p>
                 )}
               </div>
-            </button>
+              <button
+                type="button"
+                onClick={() => onAddClick?.(slot.mealType)}
+                className="inline-flex h-10 items-center gap-1.5 shrink-0 rounded-xl bg-accent/10 border border-accent/25 px-3 text-sm font-semibold text-accent active:opacity-80"
+                aria-label={`Lebensmittel zu ${MEAL_TYPE_LABELS[slot.mealType] ?? "Mahlzeit"} hinzufügen`}
+              >
+                <Plus className="h-4 w-4 stroke-[2.5]" />
+                <span className="hidden xs:inline text-[12px]">Hinzufügen</span>
+              </button>
+            </div>
 
-            {/* Items list */}
+            {/* Item list */}
             {hasItems && (
-              <ul className="border-t border-zinc-800/60 px-3 py-1.5 space-y-1 flex-1">
-                {items.slice(0, 3).map((item) => (
-                  <li key={item.id} className="flex items-center gap-1.5 min-h-[28px]">
-                    <span className="text-zinc-300 truncate flex-1 min-w-0 text-[11px]">
+              <ul className="border-t border-zinc-800/70 px-4 py-2 space-y-1.5">
+                {items.map((item) => (
+                  <li key={item.id} className="flex items-center gap-2 text-sm py-1">
+                    <span className="text-zinc-300 truncate flex-1 min-w-0">
                       {item.food?.name ?? "Lebensmittel"}
+                      <span className="text-zinc-600 ml-1 text-xs">· {item.quantityG}g</span>
                     </span>
-                    <span className="text-zinc-600 tabular-nums text-[10px] shrink-0">
-                      {Math.round(item.calories)}
+                    <span className="text-zinc-500 tabular-nums text-xs shrink-0">
+                      {Math.round(item.calories)} kcal
                     </span>
                     {onEdit && (
                       <button
                         type="button"
                         onClick={() => onEdit(item.id, item.quantityG)}
-                        className="text-zinc-700 hover:text-zinc-300 p-0.5 shrink-0"
+                        className="text-zinc-600 hover:text-zinc-300 p-1 shrink-0"
                         aria-label="Menge bearbeiten"
                       >
-                        <Pencil className="h-3 w-3" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => onRemove(item.id)}
-                      className="text-zinc-700 hover:text-red-400 p-0.5 shrink-0"
+                      className="text-zinc-600 hover:text-red-400 p-1 shrink-0"
                       aria-label="Eintrag löschen"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </li>
                 ))}
-                {items.length > 3 && (
-                  <p className="text-[10px] text-zinc-600 pb-0.5">
-                    + {items.length - 3} weitere
-                  </p>
-                )}
               </ul>
             )}
 
-            {/* Footer actions */}
-            <div className={cn(
-              "flex border-t px-2 py-1.5 gap-1",
-              hasItems ? "border-zinc-800/60" : "border-transparent"
-            )}>
+            {/* Empty state — subtle tap to add */}
+            {!hasItems && (
               <button
                 type="button"
                 onClick={() => onAddClick?.(slot.mealType)}
-                className="flex-1 flex items-center justify-center gap-1 h-7 rounded-lg bg-accent/10 border border-accent/20 text-accent text-[11px] font-semibold hover:bg-accent/20 transition-colors"
+                className="w-full border-t border-zinc-800/50 px-4 py-2.5 text-xs text-zinc-600 hover:text-zinc-400 text-left transition-colors"
               >
-                <Plus className="h-3.5 w-3.5" />
-                Hinzufügen
+                + Lebensmittel hinzufügen
               </button>
-              {slot.mealId && onDeleteMeal && hasItems && (
+            )}
+
+            {/* Delete meal */}
+            {slot.mealId && onDeleteMeal && hasItems && (
+              <div className="px-4 pb-2.5">
                 <button
                   type="button"
                   onClick={() => onDeleteMeal(slot.mealId!)}
-                  className="h-7 w-7 flex items-center justify-center rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                  aria-label="Mahlzeit leeren"
+                  className="text-[11px] text-zinc-600 hover:text-red-400 transition-colors"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  Mahlzeit leeren
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         );
       })}
