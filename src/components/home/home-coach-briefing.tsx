@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useEffect, useState, type ReactNode } from "react";
+import { memo, useEffect, useState } from "react";
+import type { ElementType } from "react";
 import Link from "next/link";
 import { Bot, ChevronRight, Flame, Footprints, Dumbbell, Utensils } from "lucide-react";
 import { getCached, setCached } from "@/lib/client-cache";
@@ -26,7 +27,7 @@ function StatRow({
   subText,
   done,
 }: {
-  icon: (p: { className?: string }) => ReactNode;
+  icon: ElementType<{ className?: string }>;
   label: string;
   value: string;
   subText?: string;

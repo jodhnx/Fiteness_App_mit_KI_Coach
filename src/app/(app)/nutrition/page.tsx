@@ -1,6 +1,7 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import type { ElementType } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
 import { useFoodFavorites } from "@/hooks/use-food-favorites";
@@ -52,7 +53,7 @@ const VALID_MEALS = new Set<string>(MEAL_TYPE_ORDER);
 
 type SmartAddOption = {
   id: string;
-  icon: (props: { className?: string }) => React.ReactNode;
+  icon: ElementType<{ className?: string }>;
   label: string;
   action: () => void;
   accent?: boolean;
