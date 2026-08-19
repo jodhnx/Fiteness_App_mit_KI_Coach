@@ -12,6 +12,13 @@ import type { MealType } from "@prisma/client";
 
 const VALID_MEAL_TYPES = new Set<string>(["BREAKFAST", "LUNCH", "DINNER", "SNACK"]);
 
+function makeSlug(name: string): string {
+  return `ai-${name}-${Date.now()}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 100);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -41,21 +48,24 @@ export async function POST(req: NextRequest) {
     const proteinG = Math.max(0, Number(body.proteinG) || 0);
     const carbsG = Math.max(0, Number(body.carbsG) || 0);
     const fatG = Math.max(0, Number(body.fatG) || 0);
+    const isFoodAI = body.source === "food-ai";
 
     const date = startOfDay(body.date ? new Date(body.date) : new Date());
 
-    // Create an inline FoodItem (per 100g normalised from the provided quantity)
+    // Normalise to per-100g for the FoodItem catalog entry
     const factor = 100 / quantityG;
     const foodItem = await prisma.foodItem.create({
       data: {
+        slug: makeSlug(name),
         name,
-        brand: body.source === "food-ai" ? "Food AI" : null,
+        brand: isFoodAI ? "Food AI" : null,
         calories: Math.round(calories * factor),
         proteinG: Number((proteinG * factor).toFixed(2)),
         carbsG: Number((carbsG * factor).toFixed(2)),
         fatG: Number((fatG * factor).toFixed(2)),
         servingG: 100,
-        source: "local",
+        dataSource: isFoodAI ? "food-ai" : "local",
+        userId: session.user.id,
       },
     });
 
