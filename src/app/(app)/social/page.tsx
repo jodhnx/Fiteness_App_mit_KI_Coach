@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";
-import { PremiumCard } from "@/components/ui/premium-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PageIntro } from "@/components/guide/page-intro";
 import { toast } from "sonner";
 import {
   Users,
@@ -17,6 +15,11 @@ import {
   X,
   Activity,
   Medal,
+  Flame,
+  Dumbbell,
+  RefreshCw,
+  Star,
+  Footprints,
 } from "lucide-react";
 import { hapticTap } from "@/lib/haptic";
 import { UserAvatar } from "@/components/user/user-avatar";
@@ -40,7 +43,6 @@ type FriendRow = {
   initiator: PublicUser;
   receiver: PublicUser;
   other?: PublicUser;
-  publicAchievements?: { name: string; icon: string | null }[];
 };
 
 type ChallengeRow = {
@@ -76,14 +78,39 @@ function displayHandle(u: PublicUser) {
   return u.name?.trim() || "Nutzer";
 }
 
+function feedIcon(type: string) {
+  if (type === "workout" || type === "WORKOUT") return Dumbbell;
+  if (type === "streak" || type === "STREAK") return Flame;
+  if (type === "achievement" || type === "ACHIEVEMENT") return Star;
+  if (type === "challenge" || type === "CHALLENGE") return Trophy;
+  return Activity;
+}
+
+function feedColor(type: string) {
+  if (type === "workout" || type === "WORKOUT") return "text-cyan-400 bg-cyan-500/10";
+  if (type === "streak" || type === "STREAK") return "text-amber-400 bg-amber-500/10";
+  if (type === "achievement" || type === "ACHIEVEMENT") return "text-violet-400 bg-violet-500/10";
+  if (type === "challenge" || type === "CHALLENGE") return "text-emerald-400 bg-emerald-500/10";
+  return "text-zinc-400 bg-zinc-800";
+}
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "gerade eben";
+  if (mins < 60) return `vor ${mins} Min.`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `vor ${hours} Std.`;
+  return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+}
+
 export default function SocialPage() {
   const [tab, setTab] = useState<Tab>("feed");
   const [friends, setFriends] = useState<FriendRow[]>(
     () => getCached<FriendRow[]>("social-friends", { allowStale: true }) ?? []
   );
   const [challenges, setChallenges] = useState<ChallengeRow[]>(
-    () =>
-      getCached<ChallengeRow[]>("social-challenges", { allowStale: true }) ?? []
+    () => getCached<ChallengeRow[]>("social-challenges", { allowStale: true }) ?? []
   );
   const [feed, setFeed] = useState<FeedItem[]>(
     () => getCached<FeedItem[]>("social-feed", { allowStale: true }) ?? []
@@ -94,34 +121,46 @@ export default function SocialPage() {
   const [results, setResults] = useState<PublicUser[]>([]);
   const [searching, setSearching] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
+  const [loadingFeed, setLoadingFeed] = useState(false);
   const debouncedQ = useDebounce(query, 250);
 
   const load = useCallback(() => {
-    void fetch("/api/social/friends")
-      .then((r) => r.json())
+    setLoadingFeed(true);
+    const p1 = fetch("/api/social/friends", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { friends: [] }))
       .then((d) => {
-        const list = d.friends ?? [];
+        const list: FriendRow[] = d.friends ?? [];
         setFriends(list);
         setCached("social-friends", list, 120_000);
-      });
-    void fetch("/api/challenges")
-      .then((r) => r.json())
+      })
+      .catch(() => undefined);
+
+    const p2 = fetch("/api/challenges", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { challenges: [] }))
       .then((d) => {
-        const list = d.challenges ?? [];
+        const list: ChallengeRow[] = d.challenges ?? [];
         setChallenges(list);
         setCached("social-challenges", list, 120_000);
-      });
-    void fetch("/api/social/feed")
-      .then((r) => r.json())
+      })
+      .catch(() => undefined);
+
+    const p3 = fetch("/api/social/feed", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { feed: [] }))
       .then((d) => {
-        const list = d.feed ?? [];
+        const list: FeedItem[] = d.feed ?? [];
         setFeed(list);
         setCached("social-feed", list, 90_000);
       })
       .catch(() => undefined);
-    void fetch("/api/profile")
-      .then((r) => r.json())
-      .then((d) => setMyId(d.user?.id ?? null));
+
+    const p4 = fetch("/api/profile", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.user?.id) setMyId(d.user.id);
+      })
+      .catch(() => undefined);
+
+    void Promise.all([p1, p2, p3, p4]).finally(() => setLoadingFeed(false));
   }, []);
 
   useEffect(() => {
@@ -130,37 +169,29 @@ export default function SocialPage() {
 
   useEffect(() => {
     if (tab !== "ranks") return;
-    void fetch(`/api/social/leaderboard?metric=${rankMetric}`)
-      .then((r) => r.json())
+    void fetch(`/api/social/leaderboard?metric=${rankMetric}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { leaderboard: [] }))
       .then((d) => setLeaderboard(d.leaderboard ?? []))
       .catch(() => setLeaderboard([]));
   }, [tab, rankMetric]);
 
   useEffect(() => {
     const q = debouncedQ.trim();
-    if (q.length < 2) {
-      setResults([]);
-      return;
-    }
+    if (q.length < 2) { setResults([]); return; }
     setSearching(true);
-    void fetch(`/api/social/friends?q=${encodeURIComponent(q)}`)
-      .then((r) => r.json())
+    void fetch(`/api/social/friends?q=${encodeURIComponent(q)}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { users: [] }))
       .then((d) => setResults(d.users ?? []))
+      .catch(() => setResults([]))
       .finally(() => setSearching(false));
   }, [debouncedQ]);
 
   const pendingIncoming = useMemo(
-    () =>
-      friends.filter(
-        (f) => f.status === "PENDING" && myId && f.receiverId === myId
-      ),
+    () => friends.filter((f) => f.status === "PENDING" && myId && f.receiverId === myId),
     [friends, myId]
   );
   const pendingOutgoing = useMemo(
-    () =>
-      friends.filter(
-        (f) => f.status === "PENDING" && myId && f.initiatorId === myId
-      ),
+    () => friends.filter((f) => f.status === "PENDING" && myId && f.initiatorId === myId),
     [friends, myId]
   );
   const accepted = useMemo(
@@ -175,21 +206,15 @@ export default function SocialPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username }),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      toast.error(data.error ?? "Anfrage fehlgeschlagen");
-      return;
-    }
-    toast.success("Freundschaftsanfrage gesendet");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { toast.error((data as { error?: string }).error ?? "Anfrage fehlgeschlagen"); return; }
+    toast.success("Freundschaftsanfrage gesendet ✓");
     setQuery("");
     setResults([]);
     load();
   }
 
-  async function patchFriend(
-    id: string,
-    action: "accept" | "reject" | "remove" | "cancel"
-  ) {
+  async function patchFriend(id: string, action: "accept" | "reject" | "remove" | "cancel") {
     hapticTap();
     const res = await fetch("/api/social/friends", {
       method: "PATCH",
@@ -198,10 +223,10 @@ export default function SocialPage() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      toast.error(data.error ?? "Aktion fehlgeschlagen");
+      toast.error((data as { error?: string }).error ?? "Aktion fehlgeschlagen");
       return;
     }
-    if (action === "accept") toast.success("Freundschaft angenommen");
+    if (action === "accept") toast.success("Freundschaft angenommen ✓");
     else if (action === "reject") toast.message("Anfrage abgelehnt");
     else toast.message("Entfernt");
     load();
@@ -228,23 +253,21 @@ export default function SocialPage() {
   return (
     <PageShell
       title="Community"
-      subtitle="Feed · Freunde · Challenges · Rangliste"
-      className="pb-28 space-y-4"
+      className="pb-28 space-y-3"
       bottomNav={false}
     >
-      <PageIntro pageId="social" />
-
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+      {/* Tab bar */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
-            onClick={() => setTab(id)}
+            onClick={() => { hapticTap(); setTab(id); }}
             className={cn(
-              "shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium min-h-[44px]",
+              "shrink-0 inline-flex items-center gap-1.5 rounded-2xl border px-3.5 py-2 text-sm font-semibold min-h-[40px] transition-colors",
               tab === id
-                ? "border-accent/40 bg-accent/15 text-accent"
-                : "border-white/[0.08] bg-zinc-900/80 text-zinc-400"
+                ? "border-accent/40 bg-accent/10 text-accent"
+                : "border-white/[0.07] bg-zinc-900/60 text-zinc-400 hover:text-white"
             )}
           >
             <Icon className="h-3.5 w-3.5" />
@@ -253,98 +276,123 @@ export default function SocialPage() {
         ))}
       </div>
 
+      {/* ── FEED ── */}
       {tab === "feed" && (
-        <section className="space-y-3">
-          {feed.length === 0 ? (
-            <PremiumCard>
-              <p className="text-sm text-zinc-400 text-center py-6">
-                Noch keine Aktivitäten. Schließe ein Workout ab oder füge Freunde
-                hinzu.
-              </p>
-            </PremiumCard>
-          ) : (
-            feed.map((item) => (
-              <PremiumCard key={item.id} className="space-y-2">
-                <div className="flex items-center gap-2.5">
-                  <UserAvatar
-                    src={item.user.image}
-                    name={item.user.name ?? item.user.username}
-                    size="sm"
-                  />
-                  <div className="min-w-0">
+        <section className="space-y-2.5">
+          {loadingFeed && feed.length === 0 && (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 rounded-2xl bg-zinc-900/60 border border-zinc-800/50 animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {!loadingFeed && feed.length === 0 && (
+            <div className="rounded-3xl border border-dashed border-zinc-700/60 py-14 text-center space-y-3">
+              <Activity className="h-10 w-10 text-zinc-600 mx-auto" />
+              <div>
+                <p className="text-sm font-medium text-zinc-400">Noch keine Aktivitäten</p>
+                <p className="text-xs text-zinc-600 mt-0.5">
+                  Schließe ein Workout ab oder füge Freunde hinzu
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={load}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Aktualisieren
+              </button>
+            </div>
+          )}
+
+          {feed.map((item) => {
+            const FeedIcon = feedIcon(item.type);
+            const colorClass = feedColor(item.type);
+            return (
+              <div
+                key={item.id}
+                className="rounded-2xl border border-white/[0.07] bg-zinc-900/70 px-4 py-3 space-y-2"
+              >
+                <div className="flex items-center gap-3">
+                  <UserAvatar src={item.user.image} name={item.user.name ?? item.user.username} size="sm" />
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white truncate">
                       {displayHandle(item.user)}
                     </p>
-                    <p className="text-[10px] text-zinc-500">
-                      {new Date(item.createdAt).toLocaleString("de-DE", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
+                    <p className="text-[10px] text-zinc-500">{timeAgo(item.createdAt)}</p>
+                  </div>
+                  <div className={cn("h-7 w-7 rounded-xl flex items-center justify-center shrink-0", colorClass)}>
+                    <FeedIcon className="h-3.5 w-3.5" />
                   </div>
                 </div>
-                <p className="text-sm font-medium text-zinc-100">{item.title}</p>
-                {item.subtitle && (
-                  <p className="text-base font-semibold text-white">
-                    {item.subtitle}
-                  </p>
-                )}
-                {item.meta && (
-                  <p className="text-xs text-zinc-500">{item.meta}</p>
-                )}
-              </PremiumCard>
-            ))
-          )}
-          <Button type="button" variant="outline" className="w-full" onClick={shareAchievement}>
+                <div>
+                  <p className="text-sm font-medium text-zinc-200">{item.title}</p>
+                  {item.subtitle && (
+                    <p className="text-base font-bold text-white mt-0.5">{item.subtitle}</p>
+                  )}
+                  {item.meta && (
+                    <p className="text-xs text-zinc-500 mt-0.5">{item.meta}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-2xl"
+            onClick={shareAchievement}
+          >
             <Share2 className="h-4 w-4 mr-2" />
             Fortschritt teilen
           </Button>
         </section>
       )}
 
+      {/* ── FRIENDS ── */}
       {tab === "friends" && (
-        <div className="space-y-4">
-          <PremiumCard className="space-y-3">
+        <div className="space-y-3">
+          {/* Search */}
+          <div className="rounded-2xl border border-white/[0.07] bg-zinc-900/70 p-4 space-y-3">
             <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-accent" />
-              <h2 className="text-sm font-semibold text-white">Benutzer suchen …</h2>
+              <Search className="h-4 w-4 text-accent shrink-0" />
+              <h2 className="text-sm font-bold text-white">Benutzer suchen</h2>
             </div>
-            <Input
-              placeholder="Benutzer suchen …"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="h-11"
-              autoComplete="off"
-            />
-            {searching && <p className="text-xs text-zinc-500">Suche…</p>}
+            <div className="relative">
+              <Input
+                placeholder="Benutzername eingeben …"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="h-11 pr-10"
+                autoComplete="off"
+                autoCorrect="off"
+              />
+              {searching && (
+                <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 animate-spin" />
+              )}
+            </div>
+
             {results.length > 0 && (
               <ul className="space-y-2">
                 {results.map((u) => (
                   <li
                     key={u.id}
-                    className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5"
+                    className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5"
                   >
-                    <UserAvatar
-                      src={u.image}
-                      name={u.name ?? u.username}
-                      size="sm"
-                    />
+                    <UserAvatar src={u.image} name={u.name ?? u.username} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-white truncate">
-                        {displayHandle(u)}
-                      </p>
+                      <p className="text-sm font-semibold text-white truncate">{displayHandle(u)}</p>
                       {u.name && u.username && (
-                        <p className="text-[11px] text-zinc-500 truncate">
-                          {u.name}
-                        </p>
+                        <p className="text-[11px] text-zinc-500 truncate">{u.name}</p>
                       )}
                     </div>
                     <Button
                       type="button"
                       size="sm"
-                      variant="premium"
+                      className="rounded-xl shrink-0"
                       disabled={!u.username}
                       onClick={() => u.username && void sendRequest(u.username)}
                     >
@@ -355,75 +403,86 @@ export default function SocialPage() {
                 ))}
               </ul>
             )}
-          </PremiumCard>
+            {!searching && debouncedQ.trim().length >= 2 && results.length === 0 && (
+              <p className="text-xs text-zinc-500 text-center py-2">
+                Keine Benutzer gefunden
+              </p>
+            )}
+          </div>
 
+          {/* Incoming requests */}
           {pendingIncoming.length > 0 && (
-            <PremiumCard className="space-y-2">
-              <h2 className="text-sm font-semibold text-white">Anfragen</h2>
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-950/10 p-4 space-y-2.5">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400">
+                Anfragen ({pendingIncoming.length})
+              </h2>
               {pendingIncoming.map((f) => {
                 const other = f.initiator;
                 return (
                   <div key={f.id} className="flex items-center gap-3 min-h-[44px]">
-                    <UserAvatar
-                      src={other.image}
-                      name={other.name ?? other.username}
-                      size="sm"
-                    />
-                    <p className="flex-1 text-sm text-zinc-200 truncate">
+                    <UserAvatar src={other.image} name={other.name ?? other.username} size="sm" />
+                    <p className="flex-1 text-sm font-medium text-zinc-200 truncate">
                       {displayHandle(other)}
                     </p>
-                    <Button
+                    <button
                       type="button"
-                      size="sm"
-                      variant="premium"
                       onClick={() => void patchFriend(f.id, "accept")}
+                      className="h-9 w-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400"
+                      aria-label="Annehmen"
                     >
-                      <Check className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
+                      <Check className="h-4 w-4" />
+                    </button>
+                    <button
                       type="button"
-                      size="sm"
-                      variant="outline"
                       onClick={() => void patchFriend(f.id, "reject")}
+                      className="h-9 w-9 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-400"
+                      aria-label="Ablehnen"
                     >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                 );
               })}
-            </PremiumCard>
+            </div>
           )}
 
+          {/* Outgoing */}
           {pendingOutgoing.length > 0 && (
-            <PremiumCard className="space-y-2">
-              <h2 className="text-sm font-semibold text-white">Ausstehend</h2>
+            <div className="rounded-2xl border border-white/[0.07] bg-zinc-900/60 p-4 space-y-2">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+                Ausstehend ({pendingOutgoing.length})
+              </h2>
               {pendingOutgoing.map((f) => {
                 const other = f.receiver;
                 return (
                   <div key={f.id} className="flex items-center gap-3">
-                    <UserAvatar
-                      src={other.image}
-                      name={other.name ?? other.username}
-                      size="sm"
-                    />
-                    <p className="flex-1 text-sm text-zinc-300 truncate">
-                      {displayHandle(other)}
-                    </p>
-                    <span className="text-[10px] text-zinc-500">Anfrage ausstehend</span>
+                    <UserAvatar src={other.image} name={other.name ?? other.username} size="sm" />
+                    <p className="flex-1 text-sm text-zinc-300 truncate">{displayHandle(other)}</p>
+                    <button
+                      type="button"
+                      onClick={() => void patchFriend(f.id, "cancel")}
+                      className="text-[11px] text-zinc-500 hover:text-red-400"
+                    >
+                      Abbrechen
+                    </button>
                   </div>
                 );
               })}
-            </PremiumCard>
+            </div>
           )}
 
-          <PremiumCard className="space-y-3">
-            <h2 className="text-sm font-semibold text-white">
+          {/* Friends list */}
+          <div className="rounded-2xl border border-white/[0.07] bg-zinc-900/60 p-4 space-y-2.5">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
               Freunde ({accepted.length})
             </h2>
             {accepted.length === 0 ? (
-              <p className="text-sm text-zinc-500">
-                Noch keine Freunde — suche oben nach einem Benutzernamen.
-              </p>
+              <div className="text-center py-6 space-y-2">
+                <Users className="h-8 w-8 text-zinc-700 mx-auto" />
+                <p className="text-sm text-zinc-500">
+                  Noch keine Freunde — suche oben nach einem Benutzernamen
+                </p>
+              </div>
             ) : (
               <ul className="space-y-2">
                 {accepted.map((f) => {
@@ -433,157 +492,174 @@ export default function SocialPage() {
                   return (
                     <li
                       key={f.id}
-                      className="flex items-center gap-3 rounded-xl border border-white/[0.06] p-2.5"
+                      className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.02] p-2.5"
                     >
-                      <UserAvatar
-                        src={other.image}
-                        name={other.name ?? other.username}
-                        size="sm"
-                      />
+                      <UserAvatar src={other.image} name={other.name ?? other.username} size="sm" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-white truncate">
+                        <p className="text-sm font-semibold text-white truncate">
                           {displayHandle(other)}
                         </p>
-                        <p className="text-[10px] text-emerald-400/90">Freunde</p>
+                        <p className="text-[10px] text-emerald-400 font-medium">Freunde</p>
                       </div>
-                      <Button
+                      <button
                         type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="text-zinc-500"
                         onClick={() => void patchFriend(f.id, "remove")}
+                        className="text-[11px] text-zinc-600 hover:text-red-400 transition-colors"
                       >
                         Entfernen
-                      </Button>
+                      </button>
                     </li>
                   );
                 })}
               </ul>
             )}
-          </PremiumCard>
+          </div>
         </div>
       )}
 
+      {/* ── CHALLENGES ── */}
       {tab === "challenges" && (
-        <section className="space-y-3">
+        <section className="space-y-2.5">
           {challenges.length === 0 ? (
-            <PremiumCard>
-              <p className="text-sm text-zinc-400 text-center py-6">
-                Challenges werden eingerichtet. Bitte kurz warten und neu laden.
-              </p>
-              <Button type="button" variant="outline" className="w-full" onClick={load}>
+            <div className="rounded-3xl border border-dashed border-zinc-700/60 py-14 text-center space-y-3">
+              <Trophy className="h-10 w-10 text-zinc-600 mx-auto" />
+              <div>
+                <p className="text-sm font-medium text-zinc-400">Noch keine Challenges</p>
+                <p className="text-xs text-zinc-600 mt-0.5">Challenges werden bald verfügbar</p>
+              </div>
+              <button
+                type="button"
+                onClick={load}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
                 Aktualisieren
-              </Button>
-            </PremiumCard>
+              </button>
+            </div>
           ) : (
             challenges.map((c) => {
               const target = Math.max(1, c.targetDays ?? 1);
               const progress = c.progress ?? 0;
               const pct = Math.min(100, Math.round((progress / target) * 100));
+              const done = c.status === "COMPLETED";
               return (
-                <PremiumCard key={c.id} className="space-y-2">
+                <div
+                  key={c.id}
+                  className={cn(
+                    "rounded-2xl border p-4 space-y-2.5",
+                    done
+                      ? "border-emerald-500/20 bg-emerald-950/10"
+                      : "border-white/[0.07] bg-zinc-900/70"
+                  )}
+                >
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-white">{c.title}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white">{c.title}</p>
                       {c.description && (
-                        <p className="text-xs text-zinc-500 mt-0.5">
-                          {c.description}
-                        </p>
+                        <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{c.description}</p>
                       )}
                     </div>
-                    <span className="text-[10px] text-zinc-500 shrink-0">
-                      {c.status === "COMPLETED" ? "Fertig" : "Aktiv"}
+                    <span className={cn(
+                      "text-[10px] font-bold uppercase tracking-wide shrink-0 px-2 py-0.5 rounded-lg",
+                      done
+                        ? "text-emerald-400 bg-emerald-500/10"
+                        : "text-cyan-400 bg-cyan-500/10"
+                    )}>
+                      {done ? "Fertig" : "Aktiv"}
                     </span>
                   </div>
-                  <div className="flex justify-between text-xs text-zinc-400 tabular-nums">
-                    <span>
-                      {progress} / {target}
-                    </span>
-                    <span>{pct}%</span>
+                  <div>
+                    <div className="flex justify-between text-xs text-zinc-400 mb-1 tabular-nums">
+                      <span>{progress} / {target}</span>
+                      <span className="font-semibold text-white">{pct}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all", done ? "bg-emerald-500" : "bg-cyan-500")}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-cyan-500/80"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </PremiumCard>
+                </div>
               );
             })
           )}
         </section>
       )}
 
+      {/* ── RANKS ── */}
       {tab === "ranks" && (
         <section className="space-y-3">
-          <div className="flex gap-2">
+          {/* Metric selector */}
+          <div className="flex gap-1.5">
             {(
               [
-                ["workouts", "Workouts"],
-                ["steps", "Schritte"],
-                ["streak", "Streak"],
+                ["workouts", "Workouts", Dumbbell],
+                ["steps", "Schritte", Footprints],
+                ["streak", "Streak", Flame],
               ] as const
-            ).map(([id, label]) => (
+            ).map(([id, label, Icon]) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => setRankMetric(id)}
                 className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-semibold",
+                  "flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-semibold transition-colors",
                   rankMetric === id
-                    ? "border-accent bg-accent/15 text-accent"
-                    : "border-white/10 text-zinc-400"
+                    ? "border-accent/40 bg-accent/10 text-accent"
+                    : "border-white/[0.07] bg-zinc-900/60 text-zinc-400"
                 )}
               >
+                <Icon className="h-3.5 w-3.5" />
                 {label}
               </button>
             ))}
           </div>
+
           {leaderboard.length === 0 ? (
-            <PremiumCard>
-              <p className="text-sm text-zinc-400 text-center py-6">
-                Noch keine Ranglisten-Daten. Füge Freunde hinzu und trainiere.
-              </p>
-            </PremiumCard>
+            <div className="rounded-3xl border border-dashed border-zinc-700/60 py-14 text-center space-y-3">
+              <Medal className="h-10 w-10 text-zinc-600 mx-auto" />
+              <div>
+                <p className="text-sm font-medium text-zinc-400">Noch keine Ranglisten-Daten</p>
+                <p className="text-xs text-zinc-600 mt-0.5">Füge Freunde hinzu und trainiere</p>
+              </div>
+            </div>
           ) : (
-            leaderboard.map((row) => (
-              <PremiumCard
-                key={row.user.id}
-                className={cn(
-                  "flex items-center gap-3",
-                  row.isMe && "border-accent/30"
-                )}
-              >
-                <span
+            <div className="space-y-2">
+              {leaderboard.map((row) => (
+                <div
+                  key={row.user.id}
                   className={cn(
-                    "w-8 text-center text-lg font-bold tabular-nums",
-                    row.rank === 1
-                      ? "text-amber-400"
-                      : row.rank === 2
-                        ? "text-zinc-300"
-                        : row.rank === 3
-                          ? "text-orange-400"
-                          : "text-zinc-500"
+                    "flex items-center gap-3 rounded-2xl border px-4 py-3",
+                    row.isMe
+                      ? "border-accent/30 bg-accent/5"
+                      : "border-white/[0.06] bg-zinc-900/60"
                   )}
                 >
-                  {row.rank}
-                </span>
-                <UserAvatar
-                  src={row.user.image}
-                  name={row.user.name ?? row.user.username}
-                  size="sm"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white truncate">
-                    {displayHandle(row.user)}
-                    {row.isMe ? " (du)" : ""}
-                  </p>
+                  <span
+                    className={cn(
+                      "w-7 text-center text-base font-black tabular-nums shrink-0",
+                      row.rank === 1 ? "text-amber-400" :
+                      row.rank === 2 ? "text-zinc-300" :
+                      row.rank === 3 ? "text-orange-400" :
+                      "text-zinc-600"
+                    )}
+                  >
+                    {row.rank === 1 ? "🥇" : row.rank === 2 ? "🥈" : row.rank === 3 ? "🥉" : row.rank}
+                  </span>
+                  <UserAvatar src={row.user.image} name={row.user.name ?? row.user.username} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-white truncate">
+                      {displayHandle(row.user)}
+                      {row.isMe && <span className="text-accent/80 text-[11px] ml-1">(du)</span>}
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-cyan-400 tabular-nums shrink-0">
+                    {row.value.toLocaleString("de-DE")}
+                  </span>
                 </div>
-                <span className="text-sm font-bold text-cyan-400 tabular-nums">
-                  {row.value.toLocaleString("de-DE")}
-                </span>
-              </PremiumCard>
-            ))
+              ))}
+            </div>
           )}
         </section>
       )}

@@ -39,7 +39,6 @@ import {
   Clock,
   ChefHat,
   Pencil,
-  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -73,7 +72,7 @@ function NutritionPageInner() {
   const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
   const [addInitialQuery, setAddInitialQuery] = useState("");
   const [foodAIOpen, setFoodAIOpen] = useState(false);
-  const [smartAddMeal, setSmartAddMeal] = useState<MealType>("LUNCH");
+  const smartAddMeal: MealType = "LUNCH";
 
   useEffect(() => {
     // Prefetch + menu history so Favoriten / Häufig / Zuletzt open instantly
@@ -260,7 +259,6 @@ function NutritionPageInner() {
   );
 
   const openSmartAdd = useCallback((meal: MealType) => {
-    setSmartAddMeal(meal);
     setAddSheetMeal(meal);
   }, []);
 
@@ -343,25 +341,41 @@ function NutritionPageInner() {
         </div>
       )}
 
-      <PageIntro pageId="nutrition" />
-
       <NutritionOrbitOverview
         dashboard={dashboard}
         onAddMeal={(meal) => setAddSheetMeal(meal)}
       />
 
-      <section className="pt-0.5">
-        <h2 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.15em] mb-1.5 px-0.5">
-          Mahlzeiten
-        </h2>
-        <MealTrackList
-          meals={dashboard?.mealsByType ?? []}
-          onRemove={removeItem}
-          onEdit={editItemQuantity}
-          onDeleteMeal={deleteMeal}
-          onAddClick={(mealType) => setAddSheetMeal(mealType)}
-        />
-      </section>
+      {/* Smart Add strip — directly after calorie ring */}
+      <div className="overflow-x-auto scrollbar-none -mx-0.5">
+        <div className="flex gap-2 pb-0.5 px-0.5">
+          {smartAddOptions.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={opt.action}
+              className={cn(
+                "flex items-center gap-1.5 shrink-0 rounded-xl px-3 py-2 border transition-colors",
+                opt.accent
+                  ? "border-accent/30 bg-accent/10 text-accent"
+                  : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-600 hover:text-white"
+              )}
+            >
+              <opt.icon className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-medium whitespace-nowrap">{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Meal grid — direct, no section label needed */}
+      <MealTrackList
+        meals={dashboard?.mealsByType ?? []}
+        onRemove={removeItem}
+        onEdit={editItemQuantity}
+        onDeleteMeal={deleteMeal}
+        onAddClick={(mealType) => setAddSheetMeal(mealType)}
+      />
 
       <NutritionDaySummary dashboard={dashboard} />
 
@@ -373,51 +387,24 @@ function NutritionPageInner() {
 
       <NutritionExtrasPanel />
       <NutritionShoppingList />
+      <PageIntro pageId="nutrition" />
 
-      {/* Smart Add FAB */}
-      <div className="fixed bottom-24 right-4 z-30">
-        <div className="relative group">
-          <button
-            type="button"
-            className="h-14 w-14 rounded-full bg-accent shadow-lg shadow-accent/30 flex items-center justify-center text-black transition-all active:scale-95 hover:scale-105"
-            aria-label="Hinzufügen"
-            onClick={() => setAddSheetMeal(smartAddMeal)}
-          >
-            <Plus className="h-6 w-6" />
-          </button>
-          <button
-            type="button"
-            className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center"
-            aria-label="Essen fotografieren"
-            onClick={() => setFoodAIOpen(true)}
-          >
-            <Camera className="h-3.5 w-3.5 text-accent" />
-          </button>
-        </div>
-      </div>
-
-      {/* Smart Add options strip */}
-      <div className="pb-2">
-        <div className="overflow-x-auto scrollbar-none">
-          <div className="flex gap-2 pb-1 px-0.5">
-            {smartAddOptions.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={opt.action}
-                className={cn(
-                  "flex flex-col items-center gap-1 shrink-0 rounded-2xl px-3 py-2.5 border transition-colors",
-                  opt.accent
-                    ? "border-accent/30 bg-accent/10 text-accent"
-                    : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-600 hover:text-white"
-                )}
-              >
-                <opt.icon className="h-4 w-4" />
-                <span className="text-[10px] font-medium whitespace-nowrap">{opt.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Food AI FAB — fixed, bottom-right, always on top */}
+      <div
+        className="fixed z-40"
+        style={{
+          bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))",
+          right: "1rem",
+        }}
+      >
+        <button
+          type="button"
+          className="h-14 w-14 rounded-full bg-accent shadow-lg shadow-accent/30 flex items-center justify-center text-black transition-all active:scale-95"
+          aria-label="Essen fotografieren"
+          onClick={() => setFoodAIOpen(true)}
+        >
+          <Camera className="h-6 w-6" />
+        </button>
       </div>
 
       {addSheetMeal && (
