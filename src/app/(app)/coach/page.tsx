@@ -204,10 +204,10 @@ export default function CoachPage() {
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-violet-400 font-extrabold tracking-tight">
             NEXFORM
           </span>
-          <span className="text-zinc-400 font-medium text-base">KI Coach 2.0</span>
+          <span className="text-zinc-400 font-medium text-base">KI Coach V4</span>
         </h1>
         <p className="text-xs text-zinc-500 mt-1">
-          OpenAI · personalisiert mit Training, Ernährung, Schlaf & Regeneration
+          Personalisiert · Training, Ernährung, Schlaf & Regeneration
         </p>
       </div>
 

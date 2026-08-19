@@ -24,6 +24,7 @@ import { HomeDaySummary } from "@/components/home/home-day-summary";
 import { HomeWidgetBoard } from "@/components/home/home-widget-board";
 import { QuickAccessRail } from "@/components/guide/quick-access-rail";
 import { PageIntro } from "@/components/guide/page-intro";
+import { HomeCoachBriefing } from "@/components/home/home-coach-briefing";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
@@ -174,6 +175,17 @@ export default function HomePage() {
               lastCompleted={data.lastCompletedWorkout}
               recoveryMuscles={recoveryMuscles}
               highlight={highlight === "training"}
+            />
+          ),
+          coachBriefing: (
+            <HomeCoachBriefing
+              streakDays={trainingStreakDays}
+              trainingLabel={trainingLabel}
+              trainingDone={trainingStatus === "done" || trainingStatus === "active"}
+              proteinConsumed={nutrition.consumed?.proteinG ?? 0}
+              proteinTarget={nutrition.targets?.proteinG ?? 0}
+              steps={steps}
+              stepGoal={stepGoal}
             />
           ),
           dayFocus: <HomeDayFocusCard items={dayFocusItems} />,

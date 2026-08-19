@@ -3,6 +3,7 @@
 export type HomeWidgetId =
   | "quickAccess"
   | "dashboard"
+  | "coachBriefing"
   | "dayGoals"
   | "health"
   | "training"
@@ -23,6 +24,7 @@ export const DEFAULT_HOME_WIDGETS: HomeWidgetConfig[] = [
   { id: "dashboard", label: "Tagesstatus", visible: true },
   { id: "quickAccess", label: "Schnellzugriffe", visible: true },
   { id: "training", label: "Training heute", visible: true },
+  { id: "coachBriefing", label: "KI Coach Briefing", visible: true },
   { id: "dayGoals", label: "Tagesziele", visible: true },
   { id: "progress", label: "Fortschritt", visible: true },
   { id: "health", label: "Gesundheit", visible: false },
