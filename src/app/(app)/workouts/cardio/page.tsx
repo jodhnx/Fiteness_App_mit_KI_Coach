@@ -1,10 +1,18 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
-import { CARDIO_CATALOG, cardioDisplayLabel, cardioEmoji } from "@/lib/cardio/cardio-types";
-import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
+import {
+  CARDIO_CATALOG,
+  CARDIO_CATEGORY_LABELS,
+  cardioDisplayLabel,
+  cardioEmoji,
+  searchCardioCatalog,
+  type CardioCategory,
+} from "@/lib/cardio/cardio-types";
+import { ChevronLeft, ChevronRight, Flame, Search } from "lucide-react";
 
 type ActivityRow = {
   id: string;
@@ -18,6 +26,7 @@ type ActivityRow = {
 
 export default function CardioHubPage() {
   const router = useRouter();
+  const [q, setQ] = useState("");
   const { data } = useCachedFetch<{
     activities: ActivityRow[];
     week: { totalCalories: number };
@@ -31,6 +40,18 @@ export default function CardioHubPage() {
     (a) => new Date(a.startedAt).toDateString() === today
   );
   const todayKcal = todayActs.reduce((s, a) => s + (a.caloriesBurned ?? 0), 0);
+
+  const filtered = useMemo(() => searchCardioCatalog(q, 80), [q]);
+
+  const byCategory = useMemo(() => {
+    const map = new Map<CardioCategory, typeof CARDIO_CATALOG>();
+    for (const c of filtered) {
+      const list = map.get(c.category) ?? [];
+      list.push(c);
+      map.set(c.category, list);
+    }
+    return map;
+  }, [filtered]);
 
   return (
     <PageShell
@@ -70,26 +91,50 @@ export default function CardioHubPage() {
         <Flame className="h-8 w-8 text-orange-400" />
       </div>
 
-      <section className="space-y-2">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500">
-          Cardio-Art wählen
-        </h2>
-        <div className="grid grid-cols-1 gap-2">
-          {CARDIO_CATALOG.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => router.push(`/workouts/cardio/log?type=${item.id}`)}
-              className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-zinc-900/70 px-4 py-3.5 text-left active:scale-[0.99] transition-transform"
-            >
-              <span className="text-2xl w-10 text-center" aria-hidden>
-                {item.emoji}
-              </span>
-              <span className="flex-1 font-semibold text-white">{item.label}</span>
-              <ChevronRight className="h-4 w-4 text-zinc-600" />
-            </button>
-          ))}
-        </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="🔎 Aktivität suchen (z. B. Rad, HIIT…)"
+          className="w-full h-11 rounded-2xl border border-zinc-700 bg-zinc-900/80 pl-10 pr-3 text-sm text-white placeholder:text-zinc-500"
+        />
+      </div>
+
+      <section className="space-y-4">
+        {[...byCategory.entries()].map(([cat, items]) => (
+          <div key={cat} className="space-y-2">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500">
+              {CARDIO_CATEGORY_LABELS[cat]}
+            </h2>
+            <div className="grid grid-cols-1 gap-2">
+              {items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() =>
+                    router.push(`/workouts/cardio/log?type=${item.id}`)
+                  }
+                  className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-zinc-900/70 px-4 py-3.5 text-left active:scale-[0.99] transition-transform"
+                >
+                  <span className="text-2xl w-10 text-center" aria-hidden>
+                    {item.emoji}
+                  </span>
+                  <span className="flex-1 font-semibold text-white">
+                    {item.label}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-zinc-600" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        {filtered.length === 0 && (
+          <p className="text-sm text-zinc-500 text-center py-8">
+            Keine Aktivität gefunden — anderen Suchbegriff versuchen.
+          </p>
+        )}
       </section>
 
       {todayActs.length > 0 && (

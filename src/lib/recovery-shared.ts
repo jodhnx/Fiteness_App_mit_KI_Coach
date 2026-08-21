@@ -22,13 +22,44 @@ const RECOVERY_HOURS: Record<string, number> = {
   CARDIO: 24,
 };
 
+/**
+ * Live % from server snapshot.
+ * - recoveryPercent: value at computedAt
+ * - hoursToFull: hours from computedAt until 100%
+ * Falls back to legacy lastTrainedAt / recoveryHoursRequired linear model.
+ */
 export function liveRecoveryPercent(
   lastTrainedAt: string | null,
-  recoveryHoursRequired: number
+  recoveryHoursRequired: number,
+  snapshotPercent?: number,
+  computedAt?: string | null
 ): number {
-  if (!lastTrainedAt || recoveryHoursRequired <= 0) return 100;
-  const hoursSince = (Date.now() - new Date(lastTrainedAt).getTime()) / 3_600_000;
-  return Math.min(100, Math.max(0, Math.round((hoursSince / recoveryHoursRequired) * 100)));
+  if (snapshotPercent != null && snapshotPercent >= 100) return 100;
+  const anchor = computedAt ?? lastTrainedAt;
+  if (!anchor || recoveryHoursRequired <= 0) {
+    return snapshotPercent != null ? Math.min(100, Math.max(0, snapshotPercent)) : 100;
+  }
+  const hoursSince = (Date.now() - new Date(anchor).getTime()) / 3_600_000;
+  if (snapshotPercent != null) {
+    const remaining = 100 - snapshotPercent;
+    if (remaining <= 0) return 100;
+    const gain = remaining * Math.min(1, hoursSince / recoveryHoursRequired);
+    return Math.min(100, Math.max(0, Math.round(snapshotPercent + gain)));
+  }
+  return Math.min(
+    100,
+    Math.max(0, Math.round((hoursSince / recoveryHoursRequired) * 100))
+  );
+}
+
+export function hoursUntilFullyRecovered(
+  livePct: number,
+  hoursToFull: number,
+  snapshotPercent: number
+): number | null {
+  if (livePct >= 100 || hoursToFull <= 0) return null;
+  const remainingShare = (100 - livePct) / Math.max(1, 100 - snapshotPercent);
+  return Math.max(0, Math.round(hoursToFull * remainingShare));
 }
 
 export function filterDisplayMuscles(muscles: MuscleRecovery[]): MuscleRecovery[] {
@@ -43,6 +74,8 @@ export function filterDisplayMuscles(muscles: MuscleRecovery[]): MuscleRecovery[
         lastTrainedAt: null,
         recoveryHoursRequired: RECOVERY_HOURS[id] ?? 48,
         setsLastSession: 0,
+        computedAt: new Date().toISOString(),
+        hoursToFull: 0,
       }
   );
 }
@@ -67,9 +100,13 @@ export type MuscleRecovery = {
   status: "ready" | "recovering" | "fatigued";
   volume7d: number;
   lastTrainedAt: string | null;
-  /** Hours until 100% recovery (for live client tick) */
+  /** Hours from computedAt until 100% (legacy name kept for API compat) */
   recoveryHoursRequired: number;
   setsLastSession: number;
+  /** When recoveryPercent was computed — for live client ticks */
+  computedAt?: string;
+  /** Alias of recoveryHoursRequired at snapshot */
+  hoursToFull?: number;
 };
 
 export type RecoverySnapshot = {
@@ -119,6 +156,7 @@ export function getPlanRecoveryMessage(
     return "Beine sind erholt — Beintraining passt gut.";
   }
 
-  const best = [...inPlan].sort((a, b) => b.recoveryPercent - a.recoveryPercent)[0];
-  return `${best?.label ?? "Training"} ist gut regeneriert (${best?.recoveryPercent ?? 100}%).`;
+  return "Muskeln sind bereit — gutes Timing für diesen Plan.";
 }
+
+export { RECOVERY_HOURS };

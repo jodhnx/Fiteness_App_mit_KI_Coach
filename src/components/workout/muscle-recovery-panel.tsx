@@ -3,7 +3,10 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { liveRecoveryPercent } from "@/lib/recovery-shared";
+import {
+  hoursUntilFullyRecovered,
+  liveRecoveryPercent,
+} from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { Activity } from "lucide-react";
 
@@ -15,12 +18,6 @@ type Props = {
   variant?: "default" | "section";
 };
 
-function hoursRemaining(livePct: number, requiredHours: number): number | null {
-  if (requiredHours <= 0 || livePct >= 100) return null;
-  const elapsed = (livePct / 100) * requiredHours;
-  return Math.max(0, Math.round(requiredHours - elapsed));
-}
-
 function RecoveryRow({
   row,
   live,
@@ -31,7 +28,11 @@ function RecoveryRow({
   premium?: boolean;
 }) {
   const ready = live >= 100;
-  const hrs = hoursRemaining(live, row.recoveryHoursRequired);
+  const hrs = hoursUntilFullyRecovered(
+    live,
+    row.hoursToFull ?? row.recoveryHoursRequired,
+    row.recoveryPercent
+  );
   const bar =
     live >= 85 ? "bg-emerald-500" : live >= 50 ? "bg-amber-400" : "bg-red-500";
   const text =
@@ -53,7 +54,11 @@ function RecoveryRow({
           {row.label}
         </span>
         <span className={cn("text-[11px] tabular-nums font-semibold", text)}>
-          {ready ? "Bereit" : hrs != null ? `≈ ${hrs} h` : `${live} %`}
+          {ready
+            ? "Bereit"
+            : hrs != null
+              ? `≈ ${hrs} h`
+              : `${live} %`}
         </span>
         <span
           className={cn(
@@ -76,6 +81,11 @@ function RecoveryRow({
           style={{ width: `${Math.min(100, live)}%` }}
         />
       </div>
+      {!ready && hrs != null && premium && (
+        <p className="text-[10px] text-zinc-500">
+          {row.label} voraussichtlich vollständig regeneriert in {hrs} h
+        </p>
+      )}
     </div>
   );
 }
@@ -99,7 +109,12 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
     () =>
       muscles.map((m) => ({
         ...m,
-        live: liveRecoveryPercent(m.lastTrainedAt, m.recoveryHoursRequired),
+        live: liveRecoveryPercent(
+          m.lastTrainedAt,
+          m.hoursToFull ?? m.recoveryHoursRequired,
+          m.recoveryPercent,
+          m.computedAt
+        ),
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tick triggers live % refresh
     [muscles, tick]
@@ -154,8 +169,8 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
         )}
       </div>
       <p className="text-[10px] text-zinc-500 mb-3 leading-relaxed">
-        Basierend auf abgeschlossenen Workouts (Muskelgruppen, Volumen,
-        Intensität).
+        Dynamisch aus deinen abgeschlossenen Sätzen (Muskelgruppen, Volumen,
+        Intensität) — stärkere Belastung = längere Erholung.
       </p>
       <div
         className={cn(

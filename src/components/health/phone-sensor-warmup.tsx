@@ -2,20 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { usePhoneSensors } from "@/hooks/use-phone-sensors";
-import { getPhoneSensorConsent, getPhoneStepsToday } from "@/lib/phone-sensors";
+import {
+  canUsePedometer,
+  getPhoneSensorConsent,
+  getPhoneStepsToday,
+  setPhoneSensorConsent,
+} from "@/lib/phone-sensors";
 
 /**
  * Keeps phone step tracking alive app-wide when consent is granted
  * (fallback when no smartwatch is connected).
+ * Soft-enables pedometer automatically when the API is available.
  */
 export function PhoneSensorWarmup() {
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
+    // Prefer native pedometer automatically (not GPS-only).
+    if (!getPhoneSensorConsent() && canUsePedometer()) {
+      setPhoneSensorConsent({ steps: true, motion: true, gps: false });
+    }
     setEnabled(!!getPhoneSensorConsent()?.steps);
     const onStorage = () => setEnabled(!!getPhoneSensorConsent()?.steps);
     window.addEventListener("storage", onStorage);
-    // Same-tab consent updates
     const id = window.setInterval(onStorage, 4000);
     return () => {
       window.removeEventListener("storage", onStorage);

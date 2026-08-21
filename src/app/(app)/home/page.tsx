@@ -30,6 +30,7 @@ import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { isSameDay } from "date-fns";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
+import { getPhoneStepsToday } from "@/lib/phone-sensors";
 
 export default function HomePage() {
   const { status: sessionStatus } = useSession();
@@ -104,7 +105,28 @@ export default function HomePage() {
     return undefined;
   }, [trainingStatus, data.nextWorkout?.dayName]);
 
-  const steps = data.healthToday?.steps ?? 0;
+  const [phoneSteps, setPhoneSteps] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        setPhoneSteps(getPhoneStepsToday().steps ?? 0);
+      } catch {
+        setPhoneSteps(0);
+      }
+    };
+    refresh();
+    const id = window.setInterval(refresh, 15_000);
+    window.addEventListener("storage", refresh);
+    window.addEventListener(HOME_DATA_EVENT, refresh);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener(HOME_DATA_EVENT, refresh);
+    };
+  }, []);
+
+  const steps = Math.max(data.healthToday?.steps ?? 0, phoneSteps);
   const stepGoal = data.healthToday?.stepGoal ?? 10_000;
   const ready = hasNutritionTargets(nutrition);
 

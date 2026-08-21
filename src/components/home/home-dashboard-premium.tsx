@@ -150,6 +150,9 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
           <p className="text-base font-bold text-white tabular-nums">
             {steps >= 1000 ? `${(steps / 1000).toFixed(1)}k` : steps}
           </p>
+          <p className="text-[10px] text-zinc-500 mt-0.5 tabular-nums">
+            🚶 {steps.toLocaleString("de-DE")} Schritte
+          </p>
           <div className="mt-1.5 h-1 rounded-full bg-zinc-800 overflow-hidden">
             <div
               className="h-full rounded-full bg-cyan-400 transition-all"
