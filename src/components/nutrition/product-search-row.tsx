@@ -1,10 +1,11 @@
 "use client";
 
 import { memo } from "react";
-import { Plus, ChevronRight, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import type { FoodProduct } from "@/lib/food/food-product-types";
-import { fmtG, fmtKcal } from "@/lib/format-macros";
+import { macrosForQuantity } from "@/lib/food-macros";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
+import { brandDefaultServingG } from "@/data/brand-restaurant-foods";
 
 type Props = {
   food: FoodProduct;
@@ -15,6 +16,24 @@ type Props = {
   quickAdding?: boolean;
 };
 
+function brandLine(food: FoodProduct): string | null {
+  const brand = food.brand?.trim();
+  if (!brand) return null;
+  if (brand === "Standardgericht" || brand === "Standardlebensmittel") return "Standard";
+  return brand;
+}
+
+function portionChip(food: FoodProduct, grams: number): string {
+  if (food.servingLabel?.trim()) return food.servingLabel.trim();
+  const brandG = brandDefaultServingG(food);
+  if (brandG != null && Math.abs(brandG - grams) < 2) {
+    if (food.name.toLowerCase().includes("burger")) return "1 Burger";
+    return "1 Portion";
+  }
+  if (grams === 100) return "100 g";
+  return `${grams} g`;
+}
+
 export const ProductSearchRow = memo(function ProductSearchRow({
   food,
   isFavorite,
@@ -23,21 +42,36 @@ export const ProductSearchRow = memo(function ProductSearchRow({
   onToggleFavorite,
   quickAdding,
 }: Props) {
-  const defaultG = getDefaultQuickAddGrams(food);
+  const grams = getDefaultQuickAddGrams(food);
+  const macros = macrosForQuantity(
+    {
+      calories: food.calories,
+      proteinG: food.proteinG,
+      carbsG: food.carbsG,
+      fatG: food.fatG,
+      servingG: food.servingG || 100,
+    },
+    grams
+  );
+  const brand = brandLine(food);
+  const chip = portionChip(food, grams);
 
   return (
-    <div className="flex items-center gap-1.5 rounded-2xl nutrition-glass-card px-2 py-2 active:scale-[0.99] transition-transform">
+    <div className="flex items-stretch gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
       <button
         type="button"
         onClick={onDetails}
-        className="flex-1 min-w-0 text-left py-1 pl-1"
+        className="flex-1 min-w-0 text-left"
       >
-        <p className="font-medium text-white truncate text-sm leading-tight">{food.name}</p>
-        <p className="text-xs text-zinc-500 mt-0.5 tabular-nums">
-          {fmtKcal(food.calories)} kcal/100g · {fmtG(food.proteinG)} g Protein
-          {food.brand ? (
-            <span className="text-zinc-600"> · {food.brand}</span>
-          ) : null}
+        <p className="font-semibold text-white truncate text-[15px] leading-snug">
+          {food.name}
+        </p>
+        {brand && (
+          <p className="text-[12px] text-zinc-500 mt-0.5 truncate">{brand}</p>
+        )}
+        <p className="text-[12px] text-zinc-400 mt-1 tabular-nums">
+          {Math.round(macros.calories)} kcal · {Math.round(macros.proteinG)} P ·{" "}
+          {Math.round(macros.carbsG)} C · {Math.round(macros.fatG)} F
         </p>
       </button>
 
@@ -48,12 +82,11 @@ export const ProductSearchRow = memo(function ProductSearchRow({
             e.stopPropagation();
             onToggleFavorite();
           }}
-          className="p-2 text-zinc-600 hover:text-amber-400 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
-          title="Favorit"
+          className="p-2 text-zinc-600 hover:text-amber-400 shrink-0 self-center min-h-[44px] min-w-[40px] flex items-center justify-center"
           aria-label="Favorit"
         >
           <Star
-            className={`h-5 w-5 ${isFavorite ? "fill-amber-400 text-amber-400" : ""}`}
+            className={`h-4 w-4 ${isFavorite ? "fill-amber-400 text-amber-400" : ""}`}
           />
         </button>
       )}
@@ -65,24 +98,11 @@ export const ProductSearchRow = memo(function ProductSearchRow({
           e.stopPropagation();
           onQuickAdd();
         }}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-500 text-zinc-950 hover:bg-cyan-400 active:scale-95 transition-transform disabled:opacity-50"
-        title={`Schnell hinzufügen (${defaultG} g)`}
-        aria-label={`Schnell hinzufügen ${defaultG} Gramm`}
+        className="shrink-0 self-center rounded-xl border border-accent/30 bg-accent/10 px-2.5 py-2 text-[11px] font-bold text-accent min-w-[4.5rem] text-center disabled:opacity-50"
+        aria-label={`Schnell hinzufügen ${chip}`}
       >
-        <Plus className="h-6 w-6 stroke-[2.5]" />
-      </button>
-
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDetails();
-        }}
-        className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-800 shrink-0 min-h-[44px] min-w-[40px] flex items-center justify-center"
-        title="Details"
-        aria-label="Details"
-      >
-        <ChevronRight className="h-5 w-5" />
+        {chip}
+        <span className="block text-[10px] text-accent/70 mt-0.5">→</span>
       </button>
     </div>
   );

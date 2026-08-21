@@ -17,6 +17,8 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { getCached, setCached } from "@/lib/client-cache";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
 import { searchStandardDishes } from "@/data/standard-dishes";
+import { searchBrandRestaurantFoods } from "@/data/brand-restaurant-foods";
+import { searchDachRetailFoods } from "@/data/dach-retail-foods";
 import { FoodQuickRow } from "@/components/nutrition/food-quick-row";
 import { FoodDetailPopup } from "@/components/nutrition/food-detail-popup";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
@@ -51,13 +53,9 @@ function emptyHistory(): FoodHistoryPayload {
 
 function applyHistoryPayload(
   d: FoodHistoryPayload,
-  setHistoryFoods: (h: FoodHistoryPayload) => void,
-  setBrowseTab: (t: "favorites" | "recent" | "frequent") => void
+  setHistoryFoods: (h: FoodHistoryPayload) => void
 ) {
   setHistoryFoods(d);
-  if (d.favorites.length > 0) setBrowseTab("favorites");
-  else if (d.recents.length > 0) setBrowseTab("recent");
-  else setBrowseTab("frequent");
 }
 
 function cacheKey(q: string) {
@@ -98,9 +96,6 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const [historyFoods, setHistoryFoods] = useState<FoodHistoryPayload>(() =>
     getCachedFoodHistory() ?? emptyHistory()
   );
-  const [browseTab, setBrowseTab] = useState<"favorites" | "recent" | "frequent">(
-    "frequent"
-  );
   const [detailProduct, setDetailProduct] = useState<FoodProduct | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const requestGen = useRef(0);
@@ -114,7 +109,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     setQ(initialQuery.trim());
     setDetailProduct(null);
     const cached = getCachedFoodHistory();
-    if (cached) applyHistoryPayload(cached, setHistoryFoods, setBrowseTab);
+    if (cached) applyHistoryPayload(cached, setHistoryFoods);
     const t = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(t);
   }, [open, initialQuery]);
@@ -139,7 +134,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     if (!open) return;
     // Instant from cache; soft-refresh in background
     const cached = getCachedFoodHistory();
-    if (cached) applyHistoryPayload(cached, setHistoryFoods, setBrowseTab);
+    if (cached) applyHistoryPayload(cached, setHistoryFoods);
     else warmFoodHistoryCache(true);
 
     let cancelled = false;
@@ -154,7 +149,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
           favorites: ((d.favorites ?? []) as FoodProduct[]).slice(0, 24),
         };
         setCached(FOOD_HISTORY_CACHE_KEY, next, 180_000);
-        applyHistoryPayload(next, setHistoryFoods, setBrowseTab);
+        applyHistoryPayload(next, setHistoryFoods);
       })
       .catch(() => {
         if (!getCachedFoodHistory()) {
@@ -219,19 +214,28 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     const trimmed = q.trim();
     if (trimmed.length < 2) {
       return dedupeFoods([
-        ...filterFoods(historyFoods.frequent, trimmed),
+        ...filterFoods(historyFoods.favorites, trimmed),
         ...filterFoods(historyFoods.recents, trimmed),
-        ...searchStandardDishes(trimmed, 12),
+        ...filterFoods(historyFoods.frequent, trimmed),
+        ...searchStandardDishes(trimmed, 8),
       ]);
     }
-    return searchStandardDishes(trimmed, 12);
+    return dedupeFoods([
+      ...filterFoods(historyFoods.favorites, trimmed),
+      ...filterFoods(historyFoods.recents, trimmed),
+      ...searchBrandRestaurantFoods(trimmed, 12),
+      ...searchDachRetailFoods(trimmed, 12),
+      ...searchStandardDishes(trimmed, 10),
+    ]);
   }, [isSearching, q, historyFoods]);
 
   const searchResults = useMemo(() => {
     if (!isSearching) return [];
     const api = result?.products ?? [];
-    return dedupeFoods([...instantResults, ...api]).slice(0, 36);
-  }, [isSearching, result, instantResults]);
+    // Favorites matching query stay on top
+    const favMatches = filterFoods(historyFoods.favorites, q.trim());
+    return dedupeFoods([...favMatches, ...instantResults, ...api]).slice(0, 40);
+  }, [isSearching, result, instantResults, historyFoods.favorites, q]);
 
   const quickAdd = useCallback(
     (product: FoodProduct) => {
@@ -298,60 +302,27 @@ export const FoodAddPopup = memo(function FoodAddPopup({
             <div className="food-add-popup-scroll">
               {!isSearching && (
                 <>
-                  <div className="flex gap-1 px-1 pb-2">
-                    {(
-                      [
-                        { id: "favorites" as const, label: "Favoriten" },
-                        { id: "recent" as const, label: "Zuletzt" },
-                        { id: "frequent" as const, label: "Häufig" },
-                      ] as const
-                    ).map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setBrowseTab(t.id)}
-                        className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-colors ${
-                          browseTab === t.id
-                            ? "bg-accent text-zinc-950"
-                            : "bg-zinc-800/80 text-zinc-400"
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {browseTab === "favorites" && (
-                    <FoodSection title="Favoriten">
-                      {historyFoods.favorites.length === 0 ? (
-                        <p className="text-sm text-zinc-500 py-4 text-center px-2">
-                          Noch keine Favoriten — tippe auf den Stern bei einem Produkt.
-                        </p>
-                      ) : (
-                        historyFoods.favorites.map((food) => renderRow(food))
-                      )}
-                    </FoodSection>
-                  )}
-                  {browseTab === "recent" && (
-                    <FoodSection title="Zuletzt verwendet">
-                      {historyFoods.recents.length === 0 ? (
-                        <p className="text-sm text-zinc-500 py-4 text-center px-2">
-                          Noch keine Einträge — suche ein Lebensmittel und füge es hinzu.
-                        </p>
-                      ) : (
-                        historyFoods.recents.map((food) => renderRow(food))
-                      )}
-                    </FoodSection>
-                  )}
-                  {browseTab === "frequent" && (
+                  <FoodSection title="⭐ Favoriten">
+                    {historyFoods.favorites.length === 0 ? (
+                      <p className="text-sm text-zinc-500 py-3 text-center px-2">
+                        Noch keine Favoriten — tippe auf den Stern bei einem Produkt.
+                      </p>
+                    ) : (
+                      historyFoods.favorites.slice(0, 8).map((food) => renderRow(food))
+                    )}
+                  </FoodSection>
+                  <FoodSection title="🕘 Zuletzt verwendet">
+                    {historyFoods.recents.length === 0 ? (
+                      <p className="text-sm text-zinc-500 py-3 text-center px-2">
+                        Noch keine Einträge — suche ein Lebensmittel und füge es hinzu.
+                      </p>
+                    ) : (
+                      historyFoods.recents.slice(0, 8).map((food) => renderRow(food))
+                    )}
+                  </FoodSection>
+                  {historyFoods.frequent.length > 0 && (
                     <FoodSection title="Häufig verwendet">
-                      {historyFoods.frequent.length === 0 ? (
-                        <p className="text-sm text-zinc-500 py-4 text-center px-2">
-                          Häufige Lebensmittel erscheinen nach ein paar Einträgen.
-                        </p>
-                      ) : (
-                        historyFoods.frequent.map((food) => renderRow(food))
-                      )}
+                      {historyFoods.frequent.slice(0, 8).map((food) => renderRow(food))}
                     </FoodSection>
                   )}
                 </>
@@ -359,6 +330,9 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
               {isSearching && (
                 <div className="food-add-popup-results">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-1 pb-2">
+                    Suchergebnisse
+                  </p>
                   {searchResults.length === 0 && loading && (
                     <p className="text-sm text-zinc-500 py-6 text-center">Suche…</p>
                   )}

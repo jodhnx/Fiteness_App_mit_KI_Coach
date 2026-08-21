@@ -1,5 +1,6 @@
 import type { FoodProduct } from "@/lib/food/food-product-types";
 import { brandDefaultServingG } from "@/data/brand-restaurant-foods";
+import { dachRetailDefaultGrams } from "@/data/dach-retail-foods";
 
 export type PortionPreset = {
   label: string;
@@ -165,7 +166,7 @@ export function getPortionPresets(food: FoodProduct): PortionPreset[] {
 }
 
 export function getDefaultQuickAddGrams(food: FoodProduct): number {
-  const brandG = brandDefaultServingG(food);
+  const brandG = brandDefaultServingG(food) ?? dachRetailDefaultGrams(food);
   if (brandG != null) return brandG;
   const presets = getPortionPresets(food);
   return presets.find((p) => p.default)?.grams ?? presets[0]?.grams ?? 100;

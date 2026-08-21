@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import type { ElementType } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
 import { useFoodFavorites } from "@/hooks/use-food-favorites";
@@ -34,29 +33,15 @@ import {
   AlertCircle,
   Settings2,
   Camera,
-  Search,
-  Star,
-  Clock,
-  ChefHat,
-  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { warmNutritionSearchCaches } from "@/lib/nav-cache-warmer";
 import { warmFoodHistoryCache, refreshFoodHistoryCache } from "@/lib/food-history-cache";
 import { resetBodyScroll } from "@/lib/scroll-lock";
-import { cn } from "@/lib/utils";
 import type { FoodAIItem } from "@/app/api/nutrition/food-ai/route";
 
 const VALID_MEALS = new Set<string>(MEAL_TYPE_ORDER);
-
-type SmartAddOption = {
-  id: string;
-  icon: ElementType<{ className?: string }>;
-  label: string;
-  action: () => void;
-  accent?: boolean;
-};
 
 export default function NutritionPage() {
   return (
@@ -72,7 +57,6 @@ function NutritionPageInner() {
   const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
   const [addInitialQuery, setAddInitialQuery] = useState("");
   const [foodAIOpen, setFoodAIOpen] = useState(false);
-  const smartAddMeal: MealType = "LUNCH";
 
   useEffect(() => {
     // Prefetch + menu history so Favoriten / Häufig / Zuletzt open instantly
@@ -258,50 +242,6 @@ function NutritionPageInner() {
     [dashboard, applyDashboard]
   );
 
-  const openSmartAdd = useCallback((meal: MealType) => {
-    setAddSheetMeal(meal);
-  }, []);
-
-  const smartAddOptions: SmartAddOption[] = [
-    {
-      id: "photo",
-      icon: Camera,
-      label: "Essen fotografieren",
-      action: () => setFoodAIOpen(true),
-      accent: true,
-    },
-    {
-      id: "search",
-      icon: Search,
-      label: "Lebensmittel suchen",
-      action: () => openSmartAdd(smartAddMeal),
-    },
-    {
-      id: "favorites",
-      icon: Star,
-      label: "Favoriten",
-      action: () => openSmartAdd(smartAddMeal),
-    },
-    {
-      id: "recent",
-      icon: Clock,
-      label: "Zuletzt verwendet",
-      action: () => openSmartAdd(smartAddMeal),
-    },
-    {
-      id: "recipe",
-      icon: ChefHat,
-      label: "Rezept hinzufügen",
-      action: () => router.push("/nutrition/recipes"),
-    },
-    {
-      id: "manual",
-      icon: Pencil,
-      label: "Manuell eingeben",
-      action: () => openSmartAdd(smartAddMeal),
-    },
-  ];
-
   return (
     <PageShell
       title="Ernährung"
@@ -346,36 +286,6 @@ function NutritionPageInner() {
         onAddMeal={(meal) => setAddSheetMeal(meal)}
       />
 
-      {/* Smart Add — große klare Actions */}
-      <div className="grid grid-cols-2 gap-2">
-        {smartAddOptions.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={opt.action}
-            className={cn(
-              "flex items-center gap-2.5 rounded-2xl px-3.5 py-3.5 border text-left min-h-[52px] transition-colors active:scale-[0.98]",
-              opt.accent
-                ? "col-span-2 border-accent/40 bg-accent/15 text-accent"
-                : "border-zinc-800/80 bg-zinc-900/70 text-zinc-200 hover:border-zinc-600"
-            )}
-          >
-            <span
-              className={cn(
-                "h-9 w-9 rounded-xl flex items-center justify-center shrink-0",
-                opt.accent ? "bg-accent/20" : "bg-zinc-800"
-              )}
-            >
-              <opt.icon className="h-5 w-5" />
-            </span>
-            <span className={cn("text-sm font-semibold", opt.accent && "text-base")}>
-              {opt.label}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Meal grid — direct, no section label needed */}
       <MealTrackList
         meals={dashboard?.mealsByType ?? []}
         onRemove={removeItem}

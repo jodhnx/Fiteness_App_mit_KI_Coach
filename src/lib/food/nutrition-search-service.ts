@@ -11,6 +11,7 @@ import {
 import { searchStandardDishes } from "@/data/standard-dishes";
 import { searchFoodCatalog } from "@/data/food-catalog";
 import { searchBrandRestaurantFoods } from "@/data/brand-restaurant-foods";
+import { searchDachRetailFoods } from "@/data/dach-retail-foods";
 
 const searchCache = new Map<string, { at: number; data: FoodSearchResponse }>();
 const SEARCH_CACHE_MS = 120_000;
@@ -44,9 +45,23 @@ function scoreProduct(p: FoodProduct, query: string): number {
   // Brand / Fast-Food variants rank high for brand queries
   if (
     p.brand &&
-    ["McDonald's", "Burger King", "KFC", "Subway", "Domino's", "Pizza Hut", "Restaurant", "Selbstgemacht"].includes(
-      p.brand
-    )
+    [
+      "McDonald's",
+      "Burger King",
+      "KFC",
+      "Subway",
+      "Domino's",
+      "Pizza Hut",
+      "Restaurant",
+      "Selbstgemacht",
+      "BILLA",
+      "SPAR",
+      "HOFER",
+      "Lidl",
+      "Penny",
+      "REWE",
+      "EDEKA",
+    ].includes(p.brand)
   ) {
     score += 50;
     if (q.includes(p.brand.toLowerCase().split(" ")[0]!)) score += 30;
@@ -60,6 +75,7 @@ function mergeAndRank(
   standard: FoodProduct[],
   catalog: FoodProduct[],
   brands: FoodProduct[],
+  retail: FoodProduct[],
   off: FoodProduct[],
   query: string
 ): FoodProduct[] {
@@ -69,6 +85,7 @@ function mergeAndRank(
   );
   const merged = dedupeProducts([
     ...brands,
+    ...retail,
     ...standard,
     ...catalog,
     ...local,
@@ -96,14 +113,15 @@ export async function searchFoodProductsLocalOnly(
     };
   }
 
-  const [localResult, standard, catalog, brands] = await Promise.all([
+  const [localResult, standard, catalog, brands, retail] = await Promise.all([
     searchLocalFoods(userId, q, 24).catch(() => [] as FoodProduct[]),
     Promise.resolve(searchStandardDishes(q, 16)),
     Promise.resolve(searchFoodCatalog(q, 20)),
     Promise.resolve(searchBrandRestaurantFoods(q, 20)),
+    Promise.resolve(searchDachRetailFoods(q, 20)),
   ]);
 
-  const products = mergeAndRank(localResult, standard, catalog, brands, [], q);
+  const products = mergeAndRank(localResult, standard, catalog, brands, retail, [], q);
 
   return {
     products,
@@ -111,7 +129,12 @@ export async function searchFoodProductsLocalOnly(
     query: q,
     source: "local",
     offAvailable: true,
-    localCount: localResult.length + standard.length + catalog.length + brands.length,
+    localCount:
+      localResult.length +
+      standard.length +
+      catalog.length +
+      brands.length +
+      retail.length,
     offCount: 0,
   };
 }
@@ -159,6 +182,7 @@ export async function searchFoodProducts(
   const standard = searchStandardDishes(q, 16);
   const catalog = searchFoodCatalog(q, 20);
   const brands = searchBrandRestaurantFoods(q, 20);
+  const retail = searchDachRetailFoods(q, 20);
 
   let localResult: FoodProduct[] = [];
   let localError: string | null = null;
@@ -177,6 +201,7 @@ export async function searchFoodProducts(
     standard,
     catalog,
     brands,
+    retail,
     offResult.products,
     q
   );
@@ -187,7 +212,8 @@ export async function searchFoodProducts(
     localResult.length > 0 ||
     standard.length > 0 ||
     catalog.length > 0 ||
-    brands.length > 0;
+    brands.length > 0 ||
+    retail.length > 0;
   const hasAny = products.length > 0;
 
   let offError: string | null = offResult.error ?? null;
@@ -206,7 +232,12 @@ export async function searchFoodProducts(
     source: offResult.products.length > 0 ? "merged" : hasLocal ? "local" : "openfoodfacts",
     offAvailable: offAvailable || hasAny,
     offError,
-    localCount: localResult.length + standard.length + catalog.length + brands.length,
+    localCount:
+      localResult.length +
+      standard.length +
+      catalog.length +
+      brands.length +
+      retail.length,
     offCount: offResult.products.length,
     offSource: offResult.source ?? null,
     localError,
