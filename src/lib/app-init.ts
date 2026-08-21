@@ -173,20 +173,17 @@ export function enrichHomeInBackground() {
  */
 export async function initializeApp(
   userId: string,
-  onProgress?: (p: number) => void
+  _onProgress?: (p: number) => void
 ): Promise<AppInitResult> {
   bootPerfReset();
   bootPerfMark("cache_hydrate_start");
   bindCacheOwner(userId);
   hydratePersistentCaches(userId);
   bootPerfMark("cache_hydrate_end");
-  onProgress?.(0.35); // cache hydrated
 
   const cached = readBootPayloadFromCache();
   if (cached) {
-    onProgress?.(0.60); // found in cache
     applyBootstrapPayload(cached);
-    onProgress?.(0.85); // applied
     void fetchBootstrap().then((fresh) => {
       if (fresh) applyBootstrapPayload(fresh);
       enrichHomeInBackground();
@@ -194,12 +191,9 @@ export async function initializeApp(
     return { payload: cached, fromCache: true };
   }
 
-  onProgress?.(0.45); // going to network
   const fresh = await fetchBootstrap();
-  onProgress?.(0.80); // network done
   if (fresh) {
     applyBootstrapPayload(fresh);
-    onProgress?.(0.92);
     enrichHomeInBackground();
     return { payload: fresh, fromCache: false };
   }

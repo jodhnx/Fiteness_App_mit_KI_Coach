@@ -7,11 +7,11 @@ export const PERSISTENT_CACHE_KEYS = [
 ] as const;
 
 /**
- * Soft grace after hard TTL: keep stale entries for overnight / cold reopen
- * so splash can show last-known Home instantly while bootstrap refreshes.
- * Default: 24 hours after expires.
+ * Soft grace after hard TTL: keep stale entries for overnight / multi-day reopen
+ * so Home paints instantly from last-known data while bootstrap refreshes.
+ * Default: 7 days after expires.
  */
-export const PERSISTENT_STALE_GRACE_MS = 24 * 60 * 60 * 1000;
+export const PERSISTENT_STALE_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
 type StoredEntry = {
   data: unknown;
