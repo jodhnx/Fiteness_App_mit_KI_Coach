@@ -92,6 +92,7 @@ function applyProfileToForm(d: ProfileApiResponse) {
       ? String(p.targetWeightDate).slice(0, 10)
       : "",
     trainingLocation: (p?.trainingLocation as string) ?? "GYM",
+    countryCode: (p?.countryCode as string) === "DE" ? "DE" : "AT",
     bodyFatPct: formatNumField(p?.bodyFatPct),
     muscleMassKg: p?.muscleMassKg?.toString() ?? "",
     neckCm: p?.neckCm?.toString() ?? "",
@@ -146,6 +147,7 @@ function SettingsPageInner() {
     targetWeightKg: "",
     targetWeightDate: "",
     trainingLocation: "GYM",
+    countryCode: "AT",
     bodyFatPct: "",
     muscleMassKg: "",
     neckCm: "",
@@ -245,6 +247,7 @@ function SettingsPageInner() {
         targetWeightKg: form.targetWeightKg ? Number(form.targetWeightKg) : undefined,
         targetWeightDate: form.targetWeightDate || undefined,
         trainingLocation: form.trainingLocation || undefined,
+        countryCode: form.countryCode === "DE" ? "DE" : "AT",
         bodyFatPct: form.bodyFatPct ? Number(form.bodyFatPct) : undefined,
         muscleMassKg: form.muscleMassKg ? Number(form.muscleMassKg) : undefined,
         neckCm: form.neckCm ? Number(form.neckCm) : undefined,
@@ -582,6 +585,33 @@ function SettingsPageInner() {
               <p className="text-[11px] text-zinc-500 mt-1">
                 Login-E-Mail — Änderung nur über Support möglich
               </p>
+            </div>
+            <div>
+              <Label>Land (Lebensmittel)</Label>
+              <p className="text-[11px] text-zinc-500 mt-0.5 mb-1">
+                Beeinflusst Suche, Händler und regionale Begriffe (z. B. Topfen / Quark)
+              </p>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {(
+                  [
+                    { code: "AT", label: "🇦🇹 Österreich" },
+                    { code: "DE", label: "🇩🇪 Deutschland" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.code}
+                    type="button"
+                    onClick={() => setForm({ ...form, countryCode: opt.code })}
+                    className={
+                      form.countryCode === opt.code
+                        ? "h-11 rounded-xl border border-accent/50 bg-accent/15 text-sm font-semibold text-white"
+                        : "h-11 rounded-xl border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-300"
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -1052,6 +1082,12 @@ function SettingsPageInner() {
           <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
             <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Trainingsort</dt>
             <dd className="font-medium text-white mt-0.5">{TRAINING_LOCATION_LABELS[form.trainingLocation] ?? "—"}</dd>
+          </div>
+          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
+            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Land</dt>
+            <dd className="font-medium text-white mt-0.5">
+              {form.countryCode === "DE" ? "🇩🇪 Deutschland" : "🇦🇹 Österreich"}
+            </dd>
           </div>
           <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
             <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Training / Woche</dt>

@@ -88,6 +88,7 @@ export default function OnboardingPage() {
   const [weightKg, setWeightKg] = useState("");
   const [activityLevel, setActivityLevel] = useState<ActivityLevel | null>(null);
   const [mainGoalKey, setMainGoalKey] = useState<MainGoalKey | null>(null);
+  const [countryCode, setCountryCode] = useState<"AT" | "DE">("AT");
 
   useEffect(() => {
     fetch("/api/onboarding")
@@ -156,6 +157,7 @@ export default function OnboardingPage() {
           mainGoalKey,
           experienceLevel: "BEGINNER",
           nutritionGoal,
+          countryCode,
         }),
       });
       const data = await res.json();
@@ -354,6 +356,27 @@ export default function OnboardingPage() {
                 </div>
               </div>
               <p className="text-[10px] text-zinc-600">Größe in cm · Gewicht in kg</p>
+
+              <div>
+                <Label>Wo wohnst du?</Label>
+                <p className="text-[11px] text-zinc-500 mt-0.5 mb-1.5">
+                  Für regionale Lebensmittel, Händler und Bezeichnungen
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <OptionButton
+                    selected={countryCode === "AT"}
+                    onClick={() => setCountryCode("AT")}
+                    label="🇦🇹 Österreich"
+                    hint="Topfen, Faschiertes, BILLA…"
+                  />
+                  <OptionButton
+                    selected={countryCode === "DE"}
+                    onClick={() => setCountryCode("DE")}
+                    label="🇩🇪 Deutschland"
+                    hint="Quark, Hackfleisch, REWE…"
+                  />
+                </div>
+              </div>
             </div>
           )}
 

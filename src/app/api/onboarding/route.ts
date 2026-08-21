@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
       targetWeightKg: d.targetWeightKg ?? null,
       targetWeightDate,
       trainingLocation: d.trainingLocation ?? null,
+      countryCode: d.countryCode === "DE" ? "DE" : "AT",
     };
 
     const profile = await prisma.profile.upsert({

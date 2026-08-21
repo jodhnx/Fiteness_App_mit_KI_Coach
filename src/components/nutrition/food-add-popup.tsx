@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, ScanBarcode } from "lucide-react";
 import type { MealType } from "@prisma/client";
 import type { FoodProduct, FoodSearchResponse } from "@/lib/food/food-product-types";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -21,6 +21,8 @@ import { searchBrandRestaurantFoods } from "@/data/brand-restaurant-foods";
 import { searchDachRetailFoods } from "@/data/dach-retail-foods";
 import { FoodQuickRow } from "@/components/nutrition/food-quick-row";
 import { FoodDetailPopup } from "@/components/nutrition/food-detail-popup";
+import { FoodBarcodeScanner } from "@/components/nutrition/food-barcode-scanner";
+import { FoodManualProductSheet } from "@/components/nutrition/food-manual-product-sheet";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { resetBodyScroll } from "@/lib/scroll-lock";
 import {
@@ -97,6 +99,9 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     getCachedFoodHistory() ?? emptyHistory()
   );
   const [detailProduct, setDetailProduct] = useState<FoodProduct | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const requestGen = useRef(0);
 
@@ -291,11 +296,31 @@ export const FoodAddPopup = memo(function FoodAddPopup({
               />
               <button
                 type="button"
+                onClick={() => setScannerOpen(true)}
+                className="food-add-popup-icon-btn"
+                aria-label="Barcode scannen"
+                title="Barcode scannen"
+              >
+                <ScanBarcode className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
                 onClick={handleClose}
                 className="food-add-popup-icon-btn"
                 aria-label="Schließen"
               >
                 <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="px-1 pb-2">
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                className="w-full h-10 rounded-xl border border-zinc-700/80 bg-zinc-900/50 text-xs font-medium text-zinc-300 flex items-center justify-center gap-2 active:scale-[0.99]"
+              >
+                <ScanBarcode className="h-4 w-4 text-accent" />
+                Barcode scannen
               </button>
             </div>
 
@@ -356,6 +381,23 @@ export const FoodAddPopup = memo(function FoodAddPopup({
           onAdd={addFromDetail}
         />
       )}
+
+      <FoodBarcodeScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onProductReady={(p) => setDetailProduct(p)}
+        onManualAdd={() => {
+          setManualBarcode("");
+          setManualOpen(true);
+        }}
+      />
+
+      <FoodManualProductSheet
+        open={manualOpen}
+        initialBarcode={manualBarcode}
+        onClose={() => setManualOpen(false)}
+        onCreated={(p) => setDetailProduct(p)}
+      />
     </>
   );
 });

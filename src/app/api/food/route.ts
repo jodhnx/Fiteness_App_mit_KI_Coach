@@ -79,10 +79,22 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return jsonError("Ungültige Eingabe");
 
     const slug = slugify(parsed.data.name);
+    let barcode = parsed.data.barcode || null;
+    if (barcode) {
+      const existing = await prisma.foodItem.findFirst({
+        where: { OR: [{ barcode }, { offCode: barcode }] },
+        select: { id: true },
+      });
+      // Never overwrite global catalog — keep barcode only if free (user-private row)
+      if (existing) barcode = null;
+    }
+
     const food = await prisma.foodItem.create({
       data: {
         slug,
         name: parsed.data.name,
+        brand: parsed.data.brand || null,
+        barcode,
         category: parsed.data.category ?? "OTHER",
         calories: parsed.data.calories,
         proteinG: parsed.data.proteinG,
@@ -90,10 +102,20 @@ export async function POST(req: NextRequest) {
         fatG: parsed.data.fatG,
         servingG: parsed.data.servingG,
         userId: session.user.id,
+        dataSource: "user_custom",
       },
       select: foodSelect,
     });
-    return jsonOk({ food }, 201);
+    return jsonOk(
+      {
+        food: {
+          ...food,
+          source: "local" as const,
+          servingLabel: `${food.servingG} g`,
+        },
+      },
+      201
+    );
   } catch (e) {
     return handleApiError(e);
   }

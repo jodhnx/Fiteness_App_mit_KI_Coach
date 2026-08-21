@@ -111,6 +111,7 @@ export const profileSchema = z.object({
     z.string().optional()
   ),
   trainingLocation: z.enum(["GYM", "HOME", "BOTH"]).optional(),
+  countryCode: z.enum(["AT", "DE"]).optional(),
   bodyFatPct: optionalNum(3, 60),
   muscleMassKg: optionalNum(1, 200),
   neckCm: optionalNum(1, 80),
@@ -141,6 +142,7 @@ export const onboardingSchema = z.object({
   targetWeightKg: z.coerce.number().positive().max(300).optional(),
   targetWeightDate: z.preprocess(emptyToUndefined, z.string().optional()),
   trainingLocation: z.enum(["GYM", "HOME", "BOTH"]).optional(),
+  countryCode: z.enum(["AT", "DE"]).optional(),
 });
 
 export const settingsSchema = profileSchema.extend({
@@ -227,6 +229,12 @@ export const recipeSchema = z.object({
 
 export const customFoodSchema = z.object({
   name: z.string().min(1).max(120),
+  brand: z.string().trim().max(80).optional(),
+  barcode: z.preprocess((v) => {
+    if (v == null || v === "") return undefined;
+    const digits = String(v).replace(/\D/g, "");
+    return digits.length >= 8 ? digits : undefined;
+  }, z.string().regex(/^\d{8,14}$/).optional()),
   category: z
     .enum([
       "MEAT",

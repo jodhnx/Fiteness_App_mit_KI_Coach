@@ -20,6 +20,7 @@ export const PROFILE_PATCH_KEYS = [
   "targetWeightKg",
   "targetWeightDate",
   "trainingLocation",
+  "countryCode",
   "bodyFatPct",
   "muscleMassKg",
   "neckCm",

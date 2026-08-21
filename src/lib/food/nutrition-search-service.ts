@@ -12,9 +12,30 @@ import { searchStandardDishes } from "@/data/standard-dishes";
 import { searchFoodCatalog } from "@/data/food-catalog";
 import { searchBrandRestaurantFoods } from "@/data/brand-restaurant-foods";
 import { searchDachRetailFoods } from "@/data/dach-retail-foods";
+import {
+  normalizeFoodCountry,
+  type FoodCountryCode,
+  RETAILERS_BY_COUNTRY,
+} from "@/lib/food/food-region";
+import { expandFoodSearchTerms } from "@/lib/food/food-synonyms";
+import { prisma } from "@/lib/prisma";
 
 const searchCache = new Map<string, { at: number; data: FoodSearchResponse }>();
 const SEARCH_CACHE_MS = 120_000;
+
+async function resolveUserCountry(userId: string): Promise<FoodCountryCode> {
+  try {
+    const row = await prisma.profile.findUnique({
+      where: { userId },
+      select: { countryCode: true },
+    });
+    return normalizeFoodCountry(
+      (row as { countryCode?: string | null } | null)?.countryCode
+    );
+  } catch {
+    return "AT";
+  }
+}
 
 function dedupeProducts(products: FoodProduct[]): FoodProduct[] {
   const seen = new Set<string>();
@@ -37,36 +58,39 @@ function nameMatchBonus(p: FoodProduct, q: string): number {
   return 0;
 }
 
-function scoreProduct(p: FoodProduct, query: string): number {
+function scoreProduct(
+  p: FoodProduct,
+  query: string,
+  country: FoodCountryCode
+): number {
   const q = query.toLowerCase();
   let score = nameMatchBonus(p, q);
   if (p.source === "local") score += 45;
-  if (p.brand === "Standardgericht" || p.brand === "Standardlebensmittel") score += 55;
-  // Brand / Fast-Food variants rank high for brand queries
-  if (
-    p.brand &&
+  if (p.brand === "Standardgericht" || p.brand === "Standardlebensmittel") {
+    score += 55;
+  }
+
+  const preferred = RETAILERS_BY_COUNTRY[country];
+  const brandL = (p.brand ?? "").toLowerCase();
+  if (preferred.some((r) => brandL.includes(r.toLowerCase()))) {
+    score += 70;
+  } else if (
     [
-      "McDonald's",
-      "Burger King",
-      "KFC",
-      "Subway",
-      "Domino's",
-      "Pizza Hut",
-      "Restaurant",
-      "Selbstgemacht",
-      "BILLA",
-      "SPAR",
-      "HOFER",
-      "Lidl",
-      "Penny",
-      "REWE",
-      "EDEKA",
-    ].includes(p.brand)
+      "mcdonald's",
+      "burger king",
+      "kfc",
+      "subway",
+      "domino's",
+      "pizza hut",
+      "restaurant",
+      "selbstgemacht",
+    ].some((b) => brandL.includes(b))
   ) {
     score += 50;
-    if (q.includes(p.brand.toLowerCase().split(" ")[0]!)) score += 30;
   }
-  score += p.austriaScore ?? 0;
+
+  const offScore = p.austriaScore ?? 0;
+  score += country === "AT" ? offScore : Math.round(offScore * 0.85);
   return score;
 }
 
@@ -77,7 +101,8 @@ function mergeAndRank(
   brands: FoodProduct[],
   retail: FoodProduct[],
   off: FoodProduct[],
-  query: string
+  query: string,
+  country: FoodCountryCode
 ): FoodProduct[] {
   const offCodes = new Set(local.filter((l) => l.offCode).map((l) => l.offCode!));
   const offFiltered = filterNonDachProducts(
@@ -92,15 +117,54 @@ function mergeAndRank(
     ...offFiltered,
   ]);
   return [...merged]
-    .sort((a, b) => scoreProduct(b, query) - scoreProduct(a, query))
+    .sort(
+      (a, b) =>
+        scoreProduct(b, query, country) - scoreProduct(a, query, country)
+    )
     .slice(0, 45);
+}
+
+async function searchLocalWithSynonyms(
+  userId: string,
+  query: string,
+  country: FoodCountryCode,
+  limit: number
+): Promise<FoodProduct[]> {
+  const terms = expandFoodSearchTerms(query, country);
+  const batches = await Promise.all(
+    terms.slice(0, 4).map((t) =>
+      searchLocalFoods(userId, t, Math.ceil(limit / 2)).catch(
+        () => [] as FoodProduct[]
+      )
+    )
+  );
+  return dedupeProducts(batches.flat()).slice(0, limit);
+}
+
+function searchStaticLayers(query: string, country: FoodCountryCode) {
+  const terms = expandFoodSearchTerms(query, country);
+  const standard = dedupeProducts(
+    terms.flatMap((t) => searchStandardDishes(t, 10))
+  ).slice(0, 16);
+  const catalog = dedupeProducts(
+    terms.flatMap((t) => searchFoodCatalog(t, 12))
+  ).slice(0, 20);
+  const brands = dedupeProducts(
+    terms.flatMap((t) => searchBrandRestaurantFoods(t, 12))
+  ).slice(0, 20);
+  const retail = dedupeProducts(
+    terms.flatMap((t) => searchDachRetailFoods(t, 16, country))
+  ).slice(0, 24);
+  return { standard, catalog, brands, retail };
 }
 
 export async function searchFoodProductsLocalOnly(
   userId: string,
-  query: string
+  query: string,
+  country?: FoodCountryCode
 ): Promise<FoodSearchResponse> {
   const q = query.trim();
+  const countryCode = country ?? (await resolveUserCountry(userId));
   if (q.length < 2) {
     return {
       products: [],
@@ -113,15 +177,21 @@ export async function searchFoodProductsLocalOnly(
     };
   }
 
-  const [localResult, standard, catalog, brands, retail] = await Promise.all([
-    searchLocalFoods(userId, q, 24).catch(() => [] as FoodProduct[]),
-    Promise.resolve(searchStandardDishes(q, 16)),
-    Promise.resolve(searchFoodCatalog(q, 20)),
-    Promise.resolve(searchBrandRestaurantFoods(q, 20)),
-    Promise.resolve(searchDachRetailFoods(q, 20)),
+  const [localResult, layers] = await Promise.all([
+    searchLocalWithSynonyms(userId, q, countryCode, 24),
+    Promise.resolve(searchStaticLayers(q, countryCode)),
   ]);
 
-  const products = mergeAndRank(localResult, standard, catalog, brands, retail, [], q);
+  const products = mergeAndRank(
+    localResult,
+    layers.standard,
+    layers.catalog,
+    layers.brands,
+    layers.retail,
+    [],
+    q,
+    countryCode
+  );
 
   return {
     products,
@@ -129,12 +199,7 @@ export async function searchFoodProductsLocalOnly(
     query: q,
     source: "local",
     offAvailable: true,
-    localCount:
-      localResult.length +
-      standard.length +
-      catalog.length +
-      brands.length +
-      retail.length,
+    localCount: products.length,
     offCount: 0,
   };
 }
@@ -146,22 +211,27 @@ export async function searchFoodProducts(
     suggestions?: boolean;
     recordHistory?: boolean;
     localOnly?: boolean;
+    countryCode?: FoodCountryCode;
   }
 ): Promise<FoodSearchResponse> {
   const q = query.trim();
+  const countryCode =
+    options?.countryCode ?? (await resolveUserCountry(userId));
 
   if (options?.localOnly) {
-    return searchFoodProductsLocalOnly(userId, q);
+    return searchFoodProductsLocalOnly(userId, q, countryCode);
   }
 
-  const cacheKey = `${userId}:${q.toLowerCase()}`;
+  const cacheKey = `${userId}:${countryCode}:${q.toLowerCase()}`;
   const hit = searchCache.get(cacheKey);
   if (q.length >= 2 && hit && Date.now() - hit.at < SEARCH_CACHE_MS) {
     return hit.data;
   }
 
   if (q.length < 2) {
-    const recent = await getRecentSearchQueries(userId).catch(() => [] as string[]);
+    const recent = await getRecentSearchQueries(userId).catch(
+      () => [] as string[]
+    );
     return {
       products: [],
       suggestions: recent,
@@ -179,65 +249,60 @@ export async function searchFoodProducts(
     );
   }
 
-  const standard = searchStandardDishes(q, 16);
-  const catalog = searchFoodCatalog(q, 20);
-  const brands = searchBrandRestaurantFoods(q, 20);
-  const retail = searchDachRetailFoods(q, 20);
-
-  let localResult: FoodProduct[] = [];
+  const layers = searchStaticLayers(q, countryCode);
   let localError: string | null = null;
+  const primaryOffQuery = expandFoodSearchTerms(q, countryCode)[0] ?? q;
 
   const [localSettled, offResult] = await Promise.all([
-    searchLocalFoods(userId, q, 28).catch((e) => {
+    searchLocalWithSynonyms(userId, q, countryCode, 28).catch((e) => {
       localError = e instanceof Error ? e.message : "Lokale DB Fehler";
       return [] as FoodProduct[];
     }),
-    searchOpenFoodFacts(q, 32),
+    searchOpenFoodFacts(primaryOffQuery, 32, countryCode),
   ]);
-  localResult = localSettled;
 
   const products = mergeAndRank(
-    localResult,
-    standard,
-    catalog,
-    brands,
-    retail,
+    localSettled,
+    layers.standard,
+    layers.catalog,
+    layers.brands,
+    layers.retail,
     offResult.products,
-    q
+    q,
+    countryCode
   );
-  const recent = await getRecentSearchQueries(userId, 5).catch(() => [] as string[]);
+  const recent = await getRecentSearchQueries(userId, 5).catch(
+    () => [] as string[]
+  );
 
   const offAvailable = !offResult.error && offResult.products.length > 0;
-  const hasLocal =
-    localResult.length > 0 ||
-    standard.length > 0 ||
-    catalog.length > 0 ||
-    brands.length > 0 ||
-    retail.length > 0;
-  const hasAny = products.length > 0;
+  const hasLocal = products.length > 0;
 
   let offError: string | null = offResult.error ?? null;
-  if (!offAvailable && !hasAny && !hasLocal) {
+  if (!offAvailable && !hasLocal) {
     offError =
       offResult.error ??
-      "Keine Produkte gefunden. Prüfe die Schreibweise oder versuche ein Standardgericht (z. B. Pizza, Döner).";
+      "Keine Produkte gefunden. Prüfe die Schreibweise oder versuche ein Standardgericht.";
   } else if (!offAvailable && offResult.error && hasLocal) {
     offError = null;
   }
 
   const response: FoodSearchResponse = {
     products,
-    suggestions: recent.filter((s) => s.toLowerCase() !== q.toLowerCase()).slice(0, 6),
+    suggestions: recent
+      .filter((s) => s.toLowerCase() !== q.toLowerCase())
+      .slice(0, 6),
     query: q,
-    source: offResult.products.length > 0 ? "merged" : hasLocal ? "local" : "openfoodfacts",
-    offAvailable: offAvailable || hasAny,
+    source:
+      offResult.products.length > 0
+        ? "merged"
+        : hasLocal
+          ? "local"
+          : "openfoodfacts",
+    offAvailable: offAvailable || hasLocal,
     offError,
     localCount:
-      localResult.length +
-      standard.length +
-      catalog.length +
-      brands.length +
-      retail.length,
+      localSettled.length + layers.standard.length + layers.retail.length,
     offCount: offResult.products.length,
     offSource: offResult.source ?? null,
     localError,
@@ -245,7 +310,9 @@ export async function searchFoodProducts(
 
   searchCache.set(cacheKey, { at: Date.now(), data: response });
   if (searchCache.size > 300) {
-    const oldest = [...searchCache.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+    const oldest = [...searchCache.entries()].sort(
+      (a, b) => a[1].at - b[1].at
+    )[0];
     if (oldest) searchCache.delete(oldest[0]);
   }
 

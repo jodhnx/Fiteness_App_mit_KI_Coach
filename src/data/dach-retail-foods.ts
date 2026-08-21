@@ -35,6 +35,12 @@ const STAPLES: Staple[] = [
   { name: "Magerquark", brand: "BILLA", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
   { name: "Magerquark", brand: "SPAR", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
   { name: "Magerquark", brand: "HOFER", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
+  // AT regional labels (same verified staple macros)
+  { name: "Magertopfen", brand: "BILLA", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
+  { name: "Magertopfen", brand: "SPAR", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
+  { name: "Magertopfen", brand: "HOFER", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
+  { name: "Topfen", brand: "BILLA", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
+  { name: "Topfen", brand: "SPAR", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
 
   // Hafer / Eier / Basics
   { name: "Haferflocken", brand: "BILLA", calories: 379, proteinG: 13, carbsG: 67, fatG: 7, servingG: 40, servingLabel: "1 Portion (40 g)" },
@@ -80,13 +86,33 @@ export function dachRetailDefaultGrams(food: FoodProduct): number | null {
   return PORTION_BY_KEY.get(`${food.brand}|${food.name}`) ?? null;
 }
 
-export function searchDachRetailFoods(query: string, limit = 24): FoodProduct[] {
+export function searchDachRetailFoods(
+  query: string,
+  limit = 24,
+  country?: "AT" | "DE"
+): FoodProduct[] {
   const q = query.trim().toLowerCase();
   if (q.length < 2) return [];
   const tokens = q.split(/\s+/).filter(Boolean);
+  const atBrands = new Set([
+    "billa",
+    "spar",
+    "hofer",
+    "lidl",
+    "penny",
+  ]);
+  const deBrands = new Set(["rewe", "edeka", "lidl", "aldi", "penny"]);
+
   return PRODUCTS.filter((p) => {
     const hay = `${p.name} ${p.brand ?? ""}`.toLowerCase();
-    return tokens.every((t) => hay.includes(t));
+    if (!tokens.every((t) => hay.includes(t))) return false;
+    if (!country) return true;
+    const b = (p.brand ?? "").toLowerCase();
+    if (country === "AT") {
+      // Prefer AT retailers; keep Lidl/Penny shared
+      return atBrands.has(b) || b === "lidl" || b === "penny";
+    }
+    return deBrands.has(b) || b === "lidl" || b === "penny";
   })
     .slice(0, limit)
     .map((p) => ({ ...p }));

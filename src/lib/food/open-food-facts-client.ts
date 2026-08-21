@@ -407,12 +407,13 @@ const searchCache = new Map<string, { expires: number; data: FoodProduct[] }>();
 
 export async function searchOpenFoodFacts(
   query: string,
-  pageSize = 24
+  pageSize = 24,
+  country: "AT" | "DE" = "AT"
 ): Promise<{ products: FoodProduct[]; error?: string; source?: string }> {
   const q = query.trim();
   if (q.length < 2) return { products: [] };
 
-  const cacheKey = `v2:${q}:${pageSize}`;
+  const cacheKey = `v3:${country}:${q}:${pageSize}`;
   const hit = searchCache.get(cacheKey);
   if (hit && hit.expires > Date.now()) {
     return { products: hit.data, source: "cache" };
@@ -436,7 +437,12 @@ export async function searchOpenFoodFacts(
     console.error("[open-food-facts] search-a-licious failed:", msg);
   }
 
-  for (const base of [OFF_AT, OFF_DE, OFF_CH, OFF_WORLD]) {
+  const legacyOrder =
+    country === "DE"
+      ? [OFF_DE, OFF_AT, OFF_CH, OFF_WORLD]
+      : [OFF_AT, OFF_DE, OFF_CH, OFF_WORLD];
+
+  for (const base of legacyOrder) {
     try {
       const legacy = await runWithRetry(
         () => searchLegacyCgi(base, q, pageSize),
