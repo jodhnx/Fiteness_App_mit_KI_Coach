@@ -50,8 +50,12 @@ function isHomeBootReady(home: HomeDataPayload | null): home is HomeDataPayload 
   );
 }
 
-function isNutritionBootReady(dash: NutritionDashboardPayload | null): boolean {
-  if (!dash || !isValidDashboardPayload(dash) || !isNutritionDashboardToday(dash.date)) {
+function isNutritionBootReady(
+  dash: NutritionDashboardPayload | null,
+  opts?: { allowStaleDate?: boolean }
+): boolean {
+  if (!dash || !isValidDashboardPayload(dash)) return false;
+  if (!opts?.allowStaleDate && !isNutritionDashboardToday(dash.date)) {
     return false;
   }
   if (dash.profileComplete && !hasNutritionTargets(dash)) return false;
@@ -66,7 +70,10 @@ export function readBootPayloadFromCache(): BootstrapPayload | null {
   const profile = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, { allowStale: true });
   const progress = getCached(PROGRESS_CACHE_KEY, { allowStale: true });
 
-  if (!isHomeBootReady(home) || !isNutritionBootReady(nutrition)) return null;
+  // Soft-stale nutrition (z. B. gestern) erlaubt sofortiges Home — Bootstrap refreshed im Hintergrund
+  if (!isHomeBootReady(home) || !isNutritionBootReady(nutrition, { allowStaleDate: true })) {
+    return null;
+  }
 
   return {
     home: normalizeHomeData(home),
@@ -114,7 +121,7 @@ async function fetchBootstrap(): Promise<BootstrapPayload | null> {
     const res = await fetchWithTimeout(
       "/api/bootstrap",
       { credentials: "same-origin" },
-      12_000
+      8_000
     );
     const body = await res.json().catch(() => null);
     if (!res.ok || !body || typeof body !== "object") return null;
@@ -127,7 +134,7 @@ async function fetchBootstrap(): Promise<BootstrapPayload | null> {
     const profile = (body as { profile?: ProfileServerPrefetch }).profile ?? null;
     const progress = (body as { progress?: unknown }).progress ?? null;
 
-    if (!isHomeBootReady(home ?? null) || !nutrition || !isNutritionBootReady(nutrition)) {
+    if (!isHomeBootReady(home ?? null) || !nutrition || !isNutritionBootReady(nutrition, { allowStaleDate: false })) {
       return null;
     }
 

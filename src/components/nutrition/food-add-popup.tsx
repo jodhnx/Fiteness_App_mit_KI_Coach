@@ -11,7 +11,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
-  ArrowLeft,
   ScanBarcode,
   Star,
   X,
@@ -319,55 +318,9 @@ export const FoodAddPopup = memo(function FoodAddPopup({
         >
           <div className="food-add-popup-inner">
             <div className="food-add-popup-search gap-2">
-              {view === "favorites" ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setView("hub")}
-                    className="food-add-popup-icon-btn"
-                    aria-label="Zurück"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </button>
-                  <p className="flex-1 text-sm font-bold text-white px-1 truncate">
-                    ⭐ Favoriten
-                  </p>
-                </>
-              ) : (
-                <>
-                  {view === "search" && q.trim().length === 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setView("hub");
-                        setQ("");
-                        setResult(null);
-                      }}
-                      className="food-add-popup-icon-btn"
-                      aria-label="Zurück"
-                    >
-                      <ArrowLeft className="h-5 w-5" />
-                    </button>
-                  ) : null}
-                  <input
-                    ref={inputRef}
-                    type="search"
-                    value={q}
-                    onChange={(e) => {
-                      setQ(e.target.value);
-                      if (view !== "search") setView("search");
-                    }}
-                    onFocus={() => {
-                      if (view !== "search") setView("search");
-                    }}
-                    placeholder="🔍 Lebensmittel suchen..."
-                    className="food-add-popup-input"
-                    autoComplete="off"
-                    enterKeyHint="search"
-                    autoFocus={view === "hub" || view === "search"}
-                  />
-                </>
-              )}
+              <p className="flex-1 text-sm font-bold text-white px-1 truncate min-w-0">
+                Lebensmittel hinzufügen
+              </p>
               <button
                 type="button"
                 onClick={handleClose}
@@ -378,12 +331,42 @@ export const FoodAddPopup = memo(function FoodAddPopup({
               </button>
             </div>
 
-            {(view === "hub" || (view === "search" && !q.trim())) && (
-              <div className="grid grid-cols-2 gap-2 px-1 pb-2">
+            <div className="px-1 pb-2 space-y-2">
+              <input
+                ref={inputRef}
+                type="search"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setView("search");
+                }}
+                onFocus={() => {
+                  if (view === "favorites") setView("search");
+                  else if (view !== "search") setView("search");
+                }}
+                placeholder="🔍 Lebensmittel suchen..."
+                className="food-add-popup-input w-full"
+                autoComplete="off"
+                enterKeyHint="search"
+                autoFocus={open}
+              />
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setView("favorites")}
-                  className="h-10 rounded-xl border border-amber-500/25 bg-amber-500/10 text-xs font-semibold text-amber-100 flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  onClick={() => {
+                    if (view === "favorites") {
+                      setView(q.trim() ? "search" : "hub");
+                      return;
+                    }
+                    setView("favorites");
+                    setQ("");
+                    setResult(null);
+                  }}
+                  className={`h-10 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                    view === "favorites"
+                      ? "border-amber-400/40 bg-amber-500/20 text-amber-50"
+                      : "border-amber-500/25 bg-amber-500/10 text-amber-100"
+                  }`}
                 >
                   <Star className="h-3.5 w-3.5 fill-amber-400/40 text-amber-400" />
                   Favoriten
@@ -397,7 +380,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                   Barcode
                 </button>
               </div>
-            )}
+            </div>
 
             <div className="food-add-popup-scroll">
               {view === "hub" && (

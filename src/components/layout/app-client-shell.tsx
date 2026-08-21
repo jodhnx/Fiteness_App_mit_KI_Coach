@@ -17,8 +17,6 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
-import { warmFoodHistoryCache } from "@/lib/food-history-cache";
-import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
 import { runBootSecondaryPrefetch } from "@/lib/boot-prefetch";
 import {
   initializeApp,
@@ -30,7 +28,21 @@ import { bootPerfMark } from "@/lib/app-init-perf";
 import { getCacheOwner, hydratePersistentCaches } from "@/lib/client-cache";
 
 /** Safety only — never dismiss without data unless this elapses. */
-const BOOT_SAFETY_CAP_MS = 15_000;
+const BOOT_SAFETY_CAP_MS = 10_000;
+
+/** Defer background warm so Home can paint and stay interactive first. */
+function schedulePostBootWarm() {
+  if (typeof window === "undefined") return;
+  // Two rAFs = after first paint
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        warmNavDataCaches();
+        runBootSecondaryPrefetch();
+      }, 600);
+    });
+  });
+}
 
 /** Overlap session wait with disk hydrate — shaves one RTT on cold reopen. */
 function earlyHydrateFromOwner() {
@@ -65,9 +77,9 @@ export function AppClientShell({ children }: { children: ReactNode }) {
     const cached = readBootPayloadFromCache();
     if (cached) {
       setBootPayload(cached);
-      setBootProgress((p) => Math.max(p, 0.45));
+      setBootProgress((p) => Math.max(p, 0.55));
     } else {
-      setBootProgress((p) => Math.max(p, 0.15));
+      setBootProgress((p) => Math.max(p, 0.2));
     }
   }, [status]);
 
@@ -101,17 +113,26 @@ export function AppClientShell({ children }: { children: ReactNode }) {
       setAppReady(true);
       setSplashVisible(false);
       markBootSplashCompleted();
-      warmNavDataCaches();
-      warmFoodHistoryCache();
-      runBootSecondaryPrefetch();
-      if (payload?.progress) void prefetchProgressCharts(true);
+      schedulePostBootWarm();
       initFor.current = userId;
       initRunning.current = false;
       bootPerfMark("boot_ready");
     };
 
     bootPerfMark("auth_end");
-    setBootProgress((p) => Math.max(p, 0.25));
+    setBootProgress((p) => Math.max(p, 0.3));
+
+    // Warm path: cache already usable → show Home immediately, refresh in background
+    const cachedNow = readBootPayloadFromCache();
+    if (cachedNow) {
+      finish(cachedNow);
+      void initializeApp(userId, (p) => {
+        if (!cancelled) setBootProgress((prev) => Math.max(prev, p));
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
 
     void (async () => {
       safetyTimer = window.setTimeout(() => {
@@ -126,7 +147,6 @@ export function AppClientShell({ children }: { children: ReactNode }) {
       });
       if (cancelled) return;
       window.clearTimeout(safetyTimer);
-      setBootProgress(0.97);
 
       if (result.payload) {
         finish(result.payload);
