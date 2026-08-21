@@ -111,11 +111,10 @@ export const FoodQuickRow = memo(function FoodQuickRow({
           e.stopPropagation();
           onQuickAdd();
         }}
-        className="shrink-0 self-center rounded-xl border border-accent/30 bg-accent/10 px-2.5 py-2 text-[11px] font-bold text-accent tabular-nums min-w-[4.5rem] text-center active:opacity-80 disabled:opacity-50"
+        className="shrink-0 self-center flex h-10 w-10 items-center justify-center rounded-xl border border-accent/35 bg-accent/15 text-lg font-bold text-accent active:opacity-80 disabled:opacity-50"
         aria-label={`${food.name} hinzufügen (${chip})`}
       >
-        {chip}
-        <span className="block text-[10px] font-semibold text-accent/70 mt-0.5">→</span>
+        +
       </button>
     </div>
   );

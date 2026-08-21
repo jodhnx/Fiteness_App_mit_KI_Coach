@@ -61,6 +61,35 @@ export async function GET(req: Request) {
       for (const u of users) {
         rows.push({ userId: u.id, value: byUser.get(u.id) ?? 0, user: u });
       }
+    } else if (metric === "cardio") {
+      const activities = await prisma.enduranceActivity
+        .groupBy({
+          by: ["userId"],
+          where: { userId: { in: scopeIds }, startedAt: { gte: since } },
+          _count: { _all: true },
+        })
+        .catch(() => []);
+      const byUser = new Map(
+        activities.map((c) => [c.userId, c._count._all])
+      );
+      for (const u of users) {
+        rows.push({ userId: u.id, value: byUser.get(u.id) ?? 0, user: u });
+      }
+    } else if (metric === "challenges") {
+      const done = await prisma.userChallenge
+        .groupBy({
+          by: ["userId"],
+          where: {
+            userId: { in: scopeIds },
+            status: "COMPLETED",
+          },
+          _count: { _all: true },
+        })
+        .catch(() => []);
+      const byUser = new Map(done.map((c) => [c.userId, c._count._all]));
+      for (const u of users) {
+        rows.push({ userId: u.id, value: byUser.get(u.id) ?? 0, user: u });
+      }
     } else {
       // workouts (default)
       const counts = await prisma.workoutSession.groupBy({

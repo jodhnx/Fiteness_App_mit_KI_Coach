@@ -171,9 +171,9 @@ function SettingsPageInner() {
   const { data: profileData, loading } = useCachedFetch<ProfileApiResponse>(
     PROFILE_CACHE_KEY,
     "/api/profile",
-    120_000,
-    6_000,
-    { revalidateOnMount: true, staleRatio: 0.5 }
+    180_000,
+    8_000,
+    { revalidateOnMount: false, staleRatio: 0.95 }
   );
 
   useEffect(() => {

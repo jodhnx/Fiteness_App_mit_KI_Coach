@@ -16,6 +16,7 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
     activeStreak,
     mealsLogged,
     activitiesCompleted,
+    cardioDistanceAgg,
     prCount,
     challengesCompleted,
     weightLogs,
@@ -37,6 +38,12 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
     prisma.streak.findUnique({ where: { userId }, select: { currentDays: true } }),
     prisma.mealItem.count({ where: { meal: { userId } } }),
     prisma.enduranceActivity.count({ where: { userId } }).catch(() => 0),
+    prisma.enduranceActivity
+      .aggregate({
+        where: { userId },
+        _sum: { distanceM: true },
+      })
+      .catch(() => ({ _sum: { distanceM: 0 } })),
     prisma.personalRecord.count({ where: { userId } }).catch(() => 0),
     prisma.userChallenge.count({ where: { userId, status: "COMPLETED" } }),
     prisma.progressEntry.count({ where: { userId, weightKg: { not: null } } }),
@@ -143,6 +150,12 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
     active_streak_days: activeStreak?.currentDays ?? 0,
     meals_logged: mealsLogged,
     activities_completed: activitiesCompleted,
+    cardio_distance_km: Math.floor(
+      Number(
+        (cardioDistanceAgg as { _sum?: { distanceM?: number | null } })?._sum
+          ?.distanceM ?? 0
+      ) / 1000
+    ),
     personal_records: prCount,
     challenges_completed: challengesCompleted,
     weight_logs: weightLogs,

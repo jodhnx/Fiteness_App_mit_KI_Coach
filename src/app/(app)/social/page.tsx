@@ -117,6 +117,12 @@ export default function SocialPage() {
   const [searching, setSearching] = useState(false);
   const [myId, setMyId] = useState<string | null>(null);
   const [loadingFeed, setLoadingFeed] = useState(false);
+  const [sectionErrors, setSectionErrors] = useState<{
+    feed?: boolean;
+    friends?: boolean;
+    challenges?: boolean;
+    ranks?: boolean;
+  }>({});
   const debouncedQ = useDebounce(query, 250);
 
   // Hydrate from client cache on mount (avoids SSR hydration mismatch)
@@ -124,39 +130,57 @@ export default function SocialPage() {
     const cachedFriends = getCached<FriendRow[]>("social-friends", { allowStale: true });
     const cachedChallenges = getCached<ChallengeRow[]>("social-challenges", { allowStale: true });
     const cachedFeed = getCached<FeedItem[]>("social-feed", { allowStale: true });
+    const cachedRanks = getCached<LeaderRow[]>("social-ranks-workouts", { allowStale: true });
     if (cachedFriends?.length) setFriends(cachedFriends);
     if (cachedChallenges?.length) setChallenges(cachedChallenges);
     if (cachedFeed?.length) setFeed(cachedFeed);
+    if (cachedRanks?.length) setLeaderboard(cachedRanks);
   }, []);
 
   const load = useCallback(() => {
     setLoadingFeed(true);
+    setSectionErrors({});
     const p1 = fetch("/api/social/friends", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { friends: [] }))
+      .then((r) => {
+        if (!r.ok) throw new Error("friends");
+        return r.json();
+      })
       .then((d) => {
         const list: FriendRow[] = d.friends ?? [];
         setFriends(list);
         setCached("social-friends", list, 120_000);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        setSectionErrors((e) => ({ ...e, friends: true }));
+      });
 
     const p2 = fetch("/api/challenges", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { challenges: [] }))
+      .then((r) => {
+        if (!r.ok) throw new Error("challenges");
+        return r.json();
+      })
       .then((d) => {
         const list: ChallengeRow[] = d.challenges ?? [];
         setChallenges(list);
         setCached("social-challenges", list, 120_000);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        setSectionErrors((e) => ({ ...e, challenges: true }));
+      });
 
     const p3 = fetch("/api/social/feed", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { feed: [] }))
+      .then((r) => {
+        if (!r.ok) throw new Error("feed");
+        return r.json();
+      })
       .then((d) => {
         const list: FeedItem[] = d.feed ?? [];
         setFeed(list);
         setCached("social-feed", list, 90_000);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        setSectionErrors((e) => ({ ...e, feed: true }));
+      });
 
     const p4 = fetch("/api/profile", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
@@ -174,10 +198,23 @@ export default function SocialPage() {
 
   useEffect(() => {
     if (tab !== "ranks") return;
+    const cacheKey = `social-ranks-${rankMetric}`;
+    const cached = getCached<LeaderRow[]>(cacheKey, { allowStale: true });
+    if (cached?.length) setLeaderboard(cached);
     void fetch(`/api/social/leaderboard?metric=${rankMetric}`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : { leaderboard: [] }))
-      .then((d) => setLeaderboard(d.leaderboard ?? []))
-      .catch(() => setLeaderboard([]));
+      .then((r) => {
+        if (!r.ok) throw new Error("ranks");
+        return r.json();
+      })
+      .then((d) => {
+        const list: LeaderRow[] = d.leaderboard ?? [];
+        setLeaderboard(list);
+        setCached(cacheKey, list, 120_000);
+        setSectionErrors((e) => ({ ...e, ranks: false }));
+      })
+      .catch(() => {
+        setSectionErrors((e) => ({ ...e, ranks: true }));
+      });
   }, [tab, rankMetric]);
 
   useEffect(() => {
@@ -249,7 +286,7 @@ export default function SocialPage() {
   }
 
   const tabs: { id: Tab; label: string; icon: typeof Activity }[] = [
-    { id: "feed", label: "Feed", icon: Activity },
+    { id: "feed", label: "Aktivität", icon: Flame },
     { id: "friends", label: "Freunde", icon: Users },
     { id: "challenges", label: "Challenges", icon: Trophy },
     { id: "ranks", label: "Rangliste", icon: Medal },
@@ -284,6 +321,11 @@ export default function SocialPage() {
       {/* ── FEED ── */}
       {tab === "feed" && (
         <section className="space-y-2.5">
+          {sectionErrors.feed && (
+            <p className="text-xs text-amber-400/90 px-1">
+              Aktivität: Konnte gerade nicht aktualisiert werden.
+            </p>
+          )}
           {loadingFeed && feed.length === 0 && (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
@@ -360,6 +402,11 @@ export default function SocialPage() {
       {/* ── FRIENDS ── */}
       {tab === "friends" && (
         <div className="space-y-3">
+          {sectionErrors.friends && (
+            <p className="text-xs text-amber-400/90 px-1">
+              Freunde: Konnte gerade nicht aktualisiert werden.
+            </p>
+          )}
           {/* Search */}
           <div className="rounded-2xl border border-white/[0.07] bg-zinc-900/70 p-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -525,6 +572,11 @@ export default function SocialPage() {
       {/* ── CHALLENGES ── */}
       {tab === "challenges" && (
         <section className="space-y-2.5">
+          {sectionErrors.challenges && (
+            <p className="text-xs text-amber-400/90 px-1">
+              Challenges: Konnte gerade nicht aktualisiert werden.
+            </p>
+          )}
           {challenges.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-zinc-700/60 py-14 text-center space-y-3">
               <Trophy className="h-10 w-10 text-zinc-600 mx-auto" />
@@ -595,13 +647,20 @@ export default function SocialPage() {
       {/* ── RANKS ── */}
       {tab === "ranks" && (
         <section className="space-y-3">
+          {sectionErrors.ranks && (
+            <p className="text-xs text-amber-400/90 px-1">
+              Rangliste: Konnte gerade nicht aktualisiert werden.
+            </p>
+          )}
           {/* Metric selector */}
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
             {(
               [
                 ["workouts", "Workouts", Dumbbell],
-                ["steps", "Schritte", Footprints],
                 ["streak", "Streak", Flame],
+                ["steps", "Schritte", Footprints],
+                ["cardio", "Cardio", Activity],
+                ["challenges", "Challenges", Trophy],
               ] as const
             ).map(([id, label, Icon]) => (
               <button
@@ -609,7 +668,7 @@ export default function SocialPage() {
                 type="button"
                 onClick={() => setRankMetric(id)}
                 className={cn(
-                  "flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-semibold transition-colors",
+                  "shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-colors",
                   rankMetric === id
                     ? "border-accent/40 bg-accent/10 text-accent"
                     : "border-white/[0.07] bg-zinc-900/60 text-zinc-400"

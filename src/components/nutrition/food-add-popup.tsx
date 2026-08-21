@@ -12,9 +12,7 @@ import {
 import { createPortal } from "react-dom";
 import {
   ArrowLeft,
-  ChevronRight,
   ScanBarcode,
-  Search,
   Star,
   X,
 } from "lucide-react";
@@ -101,7 +99,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<ViewMode>("hub");
   const [q, setQ] = useState("");
-  const debouncedQ = useDebounce(q, 30);
+  const debouncedQ = useDebounce(q, 160);
   const [result, setResult] = useState<FoodSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [historyFoods, setHistoryFoods] = useState<FoodHistoryPayload>(() =>
@@ -310,13 +308,6 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
   if (!mounted || !open) return null;
 
-  const headerTitle =
-    view === "favorites"
-      ? "⭐ Favoriten"
-      : view === "search"
-        ? "Lebensmittel suchen"
-        : "Lebensmittel hinzufügen";
-
   return (
     <>
       {createPortal(
@@ -327,37 +318,55 @@ export const FoodAddPopup = memo(function FoodAddPopup({
           aria-label="Lebensmittel hinzufügen"
         >
           <div className="food-add-popup-inner">
-            <div className="food-add-popup-search">
-              {view !== "hub" ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setView("hub");
-                    setQ("");
-                    setResult(null);
-                  }}
-                  className="food-add-popup-icon-btn"
-                  aria-label="Zurück"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </button>
-              ) : null}
-              {view === "search" ? (
-                <input
-                  ref={inputRef}
-                  type="search"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Lebensmittel suchen..."
-                  className="food-add-popup-input"
-                  autoComplete="off"
-                  enterKeyHint="search"
-                  autoFocus
-                />
+            <div className="food-add-popup-search gap-2">
+              {view === "favorites" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setView("hub")}
+                    className="food-add-popup-icon-btn"
+                    aria-label="Zurück"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  <p className="flex-1 text-sm font-bold text-white px-1 truncate">
+                    ⭐ Favoriten
+                  </p>
+                </>
               ) : (
-                <p className="flex-1 text-sm font-bold text-white px-1 truncate">
-                  {headerTitle}
-                </p>
+                <>
+                  {view === "search" && q.trim().length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setView("hub");
+                        setQ("");
+                        setResult(null);
+                      }}
+                      className="food-add-popup-icon-btn"
+                      aria-label="Zurück"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </button>
+                  ) : null}
+                  <input
+                    ref={inputRef}
+                    type="search"
+                    value={q}
+                    onChange={(e) => {
+                      setQ(e.target.value);
+                      if (view !== "search") setView("search");
+                    }}
+                    onFocus={() => {
+                      if (view !== "search") setView("search");
+                    }}
+                    placeholder="🔍 Lebensmittel suchen..."
+                    className="food-add-popup-input"
+                    autoComplete="off"
+                    enterKeyHint="search"
+                    autoFocus={view === "hub" || view === "search"}
+                  />
+                </>
               )}
               <button
                 type="button"
@@ -369,68 +378,39 @@ export const FoodAddPopup = memo(function FoodAddPopup({
               </button>
             </div>
 
+            {(view === "hub" || (view === "search" && !q.trim())) && (
+              <div className="grid grid-cols-2 gap-2 px-1 pb-2">
+                <button
+                  type="button"
+                  onClick={() => setView("favorites")}
+                  className="h-10 rounded-xl border border-amber-500/25 bg-amber-500/10 text-xs font-semibold text-amber-100 flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                >
+                  <Star className="h-3.5 w-3.5 fill-amber-400/40 text-amber-400" />
+                  Favoriten
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScannerOpen(true)}
+                  className="h-10 rounded-xl border border-zinc-700/80 bg-zinc-900/60 text-xs font-semibold text-zinc-200 flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                >
+                  <ScanBarcode className="h-3.5 w-3.5 text-violet-400" />
+                  Barcode
+                </button>
+              </div>
+            )}
+
             <div className="food-add-popup-scroll">
               {view === "hub" && (
-                <div className="space-y-3 px-1 pb-4">
+                <div className="space-y-2 px-1 pb-4">
                   <FoodSection title="🕘 Zuletzt verwendet">
                     {historyFoods.recents.length === 0 ? (
                       <p className="text-sm text-zinc-500 py-3 text-center px-2">
-                        Noch keine Einträge — suche ein Lebensmittel und füge es hinzu.
+                        Noch keine Lebensmittel verwendet.
                       </p>
                     ) : (
                       historyFoods.recents.slice(0, 10).map((food) => renderRow(food))
                     )}
                   </FoodSection>
-
-                  <button
-                    type="button"
-                    onClick={() => setView("favorites")}
-                    className="w-full flex items-center gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3.5 text-left active:scale-[0.99]"
-                  >
-                    <Star className="h-5 w-5 text-amber-400 fill-amber-400/30" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-white">⭐ Favoriten</p>
-                      <p className="text-xs text-zinc-500 mt-0.5">
-                        {favoriteOnly.length > 0
-                          ? `${favoriteOnly.length} gespeichert`
-                          : "Eigene Favoritenliste öffnen"}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-zinc-500" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setView("search");
-                      window.setTimeout(() => inputRef.current?.focus(), 50);
-                    }}
-                    className="w-full flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-zinc-900/70 px-4 py-3.5 text-left active:scale-[0.99]"
-                  >
-                    <Search className="h-5 w-5 text-accent" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-white">🔎 Lebensmittel suchen</p>
-                      <p className="text-xs text-zinc-500 mt-0.5">
-                        Datenbank · Marken · Händler
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-zinc-500" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setScannerOpen(true)}
-                    className="w-full flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-zinc-900/70 px-4 py-3.5 text-left active:scale-[0.99]"
-                  >
-                    <ScanBarcode className="h-5 w-5 text-violet-400" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-white">📷 Barcode scannen</p>
-                      <p className="text-xs text-zinc-500 mt-0.5">
-                        EAN erkennen und hinzufügen
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-zinc-500" />
-                  </button>
                 </div>
               )}
 
@@ -452,21 +432,32 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
               {view === "search" && (
                 <div className="food-add-popup-results">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-1 pb-2">
-                    Suchergebnisse
-                  </p>
-                  {!isSearching && (
-                    <p className="text-sm text-zinc-500 py-6 text-center">
-                      Tippe mindestens 2 Zeichen…
-                    </p>
+                  {!q.trim() ? (
+                    <FoodSection title="🕘 Zuletzt verwendet">
+                      {historyFoods.recents.length === 0 ? (
+                        <p className="text-sm text-zinc-500 py-3 text-center px-2">
+                          Noch keine Lebensmittel verwendet.
+                        </p>
+                      ) : (
+                        historyFoods.recents.slice(0, 8).map((food) => renderRow(food))
+                      )}
+                    </FoodSection>
+                  ) : (
+                    <>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-1 pb-2">
+                        Suchergebnisse
+                      </p>
+                      {searchResults.length === 0 && loading && (
+                        <p className="text-sm text-zinc-500 py-6 text-center">Suche…</p>
+                      )}
+                      {searchResults.length === 0 && !loading && (
+                        <p className="text-sm text-zinc-500 py-6 text-center">
+                          Keine Treffer
+                        </p>
+                      )}
+                      {searchResults.map((food) => renderRow(food))}
+                    </>
                   )}
-                  {isSearching && searchResults.length === 0 && loading && (
-                    <p className="text-sm text-zinc-500 py-6 text-center">Suche…</p>
-                  )}
-                  {isSearching && searchResults.length === 0 && !loading && (
-                    <p className="text-sm text-zinc-500 py-6 text-center">Keine Treffer</p>
-                  )}
-                  {searchResults.map((food) => renderRow(food))}
                 </div>
               )}
             </div>

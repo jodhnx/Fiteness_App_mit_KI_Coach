@@ -377,18 +377,32 @@ function extraMilestones(): AchievementSeed[] {
 
 function activityCountAchievements(): AchievementSeed[] {
   const counts = [1, 5, 10, 25, 50, 100];
-  return counts.map((n, i) => ({
+  const countItems = counts.map((n, i) => ({
     slug: `activities-${n}`,
-    name: n === 1 ? "Erste Aktivität" : `${n} Aktivitäten`,
-    description: `${n} Aktivitäten abgeschlossen`,
-    icon: "🎽",
+    name: n === 1 ? "Erste Cardio-Aktivität" : `${n} Cardio-Einheiten`,
+    description: `${n} Cardio-Aktivitäten abgeschlossen`,
+    icon: "🏃",
     xpReward: 20 + n * 3,
-    category: "activity",
+    category: "cardio",
     tier: tierForIndex(i, counts.length),
     targetValue: n,
     metricKey: "activities_completed",
     sortOrder: 330 + i,
   }));
+  const kmTargets = [10, 50, 100, 500, 1000];
+  const kmItems = kmTargets.map((n, i) => ({
+    slug: `cardio-km-${n}`,
+    name: `${n} km Cardio`,
+    description: `${n} km Distanz durch Cardio`,
+    icon: "🏁",
+    xpReward: 40 + Math.round(n / 5),
+    category: "cardio",
+    tier: tierForIndex(i, kmTargets.length),
+    targetValue: n,
+    metricKey: "cardio_distance_km",
+    sortOrder: 350 + i,
+  }));
+  return [...countItems, ...kmItems];
 }
 
 function levelAchievements(): AchievementSeed[] {
@@ -502,14 +516,15 @@ export function getAllAchievementDefinitions(): AchievementSeed[] {
 
 export const ACHIEVEMENT_CATEGORIES = [
   { id: "training", label: "Training", icon: "🏋️" },
-  { id: "nutrition", label: "Ernährung", icon: "🥗" },
-  { id: "activity", label: "Aktivitäten", icon: "👟" },
-  { id: "sleep", label: "Schlaf", icon: "😴" },
   { id: "streak", label: "Streaks", icon: "🔥" },
-  { id: "weight", label: "Gewicht", icon: "⚖️" },
-  { id: "challenges", label: "Challenges", icon: "🎯" },
+  { id: "activity", label: "Schritte", icon: "🚶" },
+  { id: "cardio", label: "Cardio", icon: "🏃" },
+  { id: "nutrition", label: "Ernährung", icon: "🍎" },
+  { id: "weight", label: "Fortschritt", icon: "⚖️" },
+  { id: "challenges", label: "Challenges", icon: "🏆" },
+  { id: "sleep", label: "Schlaf", icon: "😴" },
   { id: "ai", label: "KI Coach", icon: "🤖" },
-  { id: "level", label: "Level", icon: "🎖️" },
+  { id: "level", label: "Meilensteine", icon: "⭐" },
 ] as const;
 
 export const BADGE_TIER_LABELS: Record<BadgeTier, string> = {

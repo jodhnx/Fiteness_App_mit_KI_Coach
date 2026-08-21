@@ -31,6 +31,36 @@ export function runBootSecondaryPrefetch() {
     if (feed) setCached("social-feed", feed, 120_000);
   });
 
+  // Community + devices in background (lower priority)
+  void Promise.all([
+    fetchOk("/api/social/friends"),
+    fetchOk("/api/challenges"),
+    fetchOk("/api/social/leaderboard?metric=workouts"),
+    fetchOk("/api/wearables"),
+    fetchOk("/api/health/dashboard"),
+    fetchOk("/api/profile"),
+    fetchOk("/api/food/history"),
+  ]).then(([friends, challenges, ranks, wearables, health, profile, foodHistory]) => {
+    if (friends) setCached("social-friends", friends, 120_000);
+    if (challenges) setCached("social-challenges", challenges, 120_000);
+    if (ranks) setCached("social-ranks-workouts", ranks, 120_000);
+    if (wearables) setCached("wearables-list", wearables, 120_000);
+    if (health) setCached("health-dashboard", health, 90_000);
+    if (profile) setCached(PROFILE_CACHE_KEY, profile, 120_000);
+    if (foodHistory) {
+      const rec = (foodHistory.recents ?? []) as unknown[];
+      setCached(
+        "food-history",
+        {
+          frequent: (foodHistory.frequent ?? rec).slice(0, 12),
+          recents: rec.slice(0, 12),
+          favorites: (foodHistory.favorites ?? []).slice(0, 40),
+        },
+        180_000
+      );
+    }
+  });
+
   void fetchOk("/api/recipes/catalog?limit=24&page=1")
     .then(async (recipes) => {
       if (!recipes) return;

@@ -21,7 +21,9 @@ export function metricKeyFromSlug(slug: string, category: string): string {
   if (slug.startsWith("weight-gained")) return "weight_gained_kg";
   if (slug.startsWith("weight-log")) return "weight_logs";
   if (slug.startsWith("challenges")) return "challenges_completed";
-  if (slug.startsWith("activities")) return "activities_completed";
+  if (slug.startsWith("activities") || slug.startsWith("cardio-km")) {
+    return slug.startsWith("cardio-km") ? "cardio_distance_km" : "activities_completed";
+  }
   if (slug.startsWith("coach") || slug === "ai-explorer") return "coach_messages";
 
   switch (category) {
