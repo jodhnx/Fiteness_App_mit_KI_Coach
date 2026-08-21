@@ -68,7 +68,7 @@ export function getCached<T>(key: string, opts?: { allowStale?: boolean }): T | 
   // Memory miss — try persistent disk cache (account-bound via hydrate/owner)
   if (typeof window !== "undefined") {
     try {
-      const hit = readPersistentCache(key);
+      const hit = readPersistentCache(key, { allowStale: opts?.allowStale !== false });
       if (hit) {
         const remaining = hit.expires - Date.now();
         if (remaining > 0) {
@@ -79,7 +79,13 @@ export function getCached<T>(key: string, opts?: { allowStale?: boolean }): T | 
           });
           return hit.data as T;
         }
-        if (opts?.allowStale) {
+        // Soft-stale: keep in memory briefly so boot can reuse without re-read
+        if (opts?.allowStale !== false) {
+          store.set(key, {
+            data: hit.data,
+            cachedAt: hit.expires - 60_000,
+            expires: Date.now() + 60_000,
+          });
           return hit.data as T;
         }
       }
@@ -204,10 +210,15 @@ export function hydratePersistentCaches(expectedUserId?: string | null) {
   const keys = ["home-data", "progress-main", "nutrition-dashboard"] as const;
   for (const key of keys) {
     if (store.has(key)) continue;
-    const hit = readPersistentCache(key);
+    // Allow soft-stale disk entries so overnight reopen stays instant
+    const hit = readPersistentCache(key, { allowStale: true });
     if (hit) {
-      const ttlMs = hit.expires - Date.now();
-      if (ttlMs > 0) setCached(key, hit.data, ttlMs);
+      const ttlMs = Math.max(60_000, hit.expires - Date.now());
+      store.set(key, {
+        data: hit.data,
+        cachedAt: Date.now() - (hit.isStale ? 120_000 : 0),
+        expires: Date.now() + ttlMs,
+      });
     }
   }
 }

@@ -10,6 +10,7 @@ import {
 } from "@/lib/food/food-database-service";
 import { searchStandardDishes } from "@/data/standard-dishes";
 import { searchFoodCatalog } from "@/data/food-catalog";
+import { searchBrandRestaurantFoods } from "@/data/brand-restaurant-foods";
 
 const searchCache = new Map<string, { at: number; data: FoodSearchResponse }>();
 const SEARCH_CACHE_MS = 120_000;
@@ -40,6 +41,16 @@ function scoreProduct(p: FoodProduct, query: string): number {
   let score = nameMatchBonus(p, q);
   if (p.source === "local") score += 45;
   if (p.brand === "Standardgericht" || p.brand === "Standardlebensmittel") score += 55;
+  // Brand / Fast-Food variants rank high for brand queries
+  if (
+    p.brand &&
+    ["McDonald's", "Burger King", "KFC", "Subway", "Domino's", "Pizza Hut", "Restaurant", "Selbstgemacht"].includes(
+      p.brand
+    )
+  ) {
+    score += 50;
+    if (q.includes(p.brand.toLowerCase().split(" ")[0]!)) score += 30;
+  }
   score += p.austriaScore ?? 0;
   return score;
 }
@@ -48,6 +59,7 @@ function mergeAndRank(
   local: FoodProduct[],
   standard: FoodProduct[],
   catalog: FoodProduct[],
+  brands: FoodProduct[],
   off: FoodProduct[],
   query: string
 ): FoodProduct[] {
@@ -55,7 +67,13 @@ function mergeAndRank(
   const offFiltered = filterNonDachProducts(
     off.filter((o) => !o.offCode || !offCodes.has(o.offCode))
   );
-  const merged = dedupeProducts([...standard, ...catalog, ...local, ...offFiltered]);
+  const merged = dedupeProducts([
+    ...brands,
+    ...standard,
+    ...catalog,
+    ...local,
+    ...offFiltered,
+  ]);
   return [...merged]
     .sort((a, b) => scoreProduct(b, query) - scoreProduct(a, query))
     .slice(0, 45);
@@ -78,13 +96,14 @@ export async function searchFoodProductsLocalOnly(
     };
   }
 
-  const [localResult, standard, catalog] = await Promise.all([
+  const [localResult, standard, catalog, brands] = await Promise.all([
     searchLocalFoods(userId, q, 24).catch(() => [] as FoodProduct[]),
     Promise.resolve(searchStandardDishes(q, 16)),
     Promise.resolve(searchFoodCatalog(q, 20)),
+    Promise.resolve(searchBrandRestaurantFoods(q, 20)),
   ]);
 
-  const products = mergeAndRank(localResult, standard, catalog, [], q);
+  const products = mergeAndRank(localResult, standard, catalog, brands, [], q);
 
   return {
     products,
@@ -92,7 +111,7 @@ export async function searchFoodProductsLocalOnly(
     query: q,
     source: "local",
     offAvailable: true,
-    localCount: localResult.length + standard.length + catalog.length,
+    localCount: localResult.length + standard.length + catalog.length + brands.length,
     offCount: 0,
   };
 }
@@ -139,6 +158,7 @@ export async function searchFoodProducts(
 
   const standard = searchStandardDishes(q, 16);
   const catalog = searchFoodCatalog(q, 20);
+  const brands = searchBrandRestaurantFoods(q, 20);
 
   let localResult: FoodProduct[] = [];
   let localError: string | null = null;
@@ -152,11 +172,22 @@ export async function searchFoodProducts(
   ]);
   localResult = localSettled;
 
-  const products = mergeAndRank(localResult, standard, catalog, offResult.products, q);
+  const products = mergeAndRank(
+    localResult,
+    standard,
+    catalog,
+    brands,
+    offResult.products,
+    q
+  );
   const recent = await getRecentSearchQueries(userId, 5).catch(() => [] as string[]);
 
   const offAvailable = !offResult.error && offResult.products.length > 0;
-  const hasLocal = localResult.length > 0 || standard.length > 0 || catalog.length > 0;
+  const hasLocal =
+    localResult.length > 0 ||
+    standard.length > 0 ||
+    catalog.length > 0 ||
+    brands.length > 0;
   const hasAny = products.length > 0;
 
   let offError: string | null = offResult.error ?? null;
@@ -175,7 +206,7 @@ export async function searchFoodProducts(
     source: offResult.products.length > 0 ? "merged" : hasLocal ? "local" : "openfoodfacts",
     offAvailable: offAvailable || hasAny,
     offError,
-    localCount: localResult.length + standard.length + catalog.length,
+    localCount: localResult.length + standard.length + catalog.length + brands.length,
     offCount: offResult.products.length,
     offSource: offResult.source ?? null,
     localError,

@@ -103,7 +103,7 @@ export function publishNutritionDashboard(dashboard: NutritionDashboardPayload) 
   }
 
   const summary: NutritionSummaryPayload = { nutrition };
-  const ttl = 120_000;
+  const ttl = 12 * 60 * 60_000;
 
   setCached(NUTRITION_DASHBOARD_CACHE_KEY, nutrition, ttl);
   setCached(NUTRITION_SUMMARY_CACHE_KEY, summary, ttl);

@@ -346,26 +346,33 @@ function NutritionPageInner() {
         onAddMeal={(meal) => setAddSheetMeal(meal)}
       />
 
-      {/* Smart Add strip — directly after calorie ring */}
-      <div className="overflow-x-auto scrollbar-none -mx-0.5">
-        <div className="flex gap-2 pb-0.5 px-0.5">
-          {smartAddOptions.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={opt.action}
+      {/* Smart Add — große klare Actions */}
+      <div className="grid grid-cols-2 gap-2">
+        {smartAddOptions.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={opt.action}
+            className={cn(
+              "flex items-center gap-2.5 rounded-2xl px-3.5 py-3.5 border text-left min-h-[52px] transition-colors active:scale-[0.98]",
+              opt.accent
+                ? "col-span-2 border-accent/40 bg-accent/15 text-accent"
+                : "border-zinc-800/80 bg-zinc-900/70 text-zinc-200 hover:border-zinc-600"
+            )}
+          >
+            <span
               className={cn(
-                "flex items-center gap-1.5 shrink-0 rounded-xl px-3 py-2 border transition-colors",
-                opt.accent
-                  ? "border-accent/30 bg-accent/10 text-accent"
-                  : "border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-600 hover:text-white"
+                "h-9 w-9 rounded-xl flex items-center justify-center shrink-0",
+                opt.accent ? "bg-accent/20" : "bg-zinc-800"
               )}
             >
-              <opt.icon className="h-3.5 w-3.5" />
-              <span className="text-[11px] font-medium whitespace-nowrap">{opt.label}</span>
-            </button>
-          ))}
-        </div>
+              <opt.icon className="h-5 w-5" />
+            </span>
+            <span className={cn("text-sm font-semibold", opt.accent && "text-base")}>
+              {opt.label}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Meal grid — direct, no section label needed */}

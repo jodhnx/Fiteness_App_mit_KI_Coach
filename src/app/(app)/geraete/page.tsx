@@ -76,12 +76,16 @@ function formatSleep(h: number | null | undefined) {
 }
 
 function syncLabel(status?: string, error?: string | null) {
-  if (error) return "Fehler";
+  if (error && status !== "pending_companion") return "Fehler";
   switch (status) {
     case "oauth_pending":
       return "OAuth ausstehend";
+    case "pending_companion":
+      return "Companion erforderlich";
     case "native_bridge":
-      return "Native Bridge bereit";
+      return "Companion ausstehend";
+    case "disconnected":
+      return "Nicht verbunden";
     case "error":
       return "Fehler";
     default:
@@ -234,8 +238,8 @@ function GeraetePageInner() {
       return;
     }
     toast.success(
-      data.nativeBridge
-        ? "Verbunden — Sync über HealthKit / Health Connect Companion"
+      data.pendingCompanion || data.nativeBridge
+        ? "Schnittstelle eingerichtet — Companion-App nötig für echte Health-Daten"
         : "Gerät verbunden"
     );
     void loadWearables();

@@ -3,10 +3,13 @@ import { jsonOk, jsonError } from "@/lib/api-response";
 import { loadHomeCriticalData } from "@/lib/home-critical";
 import { loadProfilePrefetch } from "@/lib/profile-prefetch";
 import { prisma } from "@/lib/prisma";
-import { loadProgressDashboardExtras } from "@/lib/progress-dashboard";
 import { buildBodyTransformation } from "@/lib/body-transformation";
 
-/** Single round-trip boot payload — replaces 4 parallel client fetches. */
+/**
+ * Boot payload: Home + Nutrition are critical (splash gate).
+ * Profile + lightweight progress run in parallel but progress extras
+ * (90-day charts) are deferred — Progress page fetches them on demand.
+ */
 export async function GET() {
   const started = Date.now();
   try {
@@ -14,14 +17,17 @@ export async function GET() {
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
     const userId = session.user.id;
 
-    const [home, profile, progressCore] = await Promise.all([
-      loadHomeCriticalData(userId),
-      loadProfilePrefetch(userId),
+    // Critical path first — everything needed to dismiss splash
+    const homePromise = loadHomeCriticalData(userId);
+
+    // Secondary: profile + slim progress (no 90-day extras on boot)
+    const secondaryPromise = Promise.all([
+      loadProfilePrefetch(userId).catch(() => null),
       Promise.all([
         prisma.progressEntry.findMany({
           where: { userId },
           orderBy: { date: "desc" },
-          take: 60,
+          take: 30,
           select: {
             id: true,
             date: true,
@@ -37,7 +43,7 @@ export async function GET() {
         prisma.progressPhoto.findMany({
           where: { userId },
           orderBy: { takenAt: "desc" },
-          take: 8,
+          take: 4,
           select: {
             id: true,
             imageUrl: true,
@@ -55,30 +61,35 @@ export async function GET() {
           orderBy: { date: "asc" },
           select: { weightKg: true },
         }),
-        loadProgressDashboardExtras(userId).catch(() => null),
-      ]),
+      ]).catch(() => null),
     ]);
 
-    const [entries, photos, progressProfile, firstWeight, dashboard] = progressCore;
-    const entriesMapped = entries.map((e) => ({
-      ...e,
-      date: e.date.toISOString(),
-    }));
+    const [home, secondary] = await Promise.all([homePromise, secondaryPromise]);
+    const [profile, progressCore] = secondary;
 
-    const progress = {
-      entries: entriesMapped,
-      photos,
-      profile: progressProfile,
-      startWeightKg: firstWeight?.weightKg ?? null,
-      transformation: buildBodyTransformation(
-        firstWeight?.weightKg ?? null,
-        progressProfile?.weightKg ?? null,
-        progressProfile?.targetWeightKg ?? null,
-        progressProfile?.targetWeightDate ?? null,
-        entriesMapped
-      ),
-      dashboard,
-    };
+    let progress = null;
+    if (progressCore) {
+      const [entries, photos, progressProfile, firstWeight] = progressCore;
+      const entriesMapped = entries.map((e) => ({
+        ...e,
+        date: e.date.toISOString(),
+      }));
+      progress = {
+        entries: entriesMapped,
+        photos,
+        profile: progressProfile,
+        startWeightKg: firstWeight?.weightKg ?? null,
+        transformation: buildBodyTransformation(
+          firstWeight?.weightKg ?? null,
+          progressProfile?.weightKg ?? null,
+          progressProfile?.targetWeightKg ?? null,
+          progressProfile?.targetWeightDate ?? null,
+          entriesMapped
+        ),
+        // Charts / history extras load on Progress tab (stale-while-revalidate)
+        dashboard: null,
+      };
+    }
 
     const nutrition = home.nutrition ?? null;
 

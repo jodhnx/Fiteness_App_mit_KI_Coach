@@ -50,13 +50,13 @@ export function getProviderAvailabilityList(): ProviderAvailability[] {
       };
     }
 
-    // Native bridge: supported via /api/health/ingest companion path
+    // Native bridge: connectable but NOT "fully connected" until companion ingests
     return {
       ...p,
       connectable: true,
       mode: "native_bridge",
       availabilityNote:
-        "Native Bridge — Sync über Companion (HealthKit / Health Connect). Ohne Companion keine Live-Daten.",
+        "Companion erforderlich — Browser kann HealthKit/Health Connect nicht direkt lesen. Verbinden richtet die Sync-Schnittstelle ein; Daten kommen erst nach Companion-Sync.",
     };
   });
 }

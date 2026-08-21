@@ -83,7 +83,8 @@ export function isAppBootReady(): boolean {
 function applyBootstrapPayload(payload: BootstrapPayload) {
   bootPerfMark("home_apply_start");
   const home = normalizeHomeData(payload.home);
-  setCached(HOME_DATA_CACHE_KEY, home, 900_000);
+  // 12h hard TTL + 24h soft grace on disk → overnight reopen stays warm
+  setCached(HOME_DATA_CACHE_KEY, home, 12 * 60 * 60_000);
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: home }));
@@ -94,16 +95,16 @@ function applyBootstrapPayload(payload: BootstrapPayload) {
   publishNutritionDashboard(normalizeNutritionDashboard(payload.nutrition));
 
   if (payload.profile?.user || payload.profile?.profile) {
-    setCached(PROFILE_CACHE_KEY, payload.profile, 900_000);
+    setCached(PROFILE_CACHE_KEY, payload.profile, 12 * 60 * 60_000);
     bootPerfMark("profile_apply_end");
   }
 
   if (payload.progress) {
-    setCached(PROGRESS_CACHE_KEY, payload.progress, 600_000);
+    setCached(PROGRESS_CACHE_KEY, payload.progress, 6 * 60 * 60_000);
     bootPerfMark("progress_apply_end");
   }
 
-  setCached(BOOT_READY_KEY, { at: Date.now() }, 900_000);
+  setCached(BOOT_READY_KEY, { at: Date.now() }, 12 * 60 * 60_000);
   bootPerfMark("boot_ready");
 }
 

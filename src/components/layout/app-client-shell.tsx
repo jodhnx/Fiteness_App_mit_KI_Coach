@@ -27,9 +27,18 @@ import {
   type BootstrapPayload,
 } from "@/lib/app-init";
 import { bootPerfMark } from "@/lib/app-init-perf";
+import { getCacheOwner, hydratePersistentCaches } from "@/lib/client-cache";
 
 /** Safety only — never dismiss without data unless this elapses. */
 const BOOT_SAFETY_CAP_MS = 15_000;
+
+/** Overlap session wait with disk hydrate — shaves one RTT on cold reopen. */
+function earlyHydrateFromOwner() {
+  if (typeof window === "undefined") return;
+  const owner = getCacheOwner();
+  if (!owner) return;
+  hydratePersistentCaches(owner);
+}
 
 export function AppClientShell({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
@@ -37,9 +46,10 @@ export function AppClientShell({ children }: { children: ReactNode }) {
   const initFor = useRef<string | null>(null);
   const initRunning = useRef(false);
 
-  const [bootPayload, setBootPayload] = useState<BootstrapPayload | null>(() =>
-    typeof window !== "undefined" ? readBootPayloadFromCache() : null
-  );
+  const [bootPayload, setBootPayload] = useState<BootstrapPayload | null>(() => {
+    earlyHydrateFromOwner();
+    return typeof window !== "undefined" ? readBootPayloadFromCache() : null;
+  });
   const [appReady, setAppReady] = useState(() =>
     typeof window !== "undefined" ? isAppBootReady() : false
   );
@@ -48,9 +58,21 @@ export function AppClientShell({ children }: { children: ReactNode }) {
     isAppBootReady() ? 1 : 0.12
   );
 
+  // While auth is loading, keep hydrating soft-stale disk cache for instant warm path
+  useEffect(() => {
+    if (status !== "loading") return;
+    earlyHydrateFromOwner();
+    const cached = readBootPayloadFromCache();
+    if (cached) {
+      setBootPayload(cached);
+      setBootProgress((p) => Math.max(p, 0.45));
+    } else {
+      setBootProgress((p) => Math.max(p, 0.15));
+    }
+  }, [status]);
+
   useEffect(() => {
     if (status === "loading") {
-      setBootProgress((p) => Math.max(p, 0.15));
       return;
     }
 
@@ -89,7 +111,7 @@ export function AppClientShell({ children }: { children: ReactNode }) {
     };
 
     bootPerfMark("auth_end");
-    setBootProgress(0.20);
+    setBootProgress((p) => Math.max(p, 0.25));
 
     void (async () => {
       safetyTimer = window.setTimeout(() => {
@@ -99,10 +121,8 @@ export function AppClientShell({ children }: { children: ReactNode }) {
         }
       }, BOOT_SAFETY_CAP_MS);
 
-      setBootProgress(0.30); // session ready
-
       const result = await initializeApp(userId, (p) => {
-        if (!cancelled) setBootProgress(p);
+        if (!cancelled) setBootProgress((prev) => Math.max(prev, p));
       });
       if (cancelled) return;
       window.clearTimeout(safetyTimer);

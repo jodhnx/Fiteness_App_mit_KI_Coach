@@ -9,6 +9,12 @@ export type FoodAIItem = {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  /** Macros originally returned for estimatedGrams — used for rescaling */
+  baseGrams: number;
+  baseCalories: number;
+  baseProteinG: number;
+  baseCarbsG: number;
+  baseFatG: number;
 };
 
 export type FoodAIResult = {
@@ -18,32 +24,61 @@ export type FoodAIResult = {
   totalCarbsG: number;
   totalFatG: number;
   disclaimer: string;
+  errorCode?: "missing_key" | "openai_error" | "parse_error" | "empty";
   rawText?: string;
 };
 
 const VISION_PROMPT = `Du bist ein Ernährungsexperte. Analysiere das Foto und erkenne alle sichtbaren Speisen/Lebensmittel.
 
-Antworte AUSSCHLIESSLICH als JSON im folgenden Format (keine anderen Texte):
+Antworte AUSSCHLIESSLICH als JSON:
 {
   "items": [
     {
-      "name": "Hühnchenbrust",
-      "estimatedGrams": 150,
-      "calories": 165,
-      "proteinG": 31,
-      "carbsG": 0,
-      "fatG": 3.6
+      "name": "Cheeseburger",
+      "estimatedGrams": 120,
+      "calories": 300,
+      "proteinG": 15,
+      "carbsG": 30,
+      "fatG": 12
     }
   ]
 }
 
 Regeln:
-- Pro Lebensmittel/Komponente ein Eintrag
-- Realistische Grammschätzung für sichtbare Portion
-- Nährwerte per 100g hochrechnen auf die geschätzte Menge
-- Wenn Gericht nicht erkennbar: items = []
+- Pro sichtbares Lebensmittel/Komponente ein Eintrag (z.B. Burger + Pommes = 2 Items)
+- Realistische Grammschätzung für die sichtbare Portion
+- Nährwerte für GENAU diese geschätzte Menge (nicht pro 100g)
+- Markennamen nur wenn klar erkennbar
+- Wenn nichts erkennbar: items = []
 - Maximal 8 Items
-- Deutsche Lebensmittelbezeichnungen`;
+- Deutsche Bezeichnungen`;
+
+function totals(items: FoodAIItem[]) {
+  return items.reduce(
+    (acc, it) => ({
+      calories: acc.calories + it.calories,
+      proteinG: acc.proteinG + it.proteinG,
+      carbsG: acc.carbsG + it.carbsG,
+      fatG: acc.fatG + it.fatG,
+    }),
+    { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }
+  );
+}
+
+function emptyResult(
+  disclaimer: string,
+  errorCode: FoodAIResult["errorCode"]
+): FoodAIResult {
+  return {
+    items: [],
+    totalCalories: 0,
+    totalProteinG: 0,
+    totalCarbsG: 0,
+    totalFatG: 0,
+    disclaimer,
+    errorCode,
+  };
+}
 
 export async function POST(req: Request) {
   try {
@@ -62,21 +97,17 @@ export async function POST(req: Request) {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return jsonOk<FoodAIResult>({
-        items: [],
-        totalCalories: 0,
-        totalProteinG: 0,
-        totalCarbsG: 0,
-        totalFatG: 0,
-        disclaimer:
-          "Food AI ist nicht konfiguriert. Bitte OPENAI_API_KEY setzen oder Lebensmittel manuell hinzufügen.",
-      });
+      return jsonOk(
+        emptyResult(
+          "Food AI ist nicht konfiguriert (OPENAI_API_KEY fehlt). Bitte manuell hinzufügen.",
+          "missing_key"
+        )
+      );
     }
 
     const buf = Buffer.from(await image.arrayBuffer());
     const b64 = buf.toString("base64");
     const mime = image.type || "image/jpeg";
-
     const model = process.env.OPENAI_VISION_MODEL ?? "gpt-4o-mini";
 
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -87,6 +118,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model,
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "user",
@@ -99,22 +131,20 @@ export async function POST(req: Request) {
             ],
           },
         ],
-        max_tokens: 600,
-        temperature: 0.2,
+        max_tokens: 800,
+        temperature: 0.15,
       }),
     });
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
       console.error("[food-ai] OpenAI error", res.status, errBody);
-      return jsonOk<FoodAIResult>({
-        items: [],
-        totalCalories: 0,
-        totalProteinG: 0,
-        totalCarbsG: 0,
-        totalFatG: 0,
-        disclaimer: "Analyse vorübergehend nicht verfügbar. Bitte manuell hinzufügen.",
-      });
+      return jsonOk(
+        emptyResult(
+          "Foto konnte nicht analysiert werden. Bitte erneut versuchen oder manuell hinzufügen.",
+          "openai_error"
+        )
+      );
     }
 
     const data = (await res.json()) as {
@@ -124,32 +154,56 @@ export async function POST(req: Request) {
 
     let items: FoodAIItem[] = [];
     try {
-      const m = raw.match(/\{[\s\S]*\}/);
-      if (m) {
-        const parsed = JSON.parse(m[0]) as { items?: Omit<FoodAIItem, "id">[] };
-        items = (parsed.items ?? []).slice(0, 8).map((it, i) => ({
+      const parsed = JSON.parse(raw) as {
+        items?: {
+          name?: string;
+          estimatedGrams?: number;
+          calories?: number;
+          proteinG?: number;
+          carbsG?: number;
+          fatG?: number;
+        }[];
+      };
+      items = (parsed.items ?? []).slice(0, 8).map((it, i) => {
+        const grams = Math.max(1, Math.round(Number(it.estimatedGrams) || 100));
+        const calories = Math.max(0, Math.round(Number(it.calories) || 0));
+        const proteinG = Math.max(0, Number((Number(it.proteinG) || 0).toFixed(1)));
+        const carbsG = Math.max(0, Number((Number(it.carbsG) || 0).toFixed(1)));
+        const fatG = Math.max(0, Number((Number(it.fatG) || 0).toFixed(1)));
+        return {
           id: `ai-${i}-${Date.now()}`,
-          name: String(it.name ?? "Unbekannt"),
-          estimatedGrams: Math.max(1, Math.round(Number(it.estimatedGrams) || 100)),
-          calories: Math.max(0, Math.round(Number(it.calories) || 0)),
-          proteinG: Math.max(0, Number((Number(it.proteinG) || 0).toFixed(1))),
-          carbsG: Math.max(0, Number((Number(it.carbsG) || 0).toFixed(1))),
-          fatG: Math.max(0, Number((Number(it.fatG) || 0).toFixed(1))),
-        }));
-      }
+          name: String(it.name ?? "Unbekannt").slice(0, 80),
+          estimatedGrams: grams,
+          calories,
+          proteinG,
+          carbsG,
+          fatG,
+          baseGrams: grams,
+          baseCalories: calories,
+          baseProteinG: proteinG,
+          baseCarbsG: carbsG,
+          baseFatG: fatG,
+        };
+      });
     } catch {
-      items = [];
+      return jsonOk(
+        emptyResult(
+          "Analyse-Antwort konnte nicht gelesen werden. Bitte erneut versuchen.",
+          "parse_error"
+        )
+      );
     }
 
-    const total = items.reduce(
-      (acc, it) => ({
-        calories: acc.calories + it.calories,
-        proteinG: acc.proteinG + it.proteinG,
-        carbsG: acc.carbsG + it.carbsG,
-        fatG: acc.fatG + it.fatG,
-      }),
-      { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }
-    );
+    if (items.length === 0) {
+      return jsonOk(
+        emptyResult(
+          "Keine Lebensmittel erkannt — anderes Foto versuchen oder manuell hinzufügen.",
+          "empty"
+        )
+      );
+    }
+
+    const total = totals(items);
 
     return jsonOk<FoodAIResult>({
       items,
@@ -158,7 +212,7 @@ export async function POST(req: Request) {
       totalCarbsG: Number(total.carbsG.toFixed(1)),
       totalFatG: Number(total.fatG.toFixed(1)),
       disclaimer:
-        "Geschätzte Nährwerte — KI-Analyse kann variieren. Bitte Portionen überprüfen.",
+        "Geschätzte Werte — bitte Portion überprüfen. Fotoanalyse ist nicht exakt.",
       rawText: process.env.NODE_ENV === "development" ? raw : undefined,
     });
   } catch (e) {

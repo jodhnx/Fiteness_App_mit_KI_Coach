@@ -6,7 +6,19 @@ export const PERSISTENT_CACHE_KEYS = [
   "nutrition-dashboard",
 ] as const;
 
-type StoredEntry = { data: unknown; expires: number };
+/**
+ * Soft grace after hard TTL: keep stale entries for overnight / cold reopen
+ * so splash can show last-known Home instantly while bootstrap refreshes.
+ * Default: 24 hours after expires.
+ */
+export const PERSISTENT_STALE_GRACE_MS = 24 * 60 * 60 * 1000;
+
+type StoredEntry = {
+  data: unknown;
+  expires: number;
+  /** Absolute time after which entry is deleted (expires + grace). */
+  staleUntil?: number;
+};
 
 const PREFIX = "nexform:cache:";
 
@@ -18,24 +30,52 @@ export function writePersistentCache(key: string, data: unknown, ttlMs: number) 
   if (typeof window === "undefined") return;
   if (!PERSISTENT_CACHE_KEYS.includes(key as (typeof PERSISTENT_CACHE_KEYS)[number])) return;
   try {
-    const entry: StoredEntry = { data, expires: Date.now() + ttlMs };
+    const expires = Date.now() + ttlMs;
+    const entry: StoredEntry = {
+      data,
+      expires,
+      staleUntil: expires + PERSISTENT_STALE_GRACE_MS,
+    };
     localStorage.setItem(storageKey(key), JSON.stringify(entry));
   } catch {
     /* quota exceeded — ignore */
   }
 }
 
-export function readPersistentCache(key: string): StoredEntry | null {
+/**
+ * Read disk cache.
+ * - Fresh: Date.now() <= expires
+ * - Stale-usable: expires < now <= staleUntil (returned with expired=true)
+ * - Dead: past staleUntil → deleted
+ */
+export function readPersistentCache(
+  key: string,
+  opts?: { allowStale?: boolean }
+): (StoredEntry & { isStale: boolean }) | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(storageKey(key));
     if (!raw) return null;
     const entry = JSON.parse(raw) as StoredEntry;
-    if (Date.now() > entry.expires) {
+    const now = Date.now();
+    const staleUntil =
+      entry.staleUntil ?? entry.expires + PERSISTENT_STALE_GRACE_MS;
+
+    if (now > staleUntil) {
       localStorage.removeItem(storageKey(key));
       return null;
     }
-    return entry;
+
+    if (now <= entry.expires) {
+      return { ...entry, isStale: false };
+    }
+
+    // Past hard TTL but within grace
+    if (opts?.allowStale !== false) {
+      return { ...entry, isStale: true };
+    }
+
+    return null;
   } catch {
     return null;
   }

@@ -56,9 +56,11 @@ function MacroRow({ label, value, unit = "g", accent = false }: {
 function ItemEditor({
   item,
   onChange,
+  onRemove,
 }: {
   item: FoodAIItem;
   onChange: (updated: FoodAIItem) => void;
+  onRemove: () => void;
 }) {
   const [grams, setGrams] = useState(String(item.estimatedGrams));
 
@@ -66,21 +68,22 @@ function ItemEditor({
     const val = e.target.value;
     setGrams(val);
     const n = parseFloat(val);
-    if (!isNaN(n) && n > 0 && item.estimatedGrams > 0) {
-      const ratio = n / item.estimatedGrams;
+    const baseG = item.baseGrams > 0 ? item.baseGrams : item.estimatedGrams;
+    if (!isNaN(n) && n > 0 && baseG > 0) {
+      const ratio = n / baseG;
       onChange({
         ...item,
         estimatedGrams: Math.round(n),
-        calories: Math.round(item.calories * ratio),
-        proteinG: Number((item.proteinG * ratio).toFixed(1)),
-        carbsG: Number((item.carbsG * ratio).toFixed(1)),
-        fatG: Number((item.fatG * ratio).toFixed(1)),
+        calories: Math.round(item.baseCalories * ratio),
+        proteinG: Number((item.baseProteinG * ratio).toFixed(1)),
+        carbsG: Number((item.baseCarbsG * ratio).toFixed(1)),
+        fatG: Number((item.baseFatG * ratio).toFixed(1)),
       });
     }
   };
 
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-zinc-800/70 last:border-0">
+    <div className="flex items-center gap-2.5 py-2.5 border-b border-zinc-800/70 last:border-0">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-white truncate">{item.name}</p>
         <p className="text-[11px] text-zinc-500 mt-0.5">
@@ -97,6 +100,14 @@ function ItemEditor({
           max="2000"
         />
         <span className="text-xs text-zinc-500">g</span>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="ml-0.5 h-8 w-8 rounded-lg text-zinc-600 hover:text-red-400 flex items-center justify-center"
+          aria-label="Entfernen"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );
@@ -145,11 +156,23 @@ export const FoodAISheet = memo(function FoodAISheet({ open, onClose, onTrack }:
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: FoodAIResult = await res.json();
-      setResult(data);
-      setEditedItems(data.items);
-      if (data.items.length === 0) {
+      // Ensure base macros exist for older responses
+      const normalized = (data.items ?? []).map((it) => ({
+        ...it,
+        baseGrams: it.baseGrams ?? it.estimatedGrams,
+        baseCalories: it.baseCalories ?? it.calories,
+        baseProteinG: it.baseProteinG ?? it.proteinG,
+        baseCarbsG: it.baseCarbsG ?? it.carbsG,
+        baseFatG: it.baseFatG ?? it.fatG,
+      }));
+      setResult({ ...data, items: normalized });
+      setEditedItems(normalized);
+      if (normalized.length === 0) {
         setPhase("error");
-        setErrorMsg("Keine Lebensmittel erkannt – bitte erneut versuchen oder manuell hinzufügen.");
+        setErrorMsg(
+          data.disclaimer ||
+            "Keine Lebensmittel erkannt – bitte erneut versuchen oder manuell hinzufügen."
+        );
       } else {
         setPhase("result");
       }
@@ -377,6 +400,9 @@ export const FoodAISheet = memo(function FoodAISheet({ open, onClose, onTrack }:
                       key={item.id}
                       item={item}
                       onChange={(updated) => updateItem(item.id, updated)}
+                      onRemove={() =>
+                        setEditedItems((prev) => prev.filter((it) => it.id !== item.id))
+                      }
                     />
                   ))}
                 </div>

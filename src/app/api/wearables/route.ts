@@ -41,10 +41,15 @@ export async function GET() {
         const meta = parseMeta(c.metadata);
         const providerMeta = HEALTH_PROVIDERS.find((p) => p.id === c.provider);
         let syncStatus: string = "connected";
-        if (!c.isActive) syncStatus = "disconnected";
-        else if (c.lastSyncError) syncStatus = "error";
+        if (!c.isActive) {
+          syncStatus =
+            meta.status === "native_bridge_pending" || meta.requiresCompanion
+              ? "pending_companion"
+              : "disconnected";
+        } else if (c.lastSyncError) syncStatus = "error";
         else if (meta.status === "oauth_pending") syncStatus = "oauth_pending";
-        else if (meta.status === "native_bridge") syncStatus = "native_bridge";
+        else if (meta.status === "native_bridge" || meta.status === "native_bridge_pending")
+          syncStatus = meta.lastIngestAt ? "connected" : "pending_companion";
 
         return {
           id: c.id,
@@ -102,6 +107,7 @@ export async function POST(req: NextRequest) {
     }
 
     const connectedAt = new Date().toISOString();
+    const isNative = !oauthUrl;
     const connection = await prisma.wearableConnection.upsert({
       where: {
         userId_provider: {
@@ -112,22 +118,27 @@ export async function POST(req: NextRequest) {
       create: {
         userId: session.user.id,
         provider,
-        isActive: true,
+        // Native: pending until first /api/health/ingest — don't pretend fully synced
+        isActive: isNative ? false : true,
         metadata: JSON.stringify({
-          status: oauthUrl ? "oauth_pending" : "native_bridge",
+          status: oauthUrl ? "oauth_pending" : "native_bridge_pending",
           connectedAt,
           deviceName: HEALTH_PROVIDERS.find((p) => p.id === provider)?.name,
           manufacturer: HEALTH_PROVIDERS.find((p) => p.id === provider)?.manufacturer,
+          requiresCompanion: isNative,
         }),
       },
       update: {
-        isActive: true,
-        lastSyncError: null,
+        isActive: isNative ? false : true,
+        lastSyncError: isNative
+          ? "Companion-App erforderlich für HealthKit / Health Connect Sync"
+          : null,
         metadata: JSON.stringify({
-          status: oauthUrl ? "oauth_pending" : "native_bridge",
+          status: oauthUrl ? "oauth_pending" : "native_bridge_pending",
           connectedAt,
           deviceName: HEALTH_PROVIDERS.find((p) => p.id === provider)?.name,
           manufacturer: HEALTH_PROVIDERS.find((p) => p.id === provider)?.manufacturer,
+          requiresCompanion: isNative,
         }),
       },
     });
@@ -138,7 +149,11 @@ export async function POST(req: NextRequest) {
         isActive: connection.isActive,
       },
       oauthUrl,
-      nativeBridge: !oauthUrl,
+      nativeBridge: isNative,
+      pendingCompanion: isNative,
+      message: isNative
+        ? "Schnittstelle eingerichtet. Eine native Companion-App mit HealthKit/Health Connect ist nötig, um Daten zu synchronisieren."
+        : undefined,
     });
   } catch (e) {
     return handleApiError(e);
