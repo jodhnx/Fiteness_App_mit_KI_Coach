@@ -38,6 +38,7 @@ export const CARDIO_CATALOG: CardioCatalogItem[] = [
   { id: "ergometer", label: "Ergometer", emoji: "🚴", type: "CYCLING", customLabel: "Ergometer", metModerate: 7.0, metLow: 4.5, metHigh: 9.5 },
   { id: "elliptical", label: "Crosstrainer", emoji: "🛶", type: "OTHER", customLabel: "Crosstrainer", metModerate: 6.5, metLow: 4.5, metHigh: 9.0 },
   { id: "stepper", label: "Stepper", emoji: "🪜", type: "OTHER", customLabel: "Stepper", metModerate: 6.0, metLow: 4.0, metHigh: 8.5 },
+  { id: "jump_rope", label: "Seilspringen", emoji: "🪢", type: "OTHER", customLabel: "Seilspringen", metModerate: 11.0, metLow: 8.0, metHigh: 12.5 },
   { id: "custom", label: "Benutzerdefiniertes Cardio", emoji: "✨", type: "OTHER", customLabel: "Benutzerdefiniert", metModerate: 6.0, metLow: 4.0, metHigh: 9.0 },
 ];
 

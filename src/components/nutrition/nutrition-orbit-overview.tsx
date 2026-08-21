@@ -143,10 +143,11 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
           ? `${overBy.toLocaleString("de-DE")} kcal über Ziel`
           : `${left.toLocaleString("de-DE")} kcal verfügbar`}
       </p>
-      {burned > 0 && (
+      {burned >= 0 && (
         <p className="text-center text-xs text-orange-300/90 font-medium tabular-nums">
           🔥 {Math.round(burned)} kcal verbrannt
-          {burnedEstimated ? " (geschätzt)" : ""} · im Budget eingerechnet
+          {burned > 0 && burnedEstimated ? " (geschätzt)" : ""}
+          {burned > 0 ? " · im Budget eingerechnet" : ""}
         </p>
       )}
 

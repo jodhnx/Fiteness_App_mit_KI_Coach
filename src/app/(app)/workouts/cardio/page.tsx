@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { CARDIO_CATALOG, cardioDisplayLabel, cardioEmoji } from "@/lib/cardio/cardio-types";
-import { ChevronRight, Flame } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
 
 type ActivityRow = {
   id: string;
@@ -34,11 +33,34 @@ export default function CardioHubPage() {
   const todayKcal = todayActs.reduce((s, a) => s + (a.caloriesBurned ?? 0), 0);
 
   return (
-    <PageShell title="Cardio" className="space-y-5 pb-24" bottomNav={false}>
+    <PageShell
+      title="Cardio"
+      className="space-y-5 pb-24"
+      bottomNav={false}
+      action={
+        <button
+          type="button"
+          onClick={() => router.push("/workouts")}
+          className="h-10 w-10 rounded-2xl border border-zinc-700 bg-zinc-900/80 flex items-center justify-center text-zinc-200 active:scale-95"
+          aria-label="Zurück zum Training"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+      }
+    >
+      <button
+        type="button"
+        onClick={() => router.push("/workouts")}
+        className="inline-flex items-center gap-1 text-sm font-medium text-accent -mt-2"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Training
+      </button>
+
       <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 px-4 py-3 flex items-center justify-between">
         <div>
           <p className="text-[11px] uppercase tracking-widest text-orange-300/80 font-semibold">
-            Heute verbrannt
+            Heute Cardio
           </p>
           <p className="text-2xl font-bold text-white tabular-nums mt-0.5">
             {Math.round(todayKcal)}{" "}
@@ -107,13 +129,6 @@ export default function CardioHubPage() {
           </p>
         </section>
       )}
-
-      <Link
-        href="/workouts/history"
-        className="block text-center text-sm text-accent py-2"
-      >
-        Trainingshistorie anzeigen
-      </Link>
     </PageShell>
   );
 }

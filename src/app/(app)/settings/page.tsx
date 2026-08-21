@@ -499,7 +499,7 @@ function SettingsPageInner() {
 
   // view === "konto" (default for any other view string)
   return (
-    <div className="space-y-6 max-w-2xl pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
+    <div className="space-y-6 max-w-2xl pb-[calc(9rem+env(safe-area-inset-bottom,0px))]">
       {backLink}
       <PageHeader
         title="Konto bearbeiten"
@@ -1143,16 +1143,12 @@ function SettingsPageInner() {
       </section>
 
       <div
-        className="fixed inset-x-0 z-40 border-t border-white/[0.08] bg-zinc-950/95 backdrop-blur-md px-4 pt-3"
-        style={{
-          bottom: 0,
-          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
-        }}
+        className="fixed inset-x-0 z-40 border-t border-white/[0.08] bg-zinc-950/95 backdrop-blur-md px-4 pt-3 pb-3 bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
       >
         <div className="max-w-2xl mx-auto">
           <Button
             type="button"
-            className="w-full h-12 text-base rounded-2xl disabled:opacity-40 disabled:bg-zinc-700 disabled:text-zinc-400"
+            className="w-full h-12 text-base rounded-2xl disabled:opacity-40 disabled:bg-zinc-700 disabled:text-zinc-400 disabled:pointer-events-none"
             onClick={() => void save()}
             disabled={saving || !profileLoaded || !isDirty}
           >

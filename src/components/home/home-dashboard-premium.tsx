@@ -123,18 +123,14 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
           </p>
           <p className="text-xs text-zinc-500 mt-1">
             {Math.round(consumedCal).toLocaleString("de-DE")} gegessen
-            {burned > 0
-              ? ` · +${Math.round(burned)} verbrannt`
-              : ""}{" "}
-            / {kcalTarget > 0 ? kcalTarget.toLocaleString("de-DE") : "—"} Ziel
+            {` · +${Math.round(burned)} verbrannt`} /{" "}
+            {kcalTarget > 0 ? kcalTarget.toLocaleString("de-DE") : "—"} Ziel
             {streakDays > 0 ? ` · Streak ${streakDays}T` : ""}
           </p>
-          {burned > 0 && (
-            <p className="text-xs text-orange-300/90 mt-1.5 font-medium tabular-nums">
-              🔥 {Math.round(burned)} kcal verbrannt
-              {burnedEstimated ? " (geschätzt)" : ""}
-            </p>
-          )}
+          <p className="text-xs text-orange-300/90 mt-1.5 font-medium tabular-nums">
+            🔥 {Math.round(burned)} kcal verbrannt
+            {burned > 0 && burnedEstimated ? " (geschätzt)" : ""}
+          </p>
         </div>
         <Ring pct={intakePct} color="var(--accent)" size={72}>
           <Flame className="h-4 w-4 text-accent" />

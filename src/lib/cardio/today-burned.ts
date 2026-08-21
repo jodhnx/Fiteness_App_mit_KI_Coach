@@ -1,16 +1,20 @@
 /**
- * Today's exercise calories for nutrition budget (no BMR, no double-count).
- * Sources: EnduranceActivity (unique by externalId) + completed WorkoutSession.
+ * Today's exercise calories for nutrition budget + Home display.
+ * Sources (deduped): steps + EnduranceActivity + strength sessions.
+ * Wearable imports use unique (userId, sourceProvider, externalId).
+ * Does NOT include BMR. Does NOT double-count Health metric vs endurance.
  */
 
 import { prisma } from "@/lib/prisma";
 import { endOfDay, startOfDay } from "date-fns";
+import { estimateStepCalories } from "@/lib/activity-health";
 
 export type TodayExerciseBurn = {
-  /** Total exercise kcal to add back to remaining */
+  /** Total exercise kcal to add back to remaining / show on Home */
   calories: number;
   enduranceKcal: number;
   workoutKcal: number;
+  stepKcal: number;
   estimated: boolean;
   activities: {
     id: string;
@@ -44,12 +48,13 @@ export async function getTodayExerciseBurn(
     calories: 0,
     enduranceKcal: 0,
     workoutKcal: 0,
+    stepKcal: 0,
     estimated: false,
     activities: [],
   };
 
   try {
-    const [endurance, workouts] = await Promise.all([
+    const [endurance, workouts, metric, profile] = await Promise.all([
       prisma.enduranceActivity.findMany({
         where: { userId, startedAt: { gte: from, lte: to } },
         orderBy: { startedAt: "desc" },
@@ -75,10 +80,24 @@ export async function getTodayExerciseBurn(
           durationSec: true,
         },
       }),
+      prisma.dailyHealthMetric
+        .findUnique({
+          where: { userId_date: { userId, date: from } },
+          select: { steps: true, caloriesBurned: true },
+        })
+        .catch(() => null),
+      prisma.profile
+        .findUnique({
+          where: { userId },
+          select: { weightKg: true },
+        })
+        .catch(() => null),
     ]);
 
-    // Dedup: unique constraint already on (userId, sourceProvider, externalId).
-    // Do not add DailyHealthMetric here — that often includes the same workouts.
+    const steps = metric?.steps ?? 0;
+    const stepKcal = estimateStepCalories(steps, profile?.weightKg ?? null);
+
+    // Dedup: unique constraint on (userId, sourceProvider, externalId).
     const activities = endurance.map((a) => {
       const kcal = Math.max(0, a.caloriesBurned ?? 0);
       const estimated = !a.sourceProvider || notesEstimated(a.notes);
@@ -95,8 +114,6 @@ export async function getTodayExerciseBurn(
 
     const enduranceKcal = activities.reduce((s, a) => s + a.calories, 0);
 
-    // Strength sessions: only if they have calories and aren't already mirrored
-    // as endurance (same day external imports create EnduranceActivity).
     const workoutActs = workouts
       .filter((w) => (w.caloriesBurned ?? 0) > 0)
       .map((w) => ({
@@ -110,15 +127,48 @@ export async function getTodayExerciseBurn(
       }));
 
     const workoutKcal = workoutActs.reduce((s, a) => s + a.calories, 0);
+
+    // Residual from health metric only when it exceeds steps+logged activities
+    // (covers wearable active energy not mirrored as EnduranceActivity).
+    const metricTotal = Math.max(0, metric?.caloriesBurned ?? 0);
+    const loggedPlusSteps = stepKcal + enduranceKcal + workoutKcal;
+    const residualHealth = Math.max(0, metricTotal - loggedPlusSteps);
+
     const all = [...activities, ...workoutActs];
-    const calories = enduranceKcal + workoutKcal;
-    const estimated = all.some((a) => a.estimated) && all.every((a) => a.estimated || a.source === "MANUAL");
+    if (stepKcal > 0) {
+      all.push({
+        id: "steps-today",
+        type: "STEPS",
+        label: "Schritte",
+        durationSec: 0,
+        calories: stepKcal,
+        estimated: true,
+        source: "STEPS",
+      });
+    }
+    if (residualHealth > 0) {
+      all.push({
+        id: "health-residual",
+        type: "HEALTH",
+        label: "Aktivität (Wearable)",
+        durationSec: 0,
+        calories: residualHealth,
+        estimated: false,
+        source: "HEALTH_METRIC",
+      });
+    }
+
+    const calories = loggedPlusSteps + residualHealth;
+    const hasMeasured = all.some(
+      (a) => !a.estimated && a.source !== "MANUAL" && a.source !== "STEPS"
+    );
 
     return {
       calories,
       enduranceKcal,
       workoutKcal,
-      estimated: calories > 0 ? estimated || activities.some((a) => a.estimated) : false,
+      stepKcal,
+      estimated: calories > 0 ? !hasMeasured : false,
       activities: all,
     };
   } catch (e) {

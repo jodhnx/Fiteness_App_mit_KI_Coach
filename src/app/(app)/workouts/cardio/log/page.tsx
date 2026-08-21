@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +22,7 @@ import {
   publishNutritionDashboard,
 } from "@/lib/nutrition-sync";
 import { cn } from "@/lib/utils";
+import { ChevronLeft } from "lucide-react";
 
 function CardioLogInner() {
   const router = useRouter();
@@ -38,6 +38,7 @@ function CardioLogInner() {
   });
 
   const [durationMin, setDurationMin] = useState("30");
+  const [distanceKm, setDistanceKm] = useState("");
   const [intensity, setIntensity] = useState<CardioIntensity>("MODERATE");
   const [customName, setCustomName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -62,6 +63,7 @@ function CardioLogInner() {
       toast.error("Dauer zwischen 1 und 600 Minuten");
       return;
     }
+    const distKm = distanceKm.trim() ? Number(distanceKm.replace(",", ".")) : NaN;
     setSaving(true);
     try {
       const catalogItem =
@@ -75,6 +77,10 @@ function CardioLogInner() {
         body: JSON.stringify({
           type: catalogItem.type,
           durationSec: Math.round(mins * 60),
+          distanceM:
+            Number.isFinite(distKm) && distKm > 0
+              ? Math.round(distKm * 1000)
+              : undefined,
           caloriesBurned: estimate.calories,
           notes: buildCardioNotes(catalogItem, intensity),
         }),
@@ -113,7 +119,26 @@ function CardioLogInner() {
       title={`${item.emoji} ${item.label}`}
       className="space-y-5 pb-28"
       bottomNav={false}
+      action={
+        <button
+          type="button"
+          onClick={() => router.push("/workouts/cardio")}
+          className="h-10 w-10 rounded-2xl border border-zinc-700 bg-zinc-900/80 flex items-center justify-center text-zinc-200"
+          aria-label="Zurück zu Cardio"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+      }
     >
+      <button
+        type="button"
+        onClick={() => router.push("/workouts/cardio")}
+        className="inline-flex items-center gap-1 text-sm font-medium text-accent -mt-2"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Cardio
+      </button>
+
       {item.id === "custom" && (
         <div>
           <Label>Bezeichnung</Label>
@@ -134,6 +159,17 @@ function CardioLogInner() {
           value={durationMin}
           onChange={(e) => setDurationMin(e.target.value.replace(/[^\d]/g, ""))}
           placeholder="45"
+        />
+      </div>
+
+      <div>
+        <Label>Distanz (km, optional)</Label>
+        <Input
+          className="mt-1.5 h-12 text-lg tabular-nums"
+          inputMode="decimal"
+          value={distanceKm}
+          onChange={(e) => setDistanceKm(e.target.value.replace(/[^\d.,]/g, ""))}
+          placeholder="z. B. 8"
         />
       </div>
 
@@ -169,7 +205,7 @@ function CardioLogInner() {
           {estimate.label}
         </p>
         <p className="text-3xl font-bold text-white tabular-nums">
-          {estimate.calories}{" "}
+          ≈ {estimate.calories}{" "}
           <span className="text-base font-medium text-zinc-400">kcal</span>
         </p>
         <p className="text-xs text-zinc-500">
@@ -178,6 +214,7 @@ function CardioLogInner() {
             ? `${profileData.profile.weightKg} kg Körpergewicht`
             : "Standardgewicht"}{" "}
           · MET {estimate.met.toFixed(1)}
+          {distanceKm ? ` · ${distanceKm} km` : ""}
         </p>
       </div>
 
