@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useEffect, useMemo, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { previewTargetsFromForm } from "@/lib/calorie-target";
 import { fetchJson } from "@/lib/fetch-json";
@@ -161,6 +161,12 @@ function SettingsPageInner() {
   );
   const [loggingOut, setLoggingOut] = useState(false);
   const [smartGoalHint, setSmartGoalHint] = useState<string | null>(null);
+  const formBaselineRef = useRef<string>("");
+
+  const isDirty = useMemo(() => {
+    if (!formBaselineRef.current) return false;
+    return JSON.stringify(form) !== formBaselineRef.current;
+  }, [form]);
 
   const { data: profileData, loading } = useCachedFetch<ProfileApiResponse>(
     PROFILE_CACHE_KEY,
@@ -172,7 +178,9 @@ function SettingsPageInner() {
 
   useEffect(() => {
     if (!profileData) return;
-    setForm(applyProfileToForm(profileData));
+    const next = applyProfileToForm(profileData);
+    setForm(next);
+    formBaselineRef.current = JSON.stringify(next);
     setProfileLoaded(true);
     if (profileData.calculations) setPreview(profileData.calculations);
     if (profileData.smartGoal?.weightProjection) {
@@ -196,7 +204,7 @@ function SettingsPageInner() {
   }, [livePreview]);
 
   async function save() {
-    if (saving || !profileLoaded) return;
+    if (saving || !profileLoaded || !isDirty) return;
 
     const manualMacros = Boolean(
       (form.calorieTarget ?? "").trim() ||
@@ -304,13 +312,13 @@ function SettingsPageInner() {
       else setSmartGoalHint(null);
 
       if (data.profile) {
-        setForm(
-          applyProfileToForm({
-            user: data.user,
-            profile: data.profile,
-            calculations: data.calculations,
-          })
-        );
+        const nextForm = applyProfileToForm({
+          user: data.user,
+          profile: data.profile,
+          calculations: data.calculations,
+        });
+        setForm(nextForm);
+        formBaselineRef.current = JSON.stringify(nextForm);
       }
       if (data.user?.name) setForm((f) => ({ ...f, name: data.user!.name! }));
       if (data.user?.email) setForm((f) => ({ ...f, email: data.user!.email! }));
@@ -354,7 +362,12 @@ function SettingsPageInner() {
               prevDash.targets.nutritionGoal,
           },
           remaining: {
-            calories: Math.max(0, targets.calories - prevDash.consumed.calories),
+            calories: Math.max(
+              0,
+              targets.calories -
+                prevDash.consumed.calories +
+                (prevDash.exerciseBurned?.calories ?? 0)
+            ),
             proteinG: Math.max(0, targets.proteinG - prevDash.consumed.proteinG),
             carbsG: Math.max(0, targets.carbsG - prevDash.consumed.carbsG),
             fatG: Math.max(0, targets.fatG - prevDash.consumed.fatG),
@@ -398,7 +411,7 @@ function SettingsPageInner() {
       invalidateCache(HOME_INSIGHTS_CACHE);
       invalidateCache("nutrition-coach");
 
-      toast.success("Einstellungen gespeichert");
+      toast.success("Änderungen gespeichert");
       setEditingPersonal(false);
     } catch (e) {
       const msg =
@@ -486,7 +499,7 @@ function SettingsPageInner() {
 
   // view === "konto" (default for any other view string)
   return (
-    <div className="space-y-6 max-w-2xl pb-24">
+    <div className="space-y-6 max-w-2xl pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
       {backLink}
       <PageHeader
         title="Konto bearbeiten"
@@ -755,8 +768,13 @@ function SettingsPageInner() {
                 ))}
               </select>
             </div>
-            <Button type="button" onClick={save} disabled={saving} className="w-full">
-              {saving ? "Speichern…" : "Speichern"}
+            <Button
+              type="button"
+              onClick={() => void save()}
+              disabled={saving || !isDirty}
+              className="w-full disabled:opacity-40"
+            >
+              {saving ? "Speichern…" : "Speichern & neu berechnen"}
             </Button>
           </>
         ) : (
@@ -1124,14 +1142,24 @@ function SettingsPageInner() {
         </Button>
       </section>
 
-      <Button
-        type="button"
-        className="w-full h-12 text-base sticky bottom-20 z-10 shadow-lg"
-        onClick={() => void save()}
-        disabled={saving || !profileLoaded}
+      <div
+        className="fixed inset-x-0 z-40 border-t border-white/[0.08] bg-zinc-950/95 backdrop-blur-md px-4 pt-3"
+        style={{
+          bottom: 0,
+          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
+        }}
       >
-        {saving ? "Speichern…" : "Speichern & neu berechnen"}
-      </Button>
+        <div className="max-w-2xl mx-auto">
+          <Button
+            type="button"
+            className="w-full h-12 text-base rounded-2xl disabled:opacity-40 disabled:bg-zinc-700 disabled:text-zinc-400"
+            onClick={() => void save()}
+            disabled={saving || !profileLoaded || !isDirty}
+          >
+            {saving ? "Speichern…" : "Speichern & neu berechnen"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

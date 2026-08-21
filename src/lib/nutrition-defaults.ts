@@ -15,6 +15,11 @@ export type NutritionDashboardPayload = {
   };
   consumed: { calories: number; proteinG: number; carbsG: number; fatG: number; fiberG: number };
   remaining: { calories: number; proteinG: number; carbsG: number; fatG: number };
+  /** Today's exercise kcal added back to remaining (cardio + workouts) */
+  exerciseBurned?: {
+    calories: number;
+    estimated: boolean;
+  };
   water: { consumedMl: number; targetMl: number };
   mealsByType: {
     mealType: MealType;
@@ -91,6 +96,7 @@ export function createEmptyNutritionDashboard(
       fatG: targets.fatG,
     },
     water: { consumedMl: 0, targetMl: targets.waterTargetMl },
+    exerciseBurned: { calories: 0, estimated: false },
     mealsByType: mealTypes.map((mealType) => ({
       mealType,
       mealId: null,

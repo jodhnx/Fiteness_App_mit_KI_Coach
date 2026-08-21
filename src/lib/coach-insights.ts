@@ -163,16 +163,23 @@ export function buildCoachInsightsFromContext(ctx: CoachContext): CoachInsightsR
   if (activityWeek.count === 0 && profile?.trainingGoal === "ENDURANCE") {
     tips.unshift({
       type: "activity",
-      message: "Für dein Ausdauer-Ziel: tracke heute eine Aktivität (Laufen, Rad, Schwimmen).",
+      message: "Für dein Ausdauer-Ziel: tracke heute Cardio (Laufen, Rad, Schwimmen).",
       priority: "high",
-      actionHref: "/progress",
+      actionHref: "/workouts/cardio",
+    });
+  } else if (activityWeek.totalCalories > 0) {
+    tips.unshift({
+      type: "activity",
+      message: `Du hast diese Woche ${Math.round(activityWeek.totalCalories)} kcal durch Cardio verbrannt.`,
+      priority: "medium",
+      actionHref: "/workouts/cardio",
     });
   } else if (activityWeek.count > 0) {
     tips.push({
       type: "activity",
       message: `Diese Woche ${activityWeek.count} Aktivität(en), ${Math.round(activityWeek.totalDistanceM / 1000)} km – gut für Regeneration & Kalorienbalance.`,
       priority: "medium",
-      actionHref: "/progress",
+      actionHref: "/workouts/cardio",
     });
   }
 

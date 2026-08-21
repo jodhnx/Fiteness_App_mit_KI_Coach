@@ -88,6 +88,8 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   trainingLabel,
 }: Props) {
   const ready = hasNutritionTargets(nutrition);
+  const burned = nutrition.exerciseBurned?.calories ?? 0;
+  const burnedEstimated = nutrition.exerciseBurned?.estimated ?? true;
   const remainingCal = nutrition.remaining?.calories ?? 0;
   const consumedCal = nutrition.consumed?.calories ?? 0;
   const targetCal = nutrition.targets?.calories ?? 0;
@@ -95,7 +97,7 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   const waterTarget = nutrition.water?.targetMl ?? 2500;
   const kcalLeft = ready ? Math.max(0, Math.round(remainingCal)) : 0;
   const kcalTarget = Math.round(targetCal);
-  const kcalPct =
+  const intakePct =
     kcalTarget > 0 ? Math.min(100, Math.round((consumedCal / kcalTarget) * 100)) : 0;
   const stepPct = stepGoal > 0 ? Math.min(100, Math.round((steps / stepGoal) * 100)) : 0;
   const waterPct =
@@ -113,20 +115,30 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] uppercase tracking-widest text-zinc-500">
-            Kalorien übrig
+            Noch verfügbar
           </p>
           <p className="text-3xl font-bold text-white tabular-nums mt-0.5">
             {ready ? kcalLeft.toLocaleString("de-DE") : "—"}
             <span className="text-sm font-normal text-zinc-500 ml-1.5">kcal</span>
           </p>
           <p className="text-xs text-zinc-500 mt-1">
-            Ziel {kcalTarget > 0 ? kcalTarget.toLocaleString("de-DE") : "—"} · Streak{" "}
-            {streakDays > 0 ? `${streakDays}T` : "—"}
+            {Math.round(consumedCal).toLocaleString("de-DE")} gegessen
+            {burned > 0
+              ? ` · +${Math.round(burned)} verbrannt`
+              : ""}{" "}
+            / {kcalTarget > 0 ? kcalTarget.toLocaleString("de-DE") : "—"} Ziel
+            {streakDays > 0 ? ` · Streak ${streakDays}T` : ""}
           </p>
+          {burned > 0 && (
+            <p className="text-xs text-orange-300/90 mt-1.5 font-medium tabular-nums">
+              🔥 {Math.round(burned)} kcal verbrannt
+              {burnedEstimated ? " (geschätzt)" : ""}
+            </p>
+          )}
         </div>
-        <Ring pct={kcalPct} color="var(--accent)" size={72}>
+        <Ring pct={intakePct} color="var(--accent)" size={72}>
           <Flame className="h-4 w-4 text-accent" />
-          <span className="text-[10px] font-bold text-white tabular-nums">{kcalPct}%</span>
+          <span className="text-[10px] font-bold text-white tabular-nums">{intakePct}%</span>
         </Ring>
       </div>
 

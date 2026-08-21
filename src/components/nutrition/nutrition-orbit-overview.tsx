@@ -46,6 +46,8 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     carbsG: 0,
     fatG: 0,
   };
+  const burned = dashboard.exerciseBurned?.calories ?? 0;
+  const burnedEstimated = dashboard.exerciseBurned?.estimated ?? true;
   const ready = hasNutritionTargets(dashboard);
   const incomplete = nutritionProfileIncomplete(dashboard);
 
@@ -139,8 +141,14 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
       >
         {isOver
           ? `${overBy.toLocaleString("de-DE")} kcal über Ziel`
-          : `${left.toLocaleString("de-DE")} kcal übrig`}
+          : `${left.toLocaleString("de-DE")} kcal verfügbar`}
       </p>
+      {burned > 0 && (
+        <p className="text-center text-xs text-orange-300/90 font-medium tabular-nums">
+          🔥 {Math.round(burned)} kcal verbrannt
+          {burnedEstimated ? " (geschätzt)" : ""} · im Budget eingerechnet
+        </p>
+      )}
 
       <div className="grid grid-cols-3 gap-2">
         {macros.map((m) => {

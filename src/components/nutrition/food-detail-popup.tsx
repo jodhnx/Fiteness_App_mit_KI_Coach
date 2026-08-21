@@ -104,6 +104,61 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
             <MacroPill label="Fett" value={`${fmtG(scaled.fatG)}g`} />
           </div>
 
+          {(product.fiberG != null ||
+            product.extended?.sugarG != null ||
+            product.extended?.saltG != null ||
+            product.extended?.saturatedFatG != null) && (
+            <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/50 p-3 space-y-1.5">
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+                Weitere Nährwerte
+              </p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-zinc-400">
+                {product.fiberG != null && (
+                  <p>
+                    Ballaststoffe:{" "}
+                    <span className="text-zinc-200 tabular-nums">
+                      {fmtG((product.fiberG * activeGrams) / (product.servingG || 100))} g
+                    </span>
+                  </p>
+                )}
+                {product.extended?.sugarG != null && (
+                  <p>
+                    Zucker:{" "}
+                    <span className="text-zinc-200 tabular-nums">
+                      {fmtG(
+                        (product.extended.sugarG * activeGrams) / (product.servingG || 100)
+                      )}{" "}
+                      g
+                    </span>
+                  </p>
+                )}
+                {product.extended?.saltG != null && (
+                  <p>
+                    Salz:{" "}
+                    <span className="text-zinc-200 tabular-nums">
+                      {fmtG(
+                        (product.extended.saltG * activeGrams) / (product.servingG || 100)
+                      )}{" "}
+                      g
+                    </span>
+                  </p>
+                )}
+                {product.extended?.saturatedFatG != null && (
+                  <p>
+                    Gesättigte Fette:{" "}
+                    <span className="text-zinc-200 tabular-nums">
+                      {fmtG(
+                        (product.extended.saturatedFatG * activeGrams) /
+                          (product.servingG || 100)
+                      )}{" "}
+                      g
+                    </span>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           <div>
             <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
               Portion

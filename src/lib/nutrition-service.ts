@@ -17,6 +17,7 @@ import {
 } from "@/lib/nutrition-defaults";
 import { safePrisma } from "@/lib/prisma-safe";
 import { isSchemaMismatchError } from "@/lib/prisma-errors";
+import { getTodayExerciseBurn } from "@/lib/cardio/today-burned";
 
 const foodSelectFull = {
   id: true,
@@ -174,7 +175,7 @@ export async function loadNutritionDashboard(
       }
     };
 
-    const [meals, waterLogs, favorites, recents] = await Promise.all([
+    const [meals, waterLogs, favorites, recents, exerciseBurn] = await Promise.all([
       loadMeals(),
       safePrisma(
         () => prisma.waterLog.findMany({ where: { userId, date: day } }),
@@ -203,6 +204,7 @@ export async function loadNutritionDashboard(
         [],
         { logLabel: "foodRecent" }
       ),
+      getTodayExerciseBurn(userId, day),
     ]);
 
     const consumedMacros = roundMacros(
@@ -261,10 +263,18 @@ export async function loadNutritionDashboard(
       },
       consumed,
       remaining: {
-        calories: Math.max(0, targets.calories - consumed.calories),
+        // Budget: Ziel − gegessen + verbrannt (Übung)
+        calories: Math.max(
+          0,
+          targets.calories - consumed.calories + (exerciseBurn.calories || 0)
+        ),
         proteinG: Math.max(0, targets.proteinG - consumed.proteinG),
         carbsG: Math.max(0, targets.carbsG - consumed.carbsG),
         fatG: Math.max(0, targets.fatG - consumed.fatG),
+      },
+      exerciseBurned: {
+        calories: exerciseBurn.calories,
+        estimated: exerciseBurn.estimated,
       },
       water: { consumedMl: waterMl, targetMl: targets.waterTargetMl },
       mealsByType,
