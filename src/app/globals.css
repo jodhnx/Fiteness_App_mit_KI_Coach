@@ -838,64 +838,83 @@ body[data-profilePanel="open"] nav[aria-label="Hauptnavigation"] {
 }
 
 .bottom-nav-v3--scrubbing {
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
-.bottom-nav-v3-indicator {
-  height: calc(100% - 0.35rem);
-  will-change: transform;
-}
-
-.bottom-nav-v3-indicator-inner {
-  height: 100%;
-  margin: 0 0.2rem;
-  border-radius: var(--radius-capsule);
-  background: color-mix(in srgb, var(--accent) 16%, rgba(255, 255, 255, 0.05));
-  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+/* Perfect circle — width = height, centered via left % + translate(-50%,-50%) in JS */
+.bottom-nav-v3-circle {
+  position: absolute;
+  z-index: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 14%, rgba(255, 255, 255, 0.05));
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
   box-shadow:
-    0 0 24px -8px color-mix(in srgb, var(--accent) 40%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 0 28px -8px color-mix(in srgb, var(--accent) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  will-change: left;
 }
 
 .bottom-nav-v3-tab {
   -webkit-tap-highlight-color: transparent;
-  border-radius: var(--radius-capsule);
   background: transparent;
   border: none;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .bottom-nav-v3-label {
   font-size: 9.5px;
   letter-spacing: 0.01em;
-  transition: opacity 180ms var(--ease-out-soft), transform 180ms var(--ease-out-soft);
+  transition:
+    opacity 200ms var(--ease-out-soft),
+    transform 200ms var(--ease-out-soft),
+    font-size 200ms var(--ease-out-soft);
 }
 
-.bottom-nav-v3-tab--active .bottom-nav-v3-label {
+.bottom-nav-v3-label--active {
+  opacity: 1;
   font-size: 10px;
+  font-weight: 600;
+  transform: translateY(0);
 }
 
-.bottom-nav-v3-icon {
-  transition: transform 200ms var(--ease-out-soft);
+.bottom-nav-v3-label--idle {
+  opacity: 0.55;
+  font-weight: 500;
+  transform: translateY(0.5px);
 }
 
-.bottom-nav-v3-icon--active {
-  transform: scale(1.06) translateY(-0.5px);
+.bottom-nav-v3-icon-wrap {
+  width: 1.375rem;
+  height: 1.375rem;
+  transition: transform 220ms var(--ease-out-soft);
+}
+
+.bottom-nav-v3-icon-wrap--active {
+  transform: scale(1.08) translateY(-1px);
 }
 
 @keyframes bottom-nav-icon-bounce {
   0% {
     transform: scale(1) translateY(0);
   }
-  40% {
-    transform: scale(1.12) translateY(-1.5px);
+  45% {
+    transform: scale(1.14) translateY(-2px);
   }
   100% {
-    transform: scale(1.06) translateY(-0.5px);
+    transform: scale(1.08) translateY(-1px);
   }
 }
 
-.bottom-nav-v3-icon--bounce {
-  animation: bottom-nav-icon-bounce 200ms var(--ease-out-soft) both;
+.bottom-nav-v3-icon-wrap--bounce {
+  animation: bottom-nav-icon-bounce 220ms var(--ease-out-soft) both;
+}
+
+.bottom-nav-v3-icon {
+  display: block;
 }
 
 html[data-color-mode="light"] .bottom-nav-v3,
@@ -907,10 +926,13 @@ html.light .bottom-nav-v3 {
     inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
-html[data-color-mode="light"] .bottom-nav-v3-indicator-inner,
-html.light .bottom-nav-v3-indicator-inner {
-  background: color-mix(in srgb, var(--accent) 12%, rgba(0, 0, 0, 0.03));
-  border-color: color-mix(in srgb, var(--accent) 26%, transparent);
+html[data-color-mode="light"] .bottom-nav-v3-circle,
+html.light .bottom-nav-v3-circle {
+  background: color-mix(in srgb, var(--accent) 11%, rgba(0, 0, 0, 0.03));
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  box-shadow:
+    0 0 20px -10px color-mix(in srgb, var(--accent) 35%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 html[data-color-mode="light"] .bottom-nav-v3-tab:not(.bottom-nav-v3-tab--active),
@@ -963,22 +985,39 @@ html.light .bottom-nav-v3-tab:not(.bottom-nav-v3-tab--active) {
   animation: ui-confirm-pop 280ms var(--ease-out-soft) both;
 }
 
+/* Home hero — data already present, subtle enter only */
+@keyframes home-hero-enter {
+  from {
+    opacity: 0.92;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.home-hero-enter {
+  animation: home-hero-enter 200ms var(--ease-out-soft) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .bottom-nav-v3-indicator {
+  .bottom-nav-v3-circle {
     transition: none !important;
   }
-  .bottom-nav-v3-icon,
+  .bottom-nav-v3-icon-wrap,
   .bottom-nav-v3-label {
     transition: none;
   }
-  .bottom-nav-v3-icon--active {
+  .bottom-nav-v3-icon-wrap--active {
     transform: none;
   }
-  .bottom-nav-v3-icon--bounce {
+  .bottom-nav-v3-icon-wrap--bounce {
     animation: none;
   }
   .tab-panel-enter,
-  .ui-confirm-pop {
+  .ui-confirm-pop,
+  .home-hero-enter {
     animation: none;
   }
   button:not(:disabled):active,

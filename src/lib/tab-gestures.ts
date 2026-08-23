@@ -4,18 +4,25 @@ import type { MainTab } from "@/components/layout/persistent-tab-provider";
 import { MAIN_TABS } from "@/components/layout/persistent-tab-provider";
 
 export const TAB_SWIPE = {
-  /** px before axis locks */
   axisLock: 10,
-  /** min horizontal distance to commit (or velocity) */
   minDistance: 72,
-  /** px/ms — flick commits even with shorter distance */
   minVelocity: 0.45,
-  /** max interactive drag as fraction of viewport */
   maxDragRatio: 0.42,
-  /** spring back duration ms */
   settleMs: 220,
-  /** commit slide duration ms */
   commitMs: 200,
+} as const;
+
+/** Bottom nav long-press + drag thresholds */
+export const NAV_DRAG = {
+  longPressMs: 360,
+  /** Vertical move before long press fires → cancel (scroll intent) */
+  verticalCancelPx: 14,
+  /** Horizontal move before long press → still allow long press if mostly still */
+  preLockSlopPx: 18,
+  /** After scrub starts, min px to snap tab on release */
+  snapThreshold: 0.35,
+  indicatorTransitionMs: 240,
+  scrubFollowMs: 0,
 } as const;
 
 export function prefersReducedMotion(): boolean {
@@ -23,7 +30,9 @@ export function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export function isTouchLikePointer(e: PointerEvent | React.PointerEvent): boolean {
+export function isTouchLikePointer(
+  e: PointerEvent | React.PointerEvent
+): boolean {
   return e.pointerType === "touch" || e.pointerType === "pen";
 }
 
@@ -42,14 +51,34 @@ export function tabIndex(tab: MainTab): number {
   return MAIN_TABS.indexOf(tab);
 }
 
-/** Map horizontal scrub distance on bottom nav to tab index. */
-export function scrubIndexFromDelta(
+/** Continuous tab position for live indicator follow (0 … count-1). */
+export function scrubPositionFromDelta(
   startIndex: number,
   deltaX: number,
   tabWidth: number,
   count: number
 ): number {
   if (tabWidth <= 0) return startIndex;
-  const steps = Math.round(deltaX / tabWidth);
-  return Math.max(0, Math.min(count - 1, startIndex + steps));
+  const pos = startIndex + deltaX / tabWidth;
+  return Math.max(0, Math.min(count - 1, pos));
+}
+
+/** Nearest tab index from fractional position. */
+export function snapScrubIndex(position: number, count: number): number {
+  return Math.max(0, Math.min(count - 1, Math.round(position)));
+}
+
+/** Center X of tab index as fraction of bar width (0–1). */
+export function tabCenterFraction(index: number, count: number): number {
+  return (index + 0.5) / count;
+}
+
+/** @deprecated discrete steps — prefer scrubPositionFromDelta */
+export function scrubIndexFromDelta(
+  startIndex: number,
+  deltaX: number,
+  tabWidth: number,
+  count: number
+): number {
+  return snapScrubIndex(scrubPositionFromDelta(startIndex, deltaX, tabWidth, count), count);
 }

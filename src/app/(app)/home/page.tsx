@@ -147,25 +147,25 @@ export default function HomePage() {
   }
 
   return (
-    <PageShell>
+    <PageShell className="space-y-2">
       <HomeGreeting name={displayName} streakDays={nutritionStreakDays} />
-      <PageIntro pageId="home" />
-      <HomePhoneStepsHint />
 
       <HomeWidgetBoard
         slots={{
           quickAccess: <QuickAccessRail />,
           dashboard: (
-            <HomeDashboardPremium
-              nutrition={nutrition}
-              steps={steps}
-              stepGoal={stepGoal}
-              sleepHours={data.healthToday?.sleepHours ?? null}
-              weightKg={data.weightKg}
-              streakDays={trainingStreakDays}
-              trainingStatus={trainingStatus}
-              trainingLabel={trainingLabel}
-            />
+            <div className="home-hero-enter">
+              <HomeDashboardPremium
+                nutrition={nutrition}
+                steps={steps}
+                stepGoal={stepGoal}
+                sleepHours={data.healthToday?.sleepHours ?? null}
+                weightKg={data.weightKg}
+                streakDays={trainingStreakDays}
+                trainingStatus={trainingStatus}
+                trainingLabel={trainingLabel}
+              />
+            </div>
           ),
           dayGoals: (
             <HomeDayGoals
@@ -240,6 +240,9 @@ export default function HomePage() {
           ),
         }}
       />
+
+      <PageIntro pageId="home" />
+      <HomePhoneStepsHint />
     </PageShell>
   );
 }
