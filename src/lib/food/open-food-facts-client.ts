@@ -11,7 +11,7 @@ const OFF_AT = "https://at.openfoodfacts.org";
 const OFF_DE = "https://de.openfoodfacts.org";
 const OFF_CH = "https://ch.openfoodfacts.org";
 
-const TIMEOUT_MS = 5000;
+const TIMEOUT_MS = 2200;
 const MAX_RETRIES = 2;
 
 const AT_BRAND_KEYWORDS = [

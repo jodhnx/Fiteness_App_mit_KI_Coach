@@ -26,13 +26,15 @@ import { getCacheOwner, hydratePersistentCaches } from "@/lib/client-cache";
 /** After first paint — never blocks Home (no artificial delay). */
 function schedulePostBootWarm() {
   if (typeof window === "undefined") return;
+  // Food history ASAP so Nutrition "+" is instant
+  void import("@/lib/food-history-cache").then((m) => m.warmFoodHistoryCache());
   const run = () => {
     warmNavDataCaches();
     runBootSecondaryPrefetch();
   };
   const ric = window.requestIdleCallback;
   if (typeof ric === "function") {
-    ric(run, { timeout: 1500 });
+    ric(run, { timeout: 1200 });
   } else {
     requestAnimationFrame(run);
   }

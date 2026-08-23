@@ -98,7 +98,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<ViewMode>("hub");
   const [q, setQ] = useState("");
-  const debouncedQ = useDebounce(q, 160);
+  const debouncedQ = useDebounce(q, 100);
   const [result, setResult] = useState<FoodSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [historyFoods, setHistoryFoods] = useState<FoodHistoryPayload>(() =>
@@ -161,7 +161,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
           recents: rec.slice(0, 12),
           favorites: ((d.favorites ?? []) as FoodProduct[]).slice(0, 40),
         };
-        setCached(FOOD_HISTORY_CACHE_KEY, next, 180_000);
+        setCached(FOOD_HISTORY_CACHE_KEY, next, 7 * 24 * 60 * 60_000);
         applyHistoryPayload(next, setHistoryFoods);
       })
       .catch(() => {
@@ -189,7 +189,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     }
 
     const key = cacheKey(trimmed);
-    const cached = getCached<FoodSearchResponse>(key);
+    const cached = getCached<FoodSearchResponse>(key, { allowStale: true });
     if (cached) {
       setResult(cached);
       setLoading(false);
@@ -203,14 +203,29 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     const gen = ++requestGen.current;
 
     try {
-      const res = await fetch(
+      // Phase 1: local-only (fast) — paint ASAP
+      const localRes = await fetch(
+        `/api/food/search?q=${encodeURIComponent(trimmed)}&localOnly=1`,
+        { signal: ac.signal }
+      );
+      const localData = (await localRes.json()) as FoodSearchResponse;
+      if (!ac.signal.aborted && gen === requestGen.current) {
+        setResult(localData);
+        setLoading(false);
+        if (localData.products?.length) {
+          setCached(key, localData, SEARCH_CACHE_TTL);
+        }
+      }
+
+      // Phase 2: full merge (may include OFF) — upgrade results
+      const fullRes = await fetch(
         `/api/food/search?q=${encodeURIComponent(trimmed)}`,
         { signal: ac.signal }
       );
-      const data = (await res.json()) as FoodSearchResponse;
+      const fullData = (await fullRes.json()) as FoodSearchResponse;
       if (!ac.signal.aborted && gen === requestGen.current) {
-        setCached(key, data, SEARCH_CACHE_TTL);
-        setResult(data);
+        setCached(key, fullData, SEARCH_CACHE_TTL);
+        setResult(fullData);
       }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
@@ -250,11 +265,14 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     return dedupeFoods([...instantResults, ...api]).slice(0, 40);
   }, [isSearching, result, instantResults]);
 
-  /** Favorites only — never mix with recents */
+  /** Favorites — prefer history cache; filter by ids when available */
   const favoriteOnly = useMemo(() => {
-    return historyFoods.favorites.filter(
+    if (historyFoods.favorites.length === 0) return [];
+    if (favoriteIds.size === 0) return historyFoods.favorites.slice(0, 40);
+    const matched = historyFoods.favorites.filter(
       (f) => f.id && favoriteIds.has(f.id)
     );
+    return matched.length > 0 ? matched : historyFoods.favorites.slice(0, 40);
   }, [historyFoods.favorites, favoriteIds]);
 
   const quickAdd = useCallback(

@@ -23,13 +23,30 @@ function afterIdle(cb: () => void, timeoutMs = 2500) {
 }
 
 /**
- * Low-priority background warm — NEVER blocks splash / Home paint.
- * Staggered so the first frames stay free for Home interaction.
+ * Low-priority background warm — NEVER blocks Home paint.
+ * Food history warms first so Nutrition "+" is instant.
  */
 export function runBootSecondaryPrefetch() {
   if (typeof window === "undefined") return;
 
-  // Wave 1 (~1.5s): training + gamification (nav-adjacent)
+  // Wave 0 (immediate idle): food history — highest UX impact for + button
+  afterIdle(() => {
+    void fetchOk("/api/food/history").then((foodHistory) => {
+      if (!foodHistory) return;
+      const rec = (foodHistory.recents ?? []) as unknown[];
+      setCached(
+        "food-history",
+        {
+          frequent: (foodHistory.frequent ?? rec).slice(0, 12),
+          recents: rec.slice(0, 12),
+          favorites: (foodHistory.favorites ?? []).slice(0, 40),
+        },
+        7 * 24 * 60 * 60_000
+      );
+    });
+  }, 800);
+
+  // Wave 1 (~1.2s): training + gamification (nav-adjacent)
   window.setTimeout(() => {
     afterIdle(() => {
       void Promise.all([
@@ -42,37 +59,24 @@ export function runBootSecondaryPrefetch() {
         if (gamification) setCached("gamification-full", gamification, 120_000);
       });
     });
-  }, 1500);
+  }, 1200);
 
-  // Wave 2 (~3.5s): community / devices / food history
+  // Wave 2 (~3s): community / devices / profile
   window.setTimeout(() => {
     afterIdle(() => {
       void Promise.all([
         fetchOk("/api/social/feed"),
         fetchOk("/api/wearables"),
-        fetchOk("/api/food/history"),
         fetchOk("/api/profile"),
-      ]).then(([feed, wearables, foodHistory, profile]) => {
+      ]).then(([feed, wearables, profile]) => {
         if (feed) setCached("social-feed", feed, 120_000);
         if (wearables) setCached("wearables-list", wearables, 120_000);
         if (profile) setCached(PROFILE_CACHE_KEY, profile, 120_000);
-        if (foodHistory) {
-          const rec = (foodHistory.recents ?? []) as unknown[];
-          setCached(
-            "food-history",
-            {
-              frequent: (foodHistory.frequent ?? rec).slice(0, 12),
-              recents: rec.slice(0, 12),
-              favorites: (foodHistory.favorites ?? []).slice(0, 40),
-            },
-            180_000
-          );
-        }
       });
     }, 3000);
-  }, 3500);
+  }, 3000);
 
-  // Wave 3 (~5.5s): recipes + remaining social
+  // Wave 3 (~5s): recipes + remaining social
   window.setTimeout(() => {
     afterIdle(() => {
       void fetchOk("/api/recipes/catalog?limit=24&page=1")
@@ -112,7 +116,7 @@ export function runBootSecondaryPrefetch() {
         if (health) setCached("health-dashboard", health, 90_000);
       });
     }, 4000);
-  }, 5500);
+  }, 5000);
 }
 
 export const BOOT_CACHE_KEYS = {

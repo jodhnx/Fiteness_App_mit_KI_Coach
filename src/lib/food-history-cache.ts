@@ -30,9 +30,11 @@ function normalizeHistory(raw: {
   };
 }
 
-/** Instant read for FoodAddPopup — no network. */
+/** Instant read for FoodAddPopup — no network (allows soft-stale overnight). */
 export function getCachedFoodHistory(): FoodHistoryPayload | null {
-  return getCached<FoodHistoryPayload>(FOOD_HISTORY_CACHE_KEY);
+  return getCached<FoodHistoryPayload>(FOOD_HISTORY_CACHE_KEY, {
+    allowStale: true,
+  });
 }
 
 /** Prefetch frequent / recent / favorites for instant + button. */
@@ -50,7 +52,7 @@ export function warmFoodHistoryCache(force = false) {
       }>("/api/food/history");
       return normalizeHistory(raw);
     },
-    180_000
+    7 * 24 * 60 * 60_000
   ).catch(() => undefined);
 }
 
@@ -61,7 +63,7 @@ export function refreshFoodHistoryCache() {
     .then((r) => (r.ok ? r.json() : null))
     .then((raw) => {
       if (!raw) return;
-      setCached(FOOD_HISTORY_CACHE_KEY, normalizeHistory(raw), 180_000);
+      setCached(FOOD_HISTORY_CACHE_KEY, normalizeHistory(raw), 7 * 24 * 60 * 60_000);
     })
     .catch(() => undefined);
 }

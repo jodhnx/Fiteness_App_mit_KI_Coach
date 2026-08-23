@@ -69,16 +69,37 @@ export function PersistentTabProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const activeTab = matchMainTab(pathname);
+  const prevMainTab = useRef<MainTab | null>(null);
 
   const navigateMainTab = useCallback(
     (href: MainTab) => {
-      if (pathname === href) return;
-      // Prefetch + push without waiting — keep-alive paints instantly
+      if (pathname === href) {
+        // Same tab re-tap → scroll to top
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        return;
+      }
       router.prefetch(href);
       router.push(href, { scroll: false });
     },
     [pathname, router]
   );
+
+  // Reset window scroll BEFORE paint when switching main tabs (no jump flash)
+  useLayoutEffect(() => {
+    const tab = matchMainTab(pathname);
+    if (!tab) {
+      prevMainTab.current = null;
+      return;
+    }
+    if (prevMainTab.current !== null && prevMainTab.current !== tab) {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+    prevMainTab.current = tab;
+  }, [pathname]);
 
   return (
     <TabNavContext.Provider

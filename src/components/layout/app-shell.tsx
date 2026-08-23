@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div
               className={cn(
                 "mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col",
-                !immersive && "pb-[calc(5.25rem+env(safe-area-inset-bottom))]"
+                !immersive && "pb-[calc(5.85rem+env(safe-area-inset-bottom))]"
               )}
             >
               {!immersive && (

@@ -207,7 +207,13 @@ export function hydratePersistentCaches(expectedUserId?: string | null) {
     return;
   }
 
-  const keys = ["home-data", "progress-main", "nutrition-dashboard", "profile-data"] as const;
+  const keys = [
+    "home-data",
+    "progress-main",
+    "nutrition-dashboard",
+    "profile-data",
+    "food-history",
+  ] as const;
   for (const key of keys) {
     if (store.has(key)) continue;
     // Allow soft-stale disk entries so overnight reopen stays instant

@@ -253,12 +253,32 @@ export async function searchFoodProducts(
   let localError: string | null = null;
   const primaryOffQuery = expandFoodSearchTerms(q, countryCode)[0] ?? q;
 
-  const [localSettled, offResult] = await Promise.all([
-    searchLocalWithSynonyms(userId, q, countryCode, 28).catch((e) => {
+  // Local DB first — never block the response on Open Food Facts
+  const localSettled = await searchLocalWithSynonyms(userId, q, countryCode, 28).catch(
+    (e) => {
       localError = e instanceof Error ? e.message : "Lokale DB Fehler";
       return [] as FoodProduct[];
-    }),
+    }
+  );
+
+  // Cap OFF wait so search stays snappy (local already painted)
+  const offResult = await Promise.race([
     searchOpenFoodFacts(primaryOffQuery, 32, countryCode),
+    new Promise<{
+      products: FoodProduct[];
+      error?: string;
+      source?: string | null;
+    }>((resolve) =>
+      setTimeout(
+        () =>
+          resolve({
+            products: [],
+            error: undefined,
+            source: null,
+          }),
+        1800
+      )
+    ),
   ]);
 
   const products = mergeAndRank(

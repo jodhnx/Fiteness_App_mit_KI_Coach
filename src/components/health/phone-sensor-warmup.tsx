@@ -9,16 +9,26 @@ import {
   setPhoneSensorConsent,
 } from "@/lib/phone-sensors";
 
+function syncLocalStepsIfAny() {
+  const steps = getPhoneStepsToday();
+  if (steps.steps <= 0) return;
+  void fetch("/api/activities/steps", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ steps: steps.steps }),
+  }).catch(() => {});
+}
+
 /**
- * Keeps phone step tracking alive app-wide when consent is granted
- * (fallback when no smartwatch is connected).
- * Soft-enables pedometer automatically when the API is available.
+ * Keeps phone step tracking alive app-wide when consent is granted.
+ * Soft-enables pedometer when API is available. Syncs on resume.
+ * Never invents step values.
  */
 export function PhoneSensorWarmup() {
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    // Prefer native pedometer automatically (not GPS-only).
     if (!getPhoneSensorConsent() && canUsePedometer()) {
       setPhoneSensorConsent({ steps: true, motion: true, gps: false });
     }
@@ -36,15 +46,20 @@ export function PhoneSensorWarmup() {
 
   useEffect(() => {
     if (!enabled) return;
-    const steps = getPhoneStepsToday();
-    if (steps.steps <= 0) return;
+    syncLocalStepsIfAny();
+  }, [enabled]);
 
-    void fetch("/api/activities/steps", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
-      body: JSON.stringify({ steps: steps.steps }),
-    }).catch(() => {});
+  useEffect(() => {
+    if (!enabled) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") syncLocalStepsIfAny();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, [enabled]);
 
   return null;

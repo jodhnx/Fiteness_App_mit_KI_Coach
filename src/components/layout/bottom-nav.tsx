@@ -157,8 +157,8 @@ export const BottomNav = memo(function BottomNav() {
                 onTouchStart={() => warmIntent(href)}
                 onClick={() => navigate(href, index)}
                 className={cn(
-                  "bottom-nav-v2-tab relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5",
-                  "min-h-[52px] min-w-0 px-0.5 py-2 touch-manipulation select-none",
+                  "bottom-nav-v2-tab relative z-10 flex flex-1 flex-col items-center justify-center gap-1",
+                  "min-h-[58px] min-w-0 px-0.5 py-2.5 touch-manipulation select-none",
                   "active:scale-[0.96] transition-transform duration-100 ease-out transform-gpu",
                   active
                     ? "bottom-nav-v2-tab--active text-accent"
@@ -175,17 +175,17 @@ export const BottomNav = memo(function BottomNav() {
                   )}
                 >
                   <Icon
-                    className={cn("h-[22px] w-[22px]", active && "stroke-[2.4]")}
+                    className={cn("h-[26px] w-[26px]", active && "stroke-[2.4]")}
                     strokeWidth={active ? 2.4 : 1.9}
                     aria-hidden
                   />
                 </span>
                 <span
                   className={cn(
-                    "bottom-nav-v2-label truncate max-w-[4.5rem] text-center leading-tight",
+                    "bottom-nav-v2-label truncate max-w-[4.75rem] text-center leading-tight",
                     active
-                      ? "text-[10.5px] font-semibold opacity-100"
-                      : "text-[9.5px] font-medium opacity-70"
+                      ? "text-[11px] font-semibold opacity-100"
+                      : "text-[10px] font-medium opacity-70"
                   )}
                 >
                   {label}
