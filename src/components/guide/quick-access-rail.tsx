@@ -2,16 +2,15 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { Dumbbell, Plus, Scale, Footprints, MessageCircle, BookOpen } from "lucide-react";
+import { Dumbbell, Plus, Scale, Activity } from "lucide-react";
 import { hapticTap } from "@/lib/haptic";
 
+/** V7 primary quick actions — Essen, Training, Gewicht, Cardio */
 const ACTIONS = [
-  { href: "/nutrition?add=LUNCH", label: "Mahlzeit", icon: Plus },
-  { href: "/workouts/quick", label: "Workout", icon: Dumbbell },
+  { href: "/nutrition?add=LUNCH", label: "Essen", icon: Plus },
+  { href: "/workouts/quick", label: "Training", icon: Dumbbell },
   { href: "/progress?log=1", label: "Gewicht", icon: Scale },
-  { href: "/rezepte", label: "Rezepte", icon: BookOpen },
-  { href: "/geraete", label: "Schritte", icon: Footprints },
-  { href: "/coach", label: "Coach", icon: MessageCircle },
+  { href: "/workouts/cardio", label: "Cardio", icon: Activity },
 ] as const;
 
 /** Compact quick-access rail — primary actions first. */

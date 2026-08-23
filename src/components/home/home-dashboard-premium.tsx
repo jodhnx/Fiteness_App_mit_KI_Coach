@@ -83,7 +83,7 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   stepGoal,
   sleepHours,
   weightKg,
-  streakDays,
+  streakDays: _streakDays,
   trainingStatus,
   trainingLabel,
 }: Props) {
@@ -103,6 +103,13 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   const waterPct =
     waterTarget > 0 ? Math.min(100, Math.round((waterConsumed / waterTarget) * 100)) : 0;
 
+  const proteinG = Math.round(nutrition.consumed?.proteinG ?? 0);
+  const proteinTarget = Math.round(nutrition.targets?.proteinG ?? 0);
+  const carbsG = Math.round(nutrition.consumed?.carbsG ?? 0);
+  const carbsTarget = Math.round(nutrition.targets?.carbsG ?? 0);
+  const fatG = Math.round(nutrition.consumed?.fatG ?? 0);
+  const fatTarget = Math.round(nutrition.targets?.fatG ?? 0);
+
   const trainMeta = {
     active: { label: "Läuft", color: "text-cyan-400", Icon: Play },
     done: { label: "Erledigt", color: "text-emerald-400", Icon: CheckCircle2 },
@@ -112,24 +119,53 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
 
   return (
     <PremiumCard glow padding="md" className="space-y-4">
+      {/* Macro chips — compact daily overview */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: "Protein", value: proteinG, target: proteinTarget, color: "text-rose-300" },
+          { label: "Carbs", value: carbsG, target: carbsTarget, color: "text-amber-300" },
+          { label: "Fett", value: fatG, target: fatTarget, color: "text-sky-300" },
+        ].map(({ label, value, target, color }) => (
+          <div
+            key={label}
+            className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-2.5 py-2 text-center"
+          >
+            <p className="text-[9px] uppercase tracking-wide text-zinc-500">{label}</p>
+            <p className={cn("text-sm font-bold tabular-nums mt-0.5", color)}>
+              {value}
+              <span className="text-[10px] font-normal text-zinc-500">
+                {target > 0 ? ` / ${target}g` : " g"}
+              </span>
+            </p>
+          </div>
+        ))}
+      </div>
+
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] uppercase tracking-widest text-zinc-500">
-            Noch verfügbar
+            Kalorien verfügbar
           </p>
           <p className="text-3xl font-bold text-white tabular-nums mt-0.5">
             {ready ? kcalLeft.toLocaleString("de-DE") : "—"}
             <span className="text-sm font-normal text-zinc-500 ml-1.5">kcal</span>
           </p>
-          <p className="text-xs text-zinc-500 mt-1">
-            {Math.round(consumedCal).toLocaleString("de-DE")} gegessen
-            {` · +${Math.round(burned)} verbrannt`} /{" "}
-            {kcalTarget > 0 ? kcalTarget.toLocaleString("de-DE") : "—"} Ziel
-            {streakDays > 0 ? ` · Streak ${streakDays}T` : ""}
-          </p>
-          <p className="text-xs text-orange-300/90 mt-1.5 font-medium tabular-nums">
+          <div className="mt-2 space-y-0.5 text-xs text-zinc-400 tabular-nums">
+            <p>
+              {kcalTarget > 0 ? `${kcalTarget.toLocaleString("de-DE")} kcal Ziel` : "Ziel —"}
+            </p>
+            <p>{Math.round(consumedCal).toLocaleString("de-DE")} gegessen</p>
+            <p className="text-orange-300/90">+ {Math.round(burned)} verbrannt</p>
+            <p className="text-zinc-300 font-medium">
+              = {ready ? kcalLeft.toLocaleString("de-DE") : "—"} kcal verfügbar
+            </p>
+          </div>
+          <p className="text-xs text-orange-300/90 mt-2 font-medium tabular-nums">
             🔥 {Math.round(burned)} kcal verbrannt
             {burned > 0 && burnedEstimated ? " (geschätzt)" : ""}
+          </p>
+          <p className="text-xs text-cyan-300/90 mt-1 font-medium tabular-nums">
+            🚶 {steps.toLocaleString("de-DE")} Schritte
           </p>
         </div>
         <Ring pct={intakePct} color="var(--accent)" size={72}>
@@ -148,11 +184,9 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
             <span className="text-[9px] uppercase text-zinc-500">Schritte</span>
           </div>
           <p className="text-base font-bold text-white tabular-nums">
-            {steps >= 1000 ? `${(steps / 1000).toFixed(1)}k` : steps}
+            {steps.toLocaleString("de-DE")}
           </p>
-          <p className="text-[10px] text-zinc-500 mt-0.5 tabular-nums">
-            🚶 {steps.toLocaleString("de-DE")} Schritte
-          </p>
+          <p className="text-[10px] text-zinc-500 mt-0.5 tabular-nums">Ziel {stepGoal.toLocaleString("de-DE")}</p>
           <div className="mt-1.5 h-1 rounded-full bg-zinc-800 overflow-hidden">
             <div
               className="h-full rounded-full bg-cyan-400 transition-all"
@@ -215,7 +249,11 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
           <div className="min-w-0">
             <p className="text-[9px] uppercase text-zinc-500">Training</p>
             <p className={cn("text-sm font-semibold truncate", trainMeta.color)}>
-              {trainingLabel ?? trainMeta.label}
+              {trainingStatus === "done"
+                ? "Workout abgeschlossen"
+                : trainingStatus === "planned" && trainingLabel
+                  ? trainingLabel
+                  : (trainingLabel ?? trainMeta.label)}
             </p>
           </div>
         </Link>

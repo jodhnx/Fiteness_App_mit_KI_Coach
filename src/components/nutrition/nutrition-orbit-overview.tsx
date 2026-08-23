@@ -22,8 +22,9 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
 }: Props) {
   if (!dashboard) {
     return (
-      <div className="rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-zinc-950/95 px-6 py-10 text-center">
-        <p className="text-sm text-zinc-400">Daten werden geladen …</p>
+      <div className="rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-zinc-950/95 px-6 py-10 text-center animate-pulse">
+        <div className="h-24 w-24 rounded-full bg-white/5 mx-auto mb-4" />
+        <div className="h-4 w-32 bg-white/5 mx-auto rounded" />
       </div>
     );
   }

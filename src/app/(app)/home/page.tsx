@@ -99,12 +99,15 @@ export default function HomePage() {
 
   const trainingLabel = useMemo(() => {
     if (trainingStatus === "active") return "Training läuft";
-    if (trainingStatus === "done") return "Heute trainiert";
+    if (trainingStatus === "done") return "Workout abgeschlossen";
     if (trainingStatus === "planned" && data.nextWorkout?.dayName) {
-      return data.nextWorkout.dayName;
+      const dayNum = data.nextWorkout.dayNumber;
+      return dayNum != null
+        ? `${data.nextWorkout.dayName} – Tag ${dayNum}`
+        : data.nextWorkout.dayName;
     }
     return undefined;
-  }, [trainingStatus, data.nextWorkout?.dayName]);
+  }, [trainingStatus, data.nextWorkout?.dayName, data.nextWorkout?.dayNumber]);
 
   const [phoneSteps, setPhoneSteps] = useState(0);
 
