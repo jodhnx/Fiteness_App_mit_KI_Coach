@@ -8,7 +8,7 @@ import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 const ProfileDataContext = createContext<ProfileServerPrefetch | null>(null);
 
 function seedProfileCacheFromServer(initial: ProfileServerPrefetch) {
-  if (!initial.profile && !initial.user) return;
+  if (!initial.profile && !initial.user && !initial.calculations) return;
   const prev = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY);
   // Never keep a previous user's profile when server sent a fresh one
   setCached(
@@ -32,13 +32,11 @@ export function ProfileDataProvider({
   children: ReactNode;
 }) {
   const [profile] = useState<ProfileServerPrefetch | null>(() => {
-    // Prefer SSR payload for the authenticated user — never prefer stale cache
-    // from a previous account over the server's current-user data.
-    if (initialProfile?.profile || initialProfile?.user) {
+    if (initialProfile?.profile || initialProfile?.user || initialProfile?.calculations) {
       seedProfileCacheFromServer(initialProfile);
       return initialProfile;
     }
-    return getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY);
+    return getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, { allowStale: true });
   });
 
   useEffect(() => {

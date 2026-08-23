@@ -1,10 +1,12 @@
 import { auth } from "@/lib/auth";
 import { jsonOk, jsonError } from "@/lib/api-response";
 import { loadHomeCriticalData } from "@/lib/home-critical";
+import { profileStubFromBoot } from "@/lib/app-init";
+import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
 
 /**
- * Boot payload: ONLY Home + Nutrition (splash gate).
- * Profile / progress / community / recipes must NOT block cold start —
+ * Boot payload: ONLY Home + Nutrition (+ profile stub from same query).
+ * Progress / community / recipes must NOT block cold start —
  * they warm in the background after Home is shown.
  */
 export async function GET() {
@@ -15,7 +17,8 @@ export async function GET() {
     const userId = session.user.id;
 
     const home = await loadHomeCriticalData(userId);
-    const nutrition = home.nutrition ?? null;
+    const nutrition = home.nutrition ?? createEmptyNutritionDashboard();
+    const profile = profileStubFromBoot(home, nutrition);
 
     if (process.env.NODE_ENV === "development") {
       console.info("[api/bootstrap] ok", Date.now() - started, "ms");
@@ -24,7 +27,7 @@ export async function GET() {
     const res = jsonOk({
       home,
       nutrition,
-      profile: null,
+      profile,
       progress: null,
     });
     res.headers.set("Cache-Control", "private, no-cache");

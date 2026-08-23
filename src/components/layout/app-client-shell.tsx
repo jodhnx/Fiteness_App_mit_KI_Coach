@@ -23,17 +23,19 @@ import {
 } from "@/lib/app-init";
 import { getCacheOwner, hydratePersistentCaches } from "@/lib/client-cache";
 
-/** After first paint — never blocks Home. */
+/** After first paint — never blocks Home (no artificial delay). */
 function schedulePostBootWarm() {
   if (typeof window === "undefined") return;
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      window.setTimeout(() => {
-        warmNavDataCaches();
-        runBootSecondaryPrefetch();
-      }, 800);
-    });
-  });
+  const run = () => {
+    warmNavDataCaches();
+    runBootSecondaryPrefetch();
+  };
+  const ric = window.requestIdleCallback;
+  if (typeof ric === "function") {
+    ric(run, { timeout: 1500 });
+  } else {
+    requestAnimationFrame(run);
+  }
 }
 
 function hydrateBootFromDisk(): BootstrapPayload | null {

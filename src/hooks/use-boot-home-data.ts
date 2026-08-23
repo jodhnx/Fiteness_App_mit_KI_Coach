@@ -74,8 +74,6 @@ export function useBootHomeData(): HomeDataPayload {
   const [home, setHome] = useState<HomeDataPayload>(() => resolveBootHome());
 
   useEffect(() => {
-    setHome(resolveBootHome());
-
     const onHome = (e: Event) => {
       const detail = (e as CustomEvent<HomeDataPayload>).detail;
       if (detail) setHome(normalizeHomeData(detail));

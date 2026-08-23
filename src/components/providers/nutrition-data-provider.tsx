@@ -75,8 +75,19 @@ export function NutritionDataProvider({
   );
 
   useEffect(() => {
+    if (!initialDashboard || !isValidDashboardPayload(initialDashboard)) return;
     const resolved = resolveInitialDashboard(initialDashboard);
-    setDashboard(resolved);
+    setDashboard((prev) => {
+      if (
+        prev.date === resolved.date &&
+        prev.consumed.calories === resolved.consumed.calories &&
+        prev.remaining.calories === resolved.remaining.calories &&
+        prev.targets.calories === resolved.targets.calories
+      ) {
+        return prev;
+      }
+      return resolved;
+    });
     if (isNutritionDashboardToday(resolved.date)) {
       publishNutritionDashboard(resolved);
     }

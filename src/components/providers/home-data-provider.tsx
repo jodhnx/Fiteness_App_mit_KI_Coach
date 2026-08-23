@@ -22,10 +22,13 @@ export function HomeDataProvider({
   initialHome: HomeDataPayload | null;
   children: ReactNode;
 }) {
-  const seeded = useRef<HomeDataPayload | null>(null);
-  if (initialHome && seeded.current !== initialHome) {
-    seedHomeCache(initialHome);
-    seeded.current = initialHome;
+  const seededKey = useRef<string | null>(null);
+  if (initialHome) {
+    const key = `${initialHome.caloriesIntake ?? 0}-${initialHome.userName ?? ""}`;
+    if (seededKey.current !== key) {
+      seedHomeCache(initialHome);
+      seededKey.current = key;
+    }
   }
   return children;
 }

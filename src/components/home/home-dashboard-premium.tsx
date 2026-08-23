@@ -96,9 +96,8 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   const waterConsumed = nutrition.water?.consumedMl ?? 0;
   const waterTarget = nutrition.water?.targetMl ?? 2500;
   const kcalLeft = ready ? Math.max(0, Math.round(remainingCal)) : 0;
-  const kcalTarget = Math.round(targetCal);
   const intakePct =
-    kcalTarget > 0 ? Math.min(100, Math.round((consumedCal / kcalTarget) * 100)) : 0;
+    targetCal > 0 ? Math.min(100, Math.round((consumedCal / targetCal) * 100)) : 0;
   const stepPct = stepGoal > 0 ? Math.min(100, Math.round((steps / stepGoal) * 100)) : 0;
   const waterPct =
     waterTarget > 0 ? Math.min(100, Math.round((waterConsumed / waterTarget) * 100)) : 0;
@@ -118,7 +117,7 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   }[trainingStatus];
 
   return (
-    <PremiumCard glow padding="md" className="space-y-4">
+    <PremiumCard glow padding="md" className="space-y-3">
       {/* Macro chips — compact daily overview */}
       <div className="grid grid-cols-3 gap-2">
         {[
@@ -142,30 +141,18 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-widest text-zinc-500">
-            Kalorien verfügbar
-          </p>
-          <p className="text-3xl font-bold text-white tabular-nums mt-0.5">
+        <div className="min-w-0 flex-1 text-center sm:text-left">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">kcal übrig</p>
+          <p className="text-[2.75rem] font-bold text-white tabular-nums leading-none mt-1">
             {ready ? kcalLeft.toLocaleString("de-DE") : "—"}
-            <span className="text-sm font-normal text-zinc-500 ml-1.5">kcal</span>
           </p>
-          <div className="mt-2 space-y-0.5 text-xs text-zinc-400 tabular-nums">
-            <p>
-              {kcalTarget > 0 ? `${kcalTarget.toLocaleString("de-DE")} kcal Ziel` : "Ziel —"}
-            </p>
-            <p>{Math.round(consumedCal).toLocaleString("de-DE")} gegessen</p>
-            <p className="text-orange-300/90">+ {Math.round(burned)} verbrannt</p>
-            <p className="text-zinc-300 font-medium">
-              = {ready ? kcalLeft.toLocaleString("de-DE") : "—"} kcal verfügbar
-            </p>
-          </div>
-          <p className="text-xs text-orange-300/90 mt-2 font-medium tabular-nums">
-            🔥 {Math.round(burned)} kcal verbrannt
-            {burned > 0 && burnedEstimated ? " (geschätzt)" : ""}
-          </p>
-          <p className="text-xs text-cyan-300/90 mt-1 font-medium tabular-nums">
-            🚶 {steps.toLocaleString("de-DE")} Schritte
+          <p className="mt-2 text-xs text-zinc-400 tabular-nums">
+            <span className="text-orange-300/90">
+              🔥 {Math.round(burned)} kcal verbrannt
+              {burned > 0 && burnedEstimated ? " (geschätzt)" : ""}
+            </span>
+            <span className="mx-1.5 text-zinc-600">·</span>
+            <span className="text-cyan-300/90">🚶 {steps.toLocaleString("de-DE")} Schritte</span>
           </p>
         </div>
         <Ring pct={intakePct} color="var(--accent)" size={72}>

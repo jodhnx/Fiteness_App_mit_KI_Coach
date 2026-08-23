@@ -40,6 +40,38 @@ export type AppInitResult = {
   fromCache: boolean;
 };
 
+/** Lightweight profile from boot home — no extra DB round-trip. */
+export function profileStubFromBoot(
+  home: HomeDataPayload,
+  nutrition: NutritionDashboardPayload
+): ProfileServerPrefetch {
+  const targets = nutrition.targets;
+  return {
+    user: {
+      name: home.userName ?? null,
+      image: home.userImage ?? null,
+    },
+    profile:
+      home.weightKg != null || home.weightGoal?.targetKg != null
+        ? {
+            weightKg: home.weightKg,
+            targetWeightKg: home.weightGoal?.targetKg ?? null,
+          }
+        : null,
+    calculations:
+      targets && targets.calories > 0
+        ? {
+            bmi: 0,
+            calorieTarget: targets.calories,
+            proteinTargetG: targets.proteinG,
+            carbsTargetG: targets.carbsG,
+            fatTargetG: targets.fatG,
+            recommendedTrainingDays: 3,
+          }
+        : null,
+  };
+}
+
 function isHomeBootReady(home: HomeDataPayload | null): home is HomeDataPayload {
   if (!home) return false;
   return (
@@ -93,10 +125,13 @@ export function readBootPayloadFromCache(): BootstrapPayload | null {
       null,
   });
 
+  const resolvedProfile =
+    profile ?? profileStubFromBoot(mergedHome, normalizeNutritionDashboard(nutrition));
+
   return {
     home: mergedHome,
     nutrition: normalizeNutritionDashboard(nutrition),
-    profile: profile ?? null,
+    profile: resolvedProfile,
     progress: progress ?? null,
   };
 }
@@ -126,6 +161,12 @@ function applyBootstrapPayload(payload: BootstrapPayload) {
   if (payload.profile?.user || payload.profile?.profile) {
     setCached(PROFILE_CACHE_KEY, payload.profile, 7 * 24 * 60 * 60_000);
     bootPerfMark("profile_apply_end");
+  } else {
+    const stub = profileStubFromBoot(home, payload.nutrition);
+    if (stub.user?.name || stub.user?.image || stub.profile) {
+      setCached(PROFILE_CACHE_KEY, stub, 7 * 24 * 60 * 60_000);
+      bootPerfMark("profile_apply_end");
+    }
   }
 
   if (payload.progress) {
@@ -163,7 +204,7 @@ async function fetchBootstrap(): Promise<BootstrapPayload | null> {
     return {
       home: normalizeHomeData(home!),
       nutrition: normalizeNutritionDashboard(nutrition),
-      profile,
+      profile: profile ?? profileStubFromBoot(home!, normalizeNutritionDashboard(nutrition)),
       progress,
     };
   } catch (e) {
