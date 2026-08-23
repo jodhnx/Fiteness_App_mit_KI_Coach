@@ -100,7 +100,7 @@ export const CalorieRing = memo(function CalorieRing({
               strokeLinecap="round"
               strokeDasharray={c}
               strokeDashoffset={offset}
-              className="transition-[stroke-dashoffset,stroke] duration-300 ease-out"
+              className="transition-[stroke-dashoffset,stroke] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
             />
           )}
         </svg>

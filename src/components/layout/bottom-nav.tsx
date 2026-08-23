@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, Dumbbell, Apple, TrendingUp, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,13 +9,14 @@ import {
   warmProgressCache,
   warmNavDataCaches,
 } from "@/lib/nav-cache-warmer";
-import { hapticSelect } from "@/lib/haptic";
+import { hapticSelect, hapticTap } from "@/lib/haptic";
 import {
   useMainTabNav,
   type MainTab,
   MAIN_TABS,
   matchMainTab,
 } from "@/components/layout/persistent-tab-provider";
+import { prefersReducedMotion, scrubIndexFromDelta } from "@/lib/tab-gestures";
 
 const ITEMS = [
   { href: "/home", label: "Home", icon: Home },
@@ -30,6 +31,7 @@ const ITEMS = [
 }>;
 
 const TAB_COUNT = ITEMS.length;
+const LONG_PRESS_MS = 420;
 
 function shouldHideBottomNav(pathname: string | null) {
   if (!pathname) return false;
@@ -42,9 +44,11 @@ function shouldHideBottomNav(pathname: string | null) {
 
 function resolveActiveIndex(
   optimistic: MainTab | null,
+  scrub: number | null,
   activeTab: MainTab | null | undefined,
   pathname: string | null
 ): number {
+  if (scrub != null) return scrub;
   const href =
     optimistic ??
     activeTab ??
@@ -61,11 +65,22 @@ export const BottomNav = memo(function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const tabNav = useMainTabNav();
+  const barRef = useRef<HTMLDivElement>(null);
   const [optimisticTab, setOptimisticTab] = useState<MainTab | null>(null);
   const [bounceIndex, setBounceIndex] = useState<number | null>(null);
+  const [scrubIndex, setScrubIndex] = useState<number | null>(null);
+  const scrubIndexRef = useRef<number | null>(null);
+  const scrubbing = useRef(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressStart = useRef<{ x: number; y: number; index: number } | null>(
+    null
+  );
+  const lastHapticIdx = useRef<number | null>(null);
+  const suppressClick = useRef(false);
 
   const activeIndex = resolveActiveIndex(
     optimisticTab,
+    scrubIndex,
     tabNav?.activeTab,
     pathname
   );
@@ -99,7 +114,10 @@ export const BottomNav = memo(function BottomNav() {
         optimisticTab === href ||
         tabNav?.activeTab === href ||
         isNavActive(pathname, href);
-      if (alreadyActive) return;
+      if (alreadyActive) {
+        tabNav?.navigateMainTab(href);
+        return;
+      }
 
       setOptimisticTab(href);
       setBounceIndex(index);
@@ -124,25 +142,128 @@ export const BottomNav = memo(function BottomNav() {
     [pathname, router, tabNav, optimisticTab]
   );
 
+  const clearLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  const endScrub = useCallback(
+    (commit: boolean) => {
+      clearLongPress();
+      const idx = scrubIndexRef.current;
+      scrubbing.current = false;
+      scrubIndexRef.current = null;
+      setScrubIndex(null);
+      pressStart.current = null;
+      lastHapticIdx.current = null;
+      if (commit && idx != null) {
+        suppressClick.current = true;
+        navigate(ITEMS[idx].href, idx);
+        window.setTimeout(() => {
+          suppressClick.current = false;
+        }, 80);
+      }
+    },
+    [clearLongPress, navigate]
+  );
+
+  const onTabPointerDown = useCallback(
+    (e: ReactPointerEvent, index: number) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pressStart.current = { x: e.clientX, y: e.clientY, index };
+      clearLongPress();
+      longPressTimer.current = setTimeout(() => {
+        scrubbing.current = true;
+        scrubIndexRef.current = index;
+        setScrubIndex(index);
+        lastHapticIdx.current = index;
+        hapticTap();
+        try {
+          barRef.current?.setPointerCapture?.(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+      }, LONG_PRESS_MS);
+    },
+    [clearLongPress]
+  );
+
+  const onTabPointerMove = useCallback(
+    (e: ReactPointerEvent) => {
+      const start = pressStart.current;
+      if (!start) return;
+
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+
+      // Cancel long-press if finger moves too early (normal tap/scroll)
+      if (!scrubbing.current) {
+        if (Math.abs(dx) > 12 || Math.abs(dy) > 12) {
+          clearLongPress();
+        }
+        return;
+      }
+
+      const width = barRef.current?.clientWidth ?? 1;
+      const tabW = width / TAB_COUNT;
+      const next = scrubIndexFromDelta(start.index, dx, tabW, TAB_COUNT);
+      scrubIndexRef.current = next;
+      setScrubIndex(next);
+      if (lastHapticIdx.current !== next) {
+        lastHapticIdx.current = next;
+        hapticTap();
+        warmIntent(ITEMS[next].href);
+      }
+    },
+    [clearLongPress, warmIntent]
+  );
+
+  const onTabPointerUp = useCallback(() => {
+    if (scrubbing.current) {
+      endScrub(true);
+      return;
+    }
+    clearLongPress();
+    pressStart.current = null;
+  }, [clearLongPress, endScrub]);
+
   if (shouldHideBottomNav(pathname)) return null;
+
+  const reduced = prefersReducedMotion();
 
   return (
     <nav
-      className="bottom-nav-v2-root fixed bottom-0 left-0 right-0 z-50 lg:hidden pointer-events-none"
+      className="bottom-nav-v3-root fixed bottom-0 left-0 right-0 z-50 lg:hidden pointer-events-none"
       aria-label="Hauptnavigation"
     >
-      <div className="pointer-events-auto mx-auto w-full max-w-[430px] px-3 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
-        <div className="bottom-nav-v2 relative flex items-stretch overflow-hidden rounded-[1.35rem]">
-          {/* Sliding active indicator — transform only */}
+      <div className="pointer-events-auto mx-auto w-full max-w-[430px] px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div
+          ref={barRef}
+          className={cn(
+            "bottom-nav-v3 relative flex items-center",
+            scrubIndex != null && "bottom-nav-v3--scrubbing"
+          )}
+          onPointerMove={onTabPointerMove}
+          onPointerUp={onTabPointerUp}
+          onPointerCancel={() => endScrub(false)}
+        >
+          {/* Organic sliding capsule indicator */}
           <div
-            className="bottom-nav-v2-pill absolute inset-y-1.5 left-0 z-0 pointer-events-none"
+            className="bottom-nav-v3-indicator absolute top-1/2 z-0 pointer-events-none"
             style={{
               width: `${100 / TAB_COUNT}%`,
-              transform: `translate3d(${activeIndex * 100}%, 0, 0)`,
+              transform: `translate3d(${activeIndex * 100}%, -50%, 0)`,
+              transition: reduced
+                ? "none"
+                : scrubIndex != null
+                  ? "transform 80ms linear"
+                  : "transform 240ms cubic-bezier(0.32, 0.72, 0, 1)",
             }}
             aria-hidden
           >
-            <div className="bottom-nav-v2-pill-inner mx-1 h-full rounded-[1.05rem]" />
+            <div className="bottom-nav-v3-indicator-inner" />
           </div>
 
           {ITEMS.map(({ href, label, icon: Icon }, index) => {
@@ -155,13 +276,16 @@ export const BottomNav = memo(function BottomNav() {
                 onPointerEnter={() => warmIntent(href)}
                 onFocus={() => warmIntent(href)}
                 onTouchStart={() => warmIntent(href)}
-                onClick={() => navigate(href, index)}
+                onPointerDown={(e) => onTabPointerDown(e, index)}
+                onClick={() => {
+                  if (suppressClick.current || scrubbing.current) return;
+                  navigate(href, index);
+                }}
                 className={cn(
-                  "bottom-nav-v2-tab relative z-10 flex flex-1 flex-col items-center justify-center gap-1",
-                  "min-h-[58px] min-w-0 px-0.5 py-2.5 touch-manipulation select-none",
-                  "active:scale-[0.96] transition-transform duration-100 ease-out transform-gpu",
+                  "bottom-nav-v3-tab relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5",
+                  "min-h-[56px] min-w-[44px] px-1 py-2 touch-manipulation select-none",
                   active
-                    ? "bottom-nav-v2-tab--active text-accent"
+                    ? "bottom-nav-v3-tab--active text-accent"
                     : "text-zinc-500"
                 )}
                 aria-current={active ? "page" : undefined}
@@ -169,23 +293,21 @@ export const BottomNav = memo(function BottomNav() {
               >
                 <span
                   className={cn(
-                    "bottom-nav-v2-icon inline-flex items-center justify-center transform-gpu",
-                    active && "bottom-nav-v2-icon--active",
-                    bouncing && "bottom-nav-v2-icon--bounce"
+                    "bottom-nav-v3-icon inline-flex items-center justify-center transform-gpu",
+                    active && "bottom-nav-v3-icon--active",
+                    bouncing && "bottom-nav-v3-icon--bounce"
                   )}
                 >
                   <Icon
-                    className={cn("h-[26px] w-[26px]", active && "stroke-[2.4]")}
-                    strokeWidth={active ? 2.4 : 1.9}
+                    className="h-[22px] w-[22px]"
+                    strokeWidth={active ? 2.35 : 1.85}
                     aria-hidden
                   />
                 </span>
                 <span
                   className={cn(
-                    "bottom-nav-v2-label truncate max-w-[4.75rem] text-center leading-tight",
-                    active
-                      ? "text-[11px] font-semibold opacity-100"
-                      : "text-[10px] font-medium opacity-70"
+                    "bottom-nav-v3-label truncate max-w-[4.6rem] text-center leading-none",
+                    active ? "opacity-100 font-semibold" : "opacity-55 font-medium"
                   )}
                 >
                   {label}

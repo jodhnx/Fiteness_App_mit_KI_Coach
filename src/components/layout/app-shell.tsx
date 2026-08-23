@@ -17,6 +17,7 @@ import { PhoneSensorWarmup } from "@/components/health/phone-sensor-warmup";
 import { MealReminderWarmup } from "@/components/nutrition/meal-reminder-warmup";
 import { FeatureTour } from "@/components/guide/feature-tour";
 import { PersistentTabProvider, TabKeepAliveOutlet } from "@/components/layout/persistent-tab-provider";
+import { TabSwipeLayer } from "@/components/layout/tab-swipe-layer";
 import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div
               className={cn(
                 "mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col",
-                !immersive && "pb-[calc(5.85rem+env(safe-area-inset-bottom))]"
+                !immersive && "pb-[calc(5.75rem+env(safe-area-inset-bottom))]"
               )}
             >
               {!immersive && (
@@ -63,7 +64,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <GuestUpgradeBanner />
-                <TabKeepAliveOutlet>{children}</TabKeepAliveOutlet>
+                <TabSwipeLayer>
+                  <TabKeepAliveOutlet>{children}</TabKeepAliveOutlet>
+                </TabSwipeLayer>
               </main>
             </div>
             <AppErrorBoundary label="nav">

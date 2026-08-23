@@ -66,7 +66,7 @@ function Ring({
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-500"
+          className="transition-[stroke-dashoffset] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
