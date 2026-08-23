@@ -7,6 +7,7 @@ import {
   HOME_DATA_EVENT,
   NUTRITION_DASHBOARD_EVENT,
   NUTRITION_DASHBOARD_CACHE_KEY,
+  PROFILE_CACHE_KEY,
 } from "@/lib/nutrition-sync";
 import {
   createEmptyHomeData,
@@ -20,7 +21,8 @@ import {
   createEmptyNutritionDashboard,
   isValidDashboardPayload,
 } from "@/lib/nutrition-defaults";
-import { isNutritionDashboardToday } from "@/lib/nutrition-day";
+import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
+import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 
 function mergeHomeWithNutrition(
   home: HomeDataPayload,
@@ -39,18 +41,29 @@ function mergeHomeWithNutrition(
 
 function resolveBootHome(): HomeDataPayload {
   const cached = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
-  const nutrition = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
-    allowStale: true,
-  });
+  const nutritionRaw =
+    getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
+      allowStale: true,
+    }) ??
+    (cached?.nutrition && isValidDashboardPayload(cached.nutrition)
+      ? cached.nutrition
+      : null);
+  const nutrition = resolveNutritionDashboardForBoot(nutritionRaw);
+  const profile = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, { allowStale: true });
+
   const base = normalizeHomeData(cached ?? createEmptyHomeData());
-  if (
-    nutrition &&
-    isValidDashboardPayload(nutrition) &&
-    isNutritionDashboardToday(nutrition.date)
-  ) {
-    return mergeHomeWithNutrition(base, nutrition);
+  const withIdentity = normalizeHomeData({
+    ...base,
+    userName: base.userName ?? profile?.user?.name ?? null,
+    userImage: base.userImage ?? profile?.user?.image ?? null,
+    weightKg: base.weightKg ?? profile?.profile?.weightKg ?? null,
+    nutritionStreak: base.nutritionStreak ?? null,
+  });
+
+  if (nutrition) {
+    return mergeHomeWithNutrition(withIdentity, nutrition);
   }
-  return base;
+  return withIdentity;
 }
 
 /**

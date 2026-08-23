@@ -14,6 +14,7 @@ import {
   recordFoodRecent,
   loadNutritionDashboard,
 } from "@/lib/nutrition-service";
+import { updateNutritionStreak, effectiveNutritionStreakDays } from "@/lib/nutrition-streak";
 
 const schema = z.object({
   recipeId: z.string().min(1),
@@ -72,8 +73,18 @@ export async function POST(req: NextRequest) {
     });
     await recordFoodRecent(session.user.id, food.id);
 
+    const streakRow = await updateNutritionStreak(session.user.id, date);
+
     const dashboard = await loadNutritionDashboard(session.user.id, date);
-    return jsonOk({ ok: true, dashboard, recipeName: recipe.name }, 201);
+    return jsonOk(
+      {
+        ok: true,
+        dashboard,
+        recipeName: recipe.name,
+        nutritionStreak: effectiveNutritionStreakDays(streakRow),
+      },
+      201
+    );
   } catch (e) {
     return handleApiError(e);
   }

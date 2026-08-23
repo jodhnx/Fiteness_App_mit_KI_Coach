@@ -22,6 +22,7 @@ export type HomeDataPayload = {
   weightKg: number | null;
   streak: { currentDays: number; longestDays?: number } | null;
   trainingStreak: { currentDays: number; longestDays?: number } | null;
+  nutritionStreak: { currentDays: number; longestDays?: number } | null;
   activeSession: { id: string } | null;
   coach: HomeCoach;
   activityWeek: {
@@ -147,6 +148,7 @@ export function createEmptyHomeData(): HomeDataPayload {
     weightKg: null,
     streak: null,
     trainingStreak: null,
+    nutritionStreak: null,
     activeSession: null,
     coach: {
       summary: "Starte mit Ernährung oder Training – dann gibt es personalisierte Tipps.",
@@ -209,6 +211,14 @@ export function normalizeHomeData(raw: unknown): HomeDataPayload {
       ? { currentDays: num((d.trainingStreak as { currentDays?: number }).currentDays, 0) }
       : streak;
 
+  const nutritionStreak =
+    d.nutritionStreak && typeof d.nutritionStreak === "object"
+      ? {
+          currentDays: num((d.nutritionStreak as { currentDays?: number }).currentDays, 0),
+          longestDays: num((d.nutritionStreak as { longestDays?: number }).longestDays, 0),
+        }
+      : null;
+
   const nextWorkout =
     d.nextWorkout && typeof d.nextWorkout === "object"
       ? (d.nextWorkout as HomeDataPayload["nextWorkout"])
@@ -231,6 +241,7 @@ export function normalizeHomeData(raw: unknown): HomeDataPayload {
       d.weightKg != null && Number.isFinite(Number(d.weightKg)) ? Number(d.weightKg) : null,
     streak,
     trainingStreak,
+    nutritionStreak,
     activeSession,
     coach,
     activityWeek,

@@ -51,6 +51,7 @@ model User {
   recipeCatalogFavorites RecipeCatalogFavorite[]
   sessions              Session[]
   trainingStreak        TrainingStreak?
+  nutritionStreak       NutritionStreak?
   userAchievements      UserAchievement[]
   userChallenges        UserChallenge[]
   waterLogs             WaterLog[]
@@ -330,6 +331,15 @@ model TrainingStreak {
   currentDays   Int       @default(0)
   longestDays   Int       @default(0)
   lastWorkoutAt DateTime?
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NutritionStreak {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  currentDays   Int       @default(0)
+  longestDays   Int       @default(0)
+  lastTrackedAt DateTime?
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

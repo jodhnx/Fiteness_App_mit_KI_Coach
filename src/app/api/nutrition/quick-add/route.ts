@@ -10,6 +10,7 @@ import {
 } from "@/lib/nutrition-service";
 import { startOfDay } from "date-fns";
 import { importOffProductByCode } from "@/lib/food/food-database-service";
+import { updateNutritionStreak, loadNutritionStreak } from "@/lib/nutrition-streak";
 
 async function resolveFoodItemId(
   foodItemId: string | undefined,
@@ -66,6 +67,8 @@ export async function POST(req: NextRequest) {
     });
     await recordFoodRecent(session.user.id, food.id);
 
+    await updateNutritionStreak(session.user.id, date);
+
     const dashboard = await loadNutritionDashboard(session.user.id, date);
     const { awardXPForAction } = await import("@/lib/gamification");
     const c = dashboard.consumed.calories;
@@ -76,7 +79,11 @@ export async function POST(req: NextRequest) {
     if (dashboard.consumed.proteinG >= dashboard.targets.proteinG * 0.95) {
       await awardXPForAction(session.user.id, "PROTEIN_GOAL");
     }
-    return jsonOk({ ok: true, dashboard }, 201);
+    const streak = await loadNutritionStreak(session.user.id);
+    return jsonOk(
+      { ok: true, dashboard, nutritionStreak: streak.effectiveDays },
+      201
+    );
   } catch (e) {
     return handleApiError(e);
   }

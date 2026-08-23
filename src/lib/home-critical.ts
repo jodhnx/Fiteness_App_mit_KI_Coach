@@ -12,6 +12,7 @@ import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
 import { computeWeightGoalProgress } from "@/lib/smart-goals";
 import { buildHomeCoachFromNutrition } from "@/lib/nutrition-coach";
+import { loadNutritionStreak } from "@/lib/nutrition-streak";
 import { sessionDurationSec, setVolume } from "@/lib/workout-metrics";
 
 /**
@@ -29,6 +30,7 @@ export async function loadHomeCriticalData(userId: string): Promise<HomeDataPayl
       user,
       profile,
       trainingStreakRow,
+      nutritionStreakRow,
       lastSession,
       weightStart,
     ] = await Promise.all([
@@ -54,6 +56,12 @@ export async function loadHomeCriticalData(userId: string): Promise<HomeDataPayl
       prisma.trainingStreak
         .findUnique({ where: { userId }, select: { currentDays: true } })
         .catch(() => null),
+      loadNutritionStreak(userId).catch(() => ({
+        currentDays: 0,
+        longestDays: 0,
+        lastTrackedAt: null,
+        effectiveDays: 0,
+      })),
       prisma.workoutSession
         .findFirst({
           where: { userId, status: "COMPLETED" },
@@ -91,6 +99,10 @@ export async function loadHomeCriticalData(userId: string): Promise<HomeDataPayl
         trainingStreakRow != null
           ? { currentDays: trainingStreakRow.currentDays }
           : training?.trainingStreak ?? training?.streak ?? null,
+      nutritionStreak: {
+        currentDays: nutritionStreakRow.effectiveDays,
+        longestDays: nutritionStreakRow.longestDays,
+      },
       activeSession: training?.activeSession ?? null,
       nextWorkout: training?.nextWorkout ?? null,
       coach: buildHomeCoachFromNutrition(nutrition),

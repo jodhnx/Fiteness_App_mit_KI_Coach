@@ -68,6 +68,7 @@ export default function HomePage() {
   }, [data.activeSession?.id]);
 
   const activeSessionId = workoutCleared ? null : data.activeSession?.id ?? null;
+  const nutritionStreakDays = data.nutritionStreak?.currentDays ?? 0;
   const trainingStreakDays =
     data.trainingStreak?.currentDays ?? data.streak?.currentDays ?? 0;
 
@@ -144,7 +145,7 @@ export default function HomePage() {
 
   return (
     <PageShell>
-      <HomeGreeting name={displayName} streakDays={trainingStreakDays} />
+      <HomeGreeting name={displayName} streakDays={nutritionStreakDays} />
       <PageIntro pageId="home" />
       <HomePhoneStepsHint />
 

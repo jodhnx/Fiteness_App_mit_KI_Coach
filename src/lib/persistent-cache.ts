@@ -4,6 +4,7 @@ export const PERSISTENT_CACHE_KEYS = [
   "home-data",
   "progress-main",
   "nutrition-dashboard",
+  "profile-data",
 ] as const;
 
 /**

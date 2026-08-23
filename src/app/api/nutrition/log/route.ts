@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { getOrCreateMeal, loadNutritionDashboard, recordFoodRecent } from "@/lib/nutrition-service";
+import { updateNutritionStreak } from "@/lib/nutrition-streak";
 import { startOfDay } from "date-fns";
 import type { MealType } from "@prisma/client";
 
@@ -80,8 +81,15 @@ export async function POST(req: NextRequest) {
 
     await recordFoodRecent(session.user.id, foodItem.id).catch(() => undefined);
 
+    await updateNutritionStreak(session.user.id, date);
+
     const dashboard = await loadNutritionDashboard(session.user.id, date);
-    return jsonOk({ ok: true, dashboard }, 201);
+    const { loadNutritionStreak } = await import("@/lib/nutrition-streak");
+    const streak = await loadNutritionStreak(session.user.id);
+    return jsonOk(
+      { ok: true, dashboard, nutritionStreak: streak.effectiveDays },
+      201
+    );
   } catch (e) {
     return handleApiError(e);
   }

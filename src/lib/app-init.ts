@@ -19,7 +19,9 @@ import {
   type NutritionDashboardPayload,
 } from "@/lib/nutrition-defaults";
 import { isNutritionDashboardToday } from "@/lib/nutrition-day";
+import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
 import { normalizeHomeData, type HomeDataPayload } from "@/lib/home-defaults";
+import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 import { bootPerfMark, bootPerfReset } from "@/lib/app-init-perf";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
@@ -64,19 +66,35 @@ function isNutritionBootReady(
 
 export function readBootPayloadFromCache(): BootstrapPayload | null {
   const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
-  const nutrition = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
-    allowStale: true,
-  });
+  const nutritionRaw =
+    getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
+      allowStale: true,
+    }) ??
+    (home?.nutrition && isValidDashboardPayload(home.nutrition)
+      ? home.nutrition
+      : null);
+  const nutrition = resolveNutritionDashboardForBoot(nutritionRaw);
   const profile = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, { allowStale: true });
   const progress = getCached(PROGRESS_CACHE_KEY, { allowStale: true });
 
-  // Soft-stale nutrition (z. B. gestern) erlaubt sofortiges Home — Bootstrap refreshed im Hintergrund
-  if (!isHomeBootReady(home) || !isNutritionBootReady(nutrition, { allowStaleDate: true })) {
+  if (!isHomeBootReady(home) || !nutrition || !isNutritionBootReady(nutrition, { allowStaleDate: true })) {
     return null;
   }
 
+  const mergedHome = normalizeHomeData({
+    ...home,
+    ...nutritionDashboardToHomeMacros(nutrition),
+    nutrition,
+    userName: home.userName ?? profile?.user?.name ?? null,
+    userImage: home.userImage ?? profile?.user?.image ?? null,
+    weightKg:
+      home.weightKg ??
+      profile?.profile?.weightKg ??
+      null,
+  });
+
   return {
-    home: normalizeHomeData(home),
+    home: mergedHome,
     nutrition: normalizeNutritionDashboard(nutrition),
     profile: profile ?? null,
     progress: progress ?? null,
@@ -89,9 +107,13 @@ export function isAppBootReady(): boolean {
 
 function applyBootstrapPayload(payload: BootstrapPayload) {
   bootPerfMark("home_apply_start");
-  const home = normalizeHomeData(payload.home);
-  // 12h hard TTL + 24h soft grace on disk → overnight reopen stays warm
-  setCached(HOME_DATA_CACHE_KEY, home, 12 * 60 * 60_000);
+  const home = normalizeHomeData({
+    ...payload.home,
+    ...nutritionDashboardToHomeMacros(payload.nutrition),
+    nutrition: payload.nutrition,
+  });
+  // 7d hard TTL on disk — overnight reopen stays instant
+  setCached(HOME_DATA_CACHE_KEY, home, 7 * 24 * 60 * 60_000);
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: home }));
@@ -102,7 +124,7 @@ function applyBootstrapPayload(payload: BootstrapPayload) {
   publishNutritionDashboard(normalizeNutritionDashboard(payload.nutrition));
 
   if (payload.profile?.user || payload.profile?.profile) {
-    setCached(PROFILE_CACHE_KEY, payload.profile, 12 * 60 * 60_000);
+    setCached(PROFILE_CACHE_KEY, payload.profile, 7 * 24 * 60 * 60_000);
     bootPerfMark("profile_apply_end");
   }
 

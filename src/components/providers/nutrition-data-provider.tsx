@@ -23,6 +23,7 @@ import { isNutritionDashboardToday } from "@/lib/nutrition-day";
 import { getCached } from "@/lib/client-cache";
 import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
 import { nutritionDayKey } from "@/lib/nutrition-day";
+import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
 
 export type NutritionContextValue = {
   dashboard: NutritionDashboardPayload;
@@ -36,21 +37,26 @@ export const NutritionDataContext = createContext<NutritionContextValue | null>(
 function resolveInitialDashboard(
   initialDashboard: NutritionDashboardPayload | null
 ): NutritionDashboardPayload {
-  ensureNutritionCacheIsToday();
-  const cached = getCached<NutritionDashboardPayload>(
-    NUTRITION_DASHBOARD_CACHE_KEY
-  );
-  const cacheValid =
-    cached &&
-    isValidDashboardPayload(cached) &&
-    isNutritionDashboardToday(cached.date);
+  const rolledFromDisk = ensureNutritionCacheIsToday();
+  if (rolledFromDisk) return normalizeNutritionDashboard(rolledFromDisk);
+
+  const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
+    allowStale: true,
+  });
+  const fromCache = resolveNutritionDashboardForBoot(cached);
+  if (fromCache) return normalizeNutritionDashboard(fromCache);
+
   const serverValid =
     initialDashboard &&
     isValidDashboardPayload(initialDashboard) &&
     isNutritionDashboardToday(initialDashboard.date);
-
   if (serverValid) return normalizeNutritionDashboard(initialDashboard);
-  if (cacheValid) return normalizeNutritionDashboard(cached);
+
+  const fromServerRollover = initialDashboard
+    ? resolveNutritionDashboardForBoot(initialDashboard)
+    : null;
+  if (fromServerRollover) return normalizeNutritionDashboard(fromServerRollover);
+
   return normalizeNutritionDashboard({
     ...createEmptyNutritionDashboard(),
     date: nutritionDayKey(),
@@ -69,24 +75,11 @@ export function NutritionDataProvider({
   );
 
   useEffect(() => {
-    if (!initialDashboard) return;
     const resolved = resolveInitialDashboard(initialDashboard);
-    const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
-    const cacheValid =
-      cached &&
-      isValidDashboardPayload(cached) &&
-      isNutritionDashboardToday(cached.date);
-
-    if (
-      cacheValid &&
-      cached.consumed.calories === resolved.consumed.calories &&
-      cached.targets.calories === resolved.targets.calories
-    ) {
-      return;
-    }
-
-    publishNutritionDashboard(resolved);
     setDashboard(resolved);
+    if (isNutritionDashboardToday(resolved.date)) {
+      publishNutritionDashboard(resolved);
+    }
   }, [initialDashboard]);
 
   useEffect(() => {

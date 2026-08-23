@@ -19,6 +19,7 @@ import {
   HOME_WORKOUT_CACHE,
 } from "@/lib/home-section-cache";
 import { nutritionDayKey, isNutritionDashboardToday } from "@/lib/nutrition-day";
+import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { buildHomeCoachFromNutrition } from "@/lib/nutrition-coach";
 
@@ -48,14 +49,34 @@ export function invalidateAllNutritionCaches() {
   invalidateCache(PROGRESS_CACHE_KEY);
 }
 
-/** Drop stale dashboard when calendar day changed (midnight rollover). */
+/** Day rollover: keep targets, reset today's intake — never wipe disk cache. */
 export function ensureNutritionCacheIsToday(): NutritionDashboardPayload | null {
-  const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
-  if (cached && !isNutritionDashboardToday(cached.date)) {
-    invalidateAllNutritionCaches();
-    return null;
+  const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
+    allowStale: true,
+  });
+  if (!cached || !isValidDashboardPayload(cached)) return null;
+  if (isNutritionDashboardToday(cached.date)) {
+    return normalizeNutritionDashboard(cached);
   }
-  return cached && isValidDashboardPayload(cached) ? cached : null;
+
+  const rolled = resolveNutritionDashboardForBoot(cached);
+  if (!rolled) return null;
+
+  setCached(NUTRITION_DASHBOARD_CACHE_KEY, rolled, 7 * 24 * 60 * 60_000);
+  const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
+  if (prevHome) {
+    const macroSlice = nutritionDashboardToHomeMacros(rolled);
+    setCached(
+      HOME_DATA_CACHE_KEY,
+      {
+        ...prevHome,
+        ...macroSlice,
+        nutrition: rolled,
+      },
+      7 * 24 * 60 * 60_000
+    );
+  }
+  return rolled;
 }
 
 function patchProgressNutritionToday(nutrition: NutritionDashboardPayload) {
@@ -103,7 +124,7 @@ export function publishNutritionDashboard(dashboard: NutritionDashboardPayload) 
   }
 
   const summary: NutritionSummaryPayload = { nutrition };
-  const ttl = 12 * 60 * 60_000;
+  const ttl = 7 * 24 * 60 * 60_000;
 
   setCached(NUTRITION_DASHBOARD_CACHE_KEY, nutrition, ttl);
   setCached(NUTRITION_SUMMARY_CACHE_KEY, summary, ttl);
@@ -401,6 +422,22 @@ export function optimisticRemoveMeal(
   };
 }
 
+/** Patch persisted home streak after a meal is logged (once per day server-side). */
+export function patchHomeNutritionStreak(days: number) {
+  if (typeof window === "undefined") return;
+  const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
+  if (!prevHome) return;
+  const next: HomeDataPayload = {
+    ...prevHome,
+    nutritionStreak: {
+      currentDays: days,
+      longestDays: Math.max(prevHome.nutritionStreak?.longestDays ?? 0, days),
+    },
+  };
+  setCached(HOME_DATA_CACHE_KEY, next, 7 * 24 * 60 * 60_000);
+  window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: next }));
+}
+
 /** After quick-add / delete — instant sync without refetch */
 export async function applyNutritionMutationResponse(
   res: Response
@@ -409,6 +446,9 @@ export async function applyNutritionMutationResponse(
     const body = await res.json();
     if (body?.dashboard && isValidDashboardPayload(body.dashboard)) {
       publishNutritionDashboard(body.dashboard);
+      if (typeof body.nutritionStreak === "number") {
+        patchHomeNutritionStreak(body.nutritionStreak);
+      }
       return body.dashboard;
     }
   } catch {
