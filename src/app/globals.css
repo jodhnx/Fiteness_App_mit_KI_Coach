@@ -808,3 +808,135 @@ body[data-profilePanel="open"] nav[aria-label="Hauptnavigation"] {
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
+
+/* ─── Bottom Navigation V2 — New Gen ─── */
+.bottom-nav-v2 {
+  background: rgba(12, 14, 18, 0.82);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 32px -10px rgba(0, 0, 0, 0.55),
+    0 0 0 0.5px rgba(255, 255, 255, 0.04) inset,
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.bottom-nav-v2-pill {
+  transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.bottom-nav-v2-pill-inner {
+  background: color-mix(in srgb, var(--accent) 18%, rgba(255, 255, 255, 0.06));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow:
+    0 0 20px -6px color-mix(in srgb, var(--accent) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.bottom-nav-v2-tab {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav-v2-tab:not(.bottom-nav-v2-tab--active) {
+  color: rgb(113 113 122);
+}
+
+.bottom-nav-v2-label {
+  transition:
+    opacity 180ms ease,
+    font-weight 180ms ease,
+    transform 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.bottom-nav-v2-tab--active .bottom-nav-v2-label {
+  transform: translateY(0);
+  letter-spacing: 0.01em;
+}
+
+.bottom-nav-v2-tab:not(.bottom-nav-v2-tab--active) .bottom-nav-v2-label {
+  transform: translateY(1px);
+}
+
+.bottom-nav-v2-icon {
+  transition: transform 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.bottom-nav-v2-icon--active {
+  transform: scale(1.08) translateY(-1px);
+}
+
+@keyframes bottom-nav-icon-bounce {
+  0% {
+    transform: scale(1) translateY(0);
+  }
+  40% {
+    transform: scale(1.14) translateY(-2px);
+  }
+  100% {
+    transform: scale(1.08) translateY(-1px);
+  }
+}
+
+.bottom-nav-v2-icon--bounce {
+  animation: bottom-nav-icon-bounce 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+html[data-color-mode="light"] .bottom-nav-v2,
+html.light .bottom-nav-v2 {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 8px 28px -12px rgba(0, 0, 0, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+html[data-color-mode="light"] .bottom-nav-v2-pill-inner,
+html.light .bottom-nav-v2-pill-inner {
+  background: color-mix(in srgb, var(--accent) 14%, rgba(0, 0, 0, 0.03));
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  box-shadow:
+    0 0 16px -8px color-mix(in srgb, var(--accent) 35%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+html[data-color-mode="light"] .bottom-nav-v2-tab:not(.bottom-nav-v2-tab--active),
+html.light .bottom-nav-v2-tab:not(.bottom-nav-v2-tab--active) {
+  color: rgb(113 113 122);
+}
+
+/* Subtle tab content enter — never blocks navigation */
+@keyframes tab-panel-enter {
+  from {
+    opacity: 0.92;
+    transform: translate3d(0, 4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.tab-panel-enter {
+  animation: tab-panel-enter 180ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav-v2-pill {
+    transition: none;
+  }
+  .bottom-nav-v2-icon,
+  .bottom-nav-v2-label {
+    transition: none;
+  }
+  .bottom-nav-v2-icon--active {
+    transform: none;
+  }
+  .bottom-nav-v2-icon--bounce {
+    animation: none;
+  }
+  .tab-panel-enter {
+    animation: none;
+  }
+}
+
