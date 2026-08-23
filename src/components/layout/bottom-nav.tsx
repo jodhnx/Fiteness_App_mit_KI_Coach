@@ -77,11 +77,11 @@ export const BottomNav = memo(function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const tabNav = useMainTabNav();
-  const barRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   const [optimisticTab, setOptimisticTab] = useState<MainTab | null>(null);
   const [bounceIndex, setBounceIndex] = useState<number | null>(null);
-  /** Fractional 0…TAB_COUNT-1 — drives circle position */
+  /** Fractional 0…TAB_COUNT-1 — drives floating circle */
   const [indicatorPos, setIndicatorPos] = useState<number | null>(null);
   const [scrubbingUi, setScrubbingUi] = useState(false);
 
@@ -105,10 +105,12 @@ export const BottomNav = memo(function BottomNav() {
   const displayIndex =
     indicatorPos != null ? snapScrubIndex(indicatorPos, TAB_COUNT) : routeIndex;
 
-  const circleLeftPct =
+  const floatFrac =
     indicatorPos != null
-      ? tabCenterFraction(indicatorPos, TAB_COUNT) * 100
-      : tabCenterFraction(routeIndex, TAB_COUNT) * 100;
+      ? tabCenterFraction(indicatorPos, TAB_COUNT)
+      : tabCenterFraction(routeIndex, TAB_COUNT);
+
+  const ActiveIcon = ITEMS[displayIndex].icon;
 
   useEffect(() => {
     if (!optimisticTab) return;
@@ -126,7 +128,7 @@ export const BottomNav = memo(function BottomNav() {
 
   useEffect(() => {
     if (bounceIndex == null) return;
-    const id = window.setTimeout(() => setBounceIndex(null), 240);
+    const id = window.setTimeout(() => setBounceIndex(null), 260);
     return () => window.clearTimeout(id);
   }, [bounceIndex]);
 
@@ -193,7 +195,7 @@ export const BottomNav = memo(function BottomNav() {
 
   const releaseCapture = useCallback((id: number) => {
     try {
-      barRef.current?.releasePointerCapture(id);
+      stageRef.current?.releasePointerCapture(id);
     } catch {
       /* ignore */
     }
@@ -209,7 +211,7 @@ export const BottomNav = memo(function BottomNav() {
     hapticTap();
   }, []);
 
-  const onBarPointerDown = useCallback(
+  const onStagePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
       const tabEl = target.closest<HTMLElement>("[data-nav-tab]");
@@ -218,6 +220,7 @@ export const BottomNav = memo(function BottomNav() {
       const index = Number(tabEl.dataset.navTab);
       if (!Number.isFinite(index) || index < 0 || index >= TAB_COUNT) return;
 
+      suppressClick.current = false;
       pointerId.current = e.pointerId;
       startX.current = e.clientX;
       startY.current = e.clientY;
@@ -226,7 +229,7 @@ export const BottomNav = memo(function BottomNav() {
       phase.current = "pending";
 
       try {
-        barRef.current?.setPointerCapture(e.pointerId);
+        stageRef.current?.setPointerCapture(e.pointerId);
       } catch {
         /* ignore */
       }
@@ -240,7 +243,7 @@ export const BottomNav = memo(function BottomNav() {
     [clearLongPress, enterScrub]
   );
 
-  const onBarPointerMove = useCallback(
+  const onStagePointerMove = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if (pointerId.current !== e.pointerId) return;
 
@@ -264,7 +267,7 @@ export const BottomNav = memo(function BottomNav() {
 
       e.preventDefault();
 
-      const width = barRef.current?.clientWidth ?? 1;
+      const width = stageRef.current?.clientWidth ?? 1;
       const tabW = width / TAB_COUNT;
       const pos = scrubPositionFromDelta(startIndex.current, dx, tabW, TAB_COUNT);
       fractionalPos.current = pos;
@@ -280,7 +283,7 @@ export const BottomNav = memo(function BottomNav() {
     [releaseCapture, resetDrag, warmIntent]
   );
 
-  const onBarPointerUp = useCallback(
+  const onStagePointerUp = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if (pointerId.current !== e.pointerId) return;
 
@@ -299,9 +302,6 @@ export const BottomNav = memo(function BottomNav() {
         phase.current = "idle";
         hapticSelect();
         navigate(ITEMS[idx].href, idx);
-        window.setTimeout(() => {
-          suppressClick.current = false;
-        }, 120);
         return;
       }
 
@@ -309,15 +309,12 @@ export const BottomNav = memo(function BottomNav() {
 
       if (moved > NAV_DRAG.preLockSlopPx) {
         suppressClick.current = true;
-        window.setTimeout(() => {
-          suppressClick.current = false;
-        }, 80);
       }
     },
     [clearLongPress, navigate, releaseCapture]
   );
 
-  const onBarPointerCancel = useCallback(
+  const onStagePointerCancel = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if (pointerId.current !== e.pointerId) return;
       releaseCapture(e.pointerId);
@@ -328,7 +325,10 @@ export const BottomNav = memo(function BottomNav() {
 
   const onTabClick = useCallback(
     (href: MainTab, index: number) => {
-      if (suppressClick.current || phase.current === "scrub") return;
+      if (suppressClick.current || phase.current === "scrub") {
+        suppressClick.current = false;
+        return;
+      }
       navigate(href, index);
     },
     [navigate]
@@ -341,84 +341,101 @@ export const BottomNav = memo(function BottomNav() {
 
   return (
     <nav
-      className="bottom-nav-v3-root fixed bottom-0 left-0 right-0 z-50 lg:hidden pointer-events-none"
+      className="bottom-nav-v4-root fixed bottom-0 left-0 right-0 z-50 lg:hidden pointer-events-none"
       aria-label="Hauptnavigation"
       data-no-tab-swipe
     >
-      <div className="pointer-events-auto mx-auto w-full max-w-[430px] px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="pointer-events-auto mx-auto w-full max-w-[430px] px-3 pb-[max(0.45rem,env(safe-area-inset-bottom))]">
+        {/* Stage: overflow visible so floating circle is never clipped */}
         <div
-          ref={barRef}
+          ref={stageRef}
           className={cn(
-            "bottom-nav-v3 relative flex items-stretch",
-            isScrubbing && "bottom-nav-v3--scrubbing"
+            "bottom-nav-v4-stage",
+            isScrubbing && "bottom-nav-v4-stage--scrubbing"
           )}
           style={{ touchAction: "manipulation" }}
-          onPointerDown={onBarPointerDown}
-          onPointerMove={onBarPointerMove}
-          onPointerUp={onBarPointerUp}
-          onPointerCancel={onBarPointerCancel}
+          onPointerDown={onStagePointerDown}
+          onPointerMove={onStagePointerMove}
+          onPointerUp={onStagePointerUp}
+          onPointerCancel={onStagePointerCancel}
         >
-          {/* Circle centered on icon: bar padding + tab py + half icon-wrap */}
+          {/* Layer 1 — organic bar background */}
+          <div className="bottom-nav-v4-bar" aria-hidden />
+
+          {/* Layer 2 — floating active indicator (above bar, ~45% over top edge) */}
           <div
-            className="bottom-nav-v3-circle pointer-events-none"
+            className={cn(
+              "bottom-nav-v4-float",
+              isScrubbing && "bottom-nav-v4-float--scrubbing",
+              bounceIndex === displayIndex && "bottom-nav-v4-float--bounce"
+            )}
             style={{
-              left: `${circleLeftPct}%`,
-              top: "calc(0.2rem + 0.5rem + 0.6875rem)",
-              transform: "translateX(-50%)",
+              left: `${floatFrac * 100}%`,
               transition: reduced
                 ? "none"
                 : isScrubbing
-                  ? "left 0ms linear"
+                  ? "none"
                   : `left ${NAV_DRAG.indicatorTransitionMs}ms cubic-bezier(0.32, 0.72, 0, 1)`,
             }}
             aria-hidden
-          />
+          >
+            <div className="bottom-nav-v4-circle">
+              <ActiveIcon
+                className="bottom-nav-v4-float-icon"
+                strokeWidth={2.4}
+              />
+            </div>
+          </div>
 
-          {ITEMS.map(({ href, label, icon: Icon }, index) => {
-            const active = index === displayIndex;
-            const bouncing = bounceIndex === index;
-            return (
-              <button
-                key={href}
-                type="button"
-                data-nav-tab={index}
-                onPointerEnter={() => warmIntent(href)}
-                onFocus={() => warmIntent(href)}
-                onClick={() => onTabClick(href, index)}
-                className={cn(
-                  "bottom-nav-v3-tab relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5",
-                  "min-h-[56px] min-w-0 px-0 py-2 touch-manipulation select-none",
-                  active
-                    ? "bottom-nav-v3-tab--active text-accent"
-                    : "text-zinc-500"
-                )}
-                aria-current={active ? "page" : undefined}
-                aria-label={label}
-              >
-                <span
+          {/* Layer 3 — tab hit targets (icons + labels under float) */}
+          <div className="bottom-nav-v4-tabs relative z-10 flex h-full items-stretch">
+            {ITEMS.map(({ href, label, icon: Icon }, index) => {
+              const active = index === displayIndex;
+              return (
+                <button
+                  key={href}
+                  type="button"
+                  data-nav-tab={index}
+                  onPointerEnter={() => warmIntent(href)}
+                  onFocus={() => warmIntent(href)}
+                  onClick={() => onTabClick(href, index)}
                   className={cn(
-                    "bottom-nav-v3-icon-wrap flex items-center justify-center",
-                    active && "bottom-nav-v3-icon-wrap--active",
-                    bouncing && "bottom-nav-v3-icon-wrap--bounce"
+                    "bottom-nav-v4-tab relative flex flex-1 flex-col items-center justify-end gap-0.5",
+                    "min-h-0 min-w-0 px-0 pb-2 pt-3 touch-manipulation select-none",
+                    active
+                      ? "bottom-nav-v4-tab--active text-accent"
+                      : "text-zinc-500"
                   )}
+                  aria-current={active ? "page" : undefined}
+                  aria-label={label}
                 >
-                  <Icon
-                    className="bottom-nav-v3-icon h-[22px] w-[22px]"
-                    strokeWidth={active ? 2.35 : 1.85}
-                    aria-hidden
-                  />
-                </span>
-                <span
-                  className={cn(
-                    "bottom-nav-v3-label truncate max-w-[4.6rem] text-center leading-none",
-                    active ? "bottom-nav-v3-label--active" : "bottom-nav-v3-label--idle"
-                  )}
-                >
-                  {label}
-                </span>
-              </button>
-            );
-          })}
+                  {/* Ghost icon slot — keeps layout; hidden when active (float owns icon) */}
+                  <span
+                    className={cn(
+                      "bottom-nav-v4-ghost-icon flex items-center justify-center",
+                      active && "bottom-nav-v4-ghost-icon--hidden"
+                    )}
+                  >
+                    <Icon
+                      className="h-[20px] w-[20px]"
+                      strokeWidth={1.85}
+                      aria-hidden
+                    />
+                  </span>
+                  <span
+                    className={cn(
+                      "bottom-nav-v4-label truncate max-w-[4.6rem] text-center leading-none",
+                      active
+                        ? "bottom-nav-v4-label--active"
+                        : "bottom-nav-v4-label--idle"
+                    )}
+                  >
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </nav>

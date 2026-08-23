@@ -823,41 +823,115 @@ body[data-profilePanel="open"] nav[aria-label="Hauptnavigation"] {
   --nav-blur: 28px;
 }
 
-/* ─── Bottom Navigation V3 — Organic capsule ─── */
-.bottom-nav-v3 {
-  height: 3.65rem;
-  padding: 0.2rem;
-  border-radius: var(--radius-capsule);
-  background: rgba(10, 12, 16, 0.72);
-  backdrop-filter: blur(var(--nav-blur)) saturate(1.4);
-  -webkit-backdrop-filter: blur(var(--nav-blur)) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow:
-    0 10px 40px -14px rgba(0, 0, 0, 0.65),
-    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+/* ─── Bottom Navigation V4 — Floating active circle ─── */
+.bottom-nav-v4-root {
+  overflow: visible;
 }
 
-.bottom-nav-v3--scrubbing {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+/*
+  Stage geometry:
+  - Circle diameter 3.5rem; center sits on bar top edge → ~50% floats above
+  - pt reserves space so circle is never clipped by parents
+*/
+.bottom-nav-v4-stage {
+  --nav-bar-h: 3.85rem;
+  --nav-float-size: 3.5rem;
+  position: relative;
+  height: var(--nav-bar-h);
+  margin-top: calc(var(--nav-float-size) * 0.48);
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Perfect circle — width = height, centered via left % + translate(-50%,-50%) in JS */
-.bottom-nav-v3-circle {
+.bottom-nav-v4-stage--scrubbing .bottom-nav-v4-bar {
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+}
+
+/* Layer 1 — organic glass bar (never clips the float) */
+.bottom-nav-v4-bar {
   position: absolute;
-  z-index: 0;
-  width: 2.75rem;
-  height: 2.75rem;
+  inset: 0;
+  z-index: 1;
+  border-radius: 1.85rem;
+  background: rgba(10, 12, 16, 0.78);
+  backdrop-filter: blur(var(--nav-blur)) saturate(1.45);
+  -webkit-backdrop-filter: blur(var(--nav-blur)) saturate(1.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 12px 40px -14px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 255, 255, 0.07) inset;
+  pointer-events: none;
+}
+
+/* Layer 2 — floating indicator; center on bar top edge */
+.bottom-nav-v4-float {
+  position: absolute;
+  top: 0;
+  z-index: 30;
+  width: var(--nav-float-size);
+  height: var(--nav-float-size);
+  margin: 0;
+  padding: 0;
+  /* Centering via left% + this transform — GPU-friendly */
+  transform: translate3d(-50%, -50%, 0);
+  will-change: left;
+  pointer-events: none;
+  backface-visibility: hidden;
+}
+
+.bottom-nav-v4-float--scrubbing .bottom-nav-v4-circle {
+  transform: scale(1.06);
+  transition: transform 0ms;
+}
+
+.bottom-nav-v4-circle {
+  width: 100%;
+  height: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 14%, rgba(255, 255, 255, 0.05));
-  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(
+      circle at 35% 28%,
+      color-mix(in srgb, var(--accent) 42%, rgba(255, 255, 255, 0.2)),
+      color-mix(in srgb, var(--accent) 22%, rgba(18, 20, 26, 0.95)) 62%
+    );
+  border: 1.5px solid color-mix(in srgb, var(--accent) 55%, rgba(255, 255, 255, 0.25));
   box-shadow:
-    0 0 28px -8px color-mix(in srgb, var(--accent) 45%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  will-change: left;
+    0 8px 28px -6px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent),
+    0 0 36px -4px color-mix(in srgb, var(--accent) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: transform 200ms var(--ease-out-soft);
 }
 
-.bottom-nav-v3-tab {
+.bottom-nav-v4-float-icon {
+  width: 1.45rem;
+  height: 1.45rem;
+  color: #fff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  transition: opacity 180ms var(--ease-out-soft), transform 180ms var(--ease-out-soft);
+}
+
+@keyframes bottom-nav-float-bounce {
+  0% {
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+  40% {
+    transform: translate3d(-50%, calc(-50% - 2px), 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+}
+
+.bottom-nav-v4-float--bounce:not(.bottom-nav-v4-float--scrubbing) {
+  animation: bottom-nav-float-bounce 240ms var(--ease-out-soft) both;
+}
+
+.bottom-nav-v4-tab {
   -webkit-tap-highlight-color: transparent;
   background: transparent;
   border: none;
@@ -865,78 +939,68 @@ body[data-profilePanel="open"] nav[aria-label="Hauptnavigation"] {
   min-width: 0;
 }
 
-.bottom-nav-v3-label {
+.bottom-nav-v4-ghost-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  opacity: 0.72;
+  transition: opacity 180ms var(--ease-out-soft), transform 180ms var(--ease-out-soft);
+}
+
+.bottom-nav-v4-ghost-icon--hidden {
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+
+.bottom-nav-v4-label {
   font-size: 9.5px;
   letter-spacing: 0.01em;
   transition:
     opacity 200ms var(--ease-out-soft),
     transform 200ms var(--ease-out-soft),
-    font-size 200ms var(--ease-out-soft);
+    font-size 200ms var(--ease-out-soft),
+    color 200ms var(--ease-out-soft);
 }
 
-.bottom-nav-v3-label--active {
+.bottom-nav-v4-label--active {
   opacity: 1;
   font-size: 10px;
   font-weight: 600;
   transform: translateY(0);
 }
 
-.bottom-nav-v3-label--idle {
-  opacity: 0.55;
+.bottom-nav-v4-label--idle {
+  opacity: 0.52;
   font-weight: 500;
   transform: translateY(0.5px);
 }
 
-.bottom-nav-v3-icon-wrap {
-  width: 1.375rem;
-  height: 1.375rem;
-  transition: transform 220ms var(--ease-out-soft);
-}
-
-.bottom-nav-v3-icon-wrap--active {
-  transform: scale(1.08) translateY(-1px);
-}
-
-@keyframes bottom-nav-icon-bounce {
-  0% {
-    transform: scale(1) translateY(0);
-  }
-  45% {
-    transform: scale(1.14) translateY(-2px);
-  }
-  100% {
-    transform: scale(1.08) translateY(-1px);
-  }
-}
-
-.bottom-nav-v3-icon-wrap--bounce {
-  animation: bottom-nav-icon-bounce 220ms var(--ease-out-soft) both;
-}
-
-.bottom-nav-v3-icon {
-  display: block;
-}
-
-html[data-color-mode="light"] .bottom-nav-v3,
-html.light .bottom-nav-v3 {
-  background: rgba(255, 255, 255, 0.82);
+html[data-color-mode="light"] .bottom-nav-v4-bar,
+html.light .bottom-nav-v4-bar {
+  background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(0, 0, 0, 0.07);
   box-shadow:
-    0 10px 32px -14px rgba(0, 0, 0, 0.2),
+    0 12px 36px -14px rgba(0, 0, 0, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
-html[data-color-mode="light"] .bottom-nav-v3-circle,
-html.light .bottom-nav-v3-circle {
-  background: color-mix(in srgb, var(--accent) 11%, rgba(0, 0, 0, 0.03));
-  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+html[data-color-mode="light"] .bottom-nav-v4-circle,
+html.light .bottom-nav-v4-circle {
+  background:
+    radial-gradient(
+      circle at 35% 28%,
+      color-mix(in srgb, var(--accent) 55%, #fff),
+      color-mix(in srgb, var(--accent) 78%, #1a1a1a) 70%
+    );
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   box-shadow:
-    0 0 20px -10px color-mix(in srgb, var(--accent) 35%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    0 8px 24px -8px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 0 28px -6px color-mix(in srgb, var(--accent) 30%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
-html[data-color-mode="light"] .bottom-nav-v3-tab:not(.bottom-nav-v3-tab--active),
-html.light .bottom-nav-v3-tab:not(.bottom-nav-v3-tab--active) {
+html[data-color-mode="light"] .bottom-nav-v4-tab:not(.bottom-nav-v4-tab--active),
+html.light .bottom-nav-v4-tab:not(.bottom-nav-v4-tab--active) {
   color: rgb(113 113 122);
 }
 
@@ -1002,18 +1066,17 @@ html.light .bottom-nav-v3-tab:not(.bottom-nav-v3-tab--active) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bottom-nav-v3-circle {
+  .bottom-nav-v4-float {
     transition: none !important;
+    animation: none !important;
   }
-  .bottom-nav-v3-icon-wrap,
-  .bottom-nav-v3-label {
-    transition: none;
-  }
-  .bottom-nav-v3-icon-wrap--active {
-    transform: none;
-  }
-  .bottom-nav-v3-icon-wrap--bounce {
+  .bottom-nav-v4-float--bounce {
     animation: none;
+  }
+  .bottom-nav-v4-ghost-icon,
+  .bottom-nav-v4-label,
+  .bottom-nav-v4-float-icon {
+    transition: none;
   }
   .tab-panel-enter,
   .ui-confirm-pop,
