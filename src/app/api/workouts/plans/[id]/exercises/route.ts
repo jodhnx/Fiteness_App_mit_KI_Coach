@@ -66,7 +66,10 @@ export async function POST(req: NextRequest, { params }: Params) {
       });
       if (!updated.count) return jsonError("Übung nicht gefunden", 404);
       const ex = await prisma.workoutExercise.findFirst({
-        where: { id: parsed.data.workoutExerciseId },
+        where: {
+          id: parsed.data.workoutExerciseId,
+          day: { workoutPlanId: planId, plan: { userId: session.user.id } },
+        },
         include: { exercise: true },
       });
       return jsonOk({ exercise: ex });
@@ -130,7 +133,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ? normalizeSetTargets(parsed.data.setTargets as PlanSetTarget[])
       : undefined;
 
-    await prisma.workoutExercise.updateMany({
+    const updated = await prisma.workoutExercise.updateMany({
       where: {
         id: parsed.data.workoutExerciseId,
         day: { workoutPlanId: planId, plan: { userId: session.user.id } },
@@ -147,9 +150,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         notes: parsed.data.notes,
       },
     });
+    if (!updated.count) return jsonError("Übung nicht gefunden", 404);
 
     const ex = await prisma.workoutExercise.findFirst({
-      where: { id: parsed.data.workoutExerciseId },
+      where: {
+        id: parsed.data.workoutExerciseId,
+        day: { workoutPlanId: planId, plan: { userId: session.user.id } },
+      },
       include: { exercise: true },
     });
     return jsonOk({ exercise: ex });

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mealSchema } from "@/lib/validations";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import { findInaccessibleFoodItemIds } from "@/lib/food/food-access";
 import { startOfDay } from "date-fns";
 
 export async function GET(req: NextRequest) {
@@ -29,6 +30,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = mealSchema.safeParse(body);
     if (!parsed.success) return jsonError("Ungültige Eingabe");
+
+    const inaccessible = await findInaccessibleFoodItemIds(
+      parsed.data.items.map((i) => i.foodItemId),
+      session.user.id
+    );
+    if (inaccessible.length > 0) {
+      return jsonError("Lebensmittel nicht gefunden", 404);
+    }
 
     const meal = await prisma.meal.create({
       data: {

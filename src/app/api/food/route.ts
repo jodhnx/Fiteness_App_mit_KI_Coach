@@ -33,8 +33,11 @@ export async function GET(req: NextRequest) {
 
     const id = req.nextUrl.searchParams.get("id");
     if (id) {
-      const food = await prisma.foodItem.findUnique({
-        where: { id },
+      const food = await prisma.foodItem.findFirst({
+        where: {
+          id,
+          OR: [{ userId: null }, { userId: session.user.id }],
+        },
         select: foodSelect,
       });
       if (!food) return jsonError("Nicht gefunden", 404);

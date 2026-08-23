@@ -15,7 +15,10 @@ export async function GET(
     const normalized = ean.replace(/\D/g, "");
     if (normalized.length < 8) return jsonError("Ungültiger Barcode", 400);
 
-    const { product, error } = await importOffProductByCode(normalized);
+    const { product, error } = await importOffProductByCode(
+      normalized,
+      session.user.id
+    );
     if (!product) {
       return jsonOk({
         found: false,

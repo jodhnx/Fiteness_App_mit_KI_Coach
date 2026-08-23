@@ -151,14 +151,73 @@ export async function searchLocalFoods(
   }
 }
 
-export async function upsertFoodFromProduct(product: FoodProduct): Promise<FoodProduct> {
+/**
+ * Own private copy for the caller, used when the barcode/offCode is already
+ * held by another user's private row. `barcode` and `offCode` are globally
+ * unique, so the copy is stored without them. The slug is deterministic so
+ * repeated scans update the same row instead of creating duplicates.
+ */
+async function upsertPrivateFoodCopy(
+  product: FoodProduct,
+  ownerUserId: string,
+  offCode: string | null
+): Promise<FoodProduct> {
+  const slug = slugify([
+    "user",
+    ownerUserId,
+    offCode ?? product.name,
+    product.brand ?? "",
+  ]);
+  const row = await prisma.foodItem.upsert({
+    where: { slug },
+    create: {
+      slug,
+      name: product.name,
+      brand: product.brand,
+      category: offCategoryToEnum(product.category),
+      calories: product.calories,
+      proteinG: product.proteinG,
+      carbsG: product.carbsG,
+      fatG: product.fatG,
+      fiberG: product.fiberG,
+      servingG: product.servingG,
+      barcode: null,
+      offCode: null,
+      imageUrl: product.imageUrl,
+      dataSource: "user",
+      userId: ownerUserId,
+    },
+    update: {
+      name: product.name,
+      brand: product.brand,
+      calories: product.calories,
+      proteinG: product.proteinG,
+      carbsG: product.carbsG,
+      fatG: product.fatG,
+      fiberG: product.fiberG,
+      servingG: product.servingG,
+      imageUrl: product.imageUrl,
+    },
+    select: foodSelect,
+  });
+  return mapDbFoodToProduct(row);
+}
+
+export async function upsertFoodFromProduct(
+  product: FoodProduct,
+  ownerUserId: string
+): Promise<FoodProduct> {
   const offCode = product.offCode ?? product.barcode ?? null;
   if (offCode) {
     const existing = await prisma.foodItem.findFirst({
       where: { OR: [{ offCode }, { barcode: offCode }] },
-      select: foodSelect,
+      select: { id: true, userId: true },
     });
     if (existing) {
+      // Never overwrite another user's private food item.
+      if (existing.userId !== null && existing.userId !== ownerUserId) {
+        return upsertPrivateFoodCopy(product, ownerUserId, offCode);
+      }
       const updated = await prisma.foodItem.update({
         where: { id: existing.id },
         data: {
@@ -222,13 +281,16 @@ export async function upsertFoodFromProduct(product: FoodProduct): Promise<FoodP
   return mapDbFoodToProduct(created);
 }
 
-export async function importOffProductByCode(code: string): Promise<{
+export async function importOffProductByCode(
+  code: string,
+  ownerUserId: string
+): Promise<{
   product: FoodProduct | null;
   error?: string;
 }> {
   const { product, error } = await fetchOffProductByCode(code);
   if (!product) return { product: null, error };
-  const saved = await upsertFoodFromProduct(product);
+  const saved = await upsertFoodFromProduct(product, ownerUserId);
   return { product: saved };
 }
 

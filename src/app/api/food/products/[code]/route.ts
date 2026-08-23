@@ -5,6 +5,7 @@ import {
   importOffProductByCode,
   mapDbFoodToProduct,
 } from "@/lib/food/food-database-service";
+import { accessibleFoodItemFilter } from "@/lib/food/food-access";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
@@ -18,7 +19,12 @@ export async function GET(
     const normalized = code.replace(/\D/g, "");
 
     const local = await prisma.foodItem.findFirst({
-      where: { OR: [{ offCode: normalized }, { barcode: normalized }] },
+      where: {
+        AND: [
+          { OR: [{ offCode: normalized }, { barcode: normalized }] },
+          accessibleFoodItemFilter(session.user.id),
+        ],
+      },
       select: {
         id: true,
         name: true,
@@ -40,7 +46,10 @@ export async function GET(
       return jsonOk({ product: mapDbFoodToProduct(local), source: "database" });
     }
 
-    const { product, error } = await importOffProductByCode(normalized);
+    const { product, error } = await importOffProductByCode(
+      normalized,
+      session.user.id
+    );
     if (!product) {
       return jsonOk({
         product: null,

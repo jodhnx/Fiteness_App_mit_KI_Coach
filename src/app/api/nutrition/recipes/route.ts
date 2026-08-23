@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { recipeSchema } from "@/lib/validations";
+import { findInaccessibleFoodItemIds } from "@/lib/food/food-access";
 import { macrosForQuantity, sumMacros, roundMacros } from "@/lib/food-macros";
 
 function recipeMacros(
@@ -61,6 +62,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = recipeSchema.safeParse(body);
     if (!parsed.success) return jsonError("Ungültige Eingabe");
+
+    const inaccessible = await findInaccessibleFoodItemIds(
+      parsed.data.ingredients.map((i) => i.foodItemId),
+      session.user.id
+    );
+    if (inaccessible.length > 0) {
+      return jsonError("Lebensmittel nicht gefunden", 404);
+    }
 
     const recipe = await prisma.recipe.create({
       data: {

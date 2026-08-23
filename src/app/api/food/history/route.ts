@@ -3,6 +3,7 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { getRecentSearchQueries } from "@/lib/food/food-database-service";
 import { prisma } from "@/lib/prisma";
 import { mapDbFoodToProduct } from "@/lib/food/food-database-service";
+import { accessibleFoodItemFilter } from "@/lib/food/food-access";
 import { safePrisma } from "@/lib/prisma-safe";
 
 export async function GET() {
@@ -15,7 +16,10 @@ export async function GET() {
       safePrisma(
         () =>
           prisma.foodFavorite.findMany({
-        where: { userId: session.user.id },
+        where: {
+          userId: session.user.id,
+          foodItem: accessibleFoodItemFilter(session.user.id),
+        },
         orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
         include: {
           foodItem: {
@@ -45,7 +49,10 @@ export async function GET() {
       safePrisma(
         () =>
           prisma.foodRecent.findMany({
-        where: { userId: session.user.id },
+        where: {
+          userId: session.user.id,
+          foodItem: accessibleFoodItemFilter(session.user.id),
+        },
         include: {
           foodItem: {
             select: {

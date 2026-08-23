@@ -88,6 +88,30 @@ export async function POST(req: NextRequest) {
         return jsonOk({ session: existing, resumed: true });
       }
 
+      // Never link a new session to another user's plan/day:
+      // WorkoutSession -> WorkoutDay -> WorkoutPlan -> User
+      const dayId = parsed.data.workoutDayId;
+      const planId = parsed.data.workoutPlanId;
+
+      if (dayId) {
+        const ownedDay = await prisma.workoutDay.findFirst({
+          where: { id: dayId, plan: { userId: session.user.id } },
+          select: { workoutPlanId: true },
+        });
+        if (!ownedDay) return jsonError("Trainingstag nicht gefunden", 404);
+        if (planId && planId !== ownedDay.workoutPlanId) {
+          return jsonError("Trainingstag gehört nicht zum Plan", 404);
+        }
+      }
+
+      if (planId) {
+        const ownedPlan = await prisma.workoutPlan.findFirst({
+          where: { id: planId, userId: session.user.id },
+          select: { id: true },
+        });
+        if (!ownedPlan) return jsonError("Trainingsplan nicht gefunden", 404);
+      }
+
       let initialSets: z.infer<typeof setSchema>[] = [];
 
       if (parsed.data.duplicateSessionId) {
@@ -134,10 +158,10 @@ export async function POST(req: NextRequest) {
             });
           }
         }
-      } else if (parsed.data.workoutDayId) {
+      } else if (dayId) {
         const day = await prisma.workoutDay.findFirst({
           where: {
-            id: parsed.data.workoutDayId,
+            id: dayId,
             plan: { userId: session.user.id },
           },
           include: { exercises: { include: { exercise: true }, orderBy: { orderIndex: "asc" } } },
@@ -195,8 +219,8 @@ export async function POST(req: NextRequest) {
       const workoutSession = await prisma.workoutSession.create({
         data: {
           userId: session.user.id,
-          workoutPlanId: parsed.data.workoutPlanId,
-          workoutDayId: parsed.data.workoutDayId,
+          workoutPlanId: planId,
+          workoutDayId: dayId,
           name: parsed.data.name,
           status: "IN_PROGRESS",
           sets: initialSets.length

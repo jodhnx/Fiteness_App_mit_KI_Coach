@@ -6,6 +6,7 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { startOfDay } from "date-fns";
 import { buildBodyTransformation } from "@/lib/body-transformation";
 import { loadProgressDashboardExtras } from "@/lib/progress-dashboard";
+import { progressPhotoImageUrl } from "@/lib/progress-photo-storage";
 
 export async function GET() {
   try {
@@ -59,6 +60,12 @@ export async function GET() {
       date: e.date.toISOString(),
     }));
 
+    // Private photos are never exposed as a direct storage URL.
+    const photosMapped = photos.map((p) => ({
+      ...p,
+      imageUrl: progressPhotoImageUrl(p.id),
+    }));
+
     const transformation = buildBodyTransformation(
       firstWeight?.weightKg ?? null,
       profile?.weightKg ?? null,
@@ -69,7 +76,7 @@ export async function GET() {
 
     const res = jsonOk({
       entries: entriesMapped,
-      photos,
+      photos: photosMapped,
       profile,
       startWeightKg: firstWeight?.weightKg ?? null,
       transformation,

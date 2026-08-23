@@ -16,6 +16,8 @@
     "db:setup": "npx tsx scripts/setup-database.ts",
     "db:diagnose": "npx tsx scripts/diagnose-db.ts",
     "db:backfill-achievements": "npx tsx scripts/backfill-achievement-metrics.ts",
+    "photos:migrate": "npx tsx scripts/migrate-progress-photos.ts",
+    "photos:migrate:apply": "npx tsx scripts/migrate-progress-photos.ts --apply",
     "db:test-achievements": "npx tsx scripts/test-achievement-apis.ts",
     "check": "npx tsx scripts/check-services.ts",
     "auth:test": "npx tsx scripts/test-auth.ts",

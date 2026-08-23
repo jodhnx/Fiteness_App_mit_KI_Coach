@@ -10,19 +10,24 @@ import {
 } from "@/lib/nutrition-service";
 import { startOfDay } from "date-fns";
 import { importOffProductByCode } from "@/lib/food/food-database-service";
+import {
+  accessibleFoodItemFilter,
+  findAccessibleFoodItemId,
+} from "@/lib/food/food-access";
 import { updateNutritionStreak, loadNutritionStreak } from "@/lib/nutrition-streak";
 
 async function resolveFoodItemId(
   foodItemId: string | undefined,
-  offCode: string | undefined
+  offCode: string | undefined,
+  userId: string
 ): Promise<{ id: string } | { error: string }> {
   if (foodItemId) {
-    const existing = await prisma.foodItem.findUnique({ where: { id: foodItemId } });
-    if (existing) return { id: existing.id };
+    const accessibleId = await findAccessibleFoodItemId(foodItemId, userId);
+    if (accessibleId) return { id: accessibleId };
   }
   const code = offCode?.replace(/\D/g, "");
   if (code && code.length >= 8) {
-    const imported = await importOffProductByCode(code);
+    const imported = await importOffProductByCode(code, userId);
     if (imported.product?.id) return { id: imported.product.id };
     return { error: imported.error ?? "Produkt konnte nicht importiert werden" };
   }
@@ -40,12 +45,17 @@ export async function POST(req: NextRequest) {
 
     const resolved = await resolveFoodItemId(
       parsed.data.foodItemId,
-      parsed.data.offCode
+      parsed.data.offCode,
+      session.user.id
     );
     if ("error" in resolved) return jsonError(resolved.error, 404);
 
-    const food = await prisma.foodItem.findUnique({
-      where: { id: resolved.id },
+    const food = await prisma.foodItem.findFirst({
+      where: {
+        id: resolved.id,
+        ...accessibleFoodItemFilter(session.user.id),
+      },
+      select: { id: true },
     });
     if (!food) return jsonError("Lebensmittel nicht gefunden", 404);
 

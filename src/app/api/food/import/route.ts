@@ -42,7 +42,10 @@ export async function POST(req: NextRequest) {
 
     // Prefer verified Open Food Facts codes — shared catalog only from OFF
     if (parsed.data.offCode) {
-      const result = await importOffProductByCode(parsed.data.offCode);
+      const result = await importOffProductByCode(
+        parsed.data.offCode,
+        session.user.id
+      );
       if (!result.product) return jsonError(result.error ?? "Import fehlgeschlagen", 404);
       return jsonOk({ food: result.product });
     }
@@ -94,7 +97,7 @@ export async function POST(req: NextRequest) {
         fiberG: p.fiberG ?? null,
         source: p.offCode ? "openfoodfacts" : "local",
       };
-      const saved = await upsertFoodFromProduct(product);
+      const saved = await upsertFoodFromProduct(product, session.user.id);
       return jsonOk({ food: saved });
     }
 

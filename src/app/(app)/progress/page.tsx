@@ -320,6 +320,7 @@ export default function ProgressPage() {
                           alt="Vorher"
                           width={200}
                           height={200}
+                          unoptimized
                           className="w-full h-32 object-cover"
                         />
                       </div>
@@ -330,6 +331,7 @@ export default function ProgressPage() {
                           alt="Nachher"
                           width={200}
                           height={200}
+                          unoptimized
                           className="w-full h-32 object-cover"
                         />
                       </div>
@@ -343,6 +345,7 @@ export default function ProgressPage() {
                           alt=""
                           width={48}
                           height={48}
+                          unoptimized
                           className="h-12 w-12 rounded-lg object-cover shrink-0"
                         />
                         <div className="min-w-0">

@@ -73,10 +73,19 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
     const { id } = await params;
-    await prisma.workoutSet.deleteMany({ where: { workoutSessionId: id } });
-    await prisma.workoutSession.deleteMany({
+
+    const owned = await prisma.workoutSession.findFirst({
       where: { id, userId: session.user.id },
+      select: { id: true },
     });
+    if (!owned) return jsonError("Session nicht gefunden", 404);
+
+    await prisma.$transaction([
+      prisma.workoutSet.deleteMany({ where: { workoutSessionId: id } }),
+      prisma.workoutSession.deleteMany({
+        where: { id, userId: session.user.id },
+      }),
+    ]);
     return jsonOk({ success: true });
   } catch (e) {
     return handleApiError(e);
@@ -250,8 +259,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     if (parsed.data.action === "updateSet" && parsed.data.setId) {
-      const updated = await prisma.workoutSet.update({
-        where: { id: parsed.data.setId },
+      const setId = parsed.data.setId;
+      const result = await prisma.workoutSet.updateMany({
+        where: { id: setId, workoutSessionId: id },
         data: {
           exerciseName: parsed.data.exerciseName,
           reps: parsed.data.reps,
@@ -261,6 +271,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           completed: parsed.data.completed,
           notes: parsed.data.notes,
         },
+      });
+      if (result.count === 0) return jsonError("Satz nicht gefunden", 404);
+
+      const updated = await prisma.workoutSet.findFirst({
+        where: { id: setId, workoutSessionId: id },
       });
       return jsonOk({ set: updated });
     }

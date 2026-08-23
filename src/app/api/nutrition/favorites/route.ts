@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { z } from "zod";
 import { tableExists } from "@/lib/prisma-safe";
+import {
+  accessibleFoodItemFilter,
+  findAccessibleFoodItemId,
+} from "@/lib/food/food-access";
 import { isSchemaMismatchError } from "@/lib/prisma-errors";
 
 const foodSelect = {
@@ -26,7 +30,10 @@ export async function GET() {
       return jsonOk({ foods: [], pinnedIds: [] });
     }
     const favorites = await prisma.foodFavorite.findMany({
-      where: { userId: session.user.id },
+      where: {
+        userId: session.user.id,
+        foodItem: accessibleFoodItemFilter(session.user.id),
+      },
       include: { foodItem: { select: foodSelect } },
       orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
     });
@@ -50,6 +57,12 @@ export async function POST(req: NextRequest) {
     if (!(await tableExists("FoodFavorite"))) {
       return jsonError("Favoriten nicht verfügbar — Migration ausführen", 503);
     }
+    const accessibleId = await findAccessibleFoodItemId(
+      parsed.data.foodItemId,
+      session.user.id
+    );
+    if (!accessibleId) return jsonError("Lebensmittel nicht gefunden", 404);
+
     await prisma.foodFavorite.upsert({
       where: {
         userId_foodItemId: {
