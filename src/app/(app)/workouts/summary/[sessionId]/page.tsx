@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { WorkoutNav } from "@/components/workout/workout-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trophy, TrendingUp, Zap } from "lucide-react";
+import { Trophy, TrendingUp, Zap, CheckCircle2 } from "lucide-react";
 
 type Analysis = {
   totalVolumeKg: number;
@@ -42,15 +42,23 @@ export default function WorkoutSummaryPage() {
   };
 
   if (!analysis) {
-    return <p className="text-zinc-500 animate-pulse">Analyse wird geladen...</p>;
+    return (
+      <div className="space-y-4 max-w-lg mx-auto py-10">
+        <p className="text-zinc-400 animate-pulse text-center">Zusammenfassung wird geladen…</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-lg mx-auto pb-28">
       <WorkoutNav />
-      <div>
-        <h1 className="text-3xl font-bold text-white">Workout abgeschlossen</h1>
-        <p className="text-zinc-400">{sessionName}</p>
+      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 px-4 py-5">
+        <div className="flex items-center gap-2 text-emerald-300">
+          <CheckCircle2 className="h-6 w-6" />
+          <p className="text-sm font-semibold uppercase tracking-wide">Erfolgreich abgeschlossen</p>
+        </div>
+        <h1 className="text-2xl font-bold text-white mt-2">Training erfolgreich abgeschlossen.</h1>
+        <p className="text-zinc-300 mt-1">{sessionName}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -129,13 +137,22 @@ export default function WorkoutSummaryPage() {
         </p>
       ))}
 
-      <div className="flex gap-3">
-        <Link href="/workouts/history">
-          <Button variant="secondary">Historie</Button>
+      <div className="flex flex-col gap-3">
+        <Link href="/home" className="w-full">
+          <Button className="w-full h-12 rounded-xl">Zum Dashboard</Button>
         </Link>
-        <Link href="/workouts">
-          <Button>Dashboard</Button>
-        </Link>
+        <div className="flex gap-3">
+          <Link href="/workouts/history" className="flex-1">
+            <Button variant="secondary" className="w-full h-12 rounded-xl">
+              Historie
+            </Button>
+          </Link>
+          <Link href="/workouts" className="flex-1">
+            <Button variant="secondary" className="w-full h-12 rounded-xl">
+              Training
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

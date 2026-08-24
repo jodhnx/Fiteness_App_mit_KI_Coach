@@ -31,3 +31,11 @@ export const MEAL_TYPE_SHORT: Partial<Record<MealType, string>> = {
   PRE_WORKOUT: "Pre",
   POST_WORKOUT: "Post",
 };
+
+/** Typical meal slot for quick-add based on local time. */
+export function mealTypeForHour(hour = new Date().getHours()): MealType {
+  if (hour < 11) return "BREAKFAST";
+  if (hour < 15) return "LUNCH";
+  if (hour < 21) return "DINNER";
+  return "SNACK";
+}

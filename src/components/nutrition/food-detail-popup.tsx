@@ -13,6 +13,7 @@ import {
   getPortionPresets,
   getDefaultPortionGrams,
 } from "@/lib/food/portion-presets";
+import { TRACK_MEAL_ORDER, MEAL_TYPE_LABELS } from "@/lib/meal-types";
 
 type Props = {
   product: FoodProduct;
@@ -35,6 +36,7 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
   );
   const [customMode, setCustomMode] = useState(false);
   const [customGrams, setCustomGrams] = useState("100");
+  const [meal, setMeal] = useState<MealType>(mealType);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -46,7 +48,8 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
     setSelectedGrams(defaultG);
     setCustomMode(false);
     setCustomGrams(String(defaultG));
-  }, [product]);
+    setMeal(mealType);
+  }, [product, mealType]);
 
   const activeGrams = customMode
     ? Math.max(0, Number(customGrams.replace(",", ".")) || 0)
@@ -97,10 +100,13 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
         </header>
 
         <div className="food-detail-popup-body">
+          <p className="text-xs text-zinc-400 tabular-nums -mt-1">
+            für {activeGrams > 0 ? `${activeGrams} g` : "—"}
+          </p>
           <div className="grid grid-cols-4 gap-2">
             <MacroPill label="kcal" value={fmtKcal(scaled.calories)} highlight />
             <MacroPill label="Protein" value={`${fmtG(scaled.proteinG)}g`} />
-            <MacroPill label="Carbs" value={`${fmtG(scaled.carbsG)}g`} />
+            <MacroPill label="KH" value={`${fmtG(scaled.carbsG)}g`} />
             <MacroPill label="Fett" value={`${fmtG(scaled.fatG)}g`} />
           </div>
 
@@ -172,7 +178,7 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
                     setCustomMode(false);
                     setSelectedGrams(p.grams);
                   }}
-                  className={`shrink-0 rounded-xl px-3.5 py-2.5 text-sm font-medium border ${
+                  className={`shrink-0 min-h-11 rounded-xl px-3.5 text-sm font-medium border ${
                     !customMode && selectedGrams === p.grams
                       ? "bg-cyan-500/25 border-cyan-400/50 text-cyan-50"
                       : "bg-zinc-900/80 border-zinc-700 text-zinc-300"
@@ -184,7 +190,7 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
               <button
                 type="button"
                 onClick={() => setCustomMode(true)}
-                className={`shrink-0 rounded-xl px-3.5 py-2.5 text-sm font-medium border ${
+                className={`shrink-0 min-h-11 rounded-xl px-3.5 text-sm font-medium border ${
                   customMode
                     ? "bg-cyan-500/25 border-cyan-400/50 text-cyan-50"
                     : "bg-zinc-900/80 border-zinc-700 text-zinc-300"
@@ -215,10 +221,32 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
             </div>
           )}
 
+          <div>
+            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+              Mahlzeit
+            </p>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+              {TRACK_MEAL_ORDER.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMeal(m)}
+                  className={`shrink-0 min-h-11 rounded-xl px-3.5 text-sm font-medium border ${
+                    meal === m
+                      ? "bg-cyan-500/25 border-cyan-400/50 text-cyan-50"
+                      : "bg-zinc-900/80 border-zinc-700 text-zinc-300"
+                  }`}
+                >
+                  {MEAL_TYPE_LABELS[m]}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <Button
             className="w-full h-14 text-base font-bold btn-accent rounded-2xl"
             disabled={adding || activeGrams <= 0}
-            onClick={() => onAdd(activeGrams, mealType)}
+            onClick={() => onAdd(activeGrams, meal)}
           >
             <Plus className="h-5 w-5 mr-2 stroke-[2.5]" />
             Hinzufügen · {activeGrams} g

@@ -57,6 +57,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
       _count: true,
     });
 
+    const lastSet = sets.length > 0 ? sets[sets.length - 1] : null;
+
     return jsonOk({
       exercise,
       frequency: sessions.size,
@@ -64,6 +66,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
       bestWeight: prs.find((p) => p.recordType === "MAX_WEIGHT")?.value ?? null,
       bestVolume: prs.find((p) => p.recordType === "MAX_VOLUME")?.value ?? null,
       estimated1RM: prs.find((p) => p.recordType === "ESTIMATED_1RM")?.value ?? null,
+      lastPerformance: lastSet
+        ? {
+            weightKg: lastSet.weightKg,
+            reps: lastSet.reps,
+            completedAt: lastSet.session.completedAt,
+          }
+        : null,
       progressChart,
       ratingAvg: ratingAgg._avg.rating,
       ratingCount: ratingAgg._count,

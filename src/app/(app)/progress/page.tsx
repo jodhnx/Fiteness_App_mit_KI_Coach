@@ -250,6 +250,7 @@ export default function ProgressPage() {
         currentKg={lastWeight ?? null}
         targetKg={profile?.targetWeightKg ?? null}
         trainingSessions={dashboard?.trainingHistory?.length ?? 0}
+        weekChangeKg={analytics.changeWeekKg}
       />
 
       {showSkeleton && (
@@ -265,9 +266,18 @@ export default function ProgressPage() {
           <div ref={logRef} className="card-premium p-4 scroll-mt-4">
             <h2 className="text-sm font-semibold text-white mb-1">Gewicht eintragen</h2>
             {lastWeight != null && (
-              <p className="text-2xl font-bold text-cyan-400 tabular-nums mb-3">
+              <p className="text-2xl font-bold text-cyan-400 tabular-nums mb-1">
                 {lastWeight.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg
-                <span className="text-xs font-normal text-zinc-500 ml-2">aktuell</span>
+                <span className="text-xs font-normal text-zinc-400 ml-2">aktuell</span>
+              </p>
+            )}
+            {analytics.changeWeekKg != null && (
+              <p className="text-sm tabular-nums text-zinc-300 mb-3">
+                {analytics.changeWeekKg > 0 ? "+" : ""}
+                {analytics.changeWeekKg.toFixed(1)} kg in 7 Tagen
+                {profile?.targetWeightKg != null
+                  ? ` · Ziel ${profile.targetWeightKg.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`
+                  : ""}
               </p>
             )}
             <WeightInput initialKg={lastWeight} onSave={saveWeight} />
@@ -308,13 +318,20 @@ export default function ProgressPage() {
               <h3 className="text-sm font-semibold text-white mb-2">Vorher / Nachher</h3>
               <Input type="file" accept="image/*" onChange={uploadPhoto} className="text-sm mb-3" />
               {photos.length === 0 ? (
-                <p className="text-sm text-zinc-500">Noch keine Vorher/Nachher-Fotos.</p>
+                <p className="text-sm text-zinc-400 py-4 text-center">
+                  Noch keine Progress-Fotos. Lade ein privates Vorher-Bild hoch — nur du siehst es.
+                </p>
               ) : (
                 <>
                   {photos.length >= 2 && (
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       <div className="rounded-xl overflow-hidden border border-zinc-700">
-                        <p className="text-[10px] text-zinc-500 px-2 py-1 bg-zinc-900">Vorher</p>
+                        <p className="text-[10px] text-zinc-400 px-2 py-1 bg-zinc-900">
+                          Vorher
+                          {photos[photos.length - 1]?.takenAt
+                            ? ` · ${format(new Date(photos[photos.length - 1]!.takenAt!), "dd.MM.")}`
+                            : ""}
+                        </p>
                         <Image
                           src={photos[photos.length - 1]!.imageUrl}
                           alt="Vorher"

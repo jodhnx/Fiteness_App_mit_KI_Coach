@@ -189,7 +189,7 @@ export function optimisticAddMealItem(
       ? Math.round(food.fiberG * (quantityG / 100) * 10) / 10
       : 0;
 
-  const tempId = `opt-${Date.now()}`;
+  const tempId = `opt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const newItem = {
     id: tempId,
     quantityG,

@@ -14,6 +14,7 @@ type Props = {
   currentKg: number | null;
   targetKg: number | null;
   trainingSessions?: number;
+  weekChangeKg?: number | null;
 };
 
 /** Top overview strip — weight, goals, macros, steps, training. */
@@ -21,6 +22,7 @@ export const ProgressOverviewCards = memo(function ProgressOverviewCards({
   currentKg,
   targetKg,
   trainingSessions = 0,
+  weekChangeKg = null,
 }: Props) {
   const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
   const nutrition = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
@@ -40,7 +42,12 @@ export const ProgressOverviewCards = memo(function ProgressOverviewCards({
         currentKg != null
           ? `${currentKg.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg`
           : "—",
-      sub: targetKg != null ? `Ziel ${targetKg.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg` : "Ziel setzen",
+      sub:
+        weekChangeKg != null
+          ? `${weekChangeKg > 0 ? "+" : ""}${weekChangeKg.toFixed(1)} kg · 7T`
+          : targetKg != null
+            ? `Ziel ${targetKg.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg`
+            : "Ziel setzen",
       icon: Scale,
       tint: "text-emerald-400",
       href: "/progress?log=1",
@@ -110,14 +117,14 @@ export const ProgressOverviewCards = memo(function ProgressOverviewCards({
               prefetch
               className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5 active:bg-white/[0.06]"
             >
-              <div className="flex items-center gap-1 text-[9px] uppercase tracking-wide text-zinc-500">
+              <div className="flex items-center gap-1 text-[9px] uppercase tracking-wide text-zinc-400">
                 <Icon className={`h-3 w-3 ${c.tint}`} />
                 {c.label}
               </div>
               <p className="text-lg font-bold text-white tabular-nums mt-1 leading-tight">
                 {c.value}
               </p>
-              <p className="text-[10px] text-zinc-500 mt-0.5 truncate">{c.sub}</p>
+              <p className="text-[10px] text-zinc-400 mt-0.5 truncate">{c.sub}</p>
             </Link>
           );
         })}

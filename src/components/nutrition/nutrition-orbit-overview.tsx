@@ -85,7 +85,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     },
     {
       key: "c",
-      label: "Carbs",
+      label: "KH",
       value: Math.round(consumed.carbsG ?? 0),
       target: Math.round(targets.carbsG ?? 0),
       bar: "bg-amber-400",
@@ -144,6 +144,13 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
           ? `${overBy.toLocaleString("de-DE")} kcal über Ziel`
           : `${left.toLocaleString("de-DE")} kcal verfügbar`}
       </p>
+      {ready && (targets.proteinG ?? 0) > 0 && (
+        <p className="text-center text-sm font-medium tabular-nums text-rose-200/90 -mt-2">
+          {Math.max(0, Math.round((targets.proteinG ?? 0) - (consumed.proteinG ?? 0))) > 0
+            ? `Noch ${Math.max(0, Math.round((targets.proteinG ?? 0) - (consumed.proteinG ?? 0)))} g Protein`
+            : "Proteinziel erreicht"}
+        </p>
+      )}
       {burned >= 0 && (
         <p className="text-center text-xs text-orange-300/90 font-medium tabular-nums">
           🔥 {Math.round(burned)} kcal verbrannt

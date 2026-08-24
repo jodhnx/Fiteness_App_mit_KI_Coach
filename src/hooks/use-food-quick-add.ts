@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { MealType } from "@prisma/client";
 import type { FoodProduct } from "@/lib/food/food-product-types";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
@@ -19,6 +19,19 @@ type Options = {
 };
 
 export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Options) {
+  const inflight = useRef(0);
+  const [adding, setAdding] = useState(false);
+
+  const beginAdd = useCallback(() => {
+    inflight.current += 1;
+    setAdding(true);
+  }, []);
+
+  const endAdd = useCallback(() => {
+    inflight.current = Math.max(0, inflight.current - 1);
+    setAdding(inflight.current > 0);
+  }, []);
+
   const syncQuickAdd = useCallback(
     async (
       snapshot: NutritionDashboardPayload,
@@ -41,7 +54,10 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
       if (!res.ok) {
         applyDashboard(snapshot);
         const err = await res.json().catch(() => ({}));
-        toast.error((err as { error?: string }).error ?? "Hinzufügen fehlgeschlagen");
+        toast.error(
+          (err as { error?: string }).error ??
+            "Hinzufügen fehlgeschlagen — Eintrag wurde zurückgesetzt"
+        );
         return;
       }
 
@@ -66,22 +82,27 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
       const optimistic = optimisticAddMealItem(snapshot, product, grams, targetMeal);
       if (optimistic) applyDashboard(optimistic);
       onSuccess?.();
+      beginAdd();
 
       void (async () => {
-        if (product.id) {
-          await syncQuickAdd(snapshot, product.id, product, grams, targetMeal);
-          return;
+        try {
+          if (product.id) {
+            await syncQuickAdd(snapshot, product.id, product, grams, targetMeal);
+            return;
+          }
+          const resolved = await ensureFoodItemId(product);
+          if ("error" in resolved) {
+            applyDashboard(snapshot);
+            toast.error(`${resolved.error} — Eintrag wurde zurückgesetzt`);
+            return;
+          }
+          await syncQuickAdd(snapshot, resolved.id, product, grams, targetMeal);
+        } finally {
+          endAdd();
         }
-        const resolved = await ensureFoodItemId(product);
-        if ("error" in resolved) {
-          applyDashboard(snapshot);
-          toast.error(resolved.error);
-          return;
-        }
-        await syncQuickAdd(snapshot, resolved.id, product, grams, targetMeal);
       })();
     },
-    [dashboard, applyDashboard, onSuccess, syncQuickAdd]
+    [dashboard, applyDashboard, onSuccess, syncQuickAdd, beginAdd, endAdd]
   );
 
   const quickAddById = useCallback(
@@ -111,11 +132,11 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
       const optimistic = optimisticAddMealItem(snapshot, product, quantityG, targetMeal);
       if (optimistic) applyDashboard(optimistic);
       onSuccess?.();
-
-      void syncQuickAdd(snapshot, foodItemId, product, quantityG, targetMeal);
+      beginAdd();
+      void syncQuickAdd(snapshot, foodItemId, product, quantityG, targetMeal).finally(endAdd);
     },
-    [dashboard, applyDashboard, onSuccess, syncQuickAdd]
+    [dashboard, applyDashboard, onSuccess, syncQuickAdd, beginAdd, endAdd]
   );
 
-  return { quickAdd, quickAddById };
+  return { quickAdd, quickAddById, adding };
 }

@@ -4,59 +4,39 @@ import {
   Dumbbell,
   Apple,
   Scale,
-  TrendingUp,
   LineChart,
   Sparkles,
-  Utensils,
 } from "lucide-react";
 
 const ACTIONS = [
   {
-    label: "Was soll ich heute trainieren?",
+    label: "Was soll ich heute essen?",
+    prompt:
+      "Was soll ich heute noch essen? Nutze meine aktuellen Kalorien/Makros und mein Ziel. Schlage 2–3 konkrete Mahlzeiten oder Snacks vor.",
+    icon: Apple,
+  },
+  {
+    label: "Was trainiere ich heute?",
     prompt:
       "Was soll ich heute trainieren? Berücksichtige mein Ziel, letzte Sessions, Regeneration und verfügbare Muskelgruppen. Gib einen konkreten Plan für heute.",
     icon: Dumbbell,
   },
   {
-    label: "Was soll ich heute essen?",
-    prompt:
-      "Was soll ich heute noch essen? Nutze meine aktuellen Kalorien/Makros und mein Ziel. Schlage 2–3 konkrete Mahlzeiten oder Snacks vor.",
-    icon: Utensils,
-  },
-  {
-    label: "Warum nehme ich nicht ab?",
-    prompt:
-      "Warum nehme ich nicht ab? Analysiere Kalorien, Protein, Schritte, Schlaf und Training der letzten Wochen. Nenne die wahrscheinlichsten Ursachen und 3 konkrete Fixes.",
-    icon: Scale,
-  },
-  {
-    label: "Wie kann ich Muskeln aufbauen?",
-    prompt:
-      "Wie kann ich Muskeln aufbauen? Orientiere dich an meinem Ziel, Training, Protein und Kalorien. Gib einen konkreten 7-Tage-Fokus.",
-    icon: TrendingUp,
-  },
-  {
-    label: "Analysiere meine Woche",
+    label: "Wie war meine Woche?",
     prompt:
       "Analysiere meine Woche: Gewicht, Kalorien, Protein, Training, Schritte, Schlaf, Regeneration und Fortschritt. Gib 3–5 konkrete Empfehlungen.",
     icon: LineChart,
   },
   {
-    label: "Optimiere meinen Trainingsplan",
+    label: "Warum stagniert mein Gewicht?",
     prompt:
-      "Optimiere meinen Trainingsplan anhand Frequenz, Volumen, Muskelbalance und Regeneration. Schlage konkrete Anpassungen vor.",
-    icon: Dumbbell,
+      "Warum stagniert mein Gewicht? Analysiere Kalorien, Protein, Schritte, Schlaf und Training der letzten Wochen. Nenne die wahrscheinlichsten Ursachen und 3 konkrete Fixes.",
+    icon: Scale,
   },
   {
-    label: "Optimiere meine Ernährung",
+    label: "Erstelle mir einen Trainingsplan.",
     prompt:
-      "Optimiere meine Ernährung für mein aktuelles Ziel: Kalorien, Protein, Carbs, Fett und Timing. Gib konkrete Tagesziele und 3 Verbesserungen.",
-    icon: Apple,
-  },
-  {
-    label: "Motivation",
-    prompt:
-      "Gib mir einen kurzen, persönlichen Motivationstipp basierend auf meinem aktuellen Streak, Ziel und heutigen Daten. Keine Floskeln.",
+      "Erstelle mir einen konkreten Trainingsplan anhand meines Ziels, meiner Erfahrung, Frequenz, Volumen, Muskelbalance und Regeneration. Schlage einen klaren Wochenplan vor.",
     icon: Sparkles,
   },
 ] as const;
@@ -72,7 +52,7 @@ export function CoachQuickActions({
 }) {
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
-      <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">
+      <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-semibold">
         Schnellzugriffe
       </p>
       <div className={cnGrid(compact)}>

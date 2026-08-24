@@ -18,11 +18,23 @@ type SlotMap = Partial<Record<HomeWidgetId, ReactNode>>;
 /** Renders home sections in user-defined order with show/hide + reorder. */
 export const HomeWidgetBoard = memo(function HomeWidgetBoard({
   slots,
+  pinFirst,
 }: {
   slots: SlotMap;
+  /** Keep this widget first and visible (e.g. live workout). */
+  pinFirst?: HomeWidgetId | null;
 }) {
   const [widgets, setWidgets] = useState<HomeWidgetConfig[]>(() => loadHomeWidgets());
   const [edit, setEdit] = useState(false);
+
+  const displayWidgets =
+    !edit && pinFirst
+      ? (() => {
+          const pinned = widgets.find((w) => w.id === pinFirst);
+          if (!pinned) return widgets;
+          return [{ ...pinned, visible: true }, ...widgets.filter((w) => w.id !== pinFirst)];
+        })()
+      : widgets;
 
   const persist = useCallback((next: HomeWidgetConfig[]) => {
     setWidgets(next);
@@ -36,7 +48,7 @@ export const HomeWidgetBoard = memo(function HomeWidgetBoard({
           type="button"
           size="icon"
           variant="ghost"
-          className="text-zinc-500 h-9 w-9"
+          className="text-zinc-400 h-11 w-11"
           aria-label={edit ? "Widget-Bearbeitung beenden" : "Widgets anordnen"}
           aria-pressed={edit}
           onClick={() => {
@@ -48,7 +60,7 @@ export const HomeWidgetBoard = memo(function HomeWidgetBoard({
         </Button>
       </div>
 
-      {widgets.map((w) => {
+      {displayWidgets.map((w) => {
         const content = slots[w.id];
         if (!content) return null;
         if (!w.visible && !edit) return null;

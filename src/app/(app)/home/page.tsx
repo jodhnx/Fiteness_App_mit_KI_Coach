@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { startWorkoutAndNavigate } from "@/lib/workout-start";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
 import { WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
 import { useBootHomeData } from "@/hooks/use-boot-home-data";
@@ -32,6 +35,7 @@ import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 
 export default function HomePage() {
   const { status: sessionStatus } = useSession();
+  const router = useRouter();
   const [workoutCleared, setWorkoutCleared] = useState(false);
 
   useEffect(() => {
@@ -102,6 +106,55 @@ export default function HomePage() {
     return undefined;
   }, [trainingStatus, data.nextWorkout?.dayName, data.nextWorkout?.dayNumber]);
 
+  const startTraining = useCallback(async () => {
+    if (activeSessionId) {
+      router.push(`/workouts/live/${activeSessionId}`);
+      return;
+    }
+    if (!data.nextWorkout?.dayId) {
+      router.push("/workouts/quick");
+      return;
+    }
+    const result = await startWorkoutAndNavigate(router, {
+      action: "start",
+      workoutPlanId: data.nextWorkout.planId,
+      workoutDayId: data.nextWorkout.dayId,
+      name: `${data.nextWorkout.planName} – ${data.nextWorkout.dayName}`,
+    });
+    if (!result.ok) toast.error(result.error);
+  }, [activeSessionId, data.nextWorkout, router]);
+
+  const greetingCue = useMemo(() => {
+    if (trainingStatus === "active") return "Training läuft — tippe zum Fortsetzen";
+    const targetsReady = hasNutritionTargets(nutrition);
+    const proteinLeft = Math.max(
+      0,
+      Math.round((nutrition.targets?.proteinG ?? 0) - (nutrition.consumed?.proteinG ?? 0))
+    );
+    if (targetsReady && proteinLeft > 15) return `Noch ${proteinLeft} g Protein heute`;
+    const kcalLeft = targetsReady
+      ? Math.max(0, Math.round(nutrition.remaining?.calories ?? 0))
+      : 0;
+    if (targetsReady && kcalLeft > 0) {
+      return `Noch ${kcalLeft.toLocaleString("de-DE")} kcal`;
+    }
+    if (trainingStatus === "planned" && trainingLabel) {
+      return `Heute: ${trainingLabel}`;
+    }
+    return null;
+  }, [trainingStatus, trainingLabel, nutrition]);
+
+  const weekPulse = useMemo(() => {
+    const target = nutrition.targets?.calories ?? 0;
+    const consumed = nutrition.consumed?.calories ?? 0;
+    return {
+      workouts: data.weeklyReport?.workouts ?? data.activityWeek?.count ?? 0,
+      caloriePct: target > 0 ? Math.min(100, Math.round((consumed / target) * 100)) : 0,
+      weightChangeKg: data.weeklyReport?.weightChangeKg ?? null,
+      goalReached: data.weeklyReport?.goalReached ?? false,
+    };
+  }, [data.weeklyReport, data.activityWeek, nutrition]);
+
   const serverSteps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10_000;
   const ready = hasNutritionTargets(nutrition);
@@ -120,11 +173,29 @@ export default function HomePage() {
 
   return (
     <PageShell className="space-y-2">
-      <HomeGreeting name={displayName} streakDays={nutritionStreakDays} />
+      <HomeGreeting
+        name={displayName}
+        streakDays={nutritionStreakDays}
+        cue={greetingCue}
+      />
 
       <HomeWidgetBoard
+        pinFirst={activeSessionId ? "training" : null}
         slots={{
-          quickAccess: <QuickAccessRail />,
+          quickAccess: (
+            <QuickAccessRail
+              training={
+                activeSessionId
+                  ? {
+                      href: `/workouts/live/${activeSessionId}`,
+                      label: "Weiter",
+                    }
+                  : data.nextWorkout?.dayId
+                    ? { label: "Starten", onStart: () => void startTraining() }
+                    : { href: "/workouts/quick", label: "Training" }
+              }
+            />
+          ),
           dashboard: (
             <HomeDashboardPremium
                 nutrition={nutrition}
@@ -132,9 +203,11 @@ export default function HomePage() {
                 stepGoal={stepGoal}
                 sleepHours={data.healthToday?.sleepHours ?? null}
                 weightKg={data.weightKg}
-                streakDays={trainingStreakDays}
                 trainingStatus={trainingStatus}
                 trainingLabel={trainingLabel}
+                activeSessionId={activeSessionId}
+                recoveryScore={data.healthToday?.recoveryScore ?? null}
+                weekPulse={weekPulse}
               />
           ),
           dayGoals: (

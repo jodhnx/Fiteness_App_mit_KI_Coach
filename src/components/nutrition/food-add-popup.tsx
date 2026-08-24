@@ -45,11 +45,22 @@ type Props = {
     meal: MealType
   ) => void;
   onToggleFavorite: (foodItemId: string) => Promise<void>;
+  quickAdding?: boolean;
 };
 
 type ViewMode = "hub" | "favorites" | "search";
 
 const SEARCH_CACHE_TTL = 300_000;
+const SEARCH_DEBOUNCE_MS = 140;
+const DISH_CHIPS = [
+  "Pizza",
+  "Döner",
+  "Schnitzel",
+  "Burger",
+  "Pasta",
+  "Salat",
+  "Banane",
+];
 
 const FoodBarcodeScanner = dynamic(
   () =>
@@ -98,14 +109,16 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   onClose,
   onQuickAddFood,
   onToggleFavorite,
+  quickAdding,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<ViewMode>("hub");
   const [q, setQ] = useState("");
-  const debouncedQ = useDebounce(q, 140);
+  const debouncedQ = useDebounce(q, SEARCH_DEBOUNCE_MS);
   const [result, setResult] = useState<FoodSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   const [historyFoods, setHistoryFoods] = useState<FoodHistoryPayload>(() =>
     getCachedFoodHistory() ?? emptyHistory()
   );
@@ -190,6 +203,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     if (trimmed.length < 2) {
       setResult(null);
       setLoading(false);
+      setEnriching(false);
       return;
     }
 
@@ -223,6 +237,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
       }
 
       // Phase 2: full merge (may include OFF) — upgrade results
+      setEnriching(true);
       const fullRes = await fetch(
         `/api/food/search?q=${encodeURIComponent(trimmed)}`,
         { signal: ac.signal }
@@ -231,12 +246,14 @@ export const FoodAddPopup = memo(function FoodAddPopup({
       if (!ac.signal.aborted && gen === requestGen.current) {
         setCached(key, fullData, SEARCH_CACHE_TTL);
         setResult(fullData);
+        setEnriching(false);
       }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
     } finally {
       if (!ac.signal.aborted && gen === requestGen.current) {
         setLoading(false);
+        setEnriching(false);
       }
     }
   }, []);
@@ -246,17 +263,27 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   }, [debouncedQ, search, view]);
 
   const isSearching = view === "search" && q.trim().length > 0;
+  const queryTooShort = view === "search" && q.trim().length === 1;
 
-  const instantResults = useMemo(() => {
+  const shortcutFoods = useMemo(() => {
     if (!isSearching) return [];
-    return dedupeFoods(filterFoods(historyFoods.recents, q.trim()));
-  }, [isSearching, q, historyFoods.recents]);
+    return dedupeFoods([
+      ...filterFoods(historyFoods.frequent, q.trim()),
+      ...filterFoods(historyFoods.recents, q.trim()),
+    ]).slice(0, 4);
+  }, [isSearching, q, historyFoods.frequent, historyFoods.recents]);
 
   const searchResults = useMemo(() => {
     if (!isSearching) return [];
-    const api = result?.products ?? [];
-    return dedupeFoods([...instantResults, ...api]).slice(0, 40);
-  }, [isSearching, result, instantResults]);
+    const shortcutKeys = new Set(
+      shortcutFoods.map((f) => f.id ?? f.offCode ?? f.name.toLowerCase())
+    );
+    const api = (result?.products ?? []).filter((f) => {
+      const key = f.id ?? f.offCode ?? f.name.toLowerCase();
+      return !shortcutKeys.has(key);
+    });
+    return api.slice(0, 40);
+  }, [isSearching, result, shortcutFoods]);
 
   /** Favorites — prefer history cache; filter by ids when available */
   const favoriteOnly = useMemo(() => {
@@ -309,6 +336,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
         isFavorite={Boolean(food.id && favoriteIds.has(food.id))}
         onQuickAdd={() => void quickAdd(food)}
         onOpenDetail={() => setDetailProduct(food)}
+        quickAdding={quickAdding}
         onToggleFavorite={
           food.id ? () => void handleToggleFavorite(food.id as string) : undefined
         }
@@ -396,10 +424,15 @@ export const FoodAddPopup = memo(function FoodAddPopup({
             <div className="food-add-popup-scroll">
               {view === "hub" && (
                 <div className="space-y-2 px-1 pb-4">
+                  {historyFoods.frequent.length > 0 && (
+                    <FoodSection title="⚡ Häufig verwendet">
+                      {historyFoods.frequent.slice(0, 8).map((food) => renderRow(food))}
+                    </FoodSection>
+                  )}
                   <FoodSection title="🕘 Zuletzt verwendet">
                     {historyFoods.recents.length === 0 ? (
-                      <p className="text-sm text-zinc-500 py-3 text-center px-2">
-                        Noch keine Lebensmittel verwendet.
+                      <p className="text-sm text-zinc-400 py-3 text-center px-2">
+                        Noch keine Lebensmittel verwendet. Suche oben starten.
                       </p>
                     ) : (
                       historyFoods.recents.slice(0, 10).map((food) => renderRow(food))
@@ -426,32 +459,76 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
               {view === "search" && (
                 <div className="food-add-popup-results">
+                  {queryTooShort && (
+                    <p className="text-sm text-zinc-400 py-6 text-center px-4">
+                      Mindestens 2 Zeichen eingeben
+                    </p>
+                  )}
                   {!q.trim() ? (
-                    <FoodSection title="🕘 Zuletzt verwendet">
-                      {historyFoods.recents.length === 0 ? (
-                        <p className="text-sm text-zinc-500 py-3 text-center px-2">
-                          Noch keine Lebensmittel verwendet.
-                        </p>
-                      ) : (
-                        historyFoods.recents.slice(0, 8).map((food) => renderRow(food))
-                      )}
-                    </FoodSection>
-                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2 px-1">
+                        {DISH_CHIPS.map((label) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => {
+                              setQ(label);
+                              setView("search");
+                            }}
+                            className="min-h-11 rounded-xl border border-white/10 bg-zinc-900/70 px-3 text-xs font-semibold text-zinc-200"
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <FoodSection title="🕘 Zuletzt verwendet">
+                        {historyFoods.recents.length === 0 ? (
+                          <p className="text-sm text-zinc-400 py-3 text-center px-2">
+                            Noch keine Lebensmittel verwendet.
+                          </p>
+                        ) : (
+                          historyFoods.recents.slice(0, 8).map((food) => renderRow(food))
+                        )}
+                      </FoodSection>
+                    </div>
+                  ) : !queryTooShort ? (
                     <>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-1 pb-2">
+                      {shortcutFoods.length > 0 && (
+                        <FoodSection title="Schnellzugriff">
+                          {shortcutFoods.map((food) => renderRow(food))}
+                        </FoodSection>
+                      )}
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 px-1 pb-2 pt-1">
                         Suchergebnisse
                       </p>
-                      {searchResults.length === 0 && loading && (
-                        <p className="text-sm text-zinc-500 py-6 text-center">Suche…</p>
+                      {result?.offError && searchResults.length + shortcutFoods.length > 0 && (
+                        <p className="text-[11px] text-amber-300/90 px-1 pb-2">
+                          Online-Suche eingeschränkt — lokale Treffer werden angezeigt.
+                        </p>
                       )}
-                      {searchResults.length === 0 && !loading && (
-                        <p className="text-sm text-zinc-500 py-6 text-center">
-                          Keine Treffer
+                      {searchResults.length === 0 && loading && (
+                        <div className="flex gap-2 py-2 px-1">
+                          {[0, 1, 2].map((i) => (
+                            <div
+                              key={i}
+                              className="h-16 flex-1 rounded-xl bg-zinc-800/60 animate-pulse"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {enriching && (
+                        <p className="text-[10px] text-zinc-500 text-center pb-2">
+                          Weitere Produkte laden…
+                        </p>
+                      )}
+                      {searchResults.length === 0 && shortcutFoods.length === 0 && !loading && (
+                        <p className="text-sm text-zinc-400 py-6 text-center">
+                          Keine Treffer — versuche einen anderen Namen.
                         </p>
                       )}
                       {searchResults.map((food) => renderRow(food))}
                     </>
-                  )}
+                  ) : null}
                 </div>
               )}
             </div>
@@ -464,6 +541,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
         <FoodDetailPopup
           product={detailProduct}
           mealType={mealType}
+          adding={quickAdding}
           onClose={() => setDetailProduct(null)}
           onAdd={addFromDetail}
         />

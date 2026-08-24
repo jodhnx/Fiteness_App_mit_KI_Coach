@@ -9,6 +9,9 @@ import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 type Props = {
   open: boolean;
   defaultName: string;
+  completedSets?: number;
+  totalSets?: number;
+  volumeKg?: number;
   onSave: (name: string) => void;
   onCancel: () => void;
 };
@@ -17,6 +20,9 @@ type Props = {
 export const EndWorkoutDialog = memo(function EndWorkoutDialog({
   open,
   defaultName,
+  completedSets,
+  totalSets,
+  volumeKg,
   onSave,
   onCancel,
 }: Props) {
@@ -41,7 +47,20 @@ export const EndWorkoutDialog = memo(function EndWorkoutDialog({
         <h2 id="end-workout-title" className="text-lg font-bold text-white">
           Training beenden
         </h2>
-        <p className="text-sm text-zinc-400 mt-1">Gib deinem Workout einen Namen.</p>
+        <p className="text-sm text-zinc-300 mt-1">
+          Training erfolgreich abschließen?
+        </p>
+        {(completedSets != null || volumeKg != null) && (
+          <p className="mt-2 text-sm tabular-nums text-zinc-400">
+            {completedSets ?? 0}/{totalSets ?? 0} Sätze
+            {volumeKg != null ? ` · ${volumeKg.toLocaleString("de-DE")} kg Volumen` : ""}
+          </p>
+        )}
+        {completedSets === 0 && (
+          <p className="mt-2 text-sm text-amber-300">
+            Noch kein Satz abgeschlossen.
+          </p>
+        )}
 
         <Input
           ref={inputRef}
@@ -73,7 +92,7 @@ export const EndWorkoutDialog = memo(function EndWorkoutDialog({
               onSave(v || defaultName);
             }}
           >
-            Speichern
+            Speichern & fertig
           </Button>
         </div>
       </div>

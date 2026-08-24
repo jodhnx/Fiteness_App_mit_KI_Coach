@@ -18,7 +18,7 @@ export type HomeWidgetConfig = {
   visible: boolean;
 };
 
-const STORAGE_KEY = "nexform:home-widgets-v3";
+const STORAGE_KEY = "nexform:home-widgets-v4";
 
 export const DEFAULT_HOME_WIDGETS: HomeWidgetConfig[] = [
   { id: "dashboard", label: "Tagesstatus", visible: true },

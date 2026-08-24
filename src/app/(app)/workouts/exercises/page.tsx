@@ -82,8 +82,42 @@ export default function ExercisesPage() {
     void loadLists();
   }, [loadLists]);
 
+  const toggleFavorite = useCallback(
+    async (ex: LibraryExercise) => {
+      const isFav = favorites.some((f) => f.id === ex.id);
+      try {
+        const res = isFav
+          ? await fetch(
+              `/api/exercises/favorites?exerciseLibraryId=${encodeURIComponent(ex.id)}`,
+              { method: "DELETE", credentials: "include" }
+            )
+          : await fetch("/api/exercises/favorites", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ exerciseLibraryId: ex.id }),
+            });
+        if (!res.ok) return;
+        await loadLists();
+      } catch {
+        /* ignore */
+      }
+    },
+    [favorites, loadLists]
+  );
+
   const list = useMemo(() => {
-    if (isSearching) return searchResults;
+    if (isSearching) {
+      if (tab === "favorites") {
+        const ids = new Set(favorites.map((f) => f.id));
+        return searchResults.filter((e) => ids.has(e.id));
+      }
+      if (tab === "recent") {
+        const ids = new Set(recent.map((f) => f.id));
+        return searchResults.filter((e) => ids.has(e.id));
+      }
+      return searchResults;
+    }
     if (tab === "favorites") return favorites;
     if (tab === "recent") return recent;
     return browseResults;
@@ -125,7 +159,7 @@ export default function ExercisesPage() {
             type="button"
             onClick={() => setMuscle(m.id)}
             className={cn(
-              "rounded-full px-3 py-2 text-xs font-medium whitespace-nowrap shrink-0",
+              "rounded-full min-h-11 px-3 text-xs font-medium whitespace-nowrap shrink-0",
               muscle === m.id
                 ? "bg-cyan-500 text-zinc-950"
                 : "bg-zinc-900 text-zinc-400 border border-zinc-800"
@@ -136,15 +170,14 @@ export default function ExercisesPage() {
         ))}
       </div>
 
-      {!isSearching && (
-        <div className="flex gap-2">
+      <div className="flex gap-2">
           {tabs.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                "flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium",
+                "flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium",
                 tab === t.id
                   ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
                   : "bg-zinc-900 text-zinc-400 border border-zinc-800"
@@ -155,7 +188,6 @@ export default function ExercisesPage() {
             </button>
           ))}
         </div>
-      )}
 
       {selected && (
         <div className="rounded-2xl border border-cyan-500/30 bg-zinc-900/80 p-4 space-y-3">
@@ -190,6 +222,15 @@ export default function ExercisesPage() {
               <ChevronRight className="h-4 w-4" />
             </span>
           </Link>
+          <button
+            type="button"
+            className="w-full min-h-11 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-medium text-amber-200"
+            onClick={() => void toggleFavorite(selected)}
+          >
+            {favorites.some((f) => f.id === selected.id)
+              ? "Aus Favoriten entfernen"
+              : "Zu Favoriten hinzufügen"}
+          </button>
         </div>
       )}
 
@@ -198,7 +239,13 @@ export default function ExercisesPage() {
           <p className="text-sm text-zinc-500 text-center py-8">Lädt…</p>
         )}
         {!loading && list.length === 0 && (
-          <p className="text-sm text-zinc-500 text-center py-8">Keine Übungen gefunden</p>
+          <p className="text-sm text-zinc-400 text-center py-8">
+            {tab === "favorites"
+              ? "Noch keine Favoriten — öffne eine Übung und merke sie."
+              : tab === "recent"
+                ? "Noch keine zuletzt verwendeten Übungen."
+                : "Keine Übungen gefunden"}
+          </p>
         )}
         {list.map((ex) => (
           <button

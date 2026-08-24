@@ -70,7 +70,7 @@ export const MealTrackList = memo(function MealTrackList({
                 {emoji}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400">
                   {MEAL_TYPE_LABELS[slot.mealType] ?? slot.mealType}
                 </p>
                 {hasItems ? (
@@ -83,7 +83,7 @@ export const MealTrackList = memo(function MealTrackList({
                     )}
                   </p>
                 ) : (
-                  <p className="text-[13px] text-zinc-600 mt-0.5">Noch nichts erfasst</p>
+                  <p className="text-[13px] text-zinc-400 mt-0.5">Noch nichts erfasst</p>
                 )}
               </div>
               <button
@@ -101,19 +101,25 @@ export const MealTrackList = memo(function MealTrackList({
             {hasItems && (
               <ul className="border-t border-zinc-800/70 px-4 py-2 space-y-1.5">
                 {items.map((item) => (
-                  <li key={item.id} className="flex items-center gap-2 text-sm py-1">
+                  <li
+                    key={item.id}
+                    className={cn(
+                      "flex items-center gap-2 text-sm py-1",
+                      item.id.startsWith("opt-") && "opacity-70"
+                    )}
+                  >
                     <span className="text-zinc-300 truncate flex-1 min-w-0">
                       {item.food?.name ?? "Lebensmittel"}
-                      <span className="text-zinc-600 ml-1 text-xs">· {item.quantityG}g</span>
+                      <span className="text-zinc-500 ml-1 text-xs">· {item.quantityG}g</span>
                     </span>
-                    <span className="text-zinc-500 tabular-nums text-xs shrink-0">
+                    <span className="text-zinc-400 tabular-nums text-xs shrink-0">
                       {Math.round(item.calories)} kcal
                     </span>
                     {onEdit && (
                       <button
                         type="button"
                         onClick={() => onEdit(item.id, item.quantityG)}
-                        className="text-zinc-600 hover:text-zinc-300 p-1 shrink-0"
+                        className="text-zinc-400 hover:text-zinc-200 p-2 min-h-11 min-w-11 shrink-0 flex items-center justify-center"
                         aria-label="Menge bearbeiten"
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -122,7 +128,7 @@ export const MealTrackList = memo(function MealTrackList({
                     <button
                       type="button"
                       onClick={() => onRemove(item.id)}
-                      className="text-zinc-600 hover:text-red-400 p-1 shrink-0"
+                      className="text-zinc-400 hover:text-red-400 p-2 min-h-11 min-w-11 shrink-0 flex items-center justify-center"
                       aria-label="Eintrag löschen"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -137,7 +143,7 @@ export const MealTrackList = memo(function MealTrackList({
               <button
                 type="button"
                 onClick={() => onAddClick?.(slot.mealType)}
-                className="w-full border-t border-zinc-800/50 px-4 py-2.5 text-xs text-zinc-600 hover:text-zinc-400 text-left transition-colors"
+                className="w-full min-h-11 border-t border-zinc-800/50 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-200 text-left"
               >
                 + Lebensmittel hinzufügen
               </button>

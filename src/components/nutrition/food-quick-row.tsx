@@ -82,7 +82,7 @@ export const FoodQuickRow = memo(function FoodQuickRow({
           {" · "}
           {Math.round(macros.proteinG)} P
           {" · "}
-          {Math.round(macros.carbsG)} C
+          {Math.round(macros.carbsG)} KH
           {" · "}
           {Math.round(macros.fatG)} F
         </p>
@@ -95,8 +95,9 @@ export const FoodQuickRow = memo(function FoodQuickRow({
             e.stopPropagation();
             onToggleFavorite();
           }}
-          className="flex h-10 w-9 shrink-0 items-center justify-center self-center text-zinc-600 active:opacity-80"
-          aria-label="Favorit"
+          className="flex h-11 w-11 shrink-0 items-center justify-center self-center text-zinc-500 active:opacity-80"
+          aria-label={isFavorite ? "Favorit entfernen" : "Als Favorit merken"}
+          aria-pressed={Boolean(isFavorite)}
         >
           <Star
             className={`h-4 w-4 ${isFavorite ? "fill-amber-400 text-amber-400" : ""}`}
@@ -111,10 +112,13 @@ export const FoodQuickRow = memo(function FoodQuickRow({
           e.stopPropagation();
           onQuickAdd();
         }}
-        className="shrink-0 self-center flex h-10 w-10 items-center justify-center rounded-xl border border-accent/35 bg-accent/15 text-lg font-bold text-accent active:opacity-80 disabled:opacity-50"
+        className="shrink-0 self-center flex min-h-11 min-w-[2.75rem] flex-col items-center justify-center rounded-xl border border-accent/35 bg-accent/15 px-1.5 py-1 text-accent active:opacity-80 disabled:opacity-50"
         aria-label={`${food.name} hinzufügen (${chip})`}
       >
-        +
+        <span className="text-lg font-bold leading-none">+</span>
+        <span className="mt-0.5 text-[9px] font-semibold leading-none text-accent/80">
+          {chip}
+        </span>
       </button>
     </div>
   );

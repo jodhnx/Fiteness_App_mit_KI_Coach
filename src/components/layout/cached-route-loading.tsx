@@ -37,8 +37,6 @@ export const HomeRoutePreview = memo(function HomeRoutePreview() {
     []
   );
   const displayName = useDisplayName(home.userName);
-  const trainingStreakDays =
-    home.trainingStreak?.currentDays ?? home.streak?.currentDays ?? 0;
 
   const trainingStatus = useMemo(() => {
     if (home.activeSession?.id) return "active" as const;
@@ -59,11 +57,12 @@ export const HomeRoutePreview = memo(function HomeRoutePreview() {
         stepGoal={home.healthToday?.stepGoal ?? 10_000}
         sleepHours={home.healthToday?.sleepHours ?? null}
         weightKg={home.weightKg}
-        streakDays={trainingStreakDays}
         trainingStatus={trainingStatus}
         trainingLabel={
           trainingStatus === "planned" ? home.nextWorkout?.dayName : undefined
         }
+        activeSessionId={home.activeSession?.id ?? null}
+        recoveryScore={home.healthToday?.recoveryScore ?? null}
       />
     </div>
   );

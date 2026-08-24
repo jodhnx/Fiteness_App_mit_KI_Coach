@@ -405,6 +405,11 @@ export const FoodAISheet = memo(function FoodAISheet({ open, onClose, onTrack }:
                       }
                     />
                   ))}
+                  {editedItems.length === 0 && (
+                    <p className="text-xs text-zinc-400 py-3 text-center">
+                      Mindestens ein Lebensmittel nötig — oder Foto neu analysieren.
+                    </p>
+                  )}
                 </div>
               </div>
 

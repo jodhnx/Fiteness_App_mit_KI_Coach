@@ -27,7 +27,11 @@ import {
 import { ShoppingCart } from "lucide-react";
 
 /** Compact quick-capture tools (no shopping — that lives at page end). */
-export const NutritionExtrasPanel = memo(function NutritionExtrasPanel() {
+export const NutritionExtrasPanel = memo(function NutritionExtrasPanel({
+  onOpenFoodAI,
+}: {
+  onOpenFoodAI?: () => void;
+}) {
   const router = useRouter();
   const [barcode, setBarcode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -129,18 +133,32 @@ export const NutritionExtrasPanel = memo(function NutritionExtrasPanel() {
   return (
     <PremiumCard padding="sm" className="space-y-2">
       <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-0.5 px-0.5 scrollbar-none">
-        <label className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 h-9 px-3 text-xs text-zinc-200 cursor-pointer active:bg-zinc-800">
-          <Camera className="h-3.5 w-3.5 text-accent" />
-          KI-Foto
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            disabled={busy}
-            onChange={(e) => void onPhotoPick(e.target.files?.[0] ?? null)}
-          />
-        </label>
+        {onOpenFoodAI ? (
+          <button
+            type="button"
+            className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 px-3 text-xs text-zinc-200 active:bg-zinc-800"
+            onClick={() => {
+              hapticTap();
+              onOpenFoodAI();
+            }}
+          >
+            <Camera className="h-3.5 w-3.5 text-accent" />
+            KI-Foto
+          </button>
+        ) : (
+          <label className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 px-3 text-xs text-zinc-200 cursor-pointer active:bg-zinc-800">
+            <Camera className="h-3.5 w-3.5 text-accent" />
+            KI-Foto
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              disabled={busy}
+              onChange={(e) => void onPhotoPick(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        )}
         <Link
           href="/nutrition/saved-meals/new"
           className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 h-9 px-3 text-xs text-zinc-200"

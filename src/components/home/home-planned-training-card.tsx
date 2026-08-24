@@ -78,7 +78,7 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
         )}
       >
         <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-300/90 mb-3">
-          Heute geplant · läuft
+          Training läuft
         </p>
         <Button className="w-full h-14 text-base rounded-2xl" onClick={() => void startTraining()}>
           <Play className="h-5 w-5 mr-2" />

@@ -12,6 +12,7 @@ import {
   optimisticRemoveMeal,
   optimisticPatchItemQuantity,
   optimisticAddWater,
+  optimisticAddMealItem,
 } from "@/lib/nutrition-sync";
 import { PageShell } from "@/components/layout/page-shell";
 import { NutritionOrbitOverview } from "@/components/nutrition/nutrition-orbit-overview";
@@ -102,7 +103,7 @@ function NutritionPageInner() {
     toast.success("Lebensmittel hinzugefügt ✓", { duration: 1600 });
   }, [closeAddPopup]);
 
-  const { quickAdd } = useFoodQuickAdd({
+  const { quickAdd, adding: quickAdding } = useFoodQuickAdd({
     dashboard,
     applyDashboard,
     onSuccess: onFoodAdded,
@@ -221,31 +222,62 @@ function NutritionPageInner() {
   const handleFoodAITrack = useCallback(
     async (items: FoodAIItem[], mealType: MealType) => {
       const snapshot = dashboard;
+      let nextDash = dashboard;
       for (const item of items) {
-        const res = await fetch("/api/nutrition/log", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "same-origin",
-          body: JSON.stringify({
-            mealType,
-            foodItemId: null,
-            name: item.name,
-            quantityG: item.estimatedGrams,
-            calories: item.calories,
-            proteinG: item.proteinG,
-            carbsG: item.carbsG,
-            fatG: item.fatG,
-            source: "food-ai",
-          }),
-        });
-        if (res.ok) {
-          const updated = await applyNutritionMutationResponse(res);
-          if (updated) applyDashboard(updated);
-        } else {
-          applyDashboard(snapshot);
-          toast.error("Mahlzeit konnte nicht gespeichert werden");
-          throw new Error("log failed");
+        const product = {
+          name: item.name,
+          calories: item.calories,
+          proteinG: item.proteinG,
+          carbsG: item.carbsG,
+          fatG: item.fatG,
+          fiberG: null,
+          servingG: item.estimatedGrams || 100,
+        };
+        const optimistic = optimisticAddMealItem(
+          nextDash,
+          product,
+          item.estimatedGrams,
+          mealType
+        );
+        if (optimistic) {
+          nextDash = optimistic;
+          applyDashboard(optimistic);
         }
+      }
+      try {
+        for (const item of items) {
+          const res = await fetch("/api/nutrition/log", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({
+              mealType,
+              foodItemId: null,
+              name: item.name,
+              quantityG: item.estimatedGrams,
+              calories: item.calories,
+              proteinG: item.proteinG,
+              carbsG: item.carbsG,
+              fatG: item.fatG,
+              source: "food-ai",
+            }),
+          });
+          if (res.ok) {
+            const updated = await applyNutritionMutationResponse(res);
+            if (updated) {
+              nextDash = updated;
+              applyDashboard(updated);
+            }
+          } else {
+            applyDashboard(snapshot);
+            toast.error("Mahlzeit konnte nicht gespeichert werden — Eintrag wurde zurückgesetzt");
+            throw new Error("log failed");
+          }
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message === "log failed") throw err;
+        applyDashboard(snapshot);
+        throw err;
       }
       refreshFoodHistoryCache();
       toast.success("Mahlzeit hinzugefügt ✓", { duration: 2000 });
@@ -313,7 +345,7 @@ function NutritionPageInner() {
         onAdd={addWater}
       />
 
-      <NutritionExtrasPanel />
+      <NutritionExtrasPanel onOpenFoodAI={() => setFoodAIOpen(true)} />
       <NutritionShoppingList />
       <PageIntro pageId="nutrition" />
 
@@ -344,6 +376,7 @@ function NutritionPageInner() {
           onClose={closeAddPopup}
           onQuickAddFood={quickAdd}
           onToggleFavorite={handleToggleFavorite}
+          quickAdding={quickAdding}
         />
       )}
 

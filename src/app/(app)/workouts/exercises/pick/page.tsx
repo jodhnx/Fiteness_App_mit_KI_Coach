@@ -81,7 +81,7 @@ export default function ExercisePickPage() {
                 type="button"
                 onClick={() => setMuscle(m.value)}
                 className={cn(
-                  "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
+                  "shrink-0 min-h-11 rounded-full px-3.5 text-xs font-medium",
                   muscle === m.value ? "bg-cyan-500 text-zinc-950" : "bg-zinc-800 text-zinc-400"
                 )}
               >
@@ -96,7 +96,7 @@ export default function ExercisePickPage() {
                 type="button"
                 onClick={() => setDifficulty(d.value)}
                 className={cn(
-                  "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
+                  "shrink-0 min-h-11 rounded-full px-3.5 text-xs font-medium",
                   difficulty === d.value
                     ? "bg-violet-500 text-white"
                     : "bg-zinc-800 text-zinc-400"
@@ -110,15 +110,20 @@ export default function ExercisePickPage() {
 
         <div className="px-4 pt-3 space-y-2">
           {loading && (
-            <p className="text-center text-zinc-500 py-8 text-sm animate-pulse">Lädt…</p>
+            <p className="text-center text-zinc-400 py-8 text-sm animate-pulse">Lädt…</p>
+          )}
+          {!loading && exercises.length === 0 && (
+            <p className="text-center text-zinc-400 py-10 text-sm">
+              Keine Übungen gefunden. Filter zurücksetzen oder anders suchen.
+            </p>
           )}
           {!loading &&
             exercises.map((ex) => (
               <button
                 key={ex.id}
                 type="button"
-                onClick={() => router.push(`/workouts/exercises/${ex.slug}`)}
-                className="w-full text-left card-premium p-4 active:scale-[0.99] duration-100"
+                onClick={() => router.push(`/workouts/exercises/${ex.id}`)}
+                className="w-full min-h-14 text-left card-premium p-4 active:scale-[0.99] duration-100"
               >
                 <p className="font-semibold text-white">{ex.name}</p>
                 <p className="text-xs text-zinc-500 mt-1">

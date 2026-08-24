@@ -339,7 +339,7 @@ export default function SocialPage() {
               <Activity className="h-10 w-10 text-zinc-600 mx-auto" />
               <div>
                 <p className="text-sm font-medium text-zinc-400">Noch keine Aktivitäten</p>
-                <p className="text-xs text-zinc-600 mt-0.5">
+                <p className="text-xs text-zinc-400 mt-0.5">
                   Schließe ein Workout ab oder füge Freunde hinzu
                 </p>
               </div>
@@ -368,7 +368,7 @@ export default function SocialPage() {
                     <p className="text-sm font-semibold text-white truncate">
                       {displayHandle(item.user)}
                     </p>
-                    <p className="text-[10px] text-zinc-500">{timeAgo(item.createdAt)}</p>
+                    <p className="text-[11px] text-zinc-400">{timeAgo(item.createdAt)}</p>
                   </div>
                   <div className={cn("h-7 w-7 rounded-xl flex items-center justify-center shrink-0", colorClass)}>
                     <FeedIcon className="h-3.5 w-3.5" />
@@ -479,7 +479,7 @@ export default function SocialPage() {
                     <button
                       type="button"
                       onClick={() => void patchFriend(f.id, "accept")}
-                      className="h-9 w-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400"
+                      className="h-11 w-11 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400"
                       aria-label="Annehmen"
                     >
                       <Check className="h-4 w-4" />
@@ -487,7 +487,7 @@ export default function SocialPage() {
                     <button
                       type="button"
                       onClick={() => void patchFriend(f.id, "reject")}
-                      className="h-9 w-9 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-400"
+                      className="h-11 w-11 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300"
                       aria-label="Ablehnen"
                     >
                       <X className="h-4 w-4" />
@@ -531,7 +531,7 @@ export default function SocialPage() {
             {accepted.length === 0 ? (
               <div className="text-center py-6 space-y-2">
                 <Users className="h-8 w-8 text-zinc-700 mx-auto" />
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-zinc-400">
                   Noch keine Freunde — suche oben nach einem Benutzernamen
                 </p>
               </div>
@@ -556,7 +556,7 @@ export default function SocialPage() {
                       <button
                         type="button"
                         onClick={() => void patchFriend(f.id, "remove")}
-                        className="text-[11px] text-zinc-600 hover:text-red-400 transition-colors"
+                        className="min-h-11 px-2 text-[11px] text-zinc-400 hover:text-red-400 transition-colors"
                       >
                         Entfernen
                       </button>
@@ -582,7 +582,7 @@ export default function SocialPage() {
               <Trophy className="h-10 w-10 text-zinc-600 mx-auto" />
               <div>
                 <p className="text-sm font-medium text-zinc-400">Noch keine Challenges</p>
-                <p className="text-xs text-zinc-600 mt-0.5">Challenges werden bald verfügbar</p>
+                <p className="text-xs text-zinc-400 mt-0.5">Challenges werden bald verfügbar</p>
               </div>
               <button
                 type="button"
@@ -627,7 +627,10 @@ export default function SocialPage() {
                   </div>
                   <div>
                     <div className="flex justify-between text-xs text-zinc-400 mb-1 tabular-nums">
-                      <span>{progress} / {target}</span>
+                      <span>
+                        {progress} / {target}
+                        {!done ? ` · noch ${Math.max(0, target - progress)}` : ""}
+                      </span>
                       <span className="font-semibold text-white">{pct}%</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
@@ -668,7 +671,7 @@ export default function SocialPage() {
                 type="button"
                 onClick={() => setRankMetric(id)}
                 className={cn(
-                  "shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-colors",
+                  "shrink-0 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors",
                   rankMetric === id
                     ? "border-accent/40 bg-accent/10 text-accent"
                     : "border-white/[0.07] bg-zinc-900/60 text-zinc-400"

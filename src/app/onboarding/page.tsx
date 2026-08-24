@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { PlaceholderNumberInput } from "@/components/ui/placeholder-number-input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { StepIndicator } from "@/components/onboarding/step-indicator";
 import {
   ONBOARDING_GENDER_OPTIONS,
   ONBOARDING_ACTIVITY_SIMPLE,
@@ -55,14 +56,14 @@ function OptionButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "w-full rounded-2xl border px-4 py-4 text-left transition-all active:scale-[0.98]",
+        "w-full min-h-12 rounded-2xl border px-4 py-3.5 text-left transition-all active:scale-[0.98]",
         selected
           ? "border-cyan-500/50 bg-cyan-500/15 text-white shadow-lg shadow-cyan-500/10"
           : "border-zinc-700/80 bg-zinc-900/60 text-zinc-300"
       )}
     >
       <span className="font-semibold block text-base">{label}</span>
-      {hint && <span className="text-sm text-zinc-500 mt-1 block">{hint}</span>}
+      {hint && <span className="text-sm text-zinc-400 mt-1 block">{hint}</span>}
     </button>
   );
 }
@@ -239,17 +240,7 @@ export default function OnboardingPage() {
     <div className="gradient-mesh fixed inset-0 flex flex-col overflow-hidden px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-y-auto overscroll-contain min-h-0">
         {step > 1 && step < 5 && (
-          <div className="mb-5">
-            <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-cyan-500 to-teal-400 transition-all duration-300"
-                style={{ width: `${((step - 1) / (TOTAL_STEPS - 1)) * 100}%` }}
-              />
-            </div>
-            <p className="text-xs text-zinc-500 mt-2 text-center">
-              Schritt {step - 1} von {TOTAL_STEPS - 1}
-            </p>
-          </div>
+          <StepIndicator step={step - 1} total={TOTAL_STEPS - 1} />
         )}
 
         <div className="flex-1 flex flex-col">
@@ -278,7 +269,7 @@ export default function OnboardingPage() {
                       </div>
                       <div>
                         <p className="font-semibold text-white">{f.title}</p>
-                        <p className="text-sm text-zinc-500">{f.desc}</p>
+                        <p className="text-sm text-zinc-400">{f.desc}</p>
                       </div>
                     </div>
                   );
@@ -291,7 +282,7 @@ export default function OnboardingPage() {
             <div className="space-y-4">
               <div>
                 <h2 className="text-2xl font-bold text-white">Erzähl uns etwas über dich</h2>
-                <p className="text-zinc-500 text-sm mt-1">Für deinen personalisierten Plan</p>
+                <p className="text-zinc-400 text-sm mt-1">Für deinen personalisierten Plan</p>
               </div>
 
               <div>
@@ -355,7 +346,7 @@ export default function OnboardingPage() {
                   />
                 </div>
               </div>
-              <p className="text-[10px] text-zinc-600">Größe in cm · Gewicht in kg</p>
+              <p className="text-[10px] text-zinc-400">Größe in cm · Gewicht in kg</p>
 
               <div>
                 <Label>Wo wohnst du?</Label>
@@ -384,7 +375,7 @@ export default function OnboardingPage() {
             <div className="space-y-4">
               <div>
                 <h2 className="text-2xl font-bold text-white">Dein Ziel</h2>
-                <p className="text-zinc-500 text-sm mt-1">Was möchtest du erreichen?</p>
+                <p className="text-zinc-400 text-sm mt-1">Was möchtest du erreichen?</p>
               </div>
               <div className="space-y-2">
                 {ONBOARDING_GOAL_SIMPLE.map((o) => (
@@ -404,7 +395,7 @@ export default function OnboardingPage() {
             <div className="space-y-4">
               <div>
                 <h2 className="text-2xl font-bold text-white">Deine Aktivität</h2>
-                <p className="text-zinc-500 text-sm mt-1">Wie aktiv bist du im Alltag?</p>
+                <p className="text-zinc-400 text-sm mt-1">Wie aktiv bist du im Alltag?</p>
               </div>
               <div className="space-y-2">
                 {ONBOARDING_ACTIVITY_SIMPLE.map((o) => (

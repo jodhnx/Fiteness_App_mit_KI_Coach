@@ -16,7 +16,7 @@ export const StepIndicator = memo(function StepIndicator({ step, total, label }:
     <div className="mb-6">
       <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-cyan-400/80 mb-2">
         <span>Schritt {step} / {total}</span>
-        {label && <span className="text-zinc-500 normal-case tracking-normal">{label}</span>}
+        {label && <span className="text-zinc-400 normal-case tracking-normal">{label}</span>}
       </div>
       <div className="h-1.5 rounded-full bg-zinc-800/80 overflow-hidden backdrop-blur-sm border border-white/5">
         <div

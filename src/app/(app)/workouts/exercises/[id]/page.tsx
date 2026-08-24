@@ -25,6 +25,11 @@ export default function ExerciseStatsPage() {
     bestWeight: number | null;
     bestVolume: number | null;
     estimated1RM: number | null;
+    lastPerformance: {
+      weightKg: number | null;
+      reps: number | null;
+      completedAt: string | null;
+    } | null;
     progressChart: { label: string; volume: number; maxWeight: number }[];
     ratingAvg: number | null;
     ratingCount: number;
@@ -57,6 +62,25 @@ export default function ExerciseStatsPage() {
         equipment={data.exercise.equipment}
       />
       <h1 className="text-2xl font-bold text-white">{data.exercise.name}</h1>
+      <p className="text-sm text-zinc-400">
+        {data.exercise.muscleGroup} · {data.exercise.equipment}
+      </p>
+
+      {(data.lastPerformance || data.estimated1RM != null) && (
+        <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/70 px-4 py-3 space-y-1">
+          {data.lastPerformance && (
+            <p className="text-sm text-zinc-200 tabular-nums">
+              Letztes Mal: {data.lastPerformance.weightKg ?? "—"} kg ×{" "}
+              {data.lastPerformance.reps ?? "—"}
+            </p>
+          )}
+          {data.estimated1RM != null && (
+            <p className="text-sm text-zinc-400 tabular-nums">
+              Geschätztes 1RM: {Math.round(data.estimated1RM)} kg
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>

@@ -31,16 +31,36 @@ export function useFoodFavorites() {
       const id = food.id;
       if (!id) return false;
       const isFav = favoriteIds.has(id);
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (isFav) next.delete(id);
+        else next.add(id);
+        return next;
+      });
       if (isFav) {
-        await fetch(`/api/nutrition/favorites?foodItemId=${id}`, { method: "DELETE" });
+        setFavoriteFoods((prev) => prev.filter((f) => f.id !== id));
       } else {
-        await fetch("/api/nutrition/favorites", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ foodItemId: id }),
-        });
+        setFavoriteFoods((prev) => (prev.some((f) => f.id === id) ? prev : [...prev, food]));
       }
-      await reload();
+      try {
+        const res = isFav
+          ? await fetch(`/api/nutrition/favorites?foodItemId=${id}`, { method: "DELETE" })
+          : await fetch("/api/nutrition/favorites", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ foodItemId: id }),
+            });
+        if (!res.ok) throw new Error("favorite toggle failed");
+      } catch {
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          if (isFav) next.add(id);
+          else next.delete(id);
+          return next;
+        });
+        await reload();
+        return isFav;
+      }
       return !isFav;
     },
     [favoriteIds, reload]

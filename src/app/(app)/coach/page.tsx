@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect, memo } from "react";
 import { Button } from "@/components/ui/button";
-import { Send, Bot } from "lucide-react";
+import { Send, Bot, Square } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { CoachQuickActions } from "@/components/coach/coach-quick-actions";
@@ -46,6 +46,7 @@ export default function CoachPage() {
   const hydratedRef = useRef(false);
 
   const abortRef = useRef<AbortController | null>(null);
+  const [retryPrompt, setRetryPrompt] = useState<string | null>(null);
 
   useEffect(() => {
     if (hydratedRef.current) return;
@@ -86,6 +87,7 @@ export default function CoachPage() {
       if (!userMsg.trim() || loading || streaming) return;
       const text = userMsg.trim();
       setInput("");
+      setRetryPrompt(null);
       if (textareaRef.current) textareaRef.current.style.height = "auto";
       shouldScrollRef.current = true;
       setMessages((m) => [...m, { role: "user", content: text }]);
@@ -114,6 +116,7 @@ export default function CoachPage() {
           const err = await res.json().catch(() => ({}));
           toast.error((err as { error?: string }).error ?? "Coach nicht erreichbar");
           setMessages((m) => m.slice(0, -1));
+          setRetryPrompt(text);
           return;
         }
 
@@ -189,8 +192,18 @@ export default function CoachPage() {
           });
         }
       } catch (e) {
-        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (e instanceof DOMException && e.name === "AbortError") {
+          setMessages((m) => {
+            const next = [...m];
+            if (next[next.length - 1]?.role === "assistant" && !next[next.length - 1].content) {
+              next.pop();
+            }
+            return next;
+          });
+          return;
+        }
         toast.error("Verbindung unterbrochen. Bitte erneut versuchen.");
+        setRetryPrompt(text);
         setMessages((m) => m.slice(0, -2));
       } finally {
         setLoading(false);
@@ -216,9 +229,9 @@ export default function CoachPage() {
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-violet-400 font-extrabold tracking-tight">
             NEXFORM
           </span>
-          <span className="text-zinc-400 font-medium text-base">KI Coach V4</span>
+          <span className="text-zinc-400 font-medium text-base">KI Coach</span>
         </h1>
-        <p className="text-xs text-zinc-500 mt-1">
+        <p className="text-xs text-zinc-400 mt-1">
           Personalisiert · Training, Ernährung, Schlaf & Regeneration
         </p>
       </div>
@@ -245,7 +258,7 @@ export default function CoachPage() {
           aria-label="Coach Chatverlauf"
         >
           {messages.length === 0 && (
-            <p className="text-sm text-zinc-500 text-center py-6 px-4">
+            <p className="text-sm text-zinc-400 text-center py-6 px-4">
               Wähle eine Schnellaktion oder stelle deine Fitness-Frage — der Coach kennt
               dein Profil, Training und Ernährung.
             </p>
@@ -254,10 +267,19 @@ export default function CoachPage() {
             m.content ? (
               <ChatBubble key={i} role={m.role} content={m.content} />
             ) : (
-              <p key={i} className="text-xs text-zinc-500 px-1 mr-auto">
+              <p key={i} className="text-sm text-zinc-400 px-1 mr-auto" aria-live="polite">
                 Coach schreibt…
               </p>
             )
+          )}
+          {retryPrompt && !busy && (
+            <button
+              type="button"
+              className="text-sm font-medium text-accent min-h-11"
+              onClick={() => void sendMessage(retryPrompt)}
+            >
+              Erneut versuchen
+            </button>
           )}
         </div>
       </div>
@@ -287,15 +309,27 @@ export default function CoachPage() {
             }}
             className="flex-1 min-h-[52px] max-h-32 resize-none rounded-2xl border border-zinc-600 bg-zinc-900 px-4 py-3.5 text-[16px] text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
           />
-          <Button
-            size="icon"
-            className="h-[52px] w-[52px] shrink-0 rounded-2xl btn-accent"
-            onClick={() => void sendMessage(input)}
-            disabled={busy || !input.trim()}
-            aria-label="Senden"
-          >
-            <Send className="h-5 w-5" />
-          </Button>
+          {busy ? (
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-[52px] w-[52px] shrink-0 rounded-2xl"
+              onClick={() => abortRef.current?.abort()}
+              aria-label="Antwort abbrechen"
+            >
+              <Square className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              size="icon"
+              className="h-[52px] w-[52px] shrink-0 rounded-2xl btn-accent"
+              onClick={() => void sendMessage(input)}
+              disabled={!input.trim()}
+              aria-label="Senden"
+            >
+              <Send className="h-5 w-5" />
+            </Button>
+          )}
         </div>
       </div>
 

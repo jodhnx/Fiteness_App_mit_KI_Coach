@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -121,18 +122,20 @@ const LiveSetRow = memo(function LiveSetRow({
         variant={set.completed ? "default" : "secondary"}
         className="h-14 w-14 rounded-xl"
         onClick={() => {
-            const parsedW = Number(weight);
-            const parsedR = Number(reps);
+            const w = weight.replace(",", ".").replace(/[^0-9.]/g, "");
+            const r = reps.replace(/[^0-9]/g, "");
+            const parsedW = Number(w);
+            const parsedR = Number(r);
             onComplete({
               ...set,
               weightKg:
-                weight === "" || weight === "." || !Number.isFinite(parsedW)
+                w === "" || w === "." || !Number.isFinite(parsedW)
                   ? set.weightKg
                   : parsedW,
-              reps:
-                reps === "" || !Number.isFinite(parsedR) ? set.reps : parsedR,
+              reps: r === "" || !Number.isFinite(parsedR) ? set.reps : parsedR,
             });
           }}
+        aria-label={set.completed ? "Satz wieder öffnen" : "Satz abschließen"}
       >
         <Check className="h-6 w-6" />
       </Button>
@@ -211,24 +214,36 @@ const LiveRestTimer = memo(function LiveRestTimer({
 
   if (left > 0) {
     return (
-      <div className="flex items-center gap-2 mt-3 rounded-xl bg-cyan-500/15 border border-cyan-500/30 px-4 py-3">
-        <Timer className="h-5 w-5 text-cyan-400" />
+      <div className="flex items-center gap-2 mt-3 rounded-xl bg-cyan-500/15 border border-cyan-500/30 px-3 py-2">
+        <Timer className="h-5 w-5 text-cyan-400 shrink-0" />
         <span className="text-2xl font-bold text-cyan-400 tabular-nums">
           {formatWorkoutTime(left)}
         </span>
-        <span className="text-sm text-zinc-400 ml-1">Pause</span>
+        <span className="text-sm text-zinc-400">Pause</span>
+        <button
+          type="button"
+          className="ml-auto min-h-11 rounded-xl px-3 text-sm font-semibold text-cyan-200 active:bg-cyan-500/20"
+          onClick={onClearRest}
+        >
+          Überspringen
+        </button>
       </div>
     );
   }
 
   return (
-    <Button
-      variant="secondary"
-      className="w-full h-12 mt-3 rounded-xl"
-      onClick={() => onStartRest(90)}
-    >
-      90s Pause starten
-    </Button>
+    <div className="mt-3 grid grid-cols-3 gap-2">
+      {[60, 90, 120].map((sec) => (
+        <Button
+          key={sec}
+          variant="secondary"
+          className="h-11 rounded-xl text-sm"
+          onClick={() => onStartRest(sec)}
+        >
+          {sec}s Pause
+        </Button>
+      ))}
+    </div>
   );
 });
 
@@ -311,7 +326,8 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
   const totalVolume = useMemo(
     () =>
       session?.sets.reduce(
-        (acc, s) => acc + (s.weightKg ?? 0) * (s.reps ?? 0),
+        (acc, s) =>
+          s.completed ? acc + (s.weightKg ?? 0) * (s.reps ?? 0) : acc,
         0
       ) ?? 0,
     [session]
@@ -473,7 +489,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
     void addSet(ex.name, ex.id, 1);
   }
 
-  function saveCompletedWorkout(name: string) {
+  async function saveCompletedWorkout(name: string) {
     setEndOpen(false);
     hapticSuccess();
     clearActiveWorkoutCaches({
@@ -481,32 +497,31 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       completedAt: new Date().toISOString(),
     });
     bumpWorkoutSeq();
-    router.push("/workouts/journey");
 
-    void fetch(`/api/workouts/sessions/${sessionId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "complete", name }),
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) {
-          toast.error("Fehler beim Speichern — bitte erneut versuchen");
-          return;
-        }
-        clearActiveWorkoutCaches({
-          name: data.session?.name ?? name,
-          completedAt: data.session?.completedAt ?? new Date().toISOString(),
-        });
-        if (data.newPRs?.length) {
-          toast.success(`${data.newPRs.length} neue Personal Records!`, {
-            icon: <Trophy className="h-4 w-4" />,
-          });
-        }
-      })
-      .catch(() => {
-        toast.error("Netzwerkfehler beim Speichern");
+    try {
+      const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "complete", name }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error("Fehler beim Speichern — bitte erneut versuchen");
+        return;
+      }
+      clearActiveWorkoutCaches({
+        name: data.session?.name ?? name,
+        completedAt: data.session?.completedAt ?? new Date().toISOString(),
+      });
+      if (data.newPRs?.length) {
+        toast.success(`${data.newPRs.length} neue Personal Records!`, {
+          icon: <Trophy className="h-4 w-4" />,
+        });
+      }
+      router.push(`/workouts/summary/${sessionId}`);
+    } catch {
+      toast.error("Netzwerkfehler beim Speichern");
+    }
   }
 
   function openEndDialog() {
@@ -528,7 +543,10 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       <EndWorkoutDialog
         open={endOpen}
         defaultName={defaultEndName}
-        onSave={(name) => saveCompletedWorkout(name)}
+        completedSets={completedSets}
+        totalSets={totalSets}
+        volumeKg={Math.round(totalVolume)}
+        onSave={(name) => void saveCompletedWorkout(name)}
         onCancel={() => setEndOpen(false)}
       />
     <div className="space-y-4 pb-36 max-w-lg mx-auto keyboard-stable-page">
@@ -538,7 +556,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
             <div>
               <h1 className="text-base font-semibold text-zinc-400">{session.name}</h1>
               <LiveElapsedClock startedAt={session.startedAt} />
-              <p className="text-xs text-zinc-500 mt-1">
+              <p className="text-xs text-zinc-400 mt-1">
                 {completedSets}/{totalSets} Sätze · {Math.round(totalVolume).toLocaleString("de-DE")} kg
               </p>
             </div>
@@ -573,9 +591,18 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         return (
           <div key={key} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
             <div className="px-4 py-3.5 border-b border-zinc-800/80">
-              <h2 className="text-xl font-bold text-white">{name}</h2>
+              {exerciseLibraryId ? (
+                <Link
+                  href={`/workouts/exercises/${exerciseLibraryId}`}
+                  className="text-xl font-bold text-white"
+                >
+                  {name}
+                </Link>
+              ) : (
+                <h2 className="text-xl font-bold text-white">{name}</h2>
+              )}
               {prev && (
-                <p className="text-xs text-zinc-500 mt-0.5">
+                <p className="text-xs text-zinc-400 mt-0.5">
                   Letzte:{" "}
                   {prev.weightKg != null || prev.reps != null
                     ? `${prev.weightKg ?? "—"} kg × ${prev.reps ?? "—"}`
