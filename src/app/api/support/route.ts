@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     if (!(await tableExists("SupportRequest"))) {
       return jsonError(
-        'Datenbanktabelle „SupportRequest" fehlt. Bitte ausführen: npx prisma db push',
+        'Datenbanktabelle „SupportRequest" fehlt. Bitte ausführen: npx prisma migrate deploy',
         503
       );
     }

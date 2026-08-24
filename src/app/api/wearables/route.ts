@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import { safePrisma } from "@/lib/prisma-safe";
 import { ALL_PROVIDER_IDS, HEALTH_PROVIDERS } from "@/lib/health/providers/registry";
 import { getProviderAvailabilityList } from "@/lib/health/provider-availability";
 import type { WearableProvider } from "@prisma/client";
@@ -27,10 +28,15 @@ export async function GET() {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
 
-    const connections = await prisma.wearableConnection.findMany({
-      where: { userId: session.user.id },
-      orderBy: { updatedAt: "desc" },
-    });
+    const connections = await safePrisma(
+      () =>
+        prisma.wearableConnection.findMany({
+          where: { userId: session.user.id },
+          orderBy: { updatedAt: "desc" },
+        }),
+      [],
+      { logLabel: "wearables.connections" }
+    );
 
     const prefs = await prisma.healthSyncPreference
       .findUnique({ where: { userId: session.user.id } })

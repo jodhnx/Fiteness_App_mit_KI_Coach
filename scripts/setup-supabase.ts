@@ -19,8 +19,10 @@ function main() {
   console.log("1/3 prisma generate …");
   execSync("npx prisma generate", { cwd: ROOT, stdio: "inherit" });
 
-  console.log("\n2/3 prisma db push (prisma.config.ts → DIRECT_URL / 5432) …");
-  execSync("npx prisma db push", { cwd: ROOT, stdio: "inherit", env: process.env });
+  // Migration history is the only supported path — db push would bypass it
+  // and can silently drop columns when schema and database diverge.
+  console.log("\n2/3 prisma migrate deploy (prisma.config.ts → DIRECT_URL / 5432) …");
+  execSync("npx prisma migrate deploy", { cwd: ROOT, stdio: "inherit", env: process.env });
 
   console.log("\n3/3 Seed (Admin + Basisdaten) …");
   execSync("npm run db:seed", { cwd: ROOT, stdio: "inherit", env: process.env });

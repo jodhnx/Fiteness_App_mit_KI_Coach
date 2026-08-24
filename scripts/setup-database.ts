@@ -85,27 +85,19 @@ async function main() {
     env: { ...process.env, DATABASE_URL: url },
   });
 
-  console.log("Wende SQL-Migrationen an (FoodRecent, WaterLog, …)...");
-  try {
-    execSync("npx tsx scripts/apply-migrations.ts", {
-      cwd: ROOT,
-      stdio: "inherit",
-      env: { ...process.env, DATABASE_URL: url },
-    });
-  } catch {
-    console.warn("Einige Migrationen waren bereits angewendet.");
-  }
-
-  console.log("Prüfe Schema mit db push…");
-  try {
-    execSync("npx prisma db push --accept-data-loss", {
-      cwd: ROOT,
-      stdio: "inherit",
-      env: { ...process.env, DATABASE_URL: url },
-    });
-  } catch {
-    console.warn("db push übersprungen – SQL-Migrationen sollten ausreichen. Prüfe: npm run db:test");
-  }
+  console.log("Wende Migrationen an (prisma migrate deploy)...");
+  // DIRECT_URL is the connection the Prisma CLI uses. It is pinned to the
+  // local database here so this local setup can never reach production.
+  execSync("npx prisma migrate deploy", {
+    cwd: ROOT,
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      DATABASE_URL: url,
+      DIRECT_URL: url,
+      ALLOW_LOCAL_DATABASE: "true",
+    },
+  });
 
   console.log("\nFühre Seed aus (Admin + Lebensmittel + Achievements)...");
   execSync("npm run db:seed", {

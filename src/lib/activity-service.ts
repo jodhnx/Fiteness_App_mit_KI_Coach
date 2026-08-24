@@ -22,7 +22,8 @@ export function computeAvgSpeedKmh(distanceM: number | undefined, durationSec: n
 
 async function activitiesAvailable(): Promise<boolean> {
   try {
-    await prisma.enduranceActivity.findFirst({ select: { id: true } });
+    // Full row on purpose — an id-only probe would miss missing columns.
+    await prisma.enduranceActivity.findFirst();
     return true;
   } catch {
     return false;

@@ -38,7 +38,7 @@ async function main() {
 
     const hasVerification = userCols.some((c) => c.column_name === "verificationCode");
     if (!hasVerification) {
-      console.error("FAIL: User.verificationCode column missing — run: npm run db:push");
+      console.error("FAIL: User.verificationCode column missing — run: npx prisma migrate deploy");
       process.exit(1);
     }
 

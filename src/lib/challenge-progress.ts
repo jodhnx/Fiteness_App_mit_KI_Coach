@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { safePrisma } from "@/lib/prisma-safe";
 import { startOfDay, subDays } from "date-fns";
 import { awardXPForAction } from "@/lib/gamification";
 
@@ -61,9 +62,15 @@ async function computeProgress(
 
   switch (slug) {
     case "daily-steps-10k": {
-      const row = await prisma.dailyHealthMetric.findUnique({
-        where: { userId_date: { userId, date: today } },
-      });
+      const row = await safePrisma(
+        () =>
+          prisma.dailyHealthMetric.findUnique({
+            where: { userId_date: { userId, date: today } },
+            select: { steps: true },
+          }),
+        null,
+        { logLabel: "challenge.dailySteps" }
+      );
       return row && row.steps >= 10000 ? 1 : 0;
     }
     case "daily-protein-150":

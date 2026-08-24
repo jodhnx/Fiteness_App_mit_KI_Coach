@@ -111,9 +111,13 @@ export function computePersonalRecords(
   };
 }
 
+/**
+ * Probes the full row on purpose: selecting only `id` would still succeed
+ * when columns are missing, so callers would run into P2022 later.
+ */
 async function healthTableAvailable(): Promise<boolean> {
   try {
-    await prisma.dailyHealthMetric.findFirst({ select: { id: true } });
+    await prisma.dailyHealthMetric.findFirst();
     return true;
   } catch {
     return false;

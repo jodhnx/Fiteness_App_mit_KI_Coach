@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { safePrisma } from "@/lib/prisma-safe";
 import { differenceInCalendarDays, startOfDay, subDays } from "date-fns";
 
 export type NutritionStreakSnapshot = {
@@ -24,9 +25,15 @@ export function effectiveNutritionStreakDays(
 /**
  * Increment at most once per calendar day when the user tracks a meal.
  */
-export async function updateNutritionStreak(
+const EMPTY_STREAK: NutritionStreakSnapshot = {
+  currentDays: 0,
+  longestDays: 0,
+  lastTrackedAt: null,
+};
+
+async function updateNutritionStreakUnsafe(
   userId: string,
-  trackedAt = new Date()
+  trackedAt: Date
 ): Promise<NutritionStreakSnapshot> {
   const today = startOfDay(trackedAt);
   let row = await prisma.nutritionStreak.findUnique({ where: { userId } });
@@ -124,7 +131,22 @@ async function backfillNutritionStreakFromMeals(userId: string) {
   });
 }
 
-export async function loadNutritionStreak(
+/**
+ * Tracking a meal must not fail when the streak table is unavailable —
+ * the meal itself is already persisted at this point.
+ */
+export async function updateNutritionStreak(
+  userId: string,
+  trackedAt = new Date()
+): Promise<NutritionStreakSnapshot> {
+  return safePrisma(
+    () => updateNutritionStreakUnsafe(userId, trackedAt),
+    EMPTY_STREAK,
+    { logLabel: "updateNutritionStreak" }
+  );
+}
+
+async function loadNutritionStreakUnsafe(
   userId: string
 ): Promise<NutritionStreakSnapshot & { effectiveDays: number }> {
   let row = await prisma.nutritionStreak.findUnique({ where: { userId } });
@@ -140,4 +162,14 @@ export async function loadNutritionStreak(
     lastTrackedAt: row.lastTrackedAt,
     effectiveDays: effectiveNutritionStreakDays(row),
   };
+}
+
+export async function loadNutritionStreak(
+  userId: string
+): Promise<NutritionStreakSnapshot & { effectiveDays: number }> {
+  return safePrisma(
+    () => loadNutritionStreakUnsafe(userId),
+    { ...EMPTY_STREAK, effectiveDays: 0 },
+    { logLabel: "loadNutritionStreak" }
+  );
 }

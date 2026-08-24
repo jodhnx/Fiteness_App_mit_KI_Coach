@@ -27,7 +27,7 @@ npm run db:setup   # Tabellen + Test-Admin + .env URL
 
 ```bash
 docker compose up -d
-npm run db:push && npm run db:seed
+npm run db:migrate:deploy && npm run db:seed
 ```
 
 **Diagnose:** `npm run db:diagnose` · **Health:** `GET /api/health`
@@ -53,7 +53,7 @@ Nicht verifizierte Konten erhalten beim Login: *„Bitte bestätige zuerst deine
 
 ```bash
 npm install
-npm run db:push
+npm run db:migrate:deploy
 npm run db:seed
 ```
 

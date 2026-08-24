@@ -81,7 +81,7 @@ function mapPrismaError(error: unknown): RegisterResult | null {
       return {
         ok: false,
         status: 503,
-        error: "Datenbank-Tabellen fehlen. Führe aus: npm run db:push",
+        error: "Datenbank-Tabellen fehlen. Führe aus: npm run db:migrate:deploy",
       };
     }
   }

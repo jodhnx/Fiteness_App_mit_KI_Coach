@@ -46,7 +46,7 @@ async function main() {
 
   const hasTable = await tableExists("SupportRequest");
   if (!hasTable) {
-    console.error('\n✗ Tabelle "SupportRequest" fehlt — npx prisma db push');
+    console.error('\n✗ Tabelle "SupportRequest" fehlt — npx prisma migrate deploy');
     process.exit(1);
   }
   console.log('✓ Tabelle "SupportRequest" vorhanden');

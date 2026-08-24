@@ -1,5 +1,5 @@
 /**
- * Supabase PostgreSQL — Prisma 7 datasource (CLI: db push, migrate, studio).
+ * Supabase PostgreSQL — Prisma 7 datasource (CLI: migrate, studio).
  * Uses DIRECT_URL (5432) — validated via database-url.ts
  */
 import "dotenv/config";
