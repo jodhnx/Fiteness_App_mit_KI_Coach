@@ -255,8 +255,9 @@ export async function searchFoodProducts(
 
   // Local DB first — never block the response on Open Food Facts
   const localSettled = await searchLocalWithSynonyms(userId, q, countryCode, 28).catch(
-    (e) => {
-      localError = e instanceof Error ? e.message : "Lokale DB Fehler";
+    (err) => {
+      console.error("[nutrition-search] local", err);
+      localError = "Lokale Suche fehlgeschlagen";
       return [] as FoodProduct[];
     }
   );

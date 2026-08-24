@@ -1,10 +1,11 @@
+import { NextRequest } from "next/server";
 import { unstable_cache } from "next/cache";
 import { auth } from "@/lib/auth";
-import { loadHomeData } from "@/lib/home-data";
+import { loadHomeData, loadHomeEnrichment } from "@/lib/home-data";
 import { createEmptyHomeData, isValidHomePayload } from "@/lib/home-defaults";
 import { jsonOk, jsonError } from "@/lib/api-response";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -12,6 +13,15 @@ export async function GET() {
     }
 
     const userId = session.user.id;
+    const enrichOnly = req.nextUrl.searchParams.get("enrich") === "1";
+
+    if (enrichOnly) {
+      const extras = await loadHomeEnrichment(userId);
+      const res = jsonOk(extras);
+      res.headers.set("Cache-Control", "private, max-age=20, stale-while-revalidate=40");
+      return res;
+    }
+
     const getHome = unstable_cache(
       async () => loadHomeData(userId),
       [`home-data-v3-${userId}`],

@@ -20,13 +20,10 @@ import type { FoodProduct, FoodSearchResponse } from "@/lib/food/food-product-ty
 import { useDebounce } from "@/hooks/use-debounce";
 import { getCached, setCached } from "@/lib/client-cache";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
-import { searchStandardDishes } from "@/data/standard-dishes";
-import { searchBrandRestaurantFoods } from "@/data/brand-restaurant-foods";
-import { searchDachRetailFoods } from "@/data/dach-retail-foods";
 import { FoodQuickRow } from "@/components/nutrition/food-quick-row";
 import { FoodDetailPopup } from "@/components/nutrition/food-detail-popup";
-import { FoodBarcodeScanner } from "@/components/nutrition/food-barcode-scanner";
 import { FoodManualProductSheet } from "@/components/nutrition/food-manual-product-sheet";
+import dynamic from "next/dynamic";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { resetBodyScroll } from "@/lib/scroll-lock";
 import {
@@ -53,6 +50,14 @@ type Props = {
 type ViewMode = "hub" | "favorites" | "search";
 
 const SEARCH_CACHE_TTL = 300_000;
+
+const FoodBarcodeScanner = dynamic(
+  () =>
+    import("@/components/nutrition/food-barcode-scanner").then(
+      (m) => m.FoodBarcodeScanner
+    ),
+  { ssr: false }
+);
 
 function emptyHistory(): FoodHistoryPayload {
   return { frequent: [], recents: [], favorites: [] };
@@ -98,7 +103,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<ViewMode>("hub");
   const [q, setQ] = useState("");
-  const debouncedQ = useDebounce(q, 100);
+  const debouncedQ = useDebounce(q, 280);
   const [result, setResult] = useState<FoodSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [historyFoods, setHistoryFoods] = useState<FoodHistoryPayload>(() =>
@@ -244,19 +249,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
   const instantResults = useMemo(() => {
     if (!isSearching) return [];
-    const trimmed = q.trim();
-    if (trimmed.length < 2) {
-      return dedupeFoods([
-        ...filterFoods(historyFoods.recents, trimmed),
-        ...searchStandardDishes(trimmed, 8),
-      ]);
-    }
-    return dedupeFoods([
-      ...filterFoods(historyFoods.recents, trimmed),
-      ...searchBrandRestaurantFoods(trimmed, 12),
-      ...searchDachRetailFoods(trimmed, 12),
-      ...searchStandardDishes(trimmed, 10),
-    ]);
+    return dedupeFoods(filterFoods(historyFoods.recents, q.trim()));
   }, [isSearching, q, historyFoods.recents]);
 
   const searchResults = useMemo(() => {
@@ -476,15 +469,17 @@ export const FoodAddPopup = memo(function FoodAddPopup({
         />
       )}
 
-      <FoodBarcodeScanner
-        open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        onProductReady={(p) => setDetailProduct(p)}
-        onManualAdd={() => {
-          setManualBarcode("");
-          setManualOpen(true);
-        }}
-      />
+      {scannerOpen ? (
+        <FoodBarcodeScanner
+          open={scannerOpen}
+          onClose={() => setScannerOpen(false)}
+          onProductReady={(p) => setDetailProduct(p)}
+          onManualAdd={() => {
+            setManualBarcode("");
+            setManualOpen(true);
+          }}
+        />
+      ) : null}
 
       <FoodManualProductSheet
         open={manualOpen}

@@ -20,7 +20,11 @@ import {
 } from "@/lib/nutrition-defaults";
 import { isNutritionDashboardToday } from "@/lib/nutrition-day";
 import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
-import { normalizeHomeData, type HomeDataPayload } from "@/lib/home-defaults";
+import {
+  mergeHomeEnrichment,
+  normalizeHomeData,
+  type HomeDataPayload,
+} from "@/lib/home-defaults";
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 import { bootPerfMark, bootPerfReset } from "@/lib/app-init-perf";
@@ -215,16 +219,20 @@ async function fetchBootstrap(): Promise<BootstrapPayload | null> {
   }
 }
 
-/** Enrich home with full payload (gamification, recovery, …) without blocking boot. */
+/** Enrich home with extras (gamification, recovery, …) without reloading nutrition. */
 export function enrichHomeInBackground() {
   if (typeof window === "undefined") return;
-  void fetch("/api/home", { credentials: "same-origin" })
+  void fetch("/api/home?enrich=1", { credentials: "same-origin" })
     .then((r) => (r.ok ? r.json() : null))
-    .then((home: HomeDataPayload | null) => {
-      if (!home || typeof home !== "object") return;
-      const normalized = normalizeHomeData(home);
-      setCached(HOME_DATA_CACHE_KEY, normalized, 900_000);
-      window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: normalized }));
+    .then((extras: Record<string, unknown> | null) => {
+      if (!extras || typeof extras !== "object") return;
+      const current = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
+        allowStale: true,
+      });
+      if (!current) return;
+      const merged = mergeHomeEnrichment(current, extras);
+      setCached(HOME_DATA_CACHE_KEY, merged, 900_000);
+      window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: merged }));
     })
     .catch(() => {});
 }

@@ -24,12 +24,11 @@ function afterIdle(cb: () => void, timeoutMs = 2500) {
 
 /**
  * Low-priority background warm — NEVER blocks Home paint.
- * Food history warms first so Nutrition "+" is instant.
+ * Only food history + active session: highest UX impact, no social/recipe waterfalls.
  */
 export function runBootSecondaryPrefetch() {
   if (typeof window === "undefined") return;
 
-  // Wave 0 (immediate idle): food history — highest UX impact for + button
   afterIdle(() => {
     void fetchOk("/api/food/history").then((foodHistory) => {
       if (!foodHistory) return;
@@ -46,77 +45,13 @@ export function runBootSecondaryPrefetch() {
     });
   }, 800);
 
-  // Wave 1 (~1.2s): training + gamification (nav-adjacent)
   window.setTimeout(() => {
     afterIdle(() => {
-      void Promise.all([
-        fetchOk("/api/workouts/sessions?active=1"),
-        fetchOk("/api/workouts/plans"),
-        fetchOk("/api/gamification"),
-      ]).then(([active, plans, gamification]) => {
+      void fetchOk("/api/workouts/sessions?active=1").then((active) => {
         if (active) setCached("workouts-active", active, 180_000);
-        if (plans) setCached("workouts-my-plans-hub", plans, 120_000);
-        if (gamification) setCached("gamification-full", gamification, 120_000);
       });
     });
-  }, 1200);
-
-  // Wave 2 (~3s): community / devices / profile
-  window.setTimeout(() => {
-    afterIdle(() => {
-      void Promise.all([
-        fetchOk("/api/social/feed"),
-        fetchOk("/api/wearables"),
-        fetchOk("/api/profile"),
-      ]).then(([feed, wearables, profile]) => {
-        if (feed) setCached("social-feed", feed, 120_000);
-        if (wearables) setCached("wearables-list", wearables, 120_000);
-        if (profile) setCached(PROFILE_CACHE_KEY, profile, 120_000);
-      });
-    }, 3000);
-  }, 3000);
-
-  // Wave 3 (~5s): recipes + remaining social
-  window.setTimeout(() => {
-    afterIdle(() => {
-      void fetchOk("/api/recipes/catalog?limit=24&page=1")
-        .then(async (recipes) => {
-          if (!recipes) return;
-          const d = recipes as {
-            recipes?: import("@/lib/recipes/catalog-query").RecipeListItem[];
-            total?: number;
-            catalogTotal?: number;
-            page?: number;
-            hasMore?: boolean;
-            favoriteIds?: string[];
-          };
-          const { writeRecipeCatalogCache } = await import(
-            "@/lib/recipe-catalog-cache"
-          );
-          writeRecipeCatalogCache({
-            recipes: d.recipes ?? [],
-            total: d.total ?? 0,
-            catalogTotal: d.catalogTotal ?? d.total ?? 0,
-            page: d.page ?? 1,
-            hasMore: Boolean(d.hasMore),
-            favoriteIds: d.favoriteIds ?? [],
-            q: "",
-            filters: [],
-          });
-        })
-        .catch(() => {});
-
-      void Promise.all([
-        fetchOk("/api/social/friends"),
-        fetchOk("/api/challenges"),
-        fetchOk("/api/health/dashboard"),
-      ]).then(([friends, challenges, health]) => {
-        if (friends) setCached("social-friends", friends, 120_000);
-        if (challenges) setCached("social-challenges", challenges, 120_000);
-        if (health) setCached("health-dashboard", health, 90_000);
-      });
-    }, 4000);
-  }, 5000);
+  }, 1500);
 }
 
 export const BOOT_CACHE_KEYS = {

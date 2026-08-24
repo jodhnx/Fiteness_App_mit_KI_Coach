@@ -9,6 +9,7 @@ import {
   logAIUsage,
 } from "@/lib/openai";
 import { rateLimit } from "@/lib/security/rate-limit";
+import { rateLimitAiUsage } from "@/lib/security/ai-rate-limit";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 
 async function prepareChat(userId: string, message: string, chatId?: string) {
@@ -18,7 +19,7 @@ async function prepareChat(userId: string, message: string, chatId?: string) {
   let chat = chatId
     ? await prisma.aIChat.findFirst({
         where: { id: chatId, userId },
-        include: { messages: { orderBy: { createdAt: "asc" }, take: 20 } },
+        include: { messages: { orderBy: { createdAt: "desc" }, take: 10 } },
       })
     : null;
 
@@ -39,10 +40,12 @@ async function prepareChat(userId: string, message: string, chatId?: string) {
     });
   }
 
-  const history = chat.messages.map((m) => ({
-    role: m.role as "user" | "assistant",
-    content: m.content,
-  }));
+  const history = [...chat.messages]
+    .reverse()
+    .map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
   if (chatId) {
     history.push({ role: "user", content: message });
   }
@@ -65,14 +68,18 @@ export async function GET() {
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
     const chats = await prisma.aIChat.findMany({
       where: { userId: session.user.id },
-      include: { messages: { orderBy: { createdAt: "asc" }, take: 30 } },
+      include: { messages: { orderBy: { createdAt: "desc" }, take: 12 } },
       orderBy: { updatedAt: "desc" },
       take: 1,
     });
     const latest = chats[0];
     return jsonOk({
       chatId: latest?.id,
-      messages: latest?.messages.map((m) => ({ role: m.role, content: m.content })) ?? [],
+      messages:
+        latest?.messages
+          .slice()
+          .reverse()
+          .map((m) => ({ role: m.role, content: m.content })) ?? [],
     });
   } catch (e) {
     return handleApiError(e);
@@ -88,12 +95,15 @@ export async function POST(req: NextRequest) {
       where: { id: session.user.id },
       select: { isGuest: true },
     });
-    const limit = rateLimit(
-      `coach:${session.user.id}`,
-      guest?.isGuest ? 8 : 30,
+    const perMinute = guest?.isGuest ? 8 : 30;
+    const memoryLimit = rateLimit(`coach:${session.user.id}`, perMinute, 60_000);
+    const durableLimit = await rateLimitAiUsage(
+      session.user.id,
+      ["chat", "chat-stream"],
+      perMinute,
       60_000
     );
-    if (!limit.success) {
+    if (!memoryLimit.success || !durableLimit.success) {
       return jsonError(
         guest?.isGuest
           ? "Gast-Limit erreicht — bitte Konto erstellen für mehr Coach-Anfragen."

@@ -24,17 +24,7 @@ export const MAIN_TABS = [
 export type MainTab = (typeof MAIN_TABS)[number];
 
 /** Exact paths kept mounted so returning is instant (no remount / refetch flash). */
-const PATH_KEEP_ALIVE = new Set<string>([
-  "/home",
-  "/workouts",
-  "/nutrition",
-  "/progress",
-  "/coach",
-  "/rezepte",
-  "/geraete",
-  "/erfolge",
-  "/social",
-]);
+const PATH_KEEP_ALIVE = new Set<string>([...MAIN_TABS]);
 
 export function matchMainTab(pathname: string | null): MainTab | null {
   if (!pathname) return null;

@@ -43,6 +43,182 @@ function gamificationToHome(g: GamificationSummary): HomeDataPayload["gamificati
   };
 }
 
+export type HomeEnrichmentPayload = Pick<
+  HomeDataPayload,
+  | "activityWeek"
+  | "recentActivity"
+  | "recovery"
+  | "weeklyReport"
+  | "gamification"
+  | "challenges"
+  | "bodyTransformation"
+  | "recentAchievements"
+  | "calorieBurnDetail"
+> & {
+  healthTodayExtras?: Pick<
+    NonNullable<HomeDataPayload["healthToday"]>,
+    "sleepHours" | "restingHeartRate" | "recoveryScore" | "trainingReadiness"
+  >;
+};
+
+/**
+ * Background home extras — skips nutrition / training / basic health already
+ * loaded by bootstrap (`loadHomeCriticalData`).
+ */
+export async function loadHomeEnrichment(
+  userId: string
+): Promise<HomeEnrichmentPayload> {
+  const today = startOfDay(new Date());
+  const [
+    healthMetric,
+    activityWeek,
+    recentActivity,
+    profile,
+    weightStart,
+    weeklyReport,
+    recovery,
+    gamificationRaw,
+    challengesRaw,
+    weightEntries,
+    recentAchievementsRaw,
+  ] = await Promise.all([
+    prisma.dailyHealthMetric
+      .findFirst({
+        where: { userId, date: today },
+        select: {
+          sleepHours: true,
+          restingHeartRate: true,
+          recoveryScore: true,
+          trainingReadiness: true,
+        },
+      })
+      .catch(() => null),
+    getActivityWeekSummary(userId).catch(() => createEmptyHomeData().activityWeek),
+    getRecentActivity(userId).catch(() => null),
+    prisma.profile
+      .findUnique({
+        where: { userId },
+        select: {
+          weightKg: true,
+          targetWeightKg: true,
+          targetWeightDate: true,
+        },
+      })
+      .catch(() => null),
+    prisma.progressEntry
+      .findFirst({
+        where: { userId, weightKg: { not: null } },
+        orderBy: { date: "asc" },
+        select: { weightKg: true },
+      })
+      .catch(() => null),
+    buildWeeklyReport(userId).catch(() => null),
+    loadMuscleRecovery(userId).catch(() => null),
+    loadGamificationHomeCard(userId).catch(() => null),
+    loadChallengesWithProgress(userId, { syncDb: false }).catch(() => []),
+    prisma.progressEntry
+      .findMany({
+        where: { userId, weightKg: { not: null } },
+        orderBy: { date: "asc" },
+        take: 60,
+        select: { date: true, weightKg: true },
+      })
+      .catch(() => []),
+    prisma.userAchievement
+      .findMany({
+        where: { userId },
+        orderBy: { earnedAt: "desc" },
+        take: 3,
+        include: {
+          achievement: { select: { name: true, icon: true, tier: true } },
+        },
+      })
+      .catch(() => []),
+  ]);
+
+  const week = {
+    count: activityWeek.count,
+    totalDurationSec: activityWeek.totalDurationSec ?? 0,
+    totalDistanceM: activityWeek.totalDistanceM,
+    totalCalories: activityWeek.totalCalories ?? 0,
+  };
+
+  const activeChallenges = (challengesRaw ?? [])
+    .filter((c) => c.status === "ACTIVE")
+    .slice(0, 3)
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      progress: c.progress,
+      target: c.targetDays,
+      tier: c.tier,
+    }));
+
+  const bodyFull = buildBodyTransformation(
+    weightStart?.weightKg ?? null,
+    profile?.weightKg ?? null,
+    profile?.targetWeightKg ?? null,
+    profile?.targetWeightDate ?? null,
+    weightEntries.map((e) => ({ date: e.date, weightKg: e.weightKg }))
+  );
+
+  return {
+    activityWeek: week,
+    recentActivity: recentActivity
+      ? {
+          type: recentActivity.type,
+          startedAt: recentActivity.startedAt.toISOString(),
+          durationSec: recentActivity.durationSec,
+          distanceM: recentActivity.distanceM,
+        }
+      : null,
+    healthTodayExtras: healthMetric
+      ? {
+          sleepHours: healthMetric.sleepHours ?? null,
+          restingHeartRate: healthMetric.restingHeartRate ?? null,
+          recoveryScore: healthMetric.recoveryScore ?? null,
+          trainingReadiness: healthMetric.trainingReadiness ?? null,
+        }
+      : undefined,
+    recovery: recovery
+      ? {
+          highlights: recovery.highlights,
+          muscles: filterDisplayMuscles(recovery.muscles),
+        }
+      : undefined,
+    weeklyReport: weeklyReport
+      ? {
+          weekLabel: weeklyReport.weekLabel,
+          workouts: weeklyReport.workouts,
+          avgProteinG: weeklyReport.avgProteinG,
+          avgCaloriesKcal: weeklyReport.avgCaloriesKcal,
+          totalSteps: weeklyReport.totalSteps,
+          avgSleepHours: weeklyReport.avgSleepHours,
+          weightChangeKg: weeklyReport.weightChangeKg,
+          goalReached: weeklyReport.goalReached,
+          summaryLine: weeklyReport.summaryLine,
+          aiSummary: weeklyReport.aiSummary,
+        }
+      : undefined,
+    gamification: gamificationRaw ? gamificationToHome(gamificationRaw) : undefined,
+    challenges: activeChallenges.length > 0 ? activeChallenges : undefined,
+    bodyTransformation: bodyFull
+      ? {
+          startKg: bodyFull.startKg,
+          currentKg: bodyFull.currentKg,
+          targetKg: bodyFull.targetKg,
+          progressPercent: bodyFull.progressPercent,
+        }
+      : null,
+    recentAchievements: (recentAchievementsRaw ?? []).map((row) => ({
+      name: row.achievement.name,
+      icon: row.achievement.icon,
+      tier: row.achievement.tier,
+      earnedAt: row.earnedAt.toISOString(),
+    })),
+  };
+}
+
 /** Single bundled home load — no duplicate DB work inside coach insights. */
 export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
   try {

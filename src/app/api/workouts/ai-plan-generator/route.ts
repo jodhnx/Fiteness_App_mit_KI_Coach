@@ -101,7 +101,8 @@ export async function POST(req: NextRequest) {
             }),
           },
         ],
-        session.user.id
+        session.user.id,
+        { maxTokens: 700 }
       );
       aiSummary = content;
     } catch {

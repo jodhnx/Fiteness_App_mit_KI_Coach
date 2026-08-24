@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
-import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import { jsonOk, jsonError } from "@/lib/api-response";
 import { searchFoodProducts } from "@/lib/food/nutrition-search-service";
 import { searchLocalFoods } from "@/lib/food/food-database-service";
+import { formatApiErrorMessage } from "@/lib/format-api-error";
 
 export async function GET(req: NextRequest) {
   const started = Date.now();
   const q = req.nextUrl.searchParams.get("q") ?? "";
-  const url = req.nextUrl.toString();
 
   try {
     const session = await auth();
@@ -17,24 +17,21 @@ export async function GET(req: NextRequest) {
 
     const result = await searchFoodProducts(session.user.id, q.trim(), {
       suggestions: false,
-      recordHistory: q.trim().length >= 2 && !localOnly,
+      recordHistory: q.trim().length >= 3 && !localOnly,
       localOnly,
     });
 
-    console.log("[api/food/search] OK", {
-      url,
-      query: q,
-      ms: Date.now() - started,
-      products: result.products.length,
-      offSource: result.offSource,
-      offError: result.offError,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[api/food/search] OK", {
+        ms: Date.now() - started,
+        products: result.products.length,
+        offSource: result.offSource,
+      });
+    }
 
     return jsonOk(result);
   } catch (e) {
     console.error("[api/food/search] FAILED", {
-      url,
-      query: q,
       ms: Date.now() - started,
       error: e,
     });
@@ -49,8 +46,7 @@ export async function GET(req: NextRequest) {
       console.error("[api/food/search] local fallback failed", localErr);
     }
 
-    const message =
-      e instanceof Error ? e.message : "Suche vorübergehend nicht verfügbar";
+    const safeMessage = formatApiErrorMessage(e);
 
     return jsonOk({
       products: localFallback,
@@ -58,10 +54,13 @@ export async function GET(req: NextRequest) {
       query: q.trim(),
       source: "local" as const,
       offAvailable: false,
-      offError: `${message} — nur lokale Datenbank (${localFallback.length} Treffer).`,
+      offError:
+        localFallback.length > 0
+          ? "Online-Suche kurz nicht erreichbar — lokale Treffer."
+          : "Suche vorübergehend nicht verfügbar. Bitte erneut versuchen.",
       localCount: localFallback.length,
       offCount: 0,
-      localError: message,
+      localError: safeMessage,
     });
   }
 }

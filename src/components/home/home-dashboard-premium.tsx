@@ -17,8 +17,6 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 import { PremiumCard } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
-import { useAnimatedNumber } from "@/hooks/use-animated-number";
-
 type TrainingStatus = "active" | "done" | "planned" | "open";
 
 type Props = {
@@ -97,9 +95,6 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   const waterConsumed = nutrition.water?.consumedMl ?? 0;
   const waterTarget = nutrition.water?.targetMl ?? 2500;
   const kcalLeft = ready ? Math.max(0, Math.round(remainingCal)) : 0;
-  const animatedKcalLeft = useAnimatedNumber(kcalLeft);
-  const animatedSteps = useAnimatedNumber(steps);
-  const animatedBurned = useAnimatedNumber(Math.round(burned));
   const intakePct =
     targetCal > 0 ? Math.min(100, Math.round((consumedCal / targetCal) * 100)) : 0;
   const stepPct = stepGoal > 0 ? Math.min(100, Math.round((steps / stepGoal) * 100)) : 0;
@@ -112,12 +107,8 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   const carbsTarget = Math.round(nutrition.targets?.carbsG ?? 0);
   const fatG = Math.round(nutrition.consumed?.fatG ?? 0);
   const fatTarget = Math.round(nutrition.targets?.fatG ?? 0);
-  const animatedProtein = useAnimatedNumber(proteinG);
-  const animatedCarbs = useAnimatedNumber(carbsG);
-  const animatedFat = useAnimatedNumber(fatG);
-  const animatedWeight = useAnimatedNumber(
-    weightKg != null ? Math.round(weightKg * 10) / 10 : 0
-  );
+  const displayWeight =
+    weightKg != null ? Math.round(weightKg * 10) / 10 : null;
 
   const trainMeta = {
     active: { label: "Läuft", color: "text-cyan-400", Icon: Play },
@@ -131,9 +122,9 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
       {/* Macro chips — compact daily overview */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: "Protein", value: animatedProtein, target: proteinTarget, color: "text-rose-300" },
-          { label: "Carbs", value: animatedCarbs, target: carbsTarget, color: "text-amber-300" },
-          { label: "Fett", value: animatedFat, target: fatTarget, color: "text-sky-300" },
+          { label: "Protein", value: proteinG, target: proteinTarget, color: "text-rose-300" },
+          { label: "Carbs", value: carbsG, target: carbsTarget, color: "text-amber-300" },
+          { label: "Fett", value: fatG, target: fatTarget, color: "text-sky-300" },
         ].map(({ label, value, target, color }) => (
           <div
             key={label}
@@ -154,16 +145,16 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
         <div className="min-w-0 flex-1 text-center sm:text-left">
           <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">kcal übrig</p>
           <p className="text-[2.75rem] font-bold text-white tabular-nums leading-none mt-1">
-            {ready ? animatedKcalLeft.toLocaleString("de-DE") : "—"}
+            {ready ? kcalLeft.toLocaleString("de-DE") : "—"}
           </p>
           <p className="mt-2 text-xs text-zinc-400 tabular-nums">
             <span className="text-orange-300/90">
-              🔥 {animatedBurned} kcal verbrannt
+              🔥 {Math.round(burned)} kcal verbrannt
               {burned > 0 && burnedEstimated ? " (geschätzt)" : ""}
             </span>
             <span className="mx-1.5 text-zinc-600">·</span>
             <span className="text-cyan-300/90">
-              🚶 {animatedSteps.toLocaleString("de-DE")} Schritte
+              🚶 {steps.toLocaleString("de-DE")} Schritte
             </span>
           </p>
         </div>
@@ -183,7 +174,7 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
             <span className="text-[9px] uppercase text-zinc-500">Schritte</span>
           </div>
           <p className="text-base font-bold text-white tabular-nums">
-            {animatedSteps.toLocaleString("de-DE")}
+            {steps.toLocaleString("de-DE")}
           </p>
           <p className="text-[10px] text-zinc-500 mt-0.5 tabular-nums">Ziel {stepGoal.toLocaleString("de-DE")}</p>
           <div className="mt-1.5 h-1 rounded-full bg-zinc-800 overflow-hidden">
@@ -265,8 +256,8 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
           <div className="min-w-0">
             <p className="text-[9px] uppercase text-zinc-500">Gewicht</p>
             <p className="text-sm font-semibold text-white tabular-nums">
-              {weightKg != null
-                ? `${animatedWeight.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`
+              {displayWeight != null
+                ? `${displayWeight.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`
                 : "—"}
             </p>
           </div>

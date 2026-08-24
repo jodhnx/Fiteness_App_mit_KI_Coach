@@ -300,6 +300,61 @@ export function normalizeHomeData(raw: unknown): HomeDataPayload {
   };
 }
 
+/** Overlay background extras onto a bootstrap/critical home payload. */
+export function mergeHomeEnrichment(
+  base: HomeDataPayload,
+  enrich: {
+    activityWeek?: HomeDataPayload["activityWeek"];
+    recentActivity?: HomeDataPayload["recentActivity"];
+    recovery?: HomeDataPayload["recovery"];
+    weeklyReport?: HomeDataPayload["weeklyReport"];
+    gamification?: HomeDataPayload["gamification"];
+    challenges?: HomeDataPayload["challenges"];
+    bodyTransformation?: HomeDataPayload["bodyTransformation"];
+    recentAchievements?: HomeDataPayload["recentAchievements"];
+    calorieBurnDetail?: HomeDataPayload["calorieBurnDetail"];
+    healthTodayExtras?: {
+      sleepHours?: number | null;
+      restingHeartRate?: number | null;
+      recoveryScore?: number | null;
+      trainingReadiness?: number | null;
+    };
+  }
+): HomeDataPayload {
+  const healthToday = base.healthToday
+    ? {
+        ...base.healthToday,
+        ...(enrich.healthTodayExtras ?? {}),
+      }
+    : enrich.healthTodayExtras
+      ? {
+          steps: 0,
+          stepGoal: 10_000,
+          activeMinutes: 0,
+          activeMinuteGoal: 30,
+          caloriesBurned: 0,
+          distanceM: 0,
+          stepStreak: 0,
+          ...enrich.healthTodayExtras,
+        }
+      : base.healthToday;
+
+  return normalizeHomeData({
+    ...base,
+    healthToday,
+    activityWeek: enrich.activityWeek ?? base.activityWeek,
+    recentActivity: enrich.recentActivity ?? base.recentActivity,
+    recovery: enrich.recovery ?? base.recovery,
+    weeklyReport: enrich.weeklyReport ?? base.weeklyReport,
+    gamification: enrich.gamification ?? base.gamification,
+    challenges: enrich.challenges ?? base.challenges,
+    bodyTransformation: enrich.bodyTransformation ?? base.bodyTransformation,
+    recentAchievements: enrich.recentAchievements ?? base.recentAchievements,
+    calorieBurnDetail: enrich.calorieBurnDetail ?? base.calorieBurnDetail,
+    nutrition: base.nutrition,
+  });
+}
+
 export function isValidHomePayload(data: unknown): data is HomeDataPayload {
   if (!data || typeof data !== "object") return false;
   const d = data as Record<string, unknown>;

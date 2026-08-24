@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,12 +47,94 @@ type SessionData = {
   sets: SetRow[];
 };
 
+function formatWorkoutTime(s: number) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
+const LiveElapsedClock = memo(function LiveElapsedClock({
+  startedAt,
+}: {
+  startedAt: string;
+}) {
+  const [elapsed, setElapsed] = useState(() =>
+    Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000))
+  );
+
+  useEffect(() => {
+    const start = new Date(startedAt).getTime();
+    const t = setInterval(() => {
+      setElapsed(Math.max(0, Math.floor((Date.now() - start) / 1000)));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [startedAt]);
+
+  return (
+    <p className="text-4xl font-bold text-cyan-400 font-mono tabular-nums mt-1">
+      {formatWorkoutTime(elapsed)}
+    </p>
+  );
+});
+
+const LiveRestTimer = memo(function LiveRestTimer({
+  restUntil,
+  onStartRest,
+  onClearRest,
+}: {
+  restUntil: number | null;
+  onStartRest: (seconds: number) => void;
+  onClearRest: () => void;
+}) {
+  const [left, setLeft] = useState(0);
+
+  useEffect(() => {
+    if (restUntil == null) {
+      setLeft(0);
+      return;
+    }
+    let finished = false;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((restUntil - Date.now()) / 1000));
+      setLeft(remaining);
+      if (remaining <= 0 && !finished) {
+        finished = true;
+        onClearRest();
+      }
+    };
+    tick();
+    const t = setInterval(tick, 250);
+    return () => clearInterval(t);
+  }, [restUntil, onClearRest]);
+
+  if (left > 0) {
+    return (
+      <div className="flex items-center gap-2 mt-3 rounded-xl bg-cyan-500/15 border border-cyan-500/30 px-4 py-3">
+        <Timer className="h-5 w-5 text-cyan-400" />
+        <span className="text-2xl font-bold text-cyan-400 tabular-nums">
+          {formatWorkoutTime(left)}
+        </span>
+        <span className="text-sm text-zinc-400 ml-1">Pause</span>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      variant="secondary"
+      className="w-full h-12 mt-3 rounded-xl"
+      onClick={() => onStartRest(90)}
+    >
+      90s Pause starten
+    </Button>
+  );
+});
+
 export function LiveWorkout({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const [session, setSession] = useState<SessionData | null>(null);
   const [previousByExercise, setPreviousByExercise] = useState<Record<string, SetRow[]>>({});
-  const [elapsed, setElapsed] = useState(0);
-  const [restLeft, setRestLeft] = useState(0);
+  const [restUntil, setRestUntil] = useState<number | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [defaultEndName, setDefaultEndName] = useState("Workout 001");
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -83,21 +165,6 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
     }
     load();
   }, [sessionId, load]);
-
-  useEffect(() => {
-    if (!session) return;
-    const start = new Date(session.startedAt).getTime();
-    const t = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - start) / 1000));
-    }, 1000);
-    return () => clearInterval(t);
-  }, [session]);
-
-  useEffect(() => {
-    if (restLeft <= 0) return;
-    const t = setInterval(() => setRestLeft((r) => Math.max(0, r - 1)), 1000);
-    return () => clearInterval(t);
-  }, [restLeft]);
 
   useEffect(() => {
     const timers = patchTimers.current;
@@ -301,16 +368,15 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       });
   }
 
+  const startRest = useCallback((seconds: number) => {
+    setRestUntil(Date.now() + seconds * 1000);
+  }, []);
+  const clearRest = useCallback(() => setRestUntil(null), []);
+
   function openEndDialog() {
     setDefaultEndName(nextDefaultWorkoutName());
     setEndOpen(true);
   }
-
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${sec.toString().padStart(2, "0")}`;
-  };
 
   if (!session) {
     return (
@@ -335,9 +401,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-base font-semibold text-zinc-400">{session.name}</h1>
-              <p className="text-4xl font-bold text-cyan-400 font-mono tabular-nums mt-1">
-                {formatTime(elapsed)}
-              </p>
+              <LiveElapsedClock startedAt={session.startedAt} />
               <p className="text-xs text-zinc-500 mt-1">
                 {completedSets}/{totalSets} Sätze · {Math.round(totalVolume).toLocaleString("de-DE")} kg
               </p>
@@ -346,22 +410,11 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
               Training beenden
             </Button>
           </div>
-          {restLeft > 0 && (
-            <div className="flex items-center gap-2 mt-3 rounded-xl bg-cyan-500/15 border border-cyan-500/30 px-4 py-3">
-              <Timer className="h-5 w-5 text-cyan-400" />
-              <span className="text-2xl font-bold text-cyan-400 tabular-nums">{formatTime(restLeft)}</span>
-              <span className="text-sm text-zinc-400 ml-1">Pause</span>
-            </div>
-          )}
-          {restLeft <= 0 && (
-            <Button
-              variant="secondary"
-              className="w-full h-12 mt-3 rounded-xl"
-              onClick={() => setRestLeft(90)}
-            >
-              90s Pause starten
-            </Button>
-          )}
+          <LiveRestTimer
+            restUntil={restUntil}
+            onStartRest={startRest}
+            onClearRest={clearRest}
+          />
         </div>
       </div>
 
@@ -500,7 +553,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
                       await patchSet(set.id, { completed: !set.completed }, true);
                       if (!set.completed) {
                         hapticTap();
-                        setRestLeft(set.restSeconds ?? 90);
+                        startRest(set.restSeconds ?? 90);
                       }
                     }}
                   >

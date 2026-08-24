@@ -52,7 +52,8 @@ export function isOpenAIConfigured() {
 
 export async function chatCompletion(
   messages: ChatMessage[],
-  userId: string | null
+  userId: string | null,
+  options?: { maxTokens?: number }
 ) {
   if (!openai) {
     return {
@@ -66,7 +67,7 @@ export async function chatCompletion(
       model: "gpt-4o-mini",
       messages,
       temperature: 0.65,
-      max_tokens: 2000,
+      max_tokens: options?.maxTokens ?? 900,
     });
     const content = response.choices[0]?.message?.content ?? "Keine Antwort erhalten.";
     const tokens = response.usage?.total_tokens ?? 0;
@@ -104,7 +105,7 @@ export async function chatCompletionStream(
       model: "gpt-4o-mini",
       messages,
       temperature: 0.65,
-      max_tokens: 2000,
+      max_tokens: 900,
       stream: true,
     });
     return { stream, model: "gpt-4o-mini" };
