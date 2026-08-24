@@ -4,13 +4,15 @@ import { useEffect, useState } from "react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useRouter } from "next/navigation";
 import { WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
-import { HOME_DATA_EVENT } from "@/lib/nutrition-sync";
+import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
+import { getCached } from "@/lib/client-cache";
 import { PageShell } from "@/components/layout/page-shell";
 import { TrainingChoiceCard } from "@/components/workout/training-choice-card";
 import { MuscleRecoveryPanel } from "@/components/workout/muscle-recovery-panel";
 import { Button } from "@/components/ui/button";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
+import type { HomeDataPayload } from "@/lib/home-defaults";
 import {
   BookOpen,
   Dumbbell,
@@ -27,10 +29,14 @@ import { PageIntro } from "@/components/guide/page-intro";
 /**
  * Full training hub — Krafttraining features preserved + Cardio as extension.
  * Muscle recovery stays based on strength sessions only.
+ * Streak/recovery come from the home cache (already loaded at boot/enrich).
  */
 export default function WorkoutsHubPage() {
   const router = useRouter();
   const [activeCleared, setActiveCleared] = useState(false);
+  const [home, setHome] = useState<HomeDataPayload | null>(() =>
+    getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true })
+  );
   const fetchOpts = { revalidateOnMount: false, staleRatio: 0.95 } as const;
 
   const { data: sessionData } = useCachedFetch<{
@@ -39,28 +45,29 @@ export default function WorkoutsHubPage() {
   const { data: plansData } = useCachedFetch<{
     plans: { id: string; name: string; lastSessionAt?: string | null }[];
   }>("workouts-my-plans-hub", "/api/workouts/plans", 120_000, 6_000, fetchOpts);
-  const { data: journeyData } = useCachedFetch<{
-    journey: { streak: { currentDays: number }; stats30d: { sessions: number } };
-  }>("workouts-journey-hub", "/api/workouts/journey", 120_000, 6_000, fetchOpts);
-  const { data: recoveryData } = useCachedFetch<{
-    recovery: MuscleRecovery[];
-  }>("workouts-recovery-hub", "/api/workouts/recovery", 120_000, 6_000, fetchOpts);
+
+  useEffect(() => {
+    const onHome = (e: Event) => {
+      const detail = (e as CustomEvent<HomeDataPayload>).detail;
+      if (detail) setHome(detail);
+    };
+    window.addEventListener(HOME_DATA_EVENT, onHome);
+    return () => window.removeEventListener(HOME_DATA_EVENT, onHome);
+  }, []);
 
   useEffect(() => {
     const clear = () => setActiveCleared(true);
     window.addEventListener(WORKOUT_ACTIVE_EVENT, clear);
-    window.addEventListener(HOME_DATA_EVENT, clear);
-    return () => {
-      window.removeEventListener(WORKOUT_ACTIVE_EVENT, clear);
-      window.removeEventListener(HOME_DATA_EVENT, clear);
-    };
+    return () => window.removeEventListener(WORKOUT_ACTIVE_EVENT, clear);
   }, []);
 
   useEffect(() => {
     if (sessionData?.session?.id) setActiveCleared(false);
   }, [sessionData?.session?.id]);
 
-  const activeSession = activeCleared ? null : sessionData?.session ?? null;
+  const activeSession = activeCleared
+    ? null
+    : sessionData?.session ?? home?.activeSession ?? null;
   const plans = plansData?.plans ?? [];
   const lastPlan = plans.find((p) => p.lastSessionAt);
   const lastPlanLabel = lastPlan
@@ -72,9 +79,12 @@ export default function WorkoutsHubPage() {
       ? `${plans.length} ${plans.length === 1 ? "Plan" : "Pläne"}`
       : "Erstelle deinen ersten Plan";
 
-  const streak = journeyData?.journey?.streak?.currentDays ?? 0;
-  const sessions30 = journeyData?.journey?.stats30d?.sessions ?? 0;
-  const recoveryMuscles = filterDisplayMuscles(recoveryData?.recovery ?? []);
+  const streak =
+    home?.trainingStreak?.currentDays ?? home?.streak?.currentDays ?? 0;
+  const weekWorkouts = home?.weeklyReport?.workouts ?? home?.activityWeek?.count ?? 0;
+  const recoveryMuscles = filterDisplayMuscles(
+    (home?.recovery?.muscles ?? []) as MuscleRecovery[]
+  );
 
   return (
     <PageShell title="Training" className="space-y-4 pb-24" bottomNav={false}>
@@ -86,7 +96,7 @@ export default function WorkoutsHubPage() {
             Läuft gerade
           </p>
           <p className="mt-1 text-lg font-bold text-white">
-            {activeSession.name ?? "Training"}
+            {sessionData?.session?.name ?? "Training"}
           </p>
           <Button
             className="mt-3 h-12 w-full rounded-2xl text-base"
@@ -160,8 +170,10 @@ export default function WorkoutsHubPage() {
           iconClassName="bg-emerald-500/15 text-emerald-400"
           meta={
             streak > 0
-              ? `${streak} Tage Streak · ${sessions30} Trainings (30T)`
-              : `${sessions30} Trainings in 30 Tagen`
+              ? `${streak} Tage Streak${weekWorkouts > 0 ? ` · ${weekWorkouts} diese Woche` : ""}`
+              : weekWorkouts > 0
+                ? `${weekWorkouts} Trainings diese Woche`
+                : "Noch keine Sessions"
           }
         />
         <TrainingChoiceCard

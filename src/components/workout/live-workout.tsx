@@ -40,12 +40,114 @@ type SetRow = {
   notes: string | null;
 };
 
-type SessionData = {
-  id: string;
-  name: string;
-  startedAt: string;
-  sets: SetRow[];
-};
+const LiveSetRow = memo(function LiveSetRow({
+  set,
+  index,
+  canDelete,
+  onPatch,
+  onComplete,
+  onDelete,
+}: {
+  set: SetRow;
+  index: number;
+  canDelete: boolean;
+  onPatch: (setId: string, data: Partial<SetRow>) => void;
+  onComplete: (set: SetRow) => void;
+  onDelete: (setId: string) => void;
+}) {
+  const [weight, setWeight] = useState(
+    set.weightKg == null ? "" : String(set.weightKg)
+  );
+  const [reps, setReps] = useState(set.reps == null ? "" : String(set.reps));
+
+  useEffect(() => {
+    setWeight(set.weightKg == null ? "" : String(set.weightKg));
+    setReps(set.reps == null ? "" : String(set.reps));
+  }, [set.id, set.weightKg, set.reps]);
+
+  return (
+    <div
+      className={`grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)_3.25rem_3.25rem] gap-2 items-center rounded-xl p-1.5 ${
+        set.completed
+          ? "bg-cyan-500/15 border border-cyan-500/35"
+          : "bg-zinc-800/50"
+      }`}
+    >
+      <span className="text-base font-semibold text-zinc-300 pl-1 tabular-nums">
+        {index + 1}
+      </span>
+      <div className="flex items-center gap-1.5 min-w-0">
+        <Input
+          type="text"
+          inputMode="decimal"
+          pattern="[0-9]*[.,]?[0-9]*"
+          placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
+          className="h-14 min-w-0 flex-1 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
+          value={weight}
+          onChange={(e) => {
+            setWeight(e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""));
+          }}
+          onBlur={() => {
+            const v = weight.replace(",", ".").replace(/[^0-9.]/g, "");
+            onPatch(set.id, {
+              weightKg: v === "" || v === "." ? null : Number(v),
+            });
+          }}
+        />
+        <span className="text-xs font-semibold text-zinc-500 shrink-0 w-6">KG</span>
+      </div>
+      <div className="flex items-center gap-1.5 min-w-0">
+        <Input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
+          className="h-14 min-w-0 flex-1 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
+          value={reps}
+          onChange={(e) => {
+            setReps(e.target.value.replace(/[^0-9]/g, ""));
+          }}
+          onBlur={() => {
+            const v = reps.replace(/[^0-9]/g, "");
+            onPatch(set.id, { reps: v === "" ? null : Number(v) });
+          }}
+        />
+        <span className="text-[10px] font-semibold text-zinc-500 shrink-0 w-8">
+          REPS
+        </span>
+      </div>
+      <Button
+        size="icon"
+        variant={set.completed ? "default" : "secondary"}
+        className="h-14 w-14 rounded-xl"
+        onClick={() => {
+            const parsedW = Number(weight);
+            const parsedR = Number(reps);
+            onComplete({
+              ...set,
+              weightKg:
+                weight === "" || weight === "." || !Number.isFinite(parsedW)
+                  ? set.weightKg
+                  : parsedW,
+              reps:
+                reps === "" || !Number.isFinite(parsedR) ? set.reps : parsedR,
+            });
+          }}
+      >
+        <Check className="h-6 w-6" />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-14 w-14 rounded-xl"
+        disabled={!canDelete}
+        onClick={() => onDelete(set.id)}
+      >
+        <Trash2 className="h-5 w-5 text-red-400" />
+      </Button>
+    </div>
+  );
+});
 
 function formatWorkoutTime(s: number) {
   const m = Math.floor(s / 60);
@@ -130,6 +232,13 @@ const LiveRestTimer = memo(function LiveRestTimer({
   );
 });
 
+type SessionData = {
+  id: string;
+  name: string;
+  startedAt: string;
+  sets: SetRow[];
+};
+
 export function LiveWorkout({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const [session, setSession] = useState<SessionData | null>(null);
@@ -139,6 +248,13 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
   const [defaultEndName, setDefaultEndName] = useState("Workout 001");
   const [pickerOpen, setPickerOpen] = useState(false);
   const patchTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const sessionRef = useRef<SessionData | null>(null);
+  sessionRef.current = session;
+
+  const startRest = useCallback((seconds: number) => {
+    setRestUntil(Date.now() + seconds * 1000);
+  }, []);
+  const clearRest = useCallback(() => setRestUntil(null), []);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/workouts/sessions/${sessionId}`);
@@ -201,69 +317,94 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
     [session]
   );
 
-  async function patchSet(setId: string, data: Partial<SetRow>, immediate = false) {
-    const prev = session;
-    setSession((s) => {
-      if (!s) return s;
-      return {
-        ...s,
-        sets: s.sets.map((row) => (row.id === setId ? { ...row, ...data } : row)),
-      };
-    });
+  const patchSet = useCallback(
+    async (setId: string, data: Partial<SetRow>, immediate = false) => {
+      const prev = sessionRef.current;
+      setSession((s) => {
+        if (!s) return s;
+        return {
+          ...s,
+          sets: s.sets.map((row) => (row.id === setId ? { ...row, ...data } : row)),
+        };
+      });
 
-    const send = async () => {
+      const send = async () => {
+        try {
+          const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "updateSet", setId, ...data }),
+          });
+          if (!res.ok) {
+            setSession(prev);
+            toast.error("Speichern fehlgeschlagen");
+          }
+        } catch {
+          setSession(prev);
+          toast.error("Speichern fehlgeschlagen");
+        }
+      };
+
+      if (immediate) {
+        await send();
+        return;
+      }
+
+      const existing = patchTimers.current.get(setId);
+      if (existing) clearTimeout(existing);
+      patchTimers.current.set(
+        setId,
+        setTimeout(() => {
+          patchTimers.current.delete(setId);
+          void send();
+        }, 400)
+      );
+    },
+    [sessionId]
+  );
+
+  const deleteSet = useCallback(
+    async (setId: string) => {
+      const prev = sessionRef.current;
+      setSession((s) => {
+        if (!s) return s;
+        return { ...s, sets: s.sets.filter((row) => row.id !== setId) };
+      });
       try {
         const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "updateSet", setId, ...data }),
+          body: JSON.stringify({ action: "deleteSet", setId }),
         });
         if (!res.ok) {
           setSession(prev);
-          toast.error("Speichern fehlgeschlagen");
+          toast.error("Satz konnte nicht gelöscht werden");
         }
       } catch {
         setSession(prev);
-        toast.error("Speichern fehlgeschlagen");
       }
-    };
+    },
+    [sessionId]
+  );
 
-    if (immediate) {
-      await send();
-      return;
-    }
-
-    const existing = patchTimers.current.get(setId);
-    if (existing) clearTimeout(existing);
-    patchTimers.current.set(
-      setId,
-      setTimeout(() => {
-        patchTimers.current.delete(setId);
-        void send();
-      }, 400)
-    );
-  }
-
-  async function deleteSet(setId: string) {
-    const prev = session;
-    setSession((s) => {
-      if (!s) return s;
-      return { ...s, sets: s.sets.filter((row) => row.id !== setId) };
-    });
-    try {
-      const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "deleteSet", setId }),
-      });
-      if (!res.ok) {
-        setSession(prev);
-        toast.error("Satz konnte nicht gelöscht werden");
+  const completeSet = useCallback(
+    (row: SetRow) => {
+      void patchSet(
+        row.id,
+        {
+          completed: !row.completed,
+          weightKg: row.weightKg,
+          reps: row.reps,
+        },
+        true
+      );
+      if (!row.completed) {
+        hapticTap();
+        startRest(row.restSeconds ?? 90);
       }
-    } catch {
-      setSession(prev);
-    }
-  }
+    },
+    [patchSet, startRest]
+  );
 
   async function addSet(exerciseName: string, exerciseLibraryId: string | null, setNumber: number) {
     const lastSet = session?.sets
@@ -368,11 +509,6 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       });
   }
 
-  const startRest = useCallback((seconds: number) => {
-    setRestUntil(Date.now() + seconds * 1000);
-  }, []);
-  const clearRest = useCallback(() => setRestUntil(null), []);
-
   function openEndDialog() {
     setDefaultEndName(nextDefaultWorkoutName());
     setEndOpen(true);
@@ -456,119 +592,15 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
                 <span />
               </div>
               {sets.map((set, index) => (
-                <div
+                <LiveSetRow
                   key={set.id}
-                  className={`grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)_3.25rem_3.25rem] gap-2 items-center rounded-xl p-1.5 ${
-                    set.completed
-                      ? "bg-cyan-500/15 border border-cyan-500/35"
-                      : "bg-zinc-800/50"
-                  }`}
-                >
-                  <span className="text-base font-semibold text-zinc-300 pl-1 tabular-nums">
-                    {index + 1}
-                  </span>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      pattern="[0-9]*[.,]?[0-9]*"
-                      placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
-                      className="h-14 min-w-0 flex-1 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
-                      value={set.weightKg ?? ""}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
-                        const v = raw;
-                        setSession((prev) => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            sets: prev.sets.map((s) =>
-                              s.id === set.id
-                                ? {
-                                    ...s,
-                                    weightKg:
-                                      v === "" || v === "."
-                                        ? null
-                                        : Number(v),
-                                  }
-                                : s
-                            ),
-                          };
-                        });
-                      }}
-                      onBlur={(e) => {
-                        const raw = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
-                        const v = raw;
-                        patchSet(set.id, {
-                          weightKg:
-                            v === "" || v === "." ? null : Number(v),
-                        });
-                      }}
-                    />
-                    <span className="text-xs font-semibold text-zinc-500 shrink-0 w-6">
-                      KG
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
-                      className="h-14 min-w-0 flex-1 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
-                      value={set.reps ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(/[^0-9]/g, "");
-                        setSession((prev) => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            sets: prev.sets.map((s) =>
-                              s.id === set.id
-                                ? {
-                                    ...s,
-                                    reps: v === "" ? null : Number(v),
-                                  }
-                                : s
-                            ),
-                          };
-                        });
-                      }}
-                      onBlur={(e) => {
-                        const v = e.target.value.replace(/[^0-9]/g, "");
-                        patchSet(set.id, {
-                          reps: v === "" ? null : Number(v),
-                        });
-                      }}
-                    />
-                    <span className="text-[10px] font-semibold text-zinc-500 shrink-0 w-8">
-                      REPS
-                    </span>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant={set.completed ? "default" : "secondary"}
-                    className="h-14 w-14 rounded-xl"
-                    onClick={async () => {
-                      await patchSet(set.id, { completed: !set.completed }, true);
-                      if (!set.completed) {
-                        hapticTap();
-                        startRest(set.restSeconds ?? 90);
-                      }
-                    }}
-                  >
-                    <Check className="h-6 w-6" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-14 w-14 rounded-xl"
-                    disabled={sets.length <= 1}
-                    onClick={() => deleteSet(set.id)}
-                  >
-                    <Trash2 className="h-5 w-5 text-red-400" />
-                  </Button>
-                </div>
+                  set={set}
+                  index={index}
+                  canDelete={sets.length > 1}
+                  onPatch={patchSet}
+                  onComplete={completeSet}
+                  onDelete={deleteSet}
+                />
               ))}
               <Button
                 variant="outline"

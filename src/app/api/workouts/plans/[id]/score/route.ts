@@ -17,10 +17,19 @@ export async function GET(req: NextRequest, { params }: Params) {
 
     const plan = await prisma.workoutPlan.findFirst({
       where: { id, userId: session.user.id },
-      include: {
+      select: {
+        name: true,
         days: {
           orderBy: { dayOrder: "asc" },
-          include: { exercises: { include: { exercise: true } } },
+          select: {
+            name: true,
+            exercises: {
+              select: {
+                targetSets: true,
+                exercise: { select: { muscleGroup: true } },
+              },
+            },
+          },
         },
       },
     });

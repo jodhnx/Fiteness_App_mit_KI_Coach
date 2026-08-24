@@ -18,8 +18,7 @@ import { NutritionOrbitOverview } from "@/components/nutrition/nutrition-orbit-o
 import { NutritionDaySummary } from "@/components/nutrition/nutrition-day-summary";
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
-import { FoodAddPopup } from "@/components/nutrition/food-add-popup";
-import { FoodAISheet } from "@/components/nutrition/food-ai-sheet";
+import dynamic from "next/dynamic";
 import {
   NutritionExtrasPanel,
   NutritionShoppingList,
@@ -40,6 +39,18 @@ import { warmNutritionSearchCaches } from "@/lib/nav-cache-warmer";
 import { warmFoodHistoryCache, refreshFoodHistoryCache } from "@/lib/food-history-cache";
 import { resetBodyScroll } from "@/lib/scroll-lock";
 import type { FoodAIItem } from "@/app/api/nutrition/food-ai/route";
+
+const FoodAddPopup = dynamic(
+  () =>
+    import("@/components/nutrition/food-add-popup").then((m) => m.FoodAddPopup),
+  { ssr: false }
+);
+
+const FoodAISheet = dynamic(
+  () =>
+    import("@/components/nutrition/food-ai-sheet").then((m) => m.FoodAISheet),
+  { ssr: false }
+);
 
 const VALID_MEALS = new Set<string>(MEAL_TYPE_ORDER);
 
@@ -336,11 +347,13 @@ function NutritionPageInner() {
         />
       )}
 
-      <FoodAISheet
-        open={foodAIOpen}
-        onClose={() => setFoodAIOpen(false)}
-        onTrack={handleFoodAITrack}
-      />
+      {foodAIOpen && (
+        <FoodAISheet
+          open={foodAIOpen}
+          onClose={() => setFoodAIOpen(false)}
+          onTrack={handleFoodAITrack}
+        />
+      )}
     </PageShell>
   );
 }

@@ -34,16 +34,17 @@ export const HomeWidgetBoard = memo(function HomeWidgetBoard({
       <div className="flex justify-end">
         <Button
           type="button"
-          size="sm"
+          size="icon"
           variant="ghost"
-          className="text-zinc-400 h-8"
+          className="text-zinc-500 h-9 w-9"
+          aria-label={edit ? "Widget-Bearbeitung beenden" : "Widgets anordnen"}
+          aria-pressed={edit}
           onClick={() => {
             hapticTap();
             setEdit((e) => !e);
           }}
         >
-          <Settings2 className="h-4 w-4 mr-1" />
-          {edit ? "Fertig" : "Widgets"}
+          <Settings2 className="h-4 w-4" />
         </Button>
       </div>
 

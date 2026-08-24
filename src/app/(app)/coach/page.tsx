@@ -45,6 +45,8 @@ export default function CoachPage() {
   const shouldScrollRef = useRef(false);
   const hydratedRef = useRef(false);
 
+  const abortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     if (hydratedRef.current) return;
     hydratedRef.current = true;
@@ -53,6 +55,10 @@ export default function CoachPage() {
       setMessages(cached.messages);
       setChatId(cached.chatId);
     }
+    const cacheFresh =
+      cached?.messages.length && Date.now() - cached.updatedAt < 120_000;
+    if (cacheFresh) return;
+
     fetch("/api/coach/chat")
       .then((r) => r.json())
       .then((d) => {
@@ -89,6 +95,10 @@ export default function CoachPage() {
 
       setMessages((m) => [...m, { role: "assistant", content: "" }]);
 
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+
       try {
         const res = await fetch("/api/coach/chat", {
           method: "POST",
@@ -97,6 +107,7 @@ export default function CoachPage() {
             Accept: "text/event-stream",
           },
           body: JSON.stringify({ message: text, chatId, stream: true }),
+          signal: ac.signal,
         });
 
         if (!res.ok) {
@@ -177,7 +188,8 @@ export default function CoachPage() {
             return next;
           });
         }
-      } catch {
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
         toast.error("Verbindung unterbrochen. Bitte erneut versuchen.");
         setMessages((m) => m.slice(0, -2));
       } finally {
@@ -251,7 +263,7 @@ export default function CoachPage() {
       </div>
 
       <div
-        className="coach-input-dock fixed left-0 right-0 z-40 border-t border-white/10 bg-zinc-950/98 backdrop-blur-xl px-4 pt-3 pb-3"
+        className="coach-input-dock fixed left-0 right-0 z-40 border-t border-white/10 bg-zinc-950 px-4 pt-3 pb-3"
         style={{
           bottom: "calc(4.25rem + env(safe-area-inset-bottom, 0px))",
         }}

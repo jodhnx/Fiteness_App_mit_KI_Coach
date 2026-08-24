@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { chatCompletion, COACH_SYSTEM_PROMPT } from "@/lib/openai";
 import { setVolume } from "@/lib/workout-metrics";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import { aiLimitExceededResponse } from "@/lib/security/ai-rate-limit";
 import { subDays } from "date-fns";
 
 export async function POST() {
@@ -10,16 +11,63 @@ export async function POST() {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
 
+    const limited = await aiLimitExceededResponse(session.user.id, ["ai-coach"], 8);
+    if (limited) return limited;
+
     const since = subDays(new Date(), 28);
-    const sessions = await prisma.workoutSession.findMany({
-      where: {
-        userId: session.user.id,
-        status: "COMPLETED",
-        completedAt: { gte: since },
-      },
-      include: { sets: true },
-      orderBy: { completedAt: "desc" },
-    });
+    const [sessions, streak, prs] = await Promise.all([
+      prisma.workoutSession.findMany({
+        where: {
+          userId: session.user.id,
+          status: "COMPLETED",
+          completedAt: { gte: since },
+        },
+        select: {
+          sets: {
+            where: { completed: true },
+            select: {
+              reps: true,
+              weightKg: true,
+              exerciseLibraryId: true,
+            },
+          },
+        },
+        orderBy: { completedAt: "desc" },
+        take: 40,
+      }),
+      prisma.trainingStreak.findUnique({
+        where: { userId: session.user.id },
+        select: { currentDays: true, longestDays: true },
+      }),
+      prisma.personalRecord.findMany({
+        where: { userId: session.user.id },
+        take: 8,
+        orderBy: { achievedAt: "desc" },
+        select: {
+          recordType: true,
+          value: true,
+          exercise: { select: { name: true } },
+        },
+      }),
+    ]);
+
+    const libraryIds = [
+      ...new Set(
+        sessions.flatMap((s) =>
+          s.sets
+            .map((set) => set.exerciseLibraryId)
+            .filter((id): id is string => Boolean(id))
+        )
+      ),
+    ];
+    const exercises =
+      libraryIds.length > 0
+        ? await prisma.exerciseLibrary.findMany({
+            where: { id: { in: libraryIds } },
+            select: { id: true, muscleGroup: true },
+          })
+        : [];
+    const muscleById = new Map(exercises.map((ex) => [ex.id, ex.muscleGroup]));
 
     let totalVolume = 0;
     const muscleVol: Record<string, number> = {};
@@ -28,30 +76,17 @@ export async function POST() {
         const v = setVolume(set.reps, set.weightKg);
         totalVolume += v;
         if (set.exerciseLibraryId) {
-          const ex = await prisma.exerciseLibrary.findUnique({
-            where: { id: set.exerciseLibraryId },
-            select: { muscleGroup: true, name: true },
-          });
-          if (ex) muscleVol[ex.muscleGroup] = (muscleVol[ex.muscleGroup] ?? 0) + v;
+          const muscle = muscleById.get(set.exerciseLibraryId);
+          if (muscle) muscleVol[muscle] = (muscleVol[muscle] ?? 0) + v;
         }
       }
     }
 
-    const streak = await prisma.trainingStreak.findUnique({
-      where: { userId: session.user.id },
-    });
-    const prs = await prisma.personalRecord.findMany({
-      where: { userId: session.user.id },
-      take: 10,
-      orderBy: { achievedAt: "desc" },
-      include: { exercise: true },
-    });
-
     const context = JSON.stringify({
       sessionsLast4Weeks: sessions.length,
-      totalVolume,
+      totalVolume: Math.round(totalVolume),
       muscleVolume: muscleVol,
-      streak,
+      streakDays: streak?.currentDays ?? 0,
       recentPRs: prs.map((p) => ({
         exercise: p.exercise.name,
         type: p.recordType,
@@ -64,7 +99,7 @@ export async function POST() {
         { role: "system", content: COACH_SYSTEM_PROMPT },
         {
           role: "system",
-          content: `Analysiere diese Trainingsdaten der letzten 4 Wochen und gib auf Deutsch konkrete Empfehlungen (Volumen, Deload, Übungswechsel, Muskelbalance, Frequenz). Max 400 Wörter. Daten: ${context}`,
+          content: `Analysiere diese Trainingsdaten der letzten 4 Wochen und gib auf Deutsch konkrete Empfehlungen (Volumen, Deload, Übungswechsel, Muskelbalance, Frequenz). Max 250 Wörter. Daten: ${context}`,
         },
         {
           role: "user",
@@ -72,7 +107,8 @@ export async function POST() {
             "Analysiere mein Training und gib mir konkrete Empfehlungen für die nächsten 2 Wochen.",
         },
       ],
-      session.user.id
+      session.user.id,
+      { maxTokens: 700, endpoint: "ai-coach" }
     );
 
     await prisma.aIRecommendation.create({
@@ -84,7 +120,10 @@ export async function POST() {
       },
     });
 
-    return jsonOk({ analysis: content, stats: { sessions: sessions.length, totalVolume } });
+    return jsonOk({
+      analysis: content,
+      stats: { sessions: sessions.length, totalVolume: Math.round(totalVolume) },
+    });
   } catch (e) {
     console.error("WORKOUT AI ERROR:", e);
     return handleApiError(e);

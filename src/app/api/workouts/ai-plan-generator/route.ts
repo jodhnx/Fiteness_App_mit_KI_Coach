@@ -13,6 +13,7 @@ import {
 import type { PlanEquipmentFilter, PlanGoal, PlanLevel } from "@prisma/client";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { getCatalogPlan } from "@/lib/plan-catalog";
+import { aiLimitExceededResponse } from "@/lib/security/ai-rate-limit";
 
 const schema = z.object({
   goal: z.enum(["MUSCLE_GAIN", "STRENGTH_GAIN", "FAT_LOSS", "RECOMP", "GENERAL_FITNESS"]),
@@ -29,6 +30,8 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
+    const limited = await aiLimitExceededResponse(session.user.id, ["ai-plan"], 8);
+    if (limited) return limited;
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) return jsonError("Ungültige Eingabe");
@@ -102,7 +105,7 @@ export async function POST(req: NextRequest) {
           },
         ],
         session.user.id,
-        { maxTokens: 700 }
+        { maxTokens: 700, endpoint: "ai-plan" }
       );
       aiSummary = content;
     } catch {

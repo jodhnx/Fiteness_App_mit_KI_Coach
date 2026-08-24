@@ -8,8 +8,8 @@ export const TAB_SWIPE = {
   minDistance: 72,
   minVelocity: 0.45,
   maxDragRatio: 0.42,
-  settleMs: 220,
-  commitMs: 200,
+  settleMs: 140,
+  commitMs: 140,
 } as const;
 
 /** Bottom nav long-press + drag thresholds */
@@ -21,7 +21,7 @@ export const NAV_DRAG = {
   preLockSlopPx: 18,
   /** After scrub starts, min px to snap tab on release */
   snapThreshold: 0.35,
-  indicatorTransitionMs: 240,
+  indicatorTransitionMs: 160,
   scrubFollowMs: 0,
 } as const;
 

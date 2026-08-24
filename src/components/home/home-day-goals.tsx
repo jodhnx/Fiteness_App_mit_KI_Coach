@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Flame, Footprints, Droplets, Dumbbell } from "lucide-react";
 import { PremiumCard } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
+import { useLivePhoneSteps } from "@/hooks/use-live-phone-steps";
 
 type Goal = {
   id: string;
@@ -28,12 +29,13 @@ type Props = {
 export const HomeDayGoals = memo(function HomeDayGoals({
   caloriesConsumed,
   calorieTarget,
-  steps,
+  steps: serverSteps,
   stepGoal,
   waterMl,
   waterTargetMl,
   trainingDone,
 }: Props) {
+  const steps = useLivePhoneSteps(serverSteps);
   const goals: Goal[] = [
     {
       id: "kcal",

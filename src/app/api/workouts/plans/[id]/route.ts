@@ -8,13 +8,32 @@ import { buildCompletedDayIds, resolveDayStatus, type DayStatus } from "@/lib/pl
 
 type Params = { params: Promise<{ id: string }> };
 
-const planInclude = {
+const planSelect = {
+  id: true,
+  name: true,
+  description: true,
+  isActive: true,
+  archivedAt: true,
   days: {
     orderBy: { dayOrder: "asc" as const },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      dayOrder: true,
       exercises: {
         orderBy: { orderIndex: "asc" as const },
-        include: { exercise: true },
+        select: {
+          id: true,
+          orderIndex: true,
+          targetSets: true,
+          targetReps: true,
+          restSeconds: true,
+          setTargets: true,
+          exercise: {
+            select: { id: true, name: true, muscleGroup: true },
+          },
+        },
       },
     },
   },
@@ -27,7 +46,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const { id } = await params;
     const plan = await prisma.workoutPlan.findFirst({
       where: { id, userId: session.user.id },
-      include: planInclude,
+      select: planSelect,
     });
     if (!plan) return jsonError("Plan nicht gefunden", 404);
 
@@ -39,7 +58,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
       },
       orderBy: { completedAt: "desc" },
       take: 30,
-      include: { sets: true },
+      select: {
+        workoutDayId: true,
+        completedAt: true,
+        startedAt: true,
+        sets: { select: { reps: true, weightKg: true } },
+      },
     });
 
     const dayStats: Record<
@@ -130,17 +154,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       updateData.isActive = true;
     }
 
+    if (Object.keys(updateData).length === 0) {
+      return jsonOk({ updated: 0 });
+    }
+
     const plan = await prisma.workoutPlan.updateMany({
       where: { id, userId: session.user.id },
       data: updateData,
     });
 
-    const updated = await prisma.workoutPlan.findFirst({
-      where: { id, userId: session.user.id },
-      include: planInclude,
-    });
-
-    return jsonOk({ plan: updated, updated: plan.count });
+    return jsonOk({ updated: plan.count });
   } catch (e) {
     return handleApiError(e);
   }

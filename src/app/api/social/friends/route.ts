@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { friendRequestSchema } from "@/lib/validations";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { normalizeUsername } from "@/lib/username";
+import { compactPublicAvatar } from "@/lib/public-avatar";
 
 const userPublicSelect = {
   id: true,
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
       return jsonOk({
         users: users.map((u) => ({
           ...u,
+          image: compactPublicAvatar(u.image),
           publicAchievements: byUser.get(u.id) ?? [],
         })),
       });
@@ -101,9 +103,15 @@ export async function GET(req: NextRequest) {
     return jsonOk({
       friends: friends.map((f) => {
         const other = f.initiatorId === userId ? f.receiver : f.initiator;
+        const compactUser = (u: typeof other) => ({
+          ...u,
+          image: compactPublicAvatar(u.image),
+        });
         return {
           ...f,
-          other,
+          initiator: compactUser(f.initiator),
+          receiver: compactUser(f.receiver),
+          other: compactUser(other),
           publicAchievements: achByUser.get(other.id) ?? [],
         };
       }),

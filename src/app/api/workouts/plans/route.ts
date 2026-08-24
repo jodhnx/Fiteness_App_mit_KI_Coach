@@ -7,7 +7,7 @@ import { createPlanFromTemplate, createPlanFromCatalog } from "@/lib/workout-pla
 import { PLAN_CATALOG } from "@/lib/plan-catalog";
 import type { PlanTemplateType } from "@prisma/client";
 import { subDays } from "date-fns";
-import { buildCompletedDayIds, resolveDayStatus, type DayStatus } from "@/lib/plan-day-status";
+import { resolveDayStatus, type DayStatus } from "@/lib/plan-day-status";
 
 const createSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -42,14 +42,20 @@ const createSchema = z.object({
     .optional(),
 });
 
-const planInclude = {
+const planListSelect = {
+  id: true,
+  name: true,
+  description: true,
+  isActive: true,
+  archivedAt: true,
+  updatedAt: true,
   days: {
     orderBy: { dayOrder: "asc" as const },
-    include: {
-      exercises: {
-        orderBy: { orderIndex: "asc" as const },
-        include: { exercise: true },
-      },
+    select: {
+      id: true,
+      name: true,
+      dayOrder: true,
+      exercises: { select: { id: true } },
     },
   },
 };
@@ -65,7 +71,7 @@ export async function GET(req: NextRequest) {
         userId: session.user.id,
         archivedAt: archived ? { not: null } : null,
       },
-      include: planInclude,
+      select: planListSelect,
       orderBy: { updatedAt: "desc" },
     });
 
@@ -181,7 +187,7 @@ export async function POST(req: NextRequest) {
           })),
         },
       },
-      include: planInclude,
+      select: { id: true, name: true },
     });
 
     return jsonOk({ plan }, 201);

@@ -27,6 +27,7 @@ import {
   HOME_DATA_CACHE_KEY,
   HOME_COACH_CACHE,
   HOME_INSIGHTS_CACHE,
+  HOME_DATA_EVENT,
 } from "@/lib/nutrition-sync";
 import { invalidateCache } from "@/lib/client-cache";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
@@ -376,30 +377,37 @@ function SettingsPageInner() {
         const updatedDash = getCached<NutritionDashboardPayload>(
           NUTRITION_DASHBOARD_CACHE_KEY
         );
-        if (prevHome && updatedDash) {
-          setCached(
-            HOME_DATA_CACHE_KEY,
-            {
-              ...prevHome,
-              ...nutritionDashboardToHomeMacros(updatedDash),
-              userName: data.user?.name ?? prevHome.userName ?? null,
-            },
-            900_000
-          );
+        if (prevHome) {
+          const nextHome: HomeDataPayload = {
+            ...prevHome,
+            ...(updatedDash ? nutritionDashboardToHomeMacros(updatedDash) : {}),
+            userName: data.user?.name ?? prevHome.userName ?? null,
+            userImage:
+              data.user?.image !== undefined ? data.user.image : prevHome.userImage,
+            weightKg:
+              typeof data.profile?.weightKg === "number"
+                ? Number(data.profile.weightKg)
+                : prevHome.weightKg,
+          };
+          setCached(HOME_DATA_CACHE_KEY, nextHome, 900_000);
+          window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: nextHome }));
         }
+      } else if (prevHome && (data.user?.name || data.user?.image !== undefined)) {
+        const nextHome: HomeDataPayload = {
+          ...prevHome,
+          userName: data.user?.name ?? prevHome.userName ?? null,
+          userImage:
+            data.user?.image !== undefined ? data.user.image : prevHome.userImage,
+        };
+        setCached(HOME_DATA_CACHE_KEY, nextHome, 900_000);
+        window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: nextHome }));
       }
 
-      // Fresh server truth in background (does not wipe optimistic UI)
+      // Fresh nutrition targets in background (publishNutritionDashboard also patches home macros)
       void fetch("/api/nutrition/dashboard", { credentials: "same-origin" })
         .then((r) => (r.ok ? r.json() : null))
         .then((dash) => {
           if (dash) publishNutritionDashboard(dash);
-        })
-        .catch(() => undefined);
-      void fetch("/api/home", { credentials: "same-origin" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((home) => {
-          if (home) setCached(HOME_DATA_CACHE_KEY, home, 900_000);
         })
         .catch(() => undefined);
 

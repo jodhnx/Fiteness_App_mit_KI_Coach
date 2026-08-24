@@ -55,7 +55,7 @@ export function WeightQuickEntry({ initialKg, onSave, compact }: Props) {
               type="button"
               variant="outline"
               size="sm"
-              className="h-9 px-2.5 text-xs tabular-nums"
+              className="h-11 min-w-[3.25rem] px-3 text-xs tabular-nums touch-manipulation"
               onClick={() => adjust(d)}
             >
               {d > 0 ? "+" : ""}
@@ -68,7 +68,7 @@ export function WeightQuickEntry({ initialKg, onSave, compact }: Props) {
             type="button"
             variant="outline"
             size="icon"
-            className="shrink-0"
+            className="shrink-0 h-11 w-11"
             onClick={() => adjust(-0.1)}
             aria-label="-0,1 kg"
           >
@@ -86,7 +86,7 @@ export function WeightQuickEntry({ initialKg, onSave, compact }: Props) {
             type="button"
             variant="outline"
             size="icon"
-            className="shrink-0"
+            className="shrink-0 h-11 w-11"
             onClick={() => adjust(0.1)}
             aria-label="+0,1 kg"
           >

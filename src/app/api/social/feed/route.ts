@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { subDays } from "date-fns";
+import { compactPublicAvatar } from "@/lib/public-avatar";
 
 export type SocialFeedItem = {
   id: string;
@@ -43,7 +44,9 @@ export async function GET() {
       where: { id: { in: scopeIds } },
       select: { id: true, name: true, username: true, image: true },
     });
-    const userById = new Map(users.map((u) => [u.id, u]));
+    const userById = new Map(
+      users.map((u) => [u.id, { ...u, image: compactPublicAvatar(u.image) }])
+    );
 
     const [sessions, achievements, prs] = await Promise.all([
       prisma.workoutSession.findMany({

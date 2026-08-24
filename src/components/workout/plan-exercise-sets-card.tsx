@@ -1,10 +1,25 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { useSortable } from "@dnd-kit/sortable";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   defaultPlanSets,
@@ -197,4 +212,74 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
 
 export function createDefaultSetTargets() {
   return defaultPlanSets();
+}
+
+export type PlanDaySortableItem = {
+  id: string;
+  name: string;
+  muscleGroup: string;
+  targetSets: number;
+  targetReps: string;
+  setTargets: unknown;
+  libraryId: string;
+};
+
+type PlanDaySortableListProps = {
+  exercises: PlanDaySortableItem[];
+  onReorder: (activeId: string, overId: string) => void;
+  onRemove: (id: string) => void;
+  onReplace: (id: string, libraryId: string) => void;
+  onSaveSets: (id: string, sets: PlanSetTarget[]) => void;
+};
+
+/** Isolated so @dnd-kit stays out of the plan-page initial chunk. */
+export function PlanDaySortableList({
+  exercises,
+  onReorder,
+  onRemove,
+  onReplace,
+  onSaveSets,
+}: PlanDaySortableListProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    onReorder(String(active.id), String(over.id));
+  }
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext
+        items={exercises.map((e) => e.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {exercises.length === 0 ? (
+          <Card className="border-dashed border-zinc-700 bg-transparent">
+            <CardContent className="py-12 text-center text-zinc-500">
+              Noch keine Übungen — tippe auf „Übung hinzufügen“
+            </CardContent>
+          </Card>
+        ) : (
+          exercises.map((ex) => (
+            <PlanExerciseSetsCard
+              key={ex.id}
+              id={ex.id}
+              name={ex.name}
+              muscleGroup={ex.muscleGroup}
+              targetSets={ex.targetSets}
+              targetReps={ex.targetReps}
+              setTargets={ex.setTargets}
+              onRemove={() => onRemove(ex.id)}
+              onReplace={() => onReplace(ex.id, ex.libraryId)}
+              onSaveSets={(sets) => onSaveSets(ex.id, sets)}
+            />
+          ))
+        )}
+      </SortableContext>
+    </DndContext>
+  );
 }

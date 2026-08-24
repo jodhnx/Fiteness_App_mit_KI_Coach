@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { WorkoutNav } from "@/components/workout/workout-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatChart } from "@/components/charts/stat-chart";
+import { LazyStatChart } from "@/components/charts/lazy-stat-chart";
 import { ArrowLeft } from "lucide-react";
 import { ExerciseVisual } from "@/components/workout/exercise-visual";
 
@@ -93,7 +93,7 @@ export default function ExerciseStatsPage() {
             <CardTitle>Fortschritt (Volumen/Woche)</CardTitle>
           </CardHeader>
           <CardContent>
-            <StatChart data={chartData} />
+            <LazyStatChart data={chartData} />
           </CardContent>
         </Card>
       )}

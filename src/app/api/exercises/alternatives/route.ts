@@ -7,6 +7,7 @@ import {
   getExerciseAlternatives,
 } from "@/lib/exercise-alternatives";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import { aiLimitExceededResponse } from "@/lib/security/ai-rate-limit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -43,11 +44,18 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
+    const limited = await aiLimitExceededResponse(
+      session.user.id,
+      ["exercise-alts"],
+      12
+    );
+    if (limited) return limited;
     const { exerciseLibraryId } = await req.json();
     if (!exerciseLibraryId) return jsonError("exerciseLibraryId fehlt");
 
     const exercise = await prisma.exerciseLibrary.findUnique({
       where: { id: exerciseLibraryId },
+      select: { name: true, muscleGroup: true, equipment: true },
     });
     if (!exercise) return jsonError("Übung nicht gefunden", 404);
 
@@ -56,6 +64,7 @@ export async function POST(req: NextRequest) {
       where: { muscleGroup: exercise.muscleGroup },
       orderBy: { usageCount: "desc" },
       take: 80,
+      select: { slug: true },
     });
 
     let aiSlugs: string[] = [];
@@ -77,7 +86,8 @@ export async function POST(req: NextRequest) {
             ),
           },
         ],
-        session.user.id
+        session.user.id,
+        { maxTokens: 200, endpoint: "exercise-alts" }
       );
       aiSlugs = content
         .split(/[,\n]/)

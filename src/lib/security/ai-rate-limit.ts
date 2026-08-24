@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { jsonError } from "@/lib/api-response";
 
 /**
  * Durable AI rate limit via existing AIUsageLog — works across Vercel instances.
@@ -25,7 +26,18 @@ export async function rateLimitAiUsage(
     return { success: true, remaining: Math.max(0, limit - used - 1) };
   } catch (e) {
     console.error("[ai-rate-limit]", e);
-    // Fail open locally if the log table is unreachable — still blocked by in-memory limit
     return { success: true, remaining: limit };
   }
+}
+
+/** Returns a 429 Response when the durable AI budget is exhausted. */
+export async function aiLimitExceededResponse(
+  userId: string,
+  endpoints: string[],
+  limit: number,
+  windowMs = 60_000
+) {
+  const { success } = await rateLimitAiUsage(userId, endpoints, limit, windowMs);
+  if (success) return null;
+  return jsonError("Zu viele KI-Anfragen. Bitte kurz warten.", 429);
 }

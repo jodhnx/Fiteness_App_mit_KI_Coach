@@ -7,6 +7,7 @@ import { Bot, ChevronRight, Flame, Footprints, Dumbbell, Utensils } from "lucide
 import { getCached, setCached } from "@/lib/client-cache";
 import { cn } from "@/lib/utils";
 import type { CoachInsightsResult } from "@/lib/coach-insights";
+import { useLivePhoneSteps } from "@/hooks/use-live-phone-steps";
 
 const CACHE_KEY = "coach-insights";
 
@@ -65,9 +66,10 @@ export const HomeCoachBriefing = memo(function HomeCoachBriefing({
   trainingDone = false,
   proteinConsumed = 0,
   proteinTarget = 0,
-  steps = 0,
+  steps: serverSteps = 0,
   stepGoal = 10000,
 }: Props) {
+  const steps = useLivePhoneSteps(serverSteps);
   const [coachTip, setCoachTip] = useState<string | null>(null);
 
   useEffect(() => {

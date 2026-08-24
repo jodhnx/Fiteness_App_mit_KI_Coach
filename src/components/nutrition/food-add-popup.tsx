@@ -103,7 +103,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<ViewMode>("hub");
   const [q, setQ] = useState("");
-  const debouncedQ = useDebounce(q, 280);
+  const debouncedQ = useDebounce(q, 140);
   const [result, setResult] = useState<FoodSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [historyFoods, setHistoryFoods] = useState<FoodHistoryPayload>(() =>

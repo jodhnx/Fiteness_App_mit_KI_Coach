@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Droplets,
@@ -12,11 +12,20 @@ import {
   Target,
   CheckCircle2,
   Play,
+  Minus,
+  Plus,
 } from "lucide-react";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 import { PremiumCard } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
+import { useLivePhoneSteps } from "@/hooks/use-live-phone-steps";
+import { hapticTap } from "@/lib/haptic";
+import { getCached, setCached } from "@/lib/client-cache";
+import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
+import type { HomeDataPayload } from "@/lib/home-defaults";
+import { toast } from "sonner";
+import { format } from "date-fns";
 type TrainingStatus = "active" | "done" | "planned" | "open";
 
 type Props = {
@@ -78,7 +87,7 @@ function Ring({
 /** Premium Home Dashboard 2.0 — Apple Fitness / Whoop inspired. */
 export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   nutrition,
-  steps,
+  steps: serverSteps,
   stepGoal,
   sleepHours,
   weightKg,
@@ -86,6 +95,7 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   trainingStatus,
   trainingLabel,
 }: Props) {
+  const steps = useLivePhoneSteps(serverSteps);
   const ready = hasNutritionTargets(nutrition);
   const burned = nutrition.exerciseBurned?.calories ?? 0;
   const burnedEstimated = nutrition.exerciseBurned?.estimated ?? true;
@@ -107,8 +117,6 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   const carbsTarget = Math.round(nutrition.targets?.carbsG ?? 0);
   const fatG = Math.round(nutrition.consumed?.fatG ?? 0);
   const fatTarget = Math.round(nutrition.targets?.fatG ?? 0);
-  const displayWeight =
-    weightKg != null ? Math.round(weightKg * 10) / 10 : null;
 
   const trainMeta = {
     active: { label: "Läuft", color: "text-cyan-400", Icon: Play },
@@ -248,21 +256,84 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
           </div>
         </Link>
 
-        <Link
-          href="/progress?log=1"
-          className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3 active:scale-[0.98] transition-transform"
-        >
-          <Scale className="h-5 w-5 shrink-0 text-violet-400" />
-          <div className="min-w-0">
-            <p className="text-[9px] uppercase text-zinc-500">Gewicht</p>
-            <p className="text-sm font-semibold text-white tabular-nums">
-              {displayWeight != null
-                ? `${displayWeight.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`
-                : "—"}
-            </p>
-          </div>
-        </Link>
+        <HomeWeightNudge weightKg={weightKg} />
       </div>
     </PremiumCard>
   );
 });
+
+function HomeWeightNudge({ weightKg }: { weightKg: number | null }) {
+  const [kg, setKg] = useState(weightKg);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setKg(weightKg);
+  }, [weightKg]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
+
+  const persist = useCallback((next: number) => {
+    const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
+    if (home) {
+      const merged = { ...home, weightKg: next };
+      setCached(HOME_DATA_CACHE_KEY, merged, 900_000);
+      window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: merged }));
+    }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const today = format(new Date(), "yyyy-MM-dd");
+      void fetch("/api/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: today, weightKg: next }),
+      }).then((res) => {
+        if (!res.ok) toast.error("Gewicht nicht gespeichert");
+      });
+    }, 450);
+  }, []);
+
+  const nudge = (delta: number) => {
+    hapticTap();
+    const base = kg ?? 70;
+    const next = Math.round((base + delta) * 10) / 10;
+    setKg(next);
+    persist(next);
+  };
+
+  const display =
+    kg != null ? kg.toLocaleString("de-DE", { maximumFractionDigits: 1 }) : "—";
+
+  return (
+    <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-2.5">
+      <button
+        type="button"
+        className="h-11 w-11 shrink-0 rounded-xl border border-white/10 bg-zinc-900 text-zinc-300 flex items-center justify-center touch-manipulation active:scale-95"
+        aria-label="-0,1 kg"
+        onClick={() => nudge(-0.1)}
+      >
+        <Minus className="h-4 w-4" />
+      </button>
+      <Link href="/progress?log=1" className="min-w-0 flex-1 flex items-center gap-2">
+        <Scale className="h-5 w-5 shrink-0 text-violet-400" />
+        <div className="min-w-0">
+          <p className="text-[9px] uppercase text-zinc-500">Gewicht</p>
+          <p className="text-sm font-semibold text-white tabular-nums">
+            {kg != null ? `${display} kg` : "—"}
+          </p>
+        </div>
+      </Link>
+      <button
+        type="button"
+        className="h-11 w-11 shrink-0 rounded-xl border border-white/10 bg-zinc-900 text-zinc-300 flex items-center justify-center touch-manipulation active:scale-95"
+        aria-label="+0,1 kg"
+        onClick={() => nudge(0.1)}
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}

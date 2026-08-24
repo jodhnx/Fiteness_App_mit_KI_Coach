@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { subDays } from "date-fns";
+import { compactPublicAvatar } from "@/lib/public-avatar";
 
 /** Leaderboard from real friend+self activity (no fake values). */
 export async function GET(req: Request) {
@@ -24,10 +25,10 @@ export async function GET(req: Request) {
     );
     const scopeIds = [userId, ...friendIds];
 
-    const users = await prisma.user.findMany({
+    const users = (await prisma.user.findMany({
       where: { id: { in: scopeIds } },
       select: { id: true, name: true, username: true, image: true },
-    });
+    })).map((u) => ({ ...u, image: compactPublicAvatar(u.image) }));
 
     const since = subDays(new Date(), 30);
     const rows: {

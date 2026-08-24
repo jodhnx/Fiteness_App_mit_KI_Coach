@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { PremiumCard } from "@/components/ui/premium-card";
+import { useLivePhoneSteps } from "@/hooks/use-live-phone-steps";
 
 type Props = {
   caloriesLeft: number;
@@ -18,12 +19,13 @@ export const HomeDaySummary = memo(function HomeDaySummary({
   caloriesLeft,
   proteinG,
   proteinTarget,
-  steps,
+  steps: serverSteps,
   stepGoal,
   sleepHours,
   streakDays,
   trainingLabel,
 }: Props) {
+  const steps = useLivePhoneSteps(serverSteps);
   const lines = [
     `${Math.round(caloriesLeft).toLocaleString("de-DE")} kcal noch übrig`,
     `Protein ${Math.round(proteinG)}/${Math.round(proteinTarget)} g`,

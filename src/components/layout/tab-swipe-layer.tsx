@@ -68,7 +68,7 @@ export function TabSwipeLayer({ children }: { children: ReactNode }) {
       : "none";
     el.style.transform = x === 0 ? "none" : `translate3d(${x}px, 0, 0)`;
     const abs = Math.abs(x);
-    const fade = abs > 8 ? Math.max(0.82, 1 - abs / 900) : 1;
+    const fade = abs > 8 ? Math.max(0.92, 1 - abs / 1400) : 1;
     el.style.opacity = String(fade);
   }, []);
 
@@ -207,33 +207,12 @@ export function TabSwipeLayer({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (prefersReducedMotion()) {
-        resetTransform();
-        goTo(next);
-        return;
-      }
-
-      const width = rootRef.current?.clientWidth ?? window.innerWidth;
-      animating.current = true;
-      const el = trackRef.current;
-      if (el) {
-        el.style.transition = `transform ${TAB_SWIPE.commitMs}ms cubic-bezier(0.32, 0.72, 0, 1), opacity ${TAB_SWIPE.commitMs}ms ease`;
-        el.style.transform = `translate3d(${dir * -width * 0.35}px, 0, 0)`;
-        el.style.opacity = "0.7";
-      }
-
-      window.setTimeout(() => {
-        goTo(next);
-        offset.current = 0;
-        if (el) {
-          el.style.transition = "none";
-          el.style.transform = "none";
-          el.style.opacity = "1";
-        }
-        animating.current = false;
-      }, TAB_SWIPE.commitMs);
+      goTo(next);
+      offset.current = 0;
+      setTransform(0, false);
+      animating.current = false;
     },
-    [activeTab, goTo, resetTransform]
+    [activeTab, goTo, resetTransform, setTransform]
   );
 
   // Reset transform when route settles

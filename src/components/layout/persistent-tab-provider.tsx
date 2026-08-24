@@ -113,8 +113,6 @@ export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
   const keepActive = pathname != null && PATH_KEEP_ALIVE.has(pathname);
   const panels = useRef<Map<string, ReactNode>>(new Map());
   const [readyPaths, setReadyPaths] = useState<Set<string>>(() => new Set());
-  const panelRef = useRef<HTMLDivElement>(null);
-  const prevPath = useRef<string | null>(null);
 
   useLayoutEffect(() => {
     if (!keepActive || !pathname || !isRenderablePanel(children)) return;
@@ -126,21 +124,6 @@ export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
       return next;
     });
   }, [keepActive, pathname, children]);
-
-  // Soft enter animation without remounting (preserves keep-alive)
-  useLayoutEffect(() => {
-    if (!pathname) return;
-    const prev = prevPath.current;
-    prevPath.current = pathname;
-    if (!prev || prev === pathname) return;
-    if (!PATH_KEEP_ALIVE.has(prev) || !PATH_KEEP_ALIVE.has(pathname)) return;
-    const el = panelRef.current;
-    if (!el) return;
-    el.classList.remove("tab-panel-enter");
-    // Force reflow so the animation can restart
-    void el.offsetWidth;
-    el.classList.add("tab-panel-enter");
-  }, [pathname]);
 
   useEffect(() => {
     const clear = () => {
@@ -171,7 +154,7 @@ export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
           </div>
         );
       })}
-      <div ref={panelRef}>
+      <div>
         <AppErrorBoundary label={`keep:${pathname}`}>{visible}</AppErrorBoundary>
       </div>
     </>

@@ -1,24 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { getPlanRecoveryMessage, type MuscleRecovery } from "@/lib/recovery-shared";
 import { useParams, useRouter } from "next/navigation";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,12 +12,29 @@ import { toast } from "sonner";
 import { Play, Plus } from "lucide-react";
 import { WorkoutBackLink } from "@/components/workout/workout-back-link";
 import { PlanScoreCard } from "@/components/workout/plan-score-card";
-import { PlanExerciseSetsCard, createDefaultSetTargets } from "@/components/workout/plan-exercise-sets-card";
-import { ExercisePickerSheet } from "@/components/workout/exercise-picker-sheet";
 import { PlanStatsBar } from "@/components/workout/plan-stats-bar";
+import { defaultPlanSets, type PlanSetTarget } from "@/lib/plan-exercise-sets";
 import type { PlanScores } from "@/lib/plan-science-engine";
-import type { PlanSetTarget } from "@/lib/plan-exercise-sets";
 import type { LibraryExercise } from "@/hooks/use-exercise-library-search";
+import { getCached } from "@/lib/client-cache";
+import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
+import type { HomeDataPayload } from "@/lib/home-defaults";
+
+const PlanDaySortableList = dynamic(
+  () =>
+    import("@/components/workout/plan-exercise-sets-card").then(
+      (m) => m.PlanDaySortableList
+    ),
+  { loading: () => <div className="h-40 rounded-2xl bg-zinc-900/60 animate-pulse" /> }
+);
+
+const ExercisePickerSheet = dynamic(
+  () =>
+    import("@/components/workout/exercise-picker-sheet").then(
+      (m) => m.ExercisePickerSheet
+    ),
+  { ssr: false }
+);
 
 type PlanExercise = {
   id: string;
@@ -56,6 +59,19 @@ type DayStats = {
   volumeKg: number;
   durationSec: number;
 };
+
+function recoveryMusclesFromHome(home: HomeDataPayload | null): MuscleRecovery[] {
+  return (home?.recovery?.muscles ?? []) as MuscleRecovery[];
+}
+
+function moveItem<T>(items: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || to < 0) return items;
+  const next = items.slice();
+  const [item] = next.splice(from, 1);
+  if (!item) return items;
+  next.splice(to, 0, item);
+  return next;
+}
 
 export default function PlanEditorPage() {
   const params = useParams();
@@ -84,10 +100,11 @@ export default function PlanEditorPage() {
   const [alternatives, setAlternatives] = useState<{ id: string; name: string }[]>([]);
   const [planScores, setPlanScores] = useState<PlanScores | null>(null);
   const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
-
-  const { data: recoveryData } = useCachedFetch<{
-    recovery: MuscleRecovery[];
-  }>("workouts-recovery", "/api/workouts/recovery", 60_000);
+  const [recoveryMuscles, setRecoveryMuscles] = useState<MuscleRecovery[]>(() =>
+    recoveryMusclesFromHome(
+      getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true })
+    )
+  );
 
   useEffect(() => {
     if (planPayload?.plan) {
@@ -101,25 +118,42 @@ export default function PlanEditorPage() {
   }, [planPayload]);
 
   useEffect(() => {
+    const onHome = (e: Event) => {
+      const detail = (e as CustomEvent<HomeDataPayload>).detail;
+      if (detail) setRecoveryMuscles(recoveryMusclesFromHome(detail));
+    };
+    window.addEventListener(HOME_DATA_EVENT, onHome);
+    return () => window.removeEventListener(HOME_DATA_EVENT, onHome);
+  }, []);
+
+  const dayCount = plan?.days.length ?? 0;
+
+  useEffect(() => {
+    if (dayCount <= 1) {
+      setPlanScores(null);
+      return;
+    }
+    let cancelled = false;
     fetch(`/api/workouts/plans/${planId}/score`)
       .then((r) => r.json())
-      .then((d) => setPlanScores(d.scores ?? null));
-  }, [planId]);
+      .then((d) => {
+        if (!cancelled) setPlanScores(d.scores ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setPlanScores(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [planId, dayCount]);
 
   const recoveryHint = useMemo(() => {
-    if (!plan?.days?.length || !recoveryData?.recovery?.length) return null;
+    if (!plan?.days?.length || recoveryMuscles.length === 0) return null;
     const muscles = [
-      ...new Set(
-        plan.days.flatMap((d) => d.exercises.map((e) => e.exercise.muscleGroup))
-      ),
+      ...new Set(plan.days.flatMap((d) => d.exercises.map((e) => e.exercise.muscleGroup))),
     ];
-    return getPlanRecoveryMessage(muscles, recoveryData.recovery);
-  }, [plan, recoveryData]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
+    return getPlanRecoveryMessage(muscles, recoveryMuscles);
+  }, [plan, recoveryMuscles]);
 
   const activeDay = plan?.days.find((d) => d.id === activeDayId);
   const activeDayStats = activeDayId ? dayStats[activeDayId] : undefined;
@@ -186,9 +220,7 @@ export default function PlanEditorPage() {
         ...p,
         days: p.days.map((d) => ({
           ...d,
-          exercises: d.exercises.map((e) =>
-            e.id === replaceTargetId ? saved : e
-          ),
+          exercises: d.exercises.map((e) => (e.id === replaceTargetId ? saved : e)),
         })),
       };
     });
@@ -207,13 +239,11 @@ export default function PlanEditorPage() {
     });
   }
 
-  function onDragEnd(event: DragEndEvent) {
+  function onReorder(activeId: string, overId: string) {
     if (!activeDay) return;
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = activeDay.exercises.findIndex((e) => e.id === active.id);
-    const newIndex = activeDay.exercises.findIndex((e) => e.id === over.id);
-    const reordered = arrayMove(activeDay.exercises, oldIndex, newIndex);
+    const oldIndex = activeDay.exercises.findIndex((e) => e.id === activeId);
+    const newIndex = activeDay.exercises.findIndex((e) => e.id === overId);
+    const reordered = moveItem(activeDay.exercises, oldIndex, newIndex);
     setPlan((p) =>
       p
         ? {
@@ -239,7 +269,7 @@ export default function PlanEditorPage() {
       }
       if (addingIds.has(picked.id)) return;
 
-      const defaultSets = createDefaultSetTargets();
+      const defaultSets = defaultPlanSets();
       const tempId = `temp-${picked.id}-${Date.now()}`;
       const optimistic: PlanExercise = {
         id: tempId,
@@ -498,35 +528,21 @@ export default function PlanEditorPage() {
             <PlanScoreCard scores={planScores} />
           )}
 
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext
-              items={activeDay.exercises.map((e) => e.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {activeDay.exercises.length === 0 ? (
-                <Card className="border-dashed border-zinc-700 bg-transparent">
-                  <CardContent className="py-12 text-center text-zinc-500">
-                    Noch keine Übungen — tippe auf „Übung hinzufügen“
-                  </CardContent>
-                </Card>
-              ) : (
-                activeDay.exercises.map((ex) => (
-                  <PlanExerciseSetsCard
-                    key={ex.id}
-                    id={ex.id}
-                    name={ex.exercise.name}
-                    muscleGroup={ex.exercise.muscleGroup}
-                    targetSets={ex.targetSets}
-                    targetReps={ex.targetReps}
-                    setTargets={ex.setTargets}
-                    onRemove={() => removeExercise(ex.id)}
-                    onReplace={() => openReplace(ex.id, ex.exercise.id)}
-                    onSaveSets={(sets) => saveExerciseSets(ex.id, sets)}
-                  />
-                ))
-              )}
-            </SortableContext>
-          </DndContext>
+          <PlanDaySortableList
+            exercises={activeDay.exercises.map((ex) => ({
+              id: ex.id,
+              name: ex.exercise.name,
+              muscleGroup: ex.exercise.muscleGroup,
+              targetSets: ex.targetSets,
+              targetReps: ex.targetReps,
+              setTargets: ex.setTargets,
+              libraryId: ex.exercise.id,
+            }))}
+            onReorder={onReorder}
+            onRemove={removeExercise}
+            onReplace={openReplace}
+            onSaveSets={saveExerciseSets}
+          />
         </>
       )}
 
@@ -550,16 +566,18 @@ export default function PlanEditorPage() {
         </Card>
       )}
 
-      <ExercisePickerSheet
-        open={pickerOpen}
-        onClose={() => {
-          setPickerOpen(false);
-          setReplaceTargetId(null);
-          setAlternatives([]);
-        }}
-        onPick={handlePickerPick}
-        excludeIds={replaceTargetId ? [] : excludeExerciseIds}
-      />
+      {(pickerOpen || replaceTargetId) && (
+        <ExercisePickerSheet
+          open={pickerOpen}
+          onClose={() => {
+            setPickerOpen(false);
+            setReplaceTargetId(null);
+            setAlternatives([]);
+          }}
+          onPick={handlePickerPick}
+          excludeIds={replaceTargetId ? [] : excludeExerciseIds}
+        />
+      )}
     </div>
   );
 }

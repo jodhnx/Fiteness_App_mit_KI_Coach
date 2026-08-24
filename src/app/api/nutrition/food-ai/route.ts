@@ -1,5 +1,7 @@
 import { auth } from "@/lib/auth";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import { aiLimitExceededResponse } from "@/lib/security/ai-rate-limit";
+import { logAIUsage } from "@/lib/openai";
 
 export type FoodAIItem = {
   id: string;
@@ -85,6 +87,9 @@ export async function POST(req: Request) {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
 
+    const limited = await aiLimitExceededResponse(session.user.id, ["food-ai"], 8);
+    if (limited) return limited;
+
     const form = await req.formData();
     const image = form.get("image");
     if (!(image instanceof Blob)) {
@@ -149,8 +154,15 @@ export async function POST(req: Request) {
 
     const data = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
+      usage?: { total_tokens?: number };
     };
     const raw = data.choices?.[0]?.message?.content ?? "";
+    await logAIUsage(
+      session.user.id,
+      "food-ai",
+      data.usage?.total_tokens ?? Math.ceil(raw.length / 4),
+      model
+    );
 
     let items: FoodAIItem[] = [];
     try {

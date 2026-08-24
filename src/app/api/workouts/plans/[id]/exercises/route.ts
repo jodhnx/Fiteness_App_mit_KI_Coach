@@ -17,6 +17,16 @@ const setTargetSchema = z.object({
   reps: z.number().int().positive().nullable().optional(),
 });
 
+const planExerciseSelect = {
+  id: true,
+  orderIndex: true,
+  targetSets: true,
+  targetReps: true,
+  restSeconds: true,
+  setTargets: true,
+  exercise: { select: { id: true, name: true, muscleGroup: true } },
+} as const;
+
 type Params = { params: Promise<{ id: string }> };
 
 const addSchema = z.object({
@@ -70,7 +80,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           id: parsed.data.workoutExerciseId,
           day: { workoutPlanId: planId, plan: { userId: session.user.id } },
         },
-        include: { exercise: true },
+        select: planExerciseSelect,
       });
       return jsonOk({ exercise: ex });
     }
@@ -109,7 +119,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         restSeconds: parsed.data.restSeconds ?? 90,
         setTargets: setTargets as Prisma.InputJsonValue,
       },
-      include: { exercise: true },
+      select: planExerciseSelect,
     });
 
     void recordExerciseUsage(session.user.id, [parsed.data.exerciseLibraryId]);
@@ -157,7 +167,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         id: parsed.data.workoutExerciseId,
         day: { workoutPlanId: planId, plan: { userId: session.user.id } },
       },
-      include: { exercise: true },
+      select: planExerciseSelect,
     });
     return jsonOk({ exercise: ex });
   } catch (e) {

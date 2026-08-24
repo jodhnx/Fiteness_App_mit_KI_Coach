@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
-import { HOME_DATA_EVENT } from "@/lib/nutrition-sync";
 import { WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
 import { useBootHomeData } from "@/hooks/use-boot-home-data";
 import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
@@ -30,7 +29,6 @@ import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { isSameDay } from "date-fns";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
-import { getPhoneStepsToday } from "@/lib/phone-sensors";
 
 export default function HomePage() {
   const { status: sessionStatus } = useSession();
@@ -54,13 +52,8 @@ export default function HomePage() {
 
   useEffect(() => {
     const onWorkout = () => setWorkoutCleared(true);
-    const onHome = () => setWorkoutCleared(true);
     window.addEventListener(WORKOUT_ACTIVE_EVENT, onWorkout);
-    window.addEventListener(HOME_DATA_EVENT, onHome);
-    return () => {
-      window.removeEventListener(WORKOUT_ACTIVE_EVENT, onWorkout);
-      window.removeEventListener(HOME_DATA_EVENT, onHome);
-    };
+    return () => window.removeEventListener(WORKOUT_ACTIVE_EVENT, onWorkout);
   }, []);
 
   useEffect(() => {
@@ -109,28 +102,7 @@ export default function HomePage() {
     return undefined;
   }, [trainingStatus, data.nextWorkout?.dayName, data.nextWorkout?.dayNumber]);
 
-  const [phoneSteps, setPhoneSteps] = useState(0);
-
-  useEffect(() => {
-    const refresh = () => {
-      try {
-        setPhoneSteps(getPhoneStepsToday().steps ?? 0);
-      } catch {
-        setPhoneSteps(0);
-      }
-    };
-    refresh();
-    const id = window.setInterval(refresh, 15_000);
-    window.addEventListener("storage", refresh);
-    window.addEventListener(HOME_DATA_EVENT, refresh);
-    return () => {
-      window.clearInterval(id);
-      window.removeEventListener("storage", refresh);
-      window.removeEventListener(HOME_DATA_EVENT, refresh);
-    };
-  }, []);
-
-  const steps = Math.max(data.healthToday?.steps ?? 0, phoneSteps);
+  const serverSteps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10_000;
   const ready = hasNutritionTargets(nutrition);
 
@@ -154,10 +126,9 @@ export default function HomePage() {
         slots={{
           quickAccess: <QuickAccessRail />,
           dashboard: (
-            <div className="home-hero-enter">
-              <HomeDashboardPremium
+            <HomeDashboardPremium
                 nutrition={nutrition}
-                steps={steps}
+                steps={serverSteps}
                 stepGoal={stepGoal}
                 sleepHours={data.healthToday?.sleepHours ?? null}
                 weightKg={data.weightKg}
@@ -165,13 +136,12 @@ export default function HomePage() {
                 trainingStatus={trainingStatus}
                 trainingLabel={trainingLabel}
               />
-            </div>
           ),
           dayGoals: (
             <HomeDayGoals
               caloriesConsumed={nutrition.consumed?.calories ?? 0}
               calorieTarget={nutrition.targets?.calories ?? 0}
-              steps={steps}
+              steps={serverSteps}
               stepGoal={stepGoal}
               waterMl={nutrition.water?.consumedMl ?? 0}
               waterTargetMl={nutrition.water?.targetMl ?? 2500}
@@ -210,7 +180,7 @@ export default function HomePage() {
               trainingDone={trainingStatus === "done" || trainingStatus === "active"}
               proteinConsumed={nutrition.consumed?.proteinG ?? 0}
               proteinTarget={nutrition.targets?.proteinG ?? 0}
-              steps={steps}
+              steps={serverSteps}
               stepGoal={stepGoal}
             />
           ),
@@ -228,7 +198,7 @@ export default function HomePage() {
               caloriesLeft={ready ? nutrition.remaining.calories : 0}
               proteinG={nutrition.consumed.proteinG}
               proteinTarget={nutrition.targets.proteinG}
-              steps={steps}
+              steps={serverSteps}
               stepGoal={stepGoal}
               sleepHours={data.healthToday?.sleepHours ?? null}
               streakDays={trainingStreakDays}
