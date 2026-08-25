@@ -5,7 +5,11 @@ import { PageShell } from "@/components/layout/page-shell";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { getCached, invalidateCache, setCached } from "@/lib/client-cache";
-import { HOME_DATA_CACHE_KEY, NUTRITION_DASHBOARD_EVENT } from "@/lib/nutrition-sync";
+import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT, NUTRITION_DASHBOARD_EVENT } from "@/lib/nutrition-sync";
+import {
+  commitHomeIntelligenceRefresh,
+  weightEntriesFromProgressCache,
+} from "@/lib/intelligence/client-refresh";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
 import { buildWeightAnalytics, type WeightPeriod } from "@/lib/weight-analytics";
@@ -25,6 +29,7 @@ import { BodyMeasurementsCard } from "@/components/progress/body-measurements-ca
 import { PageIntro } from "@/components/guide/page-intro";
 import { markScreenLoaded } from "@/lib/storage-service";
 import type { HomeDataPayload } from "@/lib/home-defaults";
+import { ProgressWeeklyIntelligenceCard } from "@/components/progress/progress-weekly-intelligence-card";
 
 type ProgressPayload = {
   entries: {
@@ -143,6 +148,24 @@ export default function ProgressPage() {
   const dashboard = displayData?.dashboard ?? null;
   const transformation = displayData?.transformation ?? null;
 
+  const readHomeIntelligence = useCallback(() => {
+    const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
+    return {
+      weeklyIntelligence: home?.weeklyIntelligence ?? null,
+      adaptiveRecommendations: home?.adaptiveRecommendations ?? null,
+    };
+  }, []);
+
+  const [homeIntel, setHomeIntel] = useState(readHomeIntelligence);
+
+  useEffect(() => {
+    const sync = () => setHomeIntel(readHomeIntelligence());
+    window.addEventListener(HOME_DATA_EVENT, sync);
+    return () => window.removeEventListener(HOME_DATA_EVENT, sync);
+  }, [readHomeIntelligence]);
+
+  const { weeklyIntelligence, adaptiveRecommendations } = homeIntel;
+
   const analytics = useMemo(
     () =>
       buildWeightAnalytics(
@@ -196,7 +219,13 @@ export default function ProgressPage() {
 
       const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
       if (home) {
-        setCached(HOME_DATA_CACHE_KEY, { ...home, weightKg }, 900_000);
+        const weightRows = weightEntriesFromProgressCache();
+        const next = commitHomeIntelligenceRefresh(
+          { ...home, weightKg },
+          { weightEntries: weightRows }
+        );
+        setCached(HOME_DATA_CACHE_KEY, next, 900_000);
+        window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: next }));
       }
 
       const res = await fetch("/api/progress", {
@@ -251,6 +280,11 @@ export default function ProgressPage() {
         targetKg={profile?.targetWeightKg ?? null}
         trainingSessions={dashboard?.trainingHistory?.length ?? 0}
         weekChangeKg={analytics.changeWeekKg}
+      />
+
+      <ProgressWeeklyIntelligenceCard
+        intelligence={weeklyIntelligence}
+        adaptiveRecommendations={adaptiveRecommendations}
       />
 
       {showSkeleton && (

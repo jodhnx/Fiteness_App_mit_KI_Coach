@@ -11,15 +11,38 @@ import {
 import { rateLimit } from "@/lib/security/rate-limit";
 import { rateLimitAiUsage } from "@/lib/security/ai-rate-limit";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import { buildSelectiveCoachContext } from "@/lib/coach-context-engine";
+import type { CoachAction, CoachContextMode } from "@/lib/coach-actions";
 
-async function prepareChat(userId: string, message: string, chatId?: string) {
-  const { buildCoachUserContext } = await import("@/lib/coach-context");
-  const context = await buildCoachUserContext(userId);
+const MAX_HISTORY_MESSAGES = 8;
+const MAX_HISTORY_CHARS = 900;
+
+function trimHistoryContent(content: string): string {
+  if (content.length <= MAX_HISTORY_CHARS) return content;
+  return `${content.slice(0, MAX_HISTORY_CHARS)}…`;
+}
+
+async function prepareChat(
+  userId: string,
+  message: string,
+  chatId?: string,
+  contextMode?: CoachContextMode
+) {
+  const { contextText, mode, actions } = await buildSelectiveCoachContext(
+    userId,
+    message,
+    contextMode ?? null
+  );
 
   let chat = chatId
     ? await prisma.aIChat.findFirst({
         where: { id: chatId, userId },
-        include: { messages: { orderBy: { createdAt: "desc" }, take: 10 } },
+        include: {
+          messages: {
+            orderBy: { createdAt: "desc" },
+            take: MAX_HISTORY_MESSAGES,
+          },
+        },
       })
     : null;
 
@@ -44,7 +67,7 @@ async function prepareChat(userId: string, message: string, chatId?: string) {
     .reverse()
     .map((m) => ({
       role: m.role as "user" | "assistant",
-      content: m.content,
+      content: trimHistoryContent(m.content),
     }));
   if (chatId) {
     history.push({ role: "user", content: message });
@@ -52,14 +75,14 @@ async function prepareChat(userId: string, message: string, chatId?: string) {
 
   const openAiMessages = [
     { role: "system" as const, content: COACH_SYSTEM_PROMPT },
-    { role: "system" as const, content: context },
+    { role: "system" as const, content: contextText },
     ...history.map((h) => ({
       role: h.role as "user" | "assistant",
       content: h.content,
     })),
   ];
 
-  return { chatId: chat.id, openAiMessages };
+  return { chatId: chat.id, openAiMessages, mode, actions };
 }
 
 export async function GET() {
@@ -120,10 +143,11 @@ export async function POST(req: NextRequest) {
       parsed.data.stream === true ||
       req.headers.get("accept")?.includes("text/event-stream");
 
-    const { chatId, openAiMessages } = await prepareChat(
+    const { chatId, openAiMessages, mode, actions } = await prepareChat(
       session.user.id,
       parsed.data.message,
-      parsed.data.chatId
+      parsed.data.chatId,
+      parsed.data.contextMode as CoachContextMode | undefined
     );
 
     if (streamRequested) {
@@ -131,7 +155,9 @@ export async function POST(req: NextRequest) {
       if ("error" in result) {
         const encoder = new TextEncoder();
         return new Response(
-          encoder.encode(`data: ${JSON.stringify({ type: "error", message: result.error })}\n\n`),
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "error", message: result.error })}\n\n`
+          ),
           {
             status: 200,
             headers: {
@@ -146,10 +172,14 @@ export async function POST(req: NextRequest) {
       const encoder = new TextEncoder();
       const readable = new ReadableStream({
         async start(controller) {
+          const meta: {
+            type: string;
+            chatId: string;
+            mode: CoachContextMode;
+            actions: CoachAction[];
+          } = { type: "meta", chatId, mode, actions };
           controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ type: "meta", chatId })}\n\n`
-            )
+            encoder.encode(`data: ${JSON.stringify(meta)}\n\n`)
           );
           let full = "";
           try {
@@ -171,9 +201,21 @@ export async function POST(req: NextRequest) {
               where: { id: chatId },
               data: { updatedAt: new Date() },
             });
-            await logAIUsage(session.user!.id, "chat-stream", tokens, result.model);
+            await logAIUsage(
+              session.user!.id,
+              "chat-stream",
+              tokens,
+              result.model
+            );
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type: "done", message: full })}\n\n`)
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "done",
+                  message: full,
+                  actions,
+                  mode,
+                })}\n\n`
+              )
             );
           } catch (e) {
             console.error("[coach/chat] stream error", e);
@@ -181,8 +223,7 @@ export async function POST(req: NextRequest) {
               encoder.encode(
                 `data: ${JSON.stringify({
                   type: "error",
-                  message:
-                    "Antwort unterbrochen. Bitte erneut versuchen.",
+                  message: "Antwort unterbrochen. Bitte erneut versuchen.",
                 })}\n\n`
               )
             );
@@ -214,7 +255,7 @@ export async function POST(req: NextRequest) {
       data: { updatedAt: new Date() },
     });
 
-    return jsonOk({ chatId, message: content });
+    return jsonOk({ chatId, message: content, mode, actions });
   } catch (e) {
     return handleApiError(e);
   }

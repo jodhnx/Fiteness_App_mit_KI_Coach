@@ -4,6 +4,10 @@ import { HOME_WORKOUT_CACHE } from "@/lib/home-section-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { CACHE_KEYS } from "@/lib/cache-manager";
 import type { HomeDataPayload } from "@/lib/home-defaults";
+import {
+  patchHomeAfterWorkoutComplete,
+  commitHomeIntelligenceRefresh,
+} from "@/lib/intelligence/client-refresh";
 
 export const WORKOUT_ACTIVE_CACHE_KEY = "workouts-active";
 export const WORKOUT_ACTIVE_EVENT = "workout-active-updated";
@@ -30,11 +34,10 @@ export function clearActiveWorkoutCaches(completed?: {
 
   const prev = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
   if (prev) {
-    const next: HomeDataPayload = {
-      ...prev,
-      activeSession: null,
-      ...(completed ? { lastCompletedWorkout: completed } : {}),
-    };
+    const patched = completed
+      ? patchHomeAfterWorkoutComplete(prev, completed)
+      : { ...prev, activeSession: null };
+    const next = commitHomeIntelligenceRefresh(patched);
     setCached(HOME_DATA_CACHE_KEY, next, 120_000);
     window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: next }));
   }

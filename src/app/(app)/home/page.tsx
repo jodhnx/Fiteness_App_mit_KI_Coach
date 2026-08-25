@@ -255,6 +255,9 @@ export default function HomePage() {
               proteinTarget={nutrition.targets?.proteinG ?? 0}
               steps={serverSteps}
               stepGoal={stepGoal}
+              intelligence={data.intelligence}
+              adaptiveRecommendations={data.adaptiveRecommendations}
+              dailyActionPlan={data.dailyActionPlan}
             />
           ),
           dayFocus: <HomeDayFocusCard items={dayFocusItems} />,

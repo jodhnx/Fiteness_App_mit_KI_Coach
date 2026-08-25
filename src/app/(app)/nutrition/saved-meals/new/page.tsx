@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { invalidateSavedMealsCache } from "@/lib/saved-meals-cache";
 
 type Ingredient = { foodItemId: string; name: string; quantityG: number };
 
@@ -60,6 +61,7 @@ export default function NewSavedMealPage() {
       return;
     }
     toast.success("Mahlzeit gespeichert");
+    invalidateSavedMealsCache();
     router.back();
   }
 

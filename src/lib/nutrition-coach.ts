@@ -12,8 +12,13 @@ export function buildNutritionCoachTips(
   consumed: MacroTotals,
   targets: Targets,
   nutritionGoal: string | null
-): { type: string; message: string; priority: "high" | "medium" | "low" }[] {
-  const tips: { type: string; message: string; priority: "high" | "medium" | "low" }[] = [];
+): { type: string; message: string; priority: "high" | "medium" | "low"; actionHref?: string }[] {
+  const tips: {
+    type: string;
+    message: string;
+    priority: "high" | "medium" | "low";
+    actionHref?: string;
+  }[] = [];
   const proteinLeft = targets.proteinG - consumed.proteinG;
   const calLeft = targets.calories - consumed.calories;
   const carbsLeft = targets.carbsG - consumed.carbsG;
@@ -24,12 +29,14 @@ export function buildNutritionCoachTips(
       type: "protein",
       message: `Heute fehlen dir noch ${Math.round(proteinLeft)}g Protein.`,
       priority: "high",
+      actionHref: "/nutrition?add=LUNCH",
     });
   } else if (consumed.proteinG < targets.proteinG * 0.5 && consumed.calories > targets.calories * 0.4) {
     tips.push({
       type: "protein",
       message: "Proteinanteil ist heute niedrig – priorisiere proteinreiche Lebensmittel.",
       priority: "high",
+      actionHref: "/nutrition?add=LUNCH",
     });
   }
 
@@ -38,12 +45,14 @@ export function buildNutritionCoachTips(
       type: "calories",
       message: `Du liegst ${Math.abs(Math.round(calLeft))} kcal über dem Ziel. Leichte Portionen oder mehr Bewegung können ausgleichen.`,
       priority: "high",
+      actionHref: "/nutrition",
     });
   } else if (calLeft > 400 && consumed.calories > 0) {
     tips.push({
       type: "calories",
       message: `Noch ${Math.round(calLeft)} kcal verfügbar – plane eine ausgewogene letzte Mahlzeit.`,
       priority: "medium",
+      actionHref: "/nutrition",
     });
   }
 
@@ -81,7 +90,7 @@ export function buildNutritionCoachTips(
 export function buildWaterCoachTip(
   consumedMl: number,
   targetMl: number
-): { type: string; message: string; priority: "high" | "medium" | "low" } | null {
+): { type: string; message: string; priority: "high" | "medium" | "low"; actionHref?: string } | null {
   const left = targetMl - consumedMl;
   if (left <= 0) return null;
   if (left <= 600) {
@@ -89,6 +98,7 @@ export function buildWaterCoachTip(
       type: "water",
       message: `${left}ml Wasser würden dein Tagesziel erfüllen.`,
       priority: "high",
+      actionHref: "/nutrition",
     };
   }
   if (left <= 1200) {
@@ -97,6 +107,7 @@ export function buildWaterCoachTip(
       type: "water",
       message: `Noch ca. ${glasses}× 250ml Wasser bis zum Tagesziel.`,
       priority: "medium",
+      actionHref: "/nutrition",
     };
   }
   return null;
@@ -108,7 +119,7 @@ export function buildNutritionCoachTipsWithWater(
   nutritionGoal: string | null,
   waterConsumedMl: number,
   waterTargetMl: number
-): { type: string; message: string; priority: "high" | "medium" | "low" }[] {
+): { type: string; message: string; priority: "high" | "medium" | "low"; actionHref?: string }[] {
   const tips = buildNutritionCoachTips(consumed, targets, nutritionGoal);
   const waterTip = buildWaterCoachTip(waterConsumedMl, waterTargetMl);
   if (waterTip) {

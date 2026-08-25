@@ -11,11 +11,12 @@ import {
   Sparkles,
   Utensils,
 } from "lucide-react";
-import { getCached, setCached } from "@/lib/client-cache";
+import { getCached, setCached, isCacheStale } from "@/lib/client-cache";
 import type { CoachInsightsResult } from "@/lib/coach-insights";
 import { cn } from "@/lib/utils";
 
 const CACHE_KEY = "coach-insights";
+const CACHE_TTL_MS = 90_000;
 
 function formatSleep(h: number | null | undefined) {
   if (h == null || !Number.isFinite(h)) return null;
@@ -35,11 +36,15 @@ export const CoachStatusDashboard = memo(function CoachStatusDashboard({
   );
 
   useEffect(() => {
+    // Hydrate from persistent cache; skip network when in-memory cache is still fresh.
+    getCached<CoachInsightsResult>(CACHE_KEY, { allowStale: true });
+    if (!isCacheStale(CACHE_KEY)) return;
+
     void fetch("/api/coach/insights", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d) return;
-        setCached(CACHE_KEY, d, 90_000);
+        setCached(CACHE_KEY, d, CACHE_TTL_MS);
         setData(d as CoachInsightsResult);
       })
       .catch(() => undefined);

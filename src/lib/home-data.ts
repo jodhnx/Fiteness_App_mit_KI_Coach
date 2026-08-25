@@ -22,6 +22,15 @@ import { loadChallengesWithProgress } from "@/lib/challenge-progress";
 import { buildBodyTransformation } from "@/lib/body-transformation";
 import type { GamificationSummary } from "@/lib/gamification";
 import { sessionDurationSec, setVolume } from "@/lib/workout-metrics";
+import { buildDailyIntelligenceFromContext } from "@/lib/intelligence/build-from-context";
+import {
+  homePayloadToIntelligenceContext,
+} from "@/lib/intelligence/from-home";
+import { buildWeeklyIntelligenceFromContext } from "@/lib/intelligence/weekly/build-from-context";
+import { loadWeeklyIntelligenceContext } from "@/lib/intelligence/weekly/load-context";
+import { detectSessionImprovement } from "@/lib/intelligence/load-context";
+import { buildAdaptiveRecommendations } from "@/lib/intelligence/recommendations/build";
+import { buildDailyActionPlanFromHome } from "@/lib/intelligence/daily-plan/from-home";
 
 function gamificationToHome(g: GamificationSummary): HomeDataPayload["gamification"] {
   return {
@@ -49,6 +58,8 @@ export type HomeEnrichmentPayload = Pick<
   | "recentActivity"
   | "recovery"
   | "weeklyReport"
+  | "weeklyIntelligence"
+  | "adaptiveRecommendations"
   | "gamification"
   | "challenges"
   | "bodyTransformation"
@@ -102,6 +113,10 @@ export async function loadHomeEnrichment(
           weightKg: true,
           targetWeightKg: true,
           targetWeightDate: true,
+          workoutDaysPerWeek: true,
+          nutritionGoal: true,
+          calorieTarget: true,
+          proteinTargetG: true,
         },
       })
       .catch(() => null),
@@ -162,6 +177,31 @@ export async function loadHomeEnrichment(
     weightEntries.map((e) => ({ date: e.date, weightKg: e.weightKg }))
   );
 
+  const weeklyIntelligence = weeklyReport
+    ? buildWeeklyIntelligenceFromContext(
+        await loadWeeklyIntelligenceContext(userId, {
+          weeklyReport,
+          plannedWorkoutsPerWeek: profile?.workoutDaysPerWeek ?? null,
+          nutritionGoal: profile?.nutritionGoal ?? null,
+          calorieTarget: profile?.calorieTarget ?? null,
+          proteinTarget: profile?.proteinTargetG ?? null,
+          currentWeightKg: profile?.weightKg ?? null,
+        })
+      )
+    : undefined;
+
+  const adaptiveRecommendations =
+    weeklyIntelligence != null
+      ? buildAdaptiveRecommendations({
+          now: new Date(),
+          nutritionGoal: profile?.nutritionGoal ?? null,
+          daily: null,
+          weekly: weeklyIntelligence,
+          proteinTargetG: profile?.proteinTargetG ?? null,
+          workoutDaysPerWeek: profile?.workoutDaysPerWeek ?? null,
+        })
+      : undefined;
+
   return {
     activityWeek: week,
     recentActivity: recentActivity
@@ -200,6 +240,8 @@ export async function loadHomeEnrichment(
           aiSummary: weeklyReport.aiSummary,
         }
       : undefined,
+    weeklyIntelligence,
+    adaptiveRecommendations,
     gamification: gamificationRaw ? gamificationToHome(gamificationRaw) : undefined,
     challenges: activeChallenges.length > 0 ? activeChallenges : undefined,
     bodyTransformation: bodyFull
@@ -234,7 +276,7 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
       user,
       profile,
       trainingStreak,
-      lastSession,
+      lastSessions,
       weightStart,
       weeklyReport,
       recovery,
@@ -242,6 +284,7 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
       challengesRaw,
       weightEntries,
       recentAchievementsRaw,
+      recentPr,
     ] = await Promise.all([
         loadNutritionDashboard(userId, today).catch((e) => {
           console.error("[loadHomeData] nutrition", e);
@@ -270,6 +313,9 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
               weightKg: true,
               targetWeightKg: true,
               targetWeightDate: true,
+              workoutDaysPerWeek: true,
+              calorieTarget: true,
+              proteinTargetG: true,
             },
           })
           .catch(() => null),
@@ -277,20 +323,26 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
           .findUnique({ where: { userId }, select: { currentDays: true } })
           .catch(() => null),
         prisma.workoutSession
-          .findFirst({
+          .findMany({
             where: { userId, status: "COMPLETED" },
             orderBy: { completedAt: "desc" },
+            take: 2,
             select: {
               completedAt: true,
               name: true,
               startedAt: true,
               sets: {
                 where: { completed: true },
-                select: { reps: true, weightKg: true, exerciseLibraryId: true },
+                select: {
+                  reps: true,
+                  weightKg: true,
+                  exerciseLibraryId: true,
+                  exercise: { select: { name: true } },
+                },
               },
             },
           })
-          .catch(() => null),
+          .catch(() => []),
         prisma.progressEntry
           .findFirst({
             where: { userId, weightKg: { not: null } },
@@ -320,7 +372,17 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
             },
           })
           .catch(() => []),
+        prisma.personalRecord
+          .findFirst({
+            where: { userId },
+            orderBy: { achievedAt: "desc" },
+            include: { exercise: { select: { name: true } } },
+          })
+          .catch(() => null),
       ]);
+
+    const lastSession = lastSessions[0] ?? null;
+    const prevSession = lastSessions[1] ?? null;
 
     const week = {
       count: activityWeek.count,
@@ -381,7 +443,7 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
         }
       : null;
 
-    return normalizeHomeData({
+    const homePayload = normalizeHomeData({
       ...macroSlice,
       nutrition,
       weightKg: training?.weightKg ?? null,
@@ -480,6 +542,67 @@ export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
           }
         : null,
     });
+
+    const weightRows = weightEntries
+      .filter((e) => e.weightKg != null)
+      .map((e) => ({ date: e.date, weightKg: e.weightKg! }));
+
+    const intelligence = buildDailyIntelligenceFromContext({
+      ...homePayloadToIntelligenceContext(homePayload, nutrition, weightRows),
+      nutritionGoal: profile?.nutritionGoal ?? null,
+      targetWeightKg: profile?.targetWeightKg ?? null,
+      sleepHours: healthEco?.today.sleepHours ?? null,
+      recoveryScore: healthEco?.regeneration.score ?? null,
+      workoutsThisWeek: weeklyReport?.workouts ?? week.count,
+      recentPr: recentPr
+        ? {
+            exerciseName: recentPr.exercise.name,
+            weightKg: recentPr.weightKg,
+            value: recentPr.value,
+            achievedAt: recentPr.achievedAt,
+          }
+        : null,
+      sessionImprovement: detectSessionImprovement(lastSession, prevSession),
+    });
+
+    const weeklyIntel = weeklyReport
+      ? buildWeeklyIntelligenceFromContext(
+          await loadWeeklyIntelligenceContext(userId, {
+            weeklyReport,
+            plannedWorkoutsPerWeek: profile?.workoutDaysPerWeek ?? null,
+            nutritionGoal: profile?.nutritionGoal ?? null,
+            trainingGoal: profile?.trainingGoal ?? null,
+            calorieTarget: profile?.calorieTarget ?? null,
+            proteinTarget: profile?.proteinTargetG ?? null,
+            currentWeightKg: profile?.weightKg ?? training?.weightKg ?? null,
+            trainingStreakDays: trainingStreak?.currentDays ?? 0,
+            sessionImprovement: detectSessionImprovement(lastSession, prevSession),
+          })
+        )
+      : null;
+
+    const adaptiveRecommendations = buildAdaptiveRecommendations({
+      now: new Date(),
+      nutritionGoal: profile?.nutritionGoal ?? null,
+      daily: intelligence,
+      weekly: weeklyIntel,
+      proteinTargetG: profile?.proteinTargetG ?? homePayload.proteinTarget,
+      workoutDaysPerWeek: profile?.workoutDaysPerWeek ?? null,
+    });
+
+    const withIntel = {
+      ...homePayload,
+      intelligence,
+      weeklyIntelligence: weeklyIntel,
+      adaptiveRecommendations,
+    };
+
+    const dailyActionPlan = buildDailyActionPlanFromHome(withIntel);
+
+    return {
+      ...withIntel,
+      dailyActionPlan,
+    };
   } catch (e) {
     console.error("[loadHomeData] fatal", e);
     return createEmptyHomeData();

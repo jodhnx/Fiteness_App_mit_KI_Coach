@@ -14,6 +14,7 @@ import {
   ScanBarcode,
   Star,
   X,
+  ChefHat,
 } from "lucide-react";
 import type { MealType } from "@prisma/client";
 import type { FoodProduct, FoodSearchResponse } from "@/lib/food/food-product-types";
@@ -23,6 +24,7 @@ import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
 import { FoodQuickRow } from "@/components/nutrition/food-quick-row";
 import { FoodDetailPopup } from "@/components/nutrition/food-detail-popup";
 import { FoodManualProductSheet } from "@/components/nutrition/food-manual-product-sheet";
+import { SavedMealRow } from "@/components/nutrition/saved-meal-row";
 import dynamic from "next/dynamic";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
 import { resetBodyScroll } from "@/lib/scroll-lock";
@@ -32,6 +34,13 @@ import {
   warmFoodHistoryCache,
   type FoodHistoryPayload,
 } from "@/lib/food-history-cache";
+import {
+  fetchSavedMealTemplates,
+  filterSavedMeals,
+  getCachedSavedMeals,
+  type SavedMealSummary,
+} from "@/lib/saved-meals-cache";
+import Link from "next/link";
 
 type Props = {
   open: boolean;
@@ -45,6 +54,7 @@ type Props = {
     meal: MealType
   ) => void;
   onToggleFavorite: (foodItemId: string) => Promise<void>;
+  onLogSavedMeal?: (recipeId: string, meal: MealType) => Promise<void> | void;
   quickAdding?: boolean;
 };
 
@@ -109,6 +119,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   onClose,
   onQuickAddFood,
   onToggleFavorite,
+  onLogSavedMeal,
   quickAdding,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -122,6 +133,10 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const [historyFoods, setHistoryFoods] = useState<FoodHistoryPayload>(() =>
     getCachedFoodHistory() ?? emptyHistory()
   );
+  const [savedMeals, setSavedMeals] = useState<SavedMealSummary[]>(
+    () => getCachedSavedMeals() ?? []
+  );
+  const [loggingMealId, setLoggingMealId] = useState<string | null>(null);
   const [detailProduct, setDetailProduct] = useState<FoodProduct | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -193,10 +208,18 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     void refreshHistory().then(() => {
       if (cancelled) return;
     });
+    void fetchSavedMealTemplates().then((meals) => {
+      if (!cancelled) setSavedMeals(meals);
+    });
     return () => {
       cancelled = true;
     };
   }, [open, refreshHistory]);
+
+  const visibleSavedMeals = useMemo(
+    () => filterSavedMeals(savedMeals, q).slice(0, 12),
+    [savedMeals, q]
+  );
 
   const search = useCallback(async (query: string) => {
     const trimmed = query.trim();
@@ -327,6 +350,33 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     [favoriteIds, onToggleFavorite, refreshHistory]
   );
 
+  const handleLogSavedMeal = useCallback(
+    async (meal: SavedMealSummary) => {
+      if (!onLogSavedMeal || loggingMealId) return;
+      setLoggingMealId(meal.id);
+      void Promise.resolve(onLogSavedMeal(meal.id, mealType)).finally(() => {
+        setLoggingMealId(null);
+      });
+    },
+    [onLogSavedMeal, loggingMealId, mealType]
+  );
+
+  const renderSavedSection = (meals: SavedMealSummary[]) => {
+    if (meals.length === 0 || !onLogSavedMeal) return null;
+    return (
+      <FoodSection title="🍽 Meine Mahlzeiten">
+        {meals.map((meal) => (
+          <SavedMealRow
+            key={meal.id}
+            meal={meal}
+            adding={loggingMealId === meal.id || quickAdding}
+            onAdd={() => void handleLogSavedMeal(meal)}
+          />
+        ))}
+      </FoodSection>
+    );
+  };
+
   const renderRow = (food: FoodProduct) => {
     const rowKey = food.offCode ?? food.id ?? food.name;
     return (
@@ -389,7 +439,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                 enterKeyHint="search"
                 autoFocus={open}
               />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -401,7 +451,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                     setQ("");
                     setResult(null);
                   }}
-                  className={`h-10 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                  className={`min-h-11 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] ${
                     view === "favorites"
                       ? "border-amber-400/40 bg-amber-500/20 text-amber-50"
                       : "border-amber-500/25 bg-amber-500/10 text-amber-100"
@@ -413,17 +463,26 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                 <button
                   type="button"
                   onClick={() => setScannerOpen(true)}
-                  className="h-10 rounded-xl border border-zinc-700/80 bg-zinc-900/60 text-xs font-semibold text-zinc-200 flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  className="min-h-11 rounded-xl border border-zinc-700/80 bg-zinc-900/60 text-xs font-semibold text-zinc-200 flex items-center justify-center gap-1.5 active:scale-[0.98]"
                 >
                   <ScanBarcode className="h-3.5 w-3.5 text-violet-400" />
                   Barcode
                 </button>
+                <Link
+                  href="/nutrition/saved-meals/new"
+                  onClick={handleClose}
+                  className="min-h-11 rounded-xl border border-violet-500/25 bg-violet-500/10 text-xs font-semibold text-violet-100 flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                >
+                  <ChefHat className="h-3.5 w-3.5 text-violet-400" />
+                  Neu
+                </Link>
               </div>
             </div>
 
             <div className="food-add-popup-scroll">
               {view === "hub" && (
                 <div className="space-y-2 px-1 pb-4">
+                  {renderSavedSection(savedMeals.slice(0, 8))}
                   {historyFoods.frequent.length > 0 && (
                     <FoodSection title="⚡ Häufig verwendet">
                       {historyFoods.frequent.slice(0, 8).map((food) => renderRow(food))}
@@ -481,6 +540,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                           </button>
                         ))}
                       </div>
+                      {renderSavedSection(savedMeals.slice(0, 8))}
                       <FoodSection title="🕘 Zuletzt verwendet">
                         {historyFoods.recents.length === 0 ? (
                           <p className="text-sm text-zinc-400 py-3 text-center px-2">
@@ -493,13 +553,14 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                     </div>
                   ) : !queryTooShort ? (
                     <>
+                      {renderSavedSection(visibleSavedMeals)}
                       {shortcutFoods.length > 0 && (
                         <FoodSection title="Schnellzugriff">
                           {shortcutFoods.map((food) => renderRow(food))}
                         </FoodSection>
                       )}
                       <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 px-1 pb-2 pt-1">
-                        Suchergebnisse
+                        Lebensmittel
                       </p>
                       {result?.offError && searchResults.length + shortcutFoods.length > 0 && (
                         <p className="text-[11px] text-amber-300/90 px-1 pb-2">
@@ -521,7 +582,10 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                           Weitere Produkte laden…
                         </p>
                       )}
-                      {searchResults.length === 0 && shortcutFoods.length === 0 && !loading && (
+                      {searchResults.length === 0 &&
+                        shortcutFoods.length === 0 &&
+                        visibleSavedMeals.length === 0 &&
+                        !loading && (
                         <p className="text-sm text-zinc-400 py-6 text-center">
                           Keine Treffer — versuche einen anderen Namen.
                         </p>

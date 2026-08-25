@@ -2,7 +2,7 @@ import { loadNutritionDashboard } from "@/lib/nutrition-service";
 import { loadTrainingSnapshot } from "@/lib/training-snapshot";
 import { loadHealthDashboard } from "@/lib/activity-health";
 import { prisma } from "@/lib/prisma";
-import { startOfDay } from "date-fns";
+import { startOfDay, subDays } from "date-fns";
 import {
   createEmptyHomeData,
   normalizeHomeData,
@@ -14,6 +14,9 @@ import { computeWeightGoalProgress } from "@/lib/smart-goals";
 import { buildHomeCoachFromNutrition } from "@/lib/nutrition-coach";
 import { loadNutritionStreak } from "@/lib/nutrition-streak";
 import { sessionDurationSec, setVolume } from "@/lib/workout-metrics";
+import { buildDailyIntelligenceFromContext } from "@/lib/intelligence/build-from-context";
+import { homePayloadToIntelligenceContext } from "@/lib/intelligence/from-home";
+import { detectSessionImprovement } from "@/lib/intelligence/load-context";
 
 /**
  * Fast home payload for boot — no weekly reports, gamification, recovery DB,
@@ -31,8 +34,10 @@ export async function loadHomeCriticalData(userId: string): Promise<HomeDataPayl
       profile,
       trainingStreakRow,
       nutritionStreakRow,
-      lastSession,
+      lastSessions,
       weightStart,
+      weightEntries14d,
+      recentPr,
     ] = await Promise.all([
       loadNutritionDashboard(userId, today).catch(() => createEmptyNutritionDashboard()),
       loadTrainingSnapshot(userId).catch(() => null),
@@ -63,20 +68,26 @@ export async function loadHomeCriticalData(userId: string): Promise<HomeDataPayl
         effectiveDays: 0,
       })),
       prisma.workoutSession
-        .findFirst({
+        .findMany({
           where: { userId, status: "COMPLETED" },
           orderBy: { completedAt: "desc" },
+          take: 2,
           select: {
-            completedAt: true,
             name: true,
+            completedAt: true,
             startedAt: true,
             sets: {
               where: { completed: true },
-              select: { reps: true, weightKg: true, exerciseLibraryId: true },
+              select: {
+                reps: true,
+                weightKg: true,
+                exerciseLibraryId: true,
+                exercise: { select: { name: true } },
+              },
             },
           },
         })
-        .catch(() => null),
+        .catch(() => []),
       prisma.progressEntry
         .findFirst({
           where: { userId, weightKg: { not: null } },
@@ -84,13 +95,34 @@ export async function loadHomeCriticalData(userId: string): Promise<HomeDataPayl
           select: { weightKg: true },
         })
         .catch(() => null),
+      prisma.progressEntry
+        .findMany({
+          where: {
+            userId,
+            weightKg: { not: null },
+            date: { gte: subDays(today, 28) },
+          },
+          orderBy: { date: "asc" },
+          select: { date: true, weightKg: true },
+        })
+        .catch(() => []),
+      prisma.personalRecord
+        .findFirst({
+          where: { userId },
+          orderBy: { achievedAt: "desc" },
+          include: { exercise: { select: { name: true } } },
+        })
+        .catch(() => null),
     ]);
+
+    const lastSession = lastSessions[0] ?? null;
+    const prevSession = lastSessions[1] ?? null;
 
     const macroSlice = nutritionDashboardToHomeMacros(nutrition);
     const weightGoal =
       profile && computeWeightGoalProgress(profile, weightStart?.weightKg ?? null);
 
-    return normalizeHomeData({
+    const homeDraft: HomeDataPayload = normalizeHomeData({
       ...macroSlice,
       nutrition,
       weightKg: training?.weightKg ?? profile?.weightKg ?? null,
@@ -155,6 +187,26 @@ export async function loadHomeCriticalData(userId: string): Promise<HomeDataPayl
           }
         : null,
     });
+
+    const weightEntries = weightEntries14d
+      .filter((e) => e.weightKg != null)
+      .map((e) => ({ date: e.date, weightKg: e.weightKg! }));
+
+    const intelligence = buildDailyIntelligenceFromContext({
+      ...homePayloadToIntelligenceContext(homeDraft, nutrition, weightEntries),
+      recentPr: recentPr
+        ? {
+            exerciseName: recentPr.exercise.name,
+            weightKg: recentPr.weightKg,
+            value: recentPr.value,
+            achievedAt: recentPr.achievedAt,
+          }
+        : null,
+      sessionImprovement: detectSessionImprovement(lastSession, prevSession),
+      targetWeightKg: profile?.targetWeightKg ?? null,
+    });
+
+    return { ...homeDraft, intelligence };
   } catch (e) {
     console.error("[loadHomeCriticalData]", e);
     return createEmptyHomeData();

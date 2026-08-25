@@ -1,4 +1,9 @@
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
+import type { DailyFitnessIntelligence } from "@/lib/intelligence/types";
+import type { WeeklyFitnessIntelligence } from "@/lib/intelligence/weekly/types";
+import type { AdaptiveRecommendations } from "@/lib/intelligence/recommendations/types";
+import type { DailyActionPlan } from "@/lib/intelligence/daily-plan/types";
+import type { TrainingPerformanceIntelligence } from "@/lib/intelligence/training-performance/types";
 
 /** Safe defaults for /api/home and Home page — never null top-level fields */
 
@@ -135,6 +140,16 @@ export type HomeDataPayload = {
     exerciseCount?: number;
     volumeKg?: number;
   } | null;
+  /** Deterministic daily intelligence — no OpenAI */
+  intelligence?: DailyFitnessIntelligence | null;
+  /** Deterministic weekly intelligence — no OpenAI */
+  weeklyIntelligence?: WeeklyFitnessIntelligence | null;
+  /** Deterministic adaptive recommendations — no OpenAI */
+  adaptiveRecommendations?: AdaptiveRecommendations | null;
+  /** Orchestrated daily action plan — 1 primary + 2 secondary */
+  dailyActionPlan?: DailyActionPlan | null;
+  /** Optional training performance (server enrichment only) */
+  trainingPerformance?: TrainingPerformanceIntelligence | null;
 };
 
 export function createEmptyHomeData(): HomeDataPayload {
@@ -297,6 +312,26 @@ export function normalizeHomeData(raw: unknown): HomeDataPayload {
       d.lastCompletedWorkout && typeof d.lastCompletedWorkout === "object"
         ? (d.lastCompletedWorkout as HomeDataPayload["lastCompletedWorkout"])
         : null,
+    intelligence:
+      d.intelligence && typeof d.intelligence === "object"
+        ? (d.intelligence as DailyFitnessIntelligence)
+        : null,
+    weeklyIntelligence:
+      d.weeklyIntelligence && typeof d.weeklyIntelligence === "object"
+        ? (d.weeklyIntelligence as WeeklyFitnessIntelligence)
+        : null,
+    adaptiveRecommendations:
+      d.adaptiveRecommendations && typeof d.adaptiveRecommendations === "object"
+        ? (d.adaptiveRecommendations as AdaptiveRecommendations)
+        : null,
+    dailyActionPlan:
+      d.dailyActionPlan && typeof d.dailyActionPlan === "object"
+        ? (d.dailyActionPlan as DailyActionPlan)
+        : null,
+    trainingPerformance:
+      d.trainingPerformance && typeof d.trainingPerformance === "object"
+        ? (d.trainingPerformance as TrainingPerformanceIntelligence)
+        : null,
   };
 }
 
@@ -308,6 +343,8 @@ export function mergeHomeEnrichment(
     recentActivity?: HomeDataPayload["recentActivity"];
     recovery?: HomeDataPayload["recovery"];
     weeklyReport?: HomeDataPayload["weeklyReport"];
+    weeklyIntelligence?: HomeDataPayload["weeklyIntelligence"];
+    adaptiveRecommendations?: HomeDataPayload["adaptiveRecommendations"];
     gamification?: HomeDataPayload["gamification"];
     challenges?: HomeDataPayload["challenges"];
     bodyTransformation?: HomeDataPayload["bodyTransformation"];
@@ -346,6 +383,9 @@ export function mergeHomeEnrichment(
     recentActivity: enrich.recentActivity ?? base.recentActivity,
     recovery: enrich.recovery ?? base.recovery,
     weeklyReport: enrich.weeklyReport ?? base.weeklyReport,
+    weeklyIntelligence: enrich.weeklyIntelligence ?? base.weeklyIntelligence,
+    adaptiveRecommendations:
+      enrich.adaptiveRecommendations ?? base.adaptiveRecommendations,
     gamification: enrich.gamification ?? base.gamification,
     challenges: enrich.challenges ?? base.challenges,
     bodyTransformation: enrich.bodyTransformation ?? base.bodyTransformation,

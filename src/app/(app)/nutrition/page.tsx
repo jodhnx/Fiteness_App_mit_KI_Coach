@@ -13,7 +13,9 @@ import {
   optimisticPatchItemQuantity,
   optimisticAddWater,
   optimisticAddMealItem,
+  optimisticAddSavedMeal,
 } from "@/lib/nutrition-sync";
+import { getCachedSavedMeals, fetchSavedMealTemplates } from "@/lib/saved-meals-cache";
 import { PageShell } from "@/components/layout/page-shell";
 import { NutritionOrbitOverview } from "@/components/nutrition/nutrition-orbit-overview";
 import { NutritionDaySummary } from "@/components/nutrition/nutrition-day-summary";
@@ -71,9 +73,10 @@ function NutritionPageInner() {
   const [foodAIOpen, setFoodAIOpen] = useState(false);
 
   useEffect(() => {
-    // Prefetch + menu history so Favoriten / Häufig / Zuletzt open instantly
+    // Prefetch + menu history so Favoriten / Häufig / Zuletzt / Meine Mahlzeiten open instantly
     warmNutritionSearchCaches();
     warmFoodHistoryCache(true);
+    void fetchSavedMealTemplates();
   }, []);
 
   useEffect(() => {
@@ -217,6 +220,70 @@ function NutritionPageInner() {
       await toggleFavorite(food);
     },
     [favoriteFoods, toggleFavorite]
+  );
+
+  const handleLogSavedMeal = useCallback(
+    async (recipeId: string, mealType: MealType) => {
+      const logMealType: MealType =
+        mealType === "BREAKFAST" ||
+        mealType === "LUNCH" ||
+        mealType === "DINNER" ||
+        mealType === "SNACK"
+          ? mealType
+          : "SNACK";
+
+      const cached = getCachedSavedMeals()?.find((m) => m.id === recipeId);
+      const macros = cached?.macros?.perServing ?? cached?.macros?.total;
+      const snapshot = dashboard;
+      if (cached && macros) {
+        const quantityG =
+          cached.ingredients?.reduce((sum, i) => sum + (i.quantityG || 0), 0) ||
+          100;
+        const optimistic = optimisticAddSavedMeal(
+          snapshot,
+          {
+            name: cached.name,
+            calories: macros.calories,
+            proteinG: macros.proteinG,
+            carbsG: macros.carbsG,
+            fatG: macros.fatG,
+            quantityG,
+          },
+          logMealType
+        );
+        if (optimistic) applyDashboard(optimistic);
+      }
+
+      closeAddPopup();
+      toast.success("Mahlzeit hinzugefügt ✓", { duration: 1600 });
+
+      void (async () => {
+        try {
+          const res = await fetch(`/api/nutrition/recipes/${recipeId}/log`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ mealType: logMealType }),
+          });
+          if (!res.ok) {
+            applyDashboard(snapshot);
+            const err = await res.json().catch(() => ({}));
+            toast.error(
+              (err as { error?: string }).error ??
+                "Mahlzeit konnte nicht hinzugefügt werden — Eintrag wurde zurückgesetzt"
+            );
+            return;
+          }
+          const updated = await applyNutritionMutationResponse(res);
+          if (!updated) applyDashboard(snapshot);
+          refreshFoodHistoryCache();
+        } catch {
+          applyDashboard(snapshot);
+          toast.error("Netzwerkfehler — Eintrag wurde zurückgesetzt");
+        }
+      })();
+    },
+    [dashboard, applyDashboard, closeAddPopup]
   );
 
   const handleFoodAITrack = useCallback(
@@ -376,6 +443,7 @@ function NutritionPageInner() {
           onClose={closeAddPopup}
           onQuickAddFood={quickAdd}
           onToggleFavorite={handleToggleFavorite}
+          onLogSavedMeal={handleLogSavedMeal}
           quickAdding={quickAdding}
         />
       )}

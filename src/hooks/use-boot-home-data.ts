@@ -23,6 +23,7 @@ import {
 } from "@/lib/nutrition-defaults";
 import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
 import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
+import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh";
 
 function mergeHomeWithNutrition(
   home: HomeDataPayload,
@@ -31,12 +32,15 @@ function mergeHomeWithNutrition(
   const safe = isValidDashboardPayload(nutrition)
     ? nutrition
     : createEmptyNutritionDashboard();
-  return normalizeHomeData({
-    ...home,
-    ...nutritionDashboardToHomeMacros(safe),
-    nutrition: safe,
-    coach: buildHomeCoachFromNutrition(safe),
-  });
+  return commitHomeIntelligenceRefresh(
+    normalizeHomeData({
+      ...home,
+      ...nutritionDashboardToHomeMacros(safe),
+      nutrition: safe,
+      coach: buildHomeCoachFromNutrition(safe),
+    }),
+    { nutrition: safe }
+  );
 }
 
 function resolveBootHome(): HomeDataPayload {
@@ -63,7 +67,7 @@ function resolveBootHome(): HomeDataPayload {
   if (nutrition) {
     return mergeHomeWithNutrition(withIdentity, nutrition);
   }
-  return withIdentity;
+  return commitHomeIntelligenceRefresh(withIdentity);
 }
 
 /**
@@ -76,7 +80,9 @@ export function useBootHomeData(): HomeDataPayload {
   useEffect(() => {
     const onHome = (e: Event) => {
       const detail = (e as CustomEvent<HomeDataPayload>).detail;
-      if (detail) setHome(normalizeHomeData(detail));
+      if (detail) {
+        setHome(commitHomeIntelligenceRefresh(normalizeHomeData(detail)));
+      }
     };
     const onNutrition = (e: Event) => {
       const nutrition = (e as CustomEvent<NutritionDashboardPayload>).detail;

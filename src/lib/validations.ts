@@ -302,6 +302,10 @@ export const chatMessageSchema = z.object({
   chatId: z.string().optional(),
   message: z.string().min(1).max(4000),
   stream: z.boolean().optional(),
+  /** Optional hint from Quick Actions to load the matching context scope */
+  contextMode: z
+    .enum(["nutrition", "training", "weekly", "weight", "plan", "general"])
+    .optional(),
 });
 
 export const friendRequestSchema = z

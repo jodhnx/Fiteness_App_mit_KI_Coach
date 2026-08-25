@@ -18,13 +18,17 @@ export type HomeWidgetConfig = {
   visible: boolean;
 };
 
-const STORAGE_KEY = "nexform:home-widgets-v4";
+/** Current storage key — new saves always use this. */
+const STORAGE_KEY = "nexform:home-widgets-v5";
+
+/** Older keys — read-only fallback for migration (never write back to these). */
+const LEGACY_STORAGE_KEYS = ["nexform:home-widgets-v4"] as const;
 
 export const DEFAULT_HOME_WIDGETS: HomeWidgetConfig[] = [
   { id: "dashboard", label: "Tagesstatus", visible: true },
   { id: "quickAccess", label: "Schnellzugriffe", visible: true },
   { id: "training", label: "Training heute", visible: true },
-  { id: "coachBriefing", label: "KI Coach Briefing", visible: false },
+  { id: "coachBriefing", label: "KI Coach Briefing", visible: true },
   { id: "dayGoals", label: "Tagesziele", visible: false },
   { id: "progress", label: "Fortschritt", visible: false },
   { id: "health", label: "Gesundheit", visible: false },
@@ -33,23 +37,68 @@ export const DEFAULT_HOME_WIDGETS: HomeWidgetConfig[] = [
   { id: "achievements", label: "Erfolge", visible: false },
 ];
 
-export function loadHomeWidgets(): HomeWidgetConfig[] {
-  if (typeof window === "undefined") return DEFAULT_HOME_WIDGETS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_HOME_WIDGETS;
-    const parsed = JSON.parse(raw) as HomeWidgetConfig[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_HOME_WIDGETS;
-    // Merge new widgets that appeared after user saved older layout
-    const ids = new Set(parsed.map((w) => w.id));
-    const merged = [...parsed];
-    for (const d of DEFAULT_HOME_WIDGETS) {
-      if (!ids.has(d.id)) merged.push(d);
+function mergeWithDefaults(parsed: HomeWidgetConfig[]): HomeWidgetConfig[] {
+  const byId = new Map(parsed.map((w) => [w.id, w]));
+  const merged: HomeWidgetConfig[] = [];
+
+  // Preserve user order first
+  for (const w of parsed) {
+    const def = DEFAULT_HOME_WIDGETS.find((d) => d.id === w.id);
+    if (def) {
+      merged.push({
+        id: w.id,
+        label: def.label,
+        visible: w.visible,
+      });
     }
-    return merged;
-  } catch {
-    return DEFAULT_HOME_WIDGETS;
   }
+
+  // Append widgets the user never had (e.g. new ids) — keep saved visibility when present
+  for (const def of DEFAULT_HOME_WIDGETS) {
+    if (!byId.has(def.id)) {
+      merged.push({ ...def });
+    }
+  }
+
+  return merged;
+}
+
+function readStoredWidgets(): { widgets: HomeWidgetConfig[]; migrated: boolean } | null {
+  if (typeof window === "undefined") return null;
+
+  const tryParse = (raw: string | null): HomeWidgetConfig[] | null => {
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as HomeWidgetConfig[];
+      if (!Array.isArray(parsed) || parsed.length === 0) return null;
+      return mergeWithDefaults(parsed);
+    } catch {
+      return null;
+    }
+  };
+
+  const current = tryParse(localStorage.getItem(STORAGE_KEY));
+  if (current) return { widgets: current, migrated: false };
+
+  for (const legacyKey of LEGACY_STORAGE_KEYS) {
+    const legacy = tryParse(localStorage.getItem(legacyKey));
+    if (legacy) {
+      return { widgets: legacy, migrated: true };
+    }
+  }
+
+  return null;
+}
+
+export function loadHomeWidgets(): HomeWidgetConfig[] {
+  const stored = readStoredWidgets();
+  if (!stored) return DEFAULT_HOME_WIDGETS;
+
+  if (stored.migrated) {
+    saveHomeWidgets(stored.widgets);
+  }
+
+  return stored.widgets;
 }
 
 export function saveHomeWidgets(widgets: HomeWidgetConfig[]) {

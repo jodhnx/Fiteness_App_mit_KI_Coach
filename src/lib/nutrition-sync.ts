@@ -12,12 +12,13 @@ import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { createEmptyHomeData } from "@/lib/home-defaults";
 import {
-  hydrateHomeSectionCaches,
   HOME_HEUTE_CACHE,
   HOME_COACH_CACHE,
   HOME_INSIGHTS_CACHE,
   HOME_WORKOUT_CACHE,
+  invalidateIntelligenceSectionCaches,
 } from "@/lib/home-section-cache";
+import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh";
 import { nutritionDayKey, isNutritionDashboardToday } from "@/lib/nutrition-day";
 import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
@@ -47,6 +48,7 @@ export function invalidateAllNutritionCaches() {
   invalidateCache(HOME_WORKOUT_CACHE);
   invalidateCache("nutrition-coach");
   invalidateCache(PROGRESS_CACHE_KEY);
+  invalidateIntelligenceSectionCaches();
 }
 
 /** Day rollover: keep targets, reset today's intake — never wipe disk cache. */
@@ -132,15 +134,17 @@ export function publishNutritionDashboard(dashboard: NutritionDashboardPayload) 
   const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
   const macroSlice = nutritionDashboardToHomeMacros(nutrition);
   const coach = buildHomeCoachFromNutrition(nutrition);
-  const nextHome: HomeDataPayload = {
-    ...(prevHome ?? createEmptyHomeData()),
-    ...macroSlice,
-    nutrition,
-    coach,
-  };
+  const nextHome: HomeDataPayload = commitHomeIntelligenceRefresh(
+    {
+      ...(prevHome ?? createEmptyHomeData()),
+      ...macroSlice,
+      nutrition,
+      coach,
+    },
+    { nutrition }
+  );
 
   setCached(HOME_DATA_CACHE_KEY, nextHome, ttl);
-  hydrateHomeSectionCaches(nextHome);
   setCached(HOME_COACH_CACHE, coach, ttl);
   patchProgressNutritionToday(nutrition);
 
@@ -228,6 +232,83 @@ export function optimisticAddMealItem(
       ...dashboard.consumed,
       ...consumed,
       fiberG: (dashboard.consumed.fiberG ?? 0) + fiberG,
+    },
+    remaining: {
+      calories: Math.max(0, dashboard.targets.calories - consumed.calories),
+      proteinG: Math.max(0, dashboard.targets.proteinG - consumed.proteinG),
+      carbsG: Math.max(0, dashboard.targets.carbsG - consumed.carbsG),
+      fatG: Math.max(0, dashboard.targets.fatG - consumed.fatG),
+    },
+    mealsByType,
+  };
+}
+
+/**
+ * Optimistic placeholder for a saved meal (1 row) until /recipes/[id]/log returns.
+ * Macros must already be scaled for the logged serving.
+ */
+export function optimisticAddSavedMeal(
+  dashboard: NutritionDashboardPayload,
+  meal: {
+    name: string;
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    quantityG?: number;
+  },
+  mealType: MealType
+): NutritionDashboardPayload | null {
+  const macros = roundMacros({
+    calories: meal.calories,
+    proteinG: meal.proteinG,
+    carbsG: meal.carbsG,
+    fatG: meal.fatG,
+  });
+  if (macros.calories <= 0 && macros.proteinG <= 0) return null;
+
+  const tempId = `opt-meal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const quantityG =
+    meal.quantityG && meal.quantityG > 0
+      ? meal.quantityG
+      : 100;
+  const newItem = {
+    id: tempId,
+    quantityG,
+    food: { name: meal.name },
+    calories: macros.calories,
+    proteinG: macros.proteinG,
+    carbsG: macros.carbsG,
+    fatG: macros.fatG,
+  };
+
+  let mealId: string | null = null;
+  const mealsByType = dashboard.mealsByType.map((slot) => {
+    if (slot.mealType !== mealType) return slot;
+    mealId = slot.mealId ?? `opt-meal-${mealType}`;
+    const items = [...slot.items, newItem];
+    const totals = {
+      calories: slot.totals.calories + macros.calories,
+      proteinG: slot.totals.proteinG + macros.proteinG,
+      carbsG: slot.totals.carbsG + macros.carbsG,
+      fatG: slot.totals.fatG + macros.fatG,
+    };
+    return { ...slot, mealId, items, totals };
+  });
+
+  const consumed = roundMacros({
+    calories: dashboard.consumed.calories + macros.calories,
+    proteinG: dashboard.consumed.proteinG + macros.proteinG,
+    carbsG: dashboard.consumed.carbsG + macros.carbsG,
+    fatG: dashboard.consumed.fatG + macros.fatG,
+  });
+
+  return {
+    ...dashboard,
+    date: nutritionDayKey(),
+    consumed: {
+      ...dashboard.consumed,
+      ...consumed,
     },
     remaining: {
       calories: Math.max(0, dashboard.targets.calories - consumed.calories),

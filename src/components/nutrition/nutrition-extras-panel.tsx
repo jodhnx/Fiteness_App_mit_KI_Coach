@@ -161,10 +161,10 @@ export const NutritionExtrasPanel = memo(function NutritionExtrasPanel({
         )}
         <Link
           href="/nutrition/saved-meals/new"
-          className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 h-9 px-3 text-xs text-zinc-200"
+          className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 px-3 text-xs text-zinc-200"
         >
           <ChefHat className="h-3.5 w-3.5 text-accent" />
-          Rezept
+          Mahlzeit
         </Link>
         <button
           type="button"

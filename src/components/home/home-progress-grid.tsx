@@ -14,6 +14,7 @@ import {
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { cn } from "@/lib/utils";
+import { HomeWeeklyIntelligenceCard } from "@/components/home/home-weekly-intelligence-card";
 
 type Props = {
   home: HomeDataPayload;
@@ -131,6 +132,8 @@ export const HomeProgressGrid = memo(function HomeProgressGrid({
           highlight={streakHighlight}
         />
       </div>
+
+      <HomeWeeklyIntelligenceCard intelligence={home.weeklyIntelligence} />
     </div>
   );
 });
