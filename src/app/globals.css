@@ -1089,3 +1089,49 @@ html.light .bottom-nav-v4-tab:not(.bottom-nav-v4-tab--active) {
   }
 }
 
+/* ─── Bottom Navigation iOS — clean native tab bar ─── */
+.bottom-nav-ios {
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: none;
+}
+
+.bottom-nav-ios-inner {
+  pointer-events: auto;
+}
+
+.bottom-nav-ios-bar {
+  min-height: 3.0625rem;
+  border-radius: 1.125rem;
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  background: color-mix(in srgb, rgb(12 14 18) 82%, transparent);
+  backdrop-filter: blur(var(--nav-blur, 28px));
+  -webkit-backdrop-filter: blur(var(--nav-blur, 28px));
+  box-shadow:
+    0 -1px 0 color-mix(in srgb, white 6%, transparent),
+    0 8px 32px rgb(0 0 0 / 35%);
+}
+
+.bottom-nav-ios-tab {
+  transition: color 120ms ease;
+}
+
+.bottom-nav-ios-label {
+  font-size: 0.625rem;
+  letter-spacing: 0.01em;
+}
+
+html[data-color-mode="light"] .bottom-nav-ios-bar,
+html.light .bottom-nav-ios-bar {
+  background: color-mix(in srgb, rgb(248 250 252) 88%, transparent);
+  border-color: color-mix(in srgb, rgb(15 23 42) 8%, transparent);
+  box-shadow: 0 4px 24px rgb(15 23 42 / 8%);
+}
+
+html[data-color-mode="light"] .bottom-nav-ios-tab--idle .bottom-nav-ios-label,
+html.light .bottom-nav-ios-tab--idle .bottom-nav-ios-label {
+  color: rgb(100 116 139);
+}
+
+.desktop-nav {
+  z-index: 40;
+}

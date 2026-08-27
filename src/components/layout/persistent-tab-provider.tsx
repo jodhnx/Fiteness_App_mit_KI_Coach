@@ -18,7 +18,7 @@ export const MAIN_TABS = [
   "/workouts",
   "/nutrition",
   "/progress",
-  "/coach",
+  "/more",
 ] as const;
 
 export type MainTab = (typeof MAIN_TABS)[number];

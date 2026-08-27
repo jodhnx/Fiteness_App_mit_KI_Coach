@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useProfileHeader } from "@/hooks/use-profile-header";
+import { DesktopNav } from "@/components/layout/desktop-nav";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Header } from "@/components/layout/header";
 import { ProfileDashboardPanel } from "@/components/layout/profile-dashboard-panel";
@@ -44,12 +45,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <PhoneSensorWarmup />
         <MealReminderWarmup />
         <PersistentTabProvider>
-          <div className="gradient-mesh min-h-[100dvh] overflow-x-hidden">
+          <div className="gradient-mesh min-h-[100dvh] overflow-x-hidden lg:flex">
+            <DesktopNav />
+            <div className="flex-1 min-w-0 flex flex-col min-h-[100dvh]">
             <RoutePrefetcher />
             <div
               className={cn(
-                "mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col",
-                !immersive && "pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+                "mobile-app-frame mx-auto w-full min-h-[100dvh] flex flex-col lg:max-w-3xl",
+                !immersive && "pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-4"
               )}
             >
               {!immersive && (
@@ -84,6 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <GamificationUnlockToast />
               <FeatureTour />
             </AppErrorBoundary>
+            </div>
           </div>
         </PersistentTabProvider>
       </NotificationProvider>

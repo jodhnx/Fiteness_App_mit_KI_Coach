@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -16,22 +17,59 @@ import { Button } from "@/components/ui/button";
 import { HomePhoneStepsHint } from "@/components/home/home-phone-steps-hint";
 import { HomeGreeting } from "@/components/home/home-greeting";
 import { HomeDashboardPremium } from "@/components/home/home-dashboard-premium";
-import { HomeHealthEcosystem } from "@/components/home/home-health-ecosystem";
 import { HomePlannedTrainingCard } from "@/components/home/home-planned-training-card";
 import { HomeDayFocusCard } from "@/components/home/home-day-focus-card";
-import { HomeProgressGrid } from "@/components/home/home-progress-grid";
-import { HomeRecentAchievements } from "@/components/home/home-recent-achievements";
-import { HomeDayGoals } from "@/components/home/home-day-goals";
-import { HomeDaySummary } from "@/components/home/home-day-summary";
-import { HomeWidgetBoard } from "@/components/home/home-widget-board";
+import { HomeCoachBriefing } from "@/components/home/home-coach-briefing";
 import { QuickAccessRail } from "@/components/guide/quick-access-rail";
 import { PageIntro } from "@/components/guide/page-intro";
-import { HomeCoachBriefing } from "@/components/home/home-coach-briefing";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { isSameDay } from "date-fns";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
+
+const HomeHealthEcosystem = dynamic(
+  () =>
+    import("@/components/home/home-health-ecosystem").then((m) => ({
+      default: m.HomeHealthEcosystem,
+    })),
+  { ssr: false }
+);
+const HomeProgressGrid = dynamic(
+  () =>
+    import("@/components/home/home-progress-grid").then((m) => ({
+      default: m.HomeProgressGrid,
+    })),
+  { ssr: false }
+);
+const HomeRecentAchievements = dynamic(
+  () =>
+    import("@/components/home/home-recent-achievements").then((m) => ({
+      default: m.HomeRecentAchievements,
+    })),
+  { ssr: false }
+);
+const HomeDayGoals = dynamic(
+  () =>
+    import("@/components/home/home-day-goals").then((m) => ({
+      default: m.HomeDayGoals,
+    })),
+  { ssr: false }
+);
+const HomeDaySummary = dynamic(
+  () =>
+    import("@/components/home/home-day-summary").then((m) => ({
+      default: m.HomeDaySummary,
+    })),
+  { ssr: false }
+);
+const HomeWidgetBoard = dynamic(
+  () =>
+    import("@/components/home/home-widget-board").then((m) => ({
+      default: m.HomeWidgetBoard,
+    })),
+  { ssr: false }
+);
 
 export default function HomePage() {
   const { status: sessionStatus } = useSession();

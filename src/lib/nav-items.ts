@@ -6,6 +6,10 @@ import {
   Users,
   Trophy,
   CookingPot,
+  Bot,
+  FolderOpen,
+  Medal,
+  Bookmark,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -13,7 +17,7 @@ import {
   Dumbbell,
   Apple,
   TrendingUp,
-  Bot,
+  LayoutGrid,
   Shield,
   Lock,
   LogOut,
@@ -23,14 +27,70 @@ export type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  description?: string;
 };
 
+/** Bottom tab bar — max 5 main tabs (mobile). */
 export const PRIMARY_NAV: NavItem[] = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/workouts", label: "Training", icon: Dumbbell },
   { href: "/nutrition", label: "Ernährung", icon: Apple },
   { href: "/progress", label: "Fortschritt", icon: TrendingUp },
-  { href: "/coach", label: "Coach", icon: Bot },
+  { href: "/more", label: "Mehr", icon: LayoutGrid },
+];
+
+/** Routes that keep the More tab highlighted (hub + secondary destinations). */
+export const MORE_TAB_ROUTES = [
+  "/more",
+  "/coach",
+  "/settings",
+  "/social",
+  "/erfolge",
+  "/geraete",
+  "/rezepte",
+  "/workouts/my-plans",
+  "/workouts/records",
+  "/workouts/catalog",
+  "/workouts/history",
+  "/workouts/calendar",
+] as const;
+
+/** More hub — featured shortcuts. */
+export const MORE_HUB_FEATURED: NavItem[] = [
+  {
+    href: "/coach",
+    label: "KI Coach",
+    icon: Bot,
+    description: "Persönliche Tipps und Fragen",
+  },
+  {
+    href: "/settings",
+    label: "Einstellungen",
+    icon: Settings,
+    description: "Profil, Ziele und App",
+  },
+];
+
+/** More hub — training & content. */
+export const MORE_HUB_TRAINING: NavItem[] = [
+  {
+    href: "/workouts/my-plans",
+    label: "Meine Pläne",
+    icon: FolderOpen,
+    description: "Trainingspläne verwalten",
+  },
+  {
+    href: "/workouts/records",
+    label: "Rekorde",
+    icon: Medal,
+    description: "Persönliche Bestleistungen",
+  },
+  {
+    href: "/nutrition",
+    label: "Gespeicherte Mahlzeiten",
+    icon: Bookmark,
+    description: "Vorlagen in der Ernährung",
+  },
 ];
 
 /** Profile panel — Einstellungen, Geräte, Rezepte. */
@@ -61,3 +121,10 @@ export const LOGOUT_ACTION = {
   label: "Abmelden",
   icon: LogOut,
 };
+
+/** Desktop sidebar — primary + coach shortcut. */
+export const DESKTOP_NAV: NavItem[] = [
+  ...PRIMARY_NAV.filter((item) => item.href !== "/more"),
+  { href: "/coach", label: "KI Coach", icon: Bot },
+  { href: "/settings", label: "Einstellungen", icon: Settings },
+];

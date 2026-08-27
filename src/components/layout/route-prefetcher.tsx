@@ -6,12 +6,13 @@ import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
 import { warmTrainingCaches } from "@/lib/cache-manager";
 import { warmHealthSync } from "@/lib/health-sync-warmer";
 
-/** Reihenfolge = Hauptmenü: Home → Training → Ernährung → Fortschritt → Coach */
+/** Reihenfolge = Hauptmenü: Home → Training → Ernährung → Fortschritt → Mehr */
 const NAV_ROUTES = [
   "/home",
   "/workouts",
   "/nutrition",
   "/progress",
+  "/more",
   "/coach",
   "/social",
   "/erfolge",

@@ -81,8 +81,7 @@ function weekly(overrides: Partial<WeeklyFitnessIntelligence> = {}): WeeklyFitne
 }
 
 function ctx(partial: Partial<DailyActionPlanContext> = {}): DailyActionPlanContext {
-  const now = new Date();
-  now.setHours(10, 0, 0, 0);
+  const now = fixedNow(10);
   return {
     now,
     daily: daily(),
@@ -98,6 +97,14 @@ function ctx(partial: Partial<DailyActionPlanContext> = {}): DailyActionPlanCont
     nutritionGoal: "MUSCLE_GAIN",
     ...partial,
   };
+}
+
+/** Fixed clock for from-home tests — scoring uses hour (training vs protein evening boost). */
+function fixedNow(hour = 10): Date {
+  const now = new Date();
+  now.setHours(hour, 0, 0, 0);
+  now.setMinutes(0, 0, 0);
+  return now;
 }
 
 function dash(overrides: Partial<NutritionDashboardPayload> = {}): NutritionDashboardPayload {
@@ -274,7 +281,7 @@ console.log("Daily Action Plan Tests\n");
     weeklyIntelligence: weekly(),
     nextWorkout: { planName: "Plan", dayName: "Upper B", planId: "p1", dayId: "d1", dayNumber: 1, exerciseCount: 5, estimatedDurationMin: 45 },
   };
-  const before = buildDailyActionPlanFromHome(homeBefore);
+  const before = buildDailyActionPlanFromHome(homeBefore, { now: fixedNow() });
   const homeAfter = {
     ...homeBefore,
     nutrition: dash({
@@ -282,7 +289,7 @@ console.log("Daily Action Plan Tests\n");
       remaining: { calories: 200, proteinG: 0, carbsG: 20, fatG: 10 },
     }),
   };
-  const after = buildDailyActionPlanFromHome(homeAfter);
+  const after = buildDailyActionPlanFromHome(homeAfter, { now: fixedNow() });
   assert("CASE 11: has primary before", before.primary != null);
   assert("CASE 11: on track or no protein after", after.status === "on_track" || after.primary?.type !== "nutrition");
 }
@@ -294,10 +301,11 @@ console.log("Daily Action Plan Tests\n");
   home.intelligence = daily({ training: { ...daily().training, doneToday: false } });
   home.weeklyIntelligence = weekly();
   home.nutrition = dash();
-  const before = buildDailyActionPlanFromHome(home);
+  const planNow = fixedNow();
+  const before = buildDailyActionPlanFromHome(home, { now: planNow });
   home.intelligence = daily({ training: { ...daily().training, doneToday: true }, allGood: true });
   home.nextWorkout = null;
-  const after = buildDailyActionPlanFromHome(home);
+  const after = buildDailyActionPlanFromHome(home, { now: planNow });
   assert("CASE 12: training before", before.primary?.type === "training");
   assert("CASE 12: updated after complete", after.primary?.type !== "training" || after.status === "on_track");
 }

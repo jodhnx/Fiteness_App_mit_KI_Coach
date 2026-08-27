@@ -3,6 +3,7 @@ import {
   getCached,
   hydratePersistentCaches,
   setCached,
+  isCacheStale,
 } from "@/lib/client-cache";
 import {
   publishNutritionDashboard,
@@ -28,6 +29,8 @@ import {
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 import { bootPerfMark, bootPerfReset } from "@/lib/app-init-perf";
+import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh";
+import { HOME_INSIGHTS_CACHE } from "@/lib/home-section-cache";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
 export const BOOT_READY_KEY = "boot-ready-v1";
@@ -222,17 +225,30 @@ async function fetchBootstrap(): Promise<BootstrapPayload | null> {
 /** Enrich home with extras (gamification, recovery, …) without reloading nutrition. */
 export function enrichHomeInBackground() {
   if (typeof window === "undefined") return;
+
+  const current = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
+    allowStale: true,
+  });
+  if (
+    current?.weeklyIntelligence &&
+    current?.adaptiveRecommendations &&
+    !isCacheStale(HOME_INSIGHTS_CACHE, 0.85)
+  ) {
+    return;
+  }
+
   void fetch("/api/home?enrich=1", { credentials: "same-origin" })
     .then((r) => (r.ok ? r.json() : null))
     .then((extras: Record<string, unknown> | null) => {
       if (!extras || typeof extras !== "object") return;
-      const current = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
+      const base = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
         allowStale: true,
       });
-      if (!current) return;
-      const merged = mergeHomeEnrichment(current, extras);
-      setCached(HOME_DATA_CACHE_KEY, merged, 900_000);
-      window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: merged }));
+      if (!base) return;
+      const merged = mergeHomeEnrichment(base, extras);
+      const next = commitHomeIntelligenceRefresh(merged);
+      setCached(HOME_DATA_CACHE_KEY, next, 900_000);
+      window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: next }));
     })
     .catch(() => {});
 }

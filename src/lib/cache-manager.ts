@@ -2,7 +2,7 @@ import { fetchCached, getCached, isCacheStale } from "@/lib/client-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 
 export const CACHE_KEYS = {
-  PLANS_LIST: "workouts-my-plans-list",
+  PLANS_LIST: "workouts-my-plans-hub",
   JOURNEY: "workouts-journey-full",
   PROGRESS: PROGRESS_CACHE_KEY,
 } as const;
