@@ -4,21 +4,27 @@ import { memo } from "react";
 import Link from "next/link";
 import type { MealType } from "@prisma/client";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
-import { hasNutritionTargets, nutritionProfileIncomplete } from "@/lib/nutrition-defaults";
-import { getCalorieDisplay, getMacroDisplay } from "@/lib/nutrition-display";
+import {
+  getMacroDisplay,
+  resolveNutritionDisplayState,
+} from "@/lib/nutrition-display";
 import { CalorieRing } from "@/components/nutrition/calorie-ring";
 import { cn } from "@/lib/utils";
 
 type Props = {
   dashboard: NutritionDashboardPayload | null | undefined;
+  loading?: boolean;
   onAddMeal?: (meal: MealType) => void;
 };
 
 /** YAZIO-inspired today summary — remaining kcal primary. */
 export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   dashboard,
+  loading = false,
 }: Props) {
-  if (!dashboard) {
+  const state = resolveNutritionDisplayState(dashboard, { loading });
+
+  if (state.kind === "loading") {
     return (
       <div className="rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-zinc-950/95 px-6 py-10 text-center animate-pulse">
         <div className="h-24 w-24 rounded-full bg-white/5 mx-auto mb-4" />
@@ -27,50 +33,51 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     );
   }
 
-  const consumed = dashboard.consumed ?? {
-    calories: 0,
-    proteinG: 0,
-    carbsG: 0,
-    fatG: 0,
-  };
-  const targets = dashboard.targets ?? {
-    calories: 0,
-    proteinG: 0,
-    carbsG: 0,
-    fatG: 0,
-  };
-  const remaining = dashboard.remaining ?? {
-    calories: 0,
-    proteinG: 0,
-    carbsG: 0,
-    fatG: 0,
-  };
-  const burned = dashboard.exerciseBurned?.calories ?? 0;
-  const burnedEstimated = dashboard.exerciseBurned?.estimated ?? true;
-  const ready = hasNutritionTargets(dashboard);
-  const incomplete = nutritionProfileIncomplete(dashboard);
-
-  if (!ready) {
+  if (state.kind === "missing_target") {
     return (
-      <Link
-        href="/settings"
-        prefetch
-        className="block rounded-[1.75rem] border border-white/[0.08] bg-zinc-900/80 px-6 py-10 text-center"
-      >
-        <p className="text-sm text-zinc-300">
-          {incomplete
-            ? "Bitte Gewicht und Ziel vervollständigen"
-            : "Kalorienziel wird berechnet…"}
+      <div className="rounded-[1.75rem] border border-amber-500/25 bg-amber-500/5 px-6 py-8 text-center space-y-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-300/80">
+          Heute
         </p>
-      </Link>
+        <p className="text-lg font-semibold text-white">Kalorienziel festlegen</p>
+        <p className="text-sm text-zinc-400">
+          {state.profileIncomplete
+            ? "Bitte Gewicht und Ziel vervollständigen."
+            : "Lege dein Kalorienziel fest, um deine verbleibenden kcal zu sehen."}
+        </p>
+        <Link
+          href="/settings"
+          prefetch
+          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 text-sm font-semibold text-black"
+        >
+          Ziel festlegen
+        </Link>
+      </div>
     );
   }
 
-  const cal = getCalorieDisplay(
-    consumed.calories ?? 0,
-    targets.calories ?? 0,
-    remaining.calories
-  );
+  const dashboardSafe = dashboard!;
+  const consumed = dashboardSafe.consumed ?? {
+    calories: 0,
+    proteinG: 0,
+    carbsG: 0,
+    fatG: 0,
+  };
+  const targets = dashboardSafe.targets ?? {
+    calories: 0,
+    proteinG: 0,
+    carbsG: 0,
+    fatG: 0,
+  };
+  const remaining = dashboardSafe.remaining ?? {
+    calories: 0,
+    proteinG: 0,
+    carbsG: 0,
+    fatG: 0,
+  };
+  const burned = dashboardSafe.exerciseBurned?.calories ?? 0;
+  const burnedEstimated = dashboardSafe.exerciseBurned?.estimated ?? true;
+  const { cal } = state;
 
   const macros = [
     { key: "p", label: "Protein", consumed: consumed.proteinG ?? 0, target: targets.proteinG ?? 0, bar: "bg-rose-400", tint: "text-rose-400" },
@@ -108,7 +115,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
         >
           {cal.primaryLabel}
         </p>
-        <p className="text-xs text-zinc-500 tabular-nums">{cal.secondaryLine}</p>
+        <p className="text-xs text-zinc-500 tabular-nums">{cal.secondaryLine} kcal</p>
       </div>
 
       <CalorieRing
@@ -130,6 +137,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
 
       <div className="grid grid-cols-3 gap-2">
         {macros.map((m) => {
+          if (m.target <= 0) return null;
           const macro = getMacroDisplay(m.consumed, m.target, m.label);
           const pct =
             m.target > 0 ? Math.min(100, Math.round((m.consumed / m.target) * 100)) : 0;

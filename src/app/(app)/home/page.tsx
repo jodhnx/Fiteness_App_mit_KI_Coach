@@ -16,6 +16,7 @@ import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HomePhoneStepsHint } from "@/components/home/home-phone-steps-hint";
 import { HomeGreeting } from "@/components/home/home-greeting";
+import { HomeTodayOverview } from "@/components/home/home-today-overview";
 import { HomeDashboardPremium } from "@/components/home/home-dashboard-premium";
 import { HomePlannedTrainingCard } from "@/components/home/home-planned-training-card";
 import { HomeDayFocusCard } from "@/components/home/home-day-focus-card";
@@ -27,8 +28,7 @@ import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { isSameDay } from "date-fns";
-import { hasNutritionTargets } from "@/lib/nutrition-defaults";
-import { getCalorieDisplay } from "@/lib/nutrition-display";
+import { resolveNutritionDisplayState } from "@/lib/nutrition-display";
 
 const HomeHealthEcosystem = dynamic(
   () =>
@@ -168,24 +168,18 @@ export default function HomePage() {
 
   const greetingCue = useMemo(() => {
     if (trainingStatus === "active") return "Training läuft — tippe zum Fortsetzen";
-    const targetsReady = hasNutritionTargets(nutrition);
-    const proteinLeft = Math.max(
-      0,
-      Math.round((nutrition.targets?.proteinG ?? 0) - (nutrition.consumed?.proteinG ?? 0))
-    );
-    if (targetsReady && proteinLeft > 15) return `Noch ${proteinLeft} g Protein heute`;
-    const cal = targetsReady
-      ? getCalorieDisplay(
-          nutrition.consumed?.calories ?? 0,
-          nutrition.targets?.calories ?? 0,
-          nutrition.remaining?.calories
-        )
-      : null;
-    if (cal && !cal.isOver && cal.remaining > 0) {
-      return `${cal.remaining.toLocaleString("de-DE")} kcal übrig`;
-    }
-    if (cal?.isOver) {
-      return `${cal.overBy.toLocaleString("de-DE")} kcal über dem Ziel`;
+    const calState = resolveNutritionDisplayState(nutrition);
+    if (calState.kind === "ready") {
+      const { cal } = calState;
+      if (!cal.isOver && cal.remaining > 0) {
+        return `${cal.remaining.toLocaleString("de-DE")} kcal übrig`;
+      }
+      if (cal.isOver) {
+        return `${cal.overBy.toLocaleString("de-DE")} kcal über dem Ziel`;
+      }
+      if (cal.remaining === 0 && !cal.isOver) {
+        return "Kalorienziel erreicht";
+      }
     }
     if (trainingStatus === "planned" && trainingLabel) {
       return `Heute: ${trainingLabel}`;
@@ -206,7 +200,7 @@ export default function HomePage() {
 
   const serverSteps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10_000;
-  const ready = hasNutritionTargets(nutrition);
+  const ready = resolveNutritionDisplayState(nutrition).kind === "ready";
 
   if (sessionStatus === "unauthenticated") {
     return (
@@ -231,6 +225,9 @@ export default function HomePage() {
       <HomeWidgetBoard
         pinFirst={activeSessionId ? "training" : null}
         slots={{
+          todayOverview: (
+            <HomeTodayOverview nutrition={nutrition} />
+          ),
           quickAccess: (
             <QuickAccessRail
               training={

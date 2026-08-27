@@ -16,6 +16,7 @@ import {
   optimisticAddSavedMeal,
 } from "@/lib/nutrition-sync";
 import { getCachedSavedMeals, fetchSavedMealTemplates } from "@/lib/saved-meals-cache";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageShell } from "@/components/layout/page-shell";
 import { NutritionOrbitOverview } from "@/components/nutrition/nutrition-orbit-overview";
 import { NutritionQuickCalories } from "@/components/nutrition/nutrition-quick-calories";
@@ -73,6 +74,10 @@ function NutritionPageInner() {
   const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
   const [addInitialQuery, setAddInitialQuery] = useState("");
   const [foodAIOpen, setFoodAIOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{
+    mealId: string;
+    label: string;
+  } | null>(null);
 
   useEffect(() => {
     // Prefetch + menu history so Favoriten / Häufig / Zuletzt / Meine Mahlzeiten open instantly
@@ -89,7 +94,7 @@ function NutritionPageInner() {
     }
   }, [searchParams]);
 
-  const { dashboard, error, timedOut, reload, applyDashboard } = useNutritionDashboard(120_000);
+  const { dashboard, error, timedOut, loading, reload, applyDashboard } = useNutritionDashboard(120_000);
 
   const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites();
 
@@ -138,7 +143,6 @@ function NutritionPageInner() {
 
   const deleteMeal = useCallback(
     async (mealId: string) => {
-      if (!window.confirm("Diese Mahlzeit und alle Einträge löschen?")) return;
       const snapshot = dashboard;
       const optimistic = optimisticRemoveMeal(snapshot, mealId);
       if (optimistic) applyDashboard(optimistic);
@@ -154,6 +158,17 @@ function NutritionPageInner() {
     },
     [dashboard, applyDashboard]
   );
+
+  const requestDeleteMeal = useCallback((mealId: string, label: string) => {
+    setPendingDelete({ mealId, label });
+  }, []);
+
+  const confirmDeleteMeal = useCallback(() => {
+    if (!pendingDelete) return;
+    const { mealId } = pendingDelete;
+    setPendingDelete(null);
+    void deleteMeal(mealId);
+  }, [pendingDelete, deleteMeal]);
 
   const editItemQuantity = useCallback(
     async (itemId: string, currentQty: number) => {
@@ -393,10 +408,7 @@ function NutritionPageInner() {
         </div>
       )}
 
-      <NutritionOrbitOverview
-        dashboard={dashboard}
-        onAddMeal={(meal) => setAddSheetMeal(meal)}
-      />
+      <NutritionOrbitOverview dashboard={dashboard} loading={loading && !dashboard} />
 
       {dashboard && (
         <NutritionQuickCalories dashboard={dashboard} applyDashboard={applyDashboard} />
@@ -413,7 +425,7 @@ function NutritionPageInner() {
         meals={dashboard?.mealsByType ?? []}
         onRemove={removeItem}
         onEdit={editItemQuantity}
-        onDeleteMeal={deleteMeal}
+        onDeleteMeal={requestDeleteMeal}
         onAddClick={(mealType) => setAddSheetMeal(mealType)}
       />
 
@@ -468,6 +480,21 @@ function NutritionPageInner() {
           onTrack={handleFoodAITrack}
         />
       )}
+
+      <ConfirmDialog
+        open={pendingDelete != null}
+        title="Mahlzeit löschen?"
+        description={
+          pendingDelete
+            ? `"${pendingDelete.label}" wird aus deinem heutigen Ernährungstagebuch entfernt.`
+            : ""
+        }
+        confirmLabel="Löschen"
+        cancelLabel="Abbrechen"
+        destructive
+        onConfirm={confirmDeleteMeal}
+        onCancel={() => setPendingDelete(null)}
+      />
     </PageShell>
   );
 }

@@ -34,7 +34,7 @@ export const HomeCoachBriefing = memo(function HomeCoachBriefing({
             <Bot className="h-4 w-4 text-cyan-400" />
           </div>
           <div>
-            <p className="text-sm font-bold text-white">Heute wichtig</p>
+            <p className="text-sm font-bold text-white">Was heute wichtig ist</p>
             <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest">
               Daily Action Plan
             </p>

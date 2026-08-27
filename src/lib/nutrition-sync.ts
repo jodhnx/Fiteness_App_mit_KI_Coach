@@ -23,6 +23,7 @@ import { nutritionDayKey, isNutritionDashboardToday } from "@/lib/nutrition-day"
 import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { buildHomeCoachFromNutrition } from "@/lib/nutrition-coach";
+import { computeNutritionRemaining } from "@/lib/nutrition-display";
 
 export { HOME_COACH_CACHE, HOME_INSIGHTS_CACHE, HOME_HEUTE_CACHE, HOME_WORKOUT_CACHE } from "@/lib/home-section-cache";
 
@@ -233,12 +234,11 @@ export function optimisticAddMealItem(
       ...consumed,
       fiberG: (dashboard.consumed.fiberG ?? 0) + fiberG,
     },
-    remaining: {
-      calories: Math.max(0, dashboard.targets.calories - consumed.calories),
-      proteinG: Math.max(0, dashboard.targets.proteinG - consumed.proteinG),
-      carbsG: Math.max(0, dashboard.targets.carbsG - consumed.carbsG),
-      fatG: Math.max(0, dashboard.targets.fatG - consumed.fatG),
-    },
+    remaining: computeNutritionRemaining({
+      targets: dashboard.targets,
+      consumed: { ...dashboard.consumed, ...consumed },
+      exerciseBurned: dashboard.exerciseBurned,
+    }),
     mealsByType,
   };
 }
@@ -310,12 +310,11 @@ export function optimisticAddSavedMeal(
       ...dashboard.consumed,
       ...consumed,
     },
-    remaining: {
-      calories: Math.max(0, dashboard.targets.calories - consumed.calories),
-      proteinG: Math.max(0, dashboard.targets.proteinG - consumed.proteinG),
-      carbsG: Math.max(0, dashboard.targets.carbsG - consumed.carbsG),
-      fatG: Math.max(0, dashboard.targets.fatG - consumed.fatG),
-    },
+    remaining: computeNutritionRemaining({
+      targets: dashboard.targets,
+      consumed: { ...dashboard.consumed, ...consumed },
+      exerciseBurned: dashboard.exerciseBurned,
+    }),
     mealsByType,
   };
 }
@@ -362,12 +361,11 @@ export function optimisticRemoveMealItem(
     ...dashboard,
     date: nutritionDayKey(),
     consumed: { ...dashboard.consumed, ...consumed },
-    remaining: {
-      calories: Math.max(0, dashboard.targets.calories - consumed.calories),
-      proteinG: Math.max(0, dashboard.targets.proteinG - consumed.proteinG),
-      carbsG: Math.max(0, dashboard.targets.carbsG - consumed.carbsG),
-      fatG: Math.max(0, dashboard.targets.fatG - consumed.fatG),
-    },
+    remaining: computeNutritionRemaining({
+      targets: dashboard.targets,
+      consumed: { ...dashboard.consumed, ...consumed },
+      exerciseBurned: dashboard.exerciseBurned,
+    }),
     mealsByType,
   };
 }
@@ -444,12 +442,11 @@ export function optimisticPatchItemQuantity(
     ...dashboard,
     date: nutritionDayKey(),
     consumed: { ...dashboard.consumed, ...consumed },
-    remaining: {
-      calories: Math.max(0, dashboard.targets.calories - consumed.calories),
-      proteinG: Math.max(0, dashboard.targets.proteinG - consumed.proteinG),
-      carbsG: Math.max(0, dashboard.targets.carbsG - consumed.carbsG),
-      fatG: Math.max(0, dashboard.targets.fatG - consumed.fatG),
-    },
+    remaining: computeNutritionRemaining({
+      targets: dashboard.targets,
+      consumed: { ...dashboard.consumed, ...consumed },
+      exerciseBurned: dashboard.exerciseBurned,
+    }),
     mealsByType,
   };
 }
@@ -493,12 +490,11 @@ export function optimisticRemoveMeal(
     ...dashboard,
     date: nutritionDayKey(),
     consumed: { ...dashboard.consumed, ...consumed },
-    remaining: {
-      calories: Math.max(0, dashboard.targets.calories - consumed.calories),
-      proteinG: Math.max(0, dashboard.targets.proteinG - consumed.proteinG),
-      carbsG: Math.max(0, dashboard.targets.carbsG - consumed.carbsG),
-      fatG: Math.max(0, dashboard.targets.fatG - consumed.fatG),
-    },
+    remaining: computeNutritionRemaining({
+      targets: dashboard.targets,
+      consumed: { ...dashboard.consumed, ...consumed },
+      exerciseBurned: dashboard.exerciseBurned,
+    }),
     mealsByType,
   };
 }

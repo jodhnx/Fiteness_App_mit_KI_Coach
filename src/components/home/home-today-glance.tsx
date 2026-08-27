@@ -4,8 +4,7 @@ import { memo } from "react";
 import Link from "next/link";
 import { Dumbbell, Flame, Utensils } from "lucide-react";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
-import { hasNutritionTargets } from "@/lib/nutrition-defaults";
-import { getCalorieDisplay, getMacroDisplay } from "@/lib/nutrition-display";
+import { resolveNutritionDisplayState, getMacroDisplay } from "@/lib/nutrition-display";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -62,21 +61,16 @@ export const HomeTodayGlance = memo(function HomeTodayGlance({
   trainingLabel,
   activeSessionId,
 }: Props) {
-  const ready = hasNutritionTargets(nutrition);
-  const cal = ready
-    ? getCalorieDisplay(
-        nutrition.consumed?.calories ?? 0,
-        nutrition.targets?.calories ?? 0,
-        nutrition.remaining?.calories
-      )
-    : null;
-  const protein = ready
-    ? getMacroDisplay(
-        nutrition.consumed?.proteinG ?? 0,
-        nutrition.targets?.proteinG ?? 0,
-        "Protein"
-      )
-    : null;
+  const calState = resolveNutritionDisplayState(nutrition);
+  const cal = calState.kind === "ready" ? calState.cal : null;
+  const protein =
+    calState.kind === "ready" && (nutrition.targets?.proteinG ?? 0) > 0
+      ? getMacroDisplay(
+          nutrition.consumed?.proteinG ?? 0,
+          nutrition.targets?.proteinG ?? 0,
+          "Protein"
+        )
+      : null;
 
   const trainPrimary =
     trainingStatus === "active"
@@ -95,17 +89,22 @@ export const HomeTodayGlance = memo(function HomeTodayGlance({
         icon={Flame}
         label="Kalorien"
         primary={
-          cal
-            ? `${cal.primaryValue.toLocaleString("de-DE")} ${cal.isOver ? "über" : "übrig"}`
-            : "—"
+          calState.kind === "missing_target"
+            ? "Ziel fehlt"
+            : cal
+              ? `${cal.primaryValue.toLocaleString("de-DE")} ${cal.isOver ? "über" : "übrig"}`
+              : "—"
         }
-        secondary={cal?.secondaryLine}
+        secondary={cal?.secondaryLine ? `${cal.secondaryLine} kcal` : undefined}
         href="/nutrition"
       />
       <GlanceCell
         icon={Utensils}
         label="Protein"
-        primary={protein?.primaryLine.replace(" Protein übrig", " übrig").replace(" Protein über Ziel", " über") ?? "—"}
+        primary={
+          protein?.primaryLine.replace(" Protein übrig", " übrig").replace(" Protein über Ziel", " über") ??
+          "—"
+        }
         secondary={protein?.secondaryLine}
         href="/nutrition"
       />
