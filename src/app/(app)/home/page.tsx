@@ -7,9 +7,9 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { startWorkoutAndNavigate } from "@/lib/workout-start";
 import { useCentralNutrition } from "@/hooks/use-central-nutrition";
-import { WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
+import { WORKOUT_ACTIVE_EVENT, WORKOUT_ACTIVE_CACHE_KEY } from "@/lib/workout-cache-sync";
+import { getCached } from "@/lib/client-cache";
 import { useBootHomeData } from "@/hooks/use-boot-home-data";
-import { hydrateHomeSectionCaches } from "@/lib/home-section-cache";
 import { useDisplayName } from "@/hooks/use-display-name";
 import { PageShell } from "@/components/layout/page-shell";
 import { AlertCircle } from "lucide-react";
@@ -20,6 +20,7 @@ import { HomeDashboardPremium } from "@/components/home/home-dashboard-premium";
 import { HomePlannedTrainingCard } from "@/components/home/home-planned-training-card";
 import { HomeDayFocusCard } from "@/components/home/home-day-focus-card";
 import { HomeCoachBriefing } from "@/components/home/home-coach-briefing";
+import { HomeTodayGlance } from "@/components/home/home-today-glance";
 import { QuickAccessRail } from "@/components/guide/quick-access-rail";
 import { PageIntro } from "@/components/guide/page-intro";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
@@ -27,6 +28,7 @@ import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { isSameDay } from "date-fns";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
+import { getCalorieDisplay } from "@/lib/nutrition-display";
 
 const HomeHealthEcosystem = dynamic(
   () =>
@@ -89,11 +91,13 @@ export default function HomePage() {
   const displayName = useDisplayName(data.userName);
 
   useEffect(() => {
-    hydrateHomeSectionCaches(data);
-  }, [data]);
-
-  useEffect(() => {
-    const onWorkout = () => setWorkoutCleared(true);
+    const onWorkout = () => {
+      const cached = getCached<{ session?: { id: string } | null }>(
+        WORKOUT_ACTIVE_CACHE_KEY,
+        { allowStale: true }
+      );
+      setWorkoutCleared(!cached?.session?.id);
+    };
     window.addEventListener(WORKOUT_ACTIVE_EVENT, onWorkout);
     return () => window.removeEventListener(WORKOUT_ACTIVE_EVENT, onWorkout);
   }, []);
@@ -170,11 +174,18 @@ export default function HomePage() {
       Math.round((nutrition.targets?.proteinG ?? 0) - (nutrition.consumed?.proteinG ?? 0))
     );
     if (targetsReady && proteinLeft > 15) return `Noch ${proteinLeft} g Protein heute`;
-    const kcalLeft = targetsReady
-      ? Math.max(0, Math.round(nutrition.remaining?.calories ?? 0))
-      : 0;
-    if (targetsReady && kcalLeft > 0) {
-      return `Noch ${kcalLeft.toLocaleString("de-DE")} kcal`;
+    const cal = targetsReady
+      ? getCalorieDisplay(
+          nutrition.consumed?.calories ?? 0,
+          nutrition.targets?.calories ?? 0,
+          nutrition.remaining?.calories
+        )
+      : null;
+    if (cal && !cal.isOver && cal.remaining > 0) {
+      return `${cal.remaining.toLocaleString("de-DE")} kcal übrig`;
+    }
+    if (cal?.isOver) {
+      return `${cal.overBy.toLocaleString("de-DE")} kcal über dem Ziel`;
     }
     if (trainingStatus === "planned" && trainingLabel) {
       return `Heute: ${trainingLabel}`;
@@ -252,6 +263,7 @@ export default function HomePage() {
             <HomeDayGoals
               caloriesConsumed={nutrition.consumed?.calories ?? 0}
               calorieTarget={nutrition.targets?.calories ?? 0}
+              caloriesRemaining={nutrition.remaining?.calories}
               steps={serverSteps}
               stepGoal={stepGoal}
               waterMl={nutrition.water?.consumedMl ?? 0}
@@ -287,15 +299,17 @@ export default function HomePage() {
           coachBriefing: (
             <HomeCoachBriefing
               streakDays={trainingStreakDays}
-              trainingLabel={trainingLabel}
-              trainingDone={trainingStatus === "done" || trainingStatus === "active"}
-              proteinConsumed={nutrition.consumed?.proteinG ?? 0}
-              proteinTarget={nutrition.targets?.proteinG ?? 0}
-              steps={serverSteps}
-              stepGoal={stepGoal}
               intelligence={data.intelligence}
               adaptiveRecommendations={data.adaptiveRecommendations}
               dailyActionPlan={data.dailyActionPlan}
+            />
+          ),
+          todayGlance: (
+            <HomeTodayGlance
+              nutrition={nutrition}
+              trainingStatus={trainingStatus}
+              trainingLabel={trainingLabel}
+              activeSessionId={activeSessionId}
             />
           ),
           dayFocus: <HomeDayFocusCard items={dayFocusItems} />,

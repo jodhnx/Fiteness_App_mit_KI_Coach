@@ -4,6 +4,7 @@ export type HomeWidgetId =
   | "quickAccess"
   | "dashboard"
   | "coachBriefing"
+  | "todayGlance"
   | "dayGoals"
   | "health"
   | "training"
@@ -19,16 +20,21 @@ export type HomeWidgetConfig = {
 };
 
 /** Current storage key — new saves always use this. */
-const STORAGE_KEY = "nexform:home-widgets-v5";
+const STORAGE_KEY = "nexform:home-widgets-v7";
 
 /** Older keys — read-only fallback for migration (never write back to these). */
-const LEGACY_STORAGE_KEYS = ["nexform:home-widgets-v4"] as const;
+const LEGACY_STORAGE_KEYS = [
+  "nexform:home-widgets-v6",
+  "nexform:home-widgets-v5",
+  "nexform:home-widgets-v4",
+] as const;
 
 export const DEFAULT_HOME_WIDGETS: HomeWidgetConfig[] = [
-  { id: "dashboard", label: "Tagesstatus", visible: true },
-  { id: "quickAccess", label: "Schnellzugriffe", visible: true },
+  { id: "coachBriefing", label: "Heute wichtig", visible: true },
+  { id: "todayGlance", label: "Heute auf einen Blick", visible: true },
   { id: "training", label: "Training heute", visible: true },
-  { id: "coachBriefing", label: "KI Coach Briefing", visible: true },
+  { id: "dashboard", label: "Tagesstatus", visible: false },
+  { id: "quickAccess", label: "Schnellzugriffe", visible: false },
   { id: "dayGoals", label: "Tagesziele", visible: false },
   { id: "progress", label: "Fortschritt", visible: false },
   { id: "health", label: "Gesundheit", visible: false },

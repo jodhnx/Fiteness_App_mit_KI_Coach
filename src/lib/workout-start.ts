@@ -1,9 +1,7 @@
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { setCached } from "@/lib/client-cache";
 import {
-  WORKOUT_ACTIVE_CACHE_KEY,
-  WORKOUT_ACTIVE_EVENT,
   PENDING_LIVE_SESSION_KEY,
+  patchHomeActiveSession,
 } from "@/lib/workout-cache-sync";
 
 type StartPayload = {
@@ -23,8 +21,11 @@ type SessionRow = {
 export function primeLiveSession(session: SessionRow) {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(PENDING_LIVE_SESSION_KEY, JSON.stringify(session));
-  setCached(WORKOUT_ACTIVE_CACHE_KEY, { session }, 90_000);
-  window.dispatchEvent(new CustomEvent(WORKOUT_ACTIVE_EVENT));
+  patchHomeActiveSession({
+    id: session.id,
+    name: session.name,
+    startedAt: session.startedAt,
+  });
 }
 
 export async function startWorkoutAndNavigate(

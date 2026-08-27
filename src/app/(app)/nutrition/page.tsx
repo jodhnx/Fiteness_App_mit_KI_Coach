@@ -18,6 +18,8 @@ import {
 import { getCachedSavedMeals, fetchSavedMealTemplates } from "@/lib/saved-meals-cache";
 import { PageShell } from "@/components/layout/page-shell";
 import { NutritionOrbitOverview } from "@/components/nutrition/nutrition-orbit-overview";
+import { NutritionQuickCalories } from "@/components/nutrition/nutrition-quick-calories";
+import { NutritionEmptyDayBanner } from "@/components/nutrition/nutrition-empty-day-banner";
 import { NutritionDaySummary } from "@/components/nutrition/nutrition-day-summary";
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
@@ -395,6 +397,17 @@ function NutritionPageInner() {
         dashboard={dashboard}
         onAddMeal={(meal) => setAddSheetMeal(meal)}
       />
+
+      {dashboard && (
+        <NutritionQuickCalories dashboard={dashboard} applyDashboard={applyDashboard} />
+      )}
+
+      {dashboard && (
+        <NutritionEmptyDayBanner
+          dashboard={dashboard}
+          onAddMeal={(meal) => setAddSheetMeal(meal)}
+        />
+      )}
 
       <MealTrackList
         meals={dashboard?.mealsByType ?? []}

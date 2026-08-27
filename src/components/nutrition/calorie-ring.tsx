@@ -2,6 +2,7 @@
 
 import { memo, useId, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { getCalorieDisplay } from "@/lib/nutrition-display";
 
 type Props = {
   consumed: number;
@@ -42,12 +43,15 @@ export const CalorieRing = memo(function CalorieRing({
   const strokeW = size >= 200 ? 12 : size >= 140 ? 10 : 8;
 
   const showTarget = centerMode === "target" && hasTarget && !isOver;
+  const calDisplay = hasTarget
+    ? getCalorieDisplay(kcalConsumed, kcalTarget, remaining)
+    : null;
   const centerValue = isOver
-    ? overBy
+    ? calDisplay?.overBy ?? overBy
     : showTarget
       ? kcalTarget
       : hasTarget
-        ? Math.max(0, Math.round(remaining))
+        ? calDisplay?.remaining ?? Math.max(0, Math.round(remaining))
         : 0;
   const centerLabel = isOver ? "ÜBER ZIEL" : showTarget ? label || "TAGESZIEL" : label;
 
@@ -126,15 +130,12 @@ export const CalorieRing = memo(function CalorieRing({
           {showTarget && (
             <p className="text-[10px] font-medium text-zinc-400 mt-0.5 leading-none">kcal</p>
           )}
-          <p className="text-[10px] text-zinc-500 mt-1 tabular-nums leading-tight whitespace-nowrap max-w-full">
-            {hasTarget ? (
+          <p className="text-[10px] text-zinc-500 mt-1 tabular-nums leading-tight whitespace-nowrap max-w-full px-1">
+            {hasTarget && calDisplay ? (
               showTarget ? (
                 <>{kcalConsumed.toLocaleString("de-DE")} verbraucht</>
               ) : (
-                <>
-                  {kcalConsumed.toLocaleString("de-DE")} /{" "}
-                  {kcalTarget.toLocaleString("de-DE")} kcal
-                </>
+                calDisplay.secondaryLine
               )
             ) : (
               "Ziel fehlt"
@@ -143,9 +144,9 @@ export const CalorieRing = memo(function CalorieRing({
         </div>
       </div>
 
-      {isOver && (
+      {isOver && calDisplay && (
         <p className="text-sm font-medium text-red-400 text-center tabular-nums px-2">
-          {overBy.toLocaleString("de-DE")} kcal über deinem Tagesziel
+          {calDisplay.primaryValue.toLocaleString("de-DE")} kcal über dem Ziel
         </p>
       )}
     </div>

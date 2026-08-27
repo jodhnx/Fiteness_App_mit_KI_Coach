@@ -152,6 +152,26 @@ const LiveSetRow = memo(function LiveSetRow({
   );
 });
 
+function formatSetLine(weightKg: number | null, reps: number | null) {
+  if (weightKg == null && reps == null) return "—";
+  return `${weightKg ?? "—"} kg × ${reps ?? "—"}`;
+}
+
+function bestFromHistory(sets: SetRow[]): SetRow | null {
+  let best: SetRow | null = null;
+  let bestScore = -1;
+  for (const s of sets) {
+    const w = s.weightKg ?? 0;
+    const r = s.reps ?? 0;
+    const score = w * r + w * 0.01;
+    if (score > bestScore) {
+      bestScore = score;
+      best = s;
+    }
+  }
+  return best;
+}
+
 function formatWorkoutTime(s: number) {
   const m = Math.floor(s / 60);
   const sec = s % 60;
@@ -192,10 +212,12 @@ const LiveRestTimer = memo(function LiveRestTimer({
   onClearRest: () => void;
 }) {
   const [left, setLeft] = useState(0);
+  const [minimized, setMinimized] = useState(false);
 
   useEffect(() => {
     if (restUntil == null) {
       setLeft(0);
+      setMinimized(false);
       return;
     }
     let finished = false;
@@ -213,6 +235,21 @@ const LiveRestTimer = memo(function LiveRestTimer({
   }, [restUntil, onClearRest]);
 
   if (left > 0) {
+    if (minimized) {
+      return (
+        <button
+          type="button"
+          className="mt-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2"
+          onClick={() => setMinimized(false)}
+        >
+          <span className="text-sm text-cyan-300">Pause läuft</span>
+          <span className="text-lg font-bold text-cyan-400 tabular-nums">
+            {formatWorkoutTime(left)}
+          </span>
+        </button>
+      );
+    }
+
     return (
       <div className="flex items-center gap-2 mt-3 rounded-xl bg-cyan-500/15 border border-cyan-500/30 px-3 py-2">
         <Timer className="h-5 w-5 text-cyan-400 shrink-0" />
@@ -222,7 +259,14 @@ const LiveRestTimer = memo(function LiveRestTimer({
         <span className="text-sm text-zinc-400">Pause</span>
         <button
           type="button"
-          className="ml-auto min-h-11 rounded-xl px-3 text-sm font-semibold text-cyan-200 active:bg-cyan-500/20"
+          className="ml-auto min-h-11 rounded-xl px-3 text-xs font-semibold text-zinc-400 active:bg-white/5"
+          onClick={() => setMinimized(true)}
+        >
+          Minimieren
+        </button>
+        <button
+          type="button"
+          className="min-h-11 rounded-xl px-3 text-sm font-semibold text-cyan-200 active:bg-cyan-500/20"
           onClick={onClearRest}
         >
           Überspringen
@@ -509,10 +553,6 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         toast.error("Fehler beim Speichern — bitte erneut versuchen");
         return;
       }
-      clearActiveWorkoutCaches({
-        name: data.session?.name ?? name,
-        completedAt: data.session?.completedAt ?? new Date().toISOString(),
-      });
       if (data.newPRs?.length) {
         toast.success(`${data.newPRs.length} neue Personal Records!`, {
           icon: <Trophy className="h-4 w-4" />,
@@ -587,7 +627,17 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       )}
 
       {grouped.map(({ key, name, exerciseLibraryId, sets }) => {
-        const prev = previousByExercise[key]?.[0];
+        const history = previousByExercise[key] ?? [];
+        const last = history[0];
+        const best = bestFromHistory(history);
+        const completedInSession = sets.filter((s) => s.completed && s.weightKg != null);
+        const lastCompleted = completedInSession[completedInSession.length - 1];
+        const showProgressHint =
+          last?.weightKg != null &&
+          lastCompleted?.weightKg != null &&
+          lastCompleted.weightKg >= last.weightKg &&
+          (lastCompleted.reps ?? 0) >= (last.reps ?? 0);
+
         return (
           <div key={key} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
             <div className="px-4 py-3.5 border-b border-zinc-800/80">
@@ -601,12 +651,27 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
               ) : (
                 <h2 className="text-xl font-bold text-white">{name}</h2>
               )}
-              {prev && (
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Letzte:{" "}
-                  {prev.weightKg != null || prev.reps != null
-                    ? `${prev.weightKg ?? "—"} kg × ${prev.reps ?? "—"}`
-                    : "—"}
+              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-zinc-400">
+                {last && (
+                  <span>
+                    Last:{" "}
+                    <span className="text-zinc-300 tabular-nums font-medium">
+                      {formatSetLine(last.weightKg, last.reps)}
+                    </span>
+                  </span>
+                )}
+                {best && best !== last && (
+                  <span>
+                    Best:{" "}
+                    <span className="text-amber-300/90 tabular-nums font-medium">
+                      {formatSetLine(best.weightKg, best.reps)}
+                    </span>
+                  </span>
+                )}
+              </div>
+              {showProgressHint && (
+                <p className="text-[11px] text-cyan-400/90 mt-1.5">
+                  Du bist bereit, das Gewicht zu steigern.
                 </p>
               )}
             </div>

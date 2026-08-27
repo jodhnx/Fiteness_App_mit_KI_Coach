@@ -7,6 +7,7 @@ import { WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
 import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
 import { getCached } from "@/lib/client-cache";
 import { PageShell } from "@/components/layout/page-shell";
+import { NextWorkoutHero } from "@/components/workout/next-workout-hero";
 import { TrainingChoiceCard } from "@/components/workout/training-choice-card";
 import { MuscleRecoveryPanel } from "@/components/workout/muscle-recovery-panel";
 import { Button } from "@/components/ui/button";
@@ -99,7 +100,7 @@ export default function WorkoutsHubPage() {
             {sessionData?.session?.name ?? "Training"}
           </p>
           <Button
-            className="mt-3 h-12 w-full rounded-2xl text-base"
+            className="mt-3 h-14 w-full rounded-2xl text-base font-bold"
             onClick={() => router.push(`/workouts/live/${activeSession.id}`)}
           >
             <Play className="mr-2 h-5 w-5" />
@@ -107,6 +108,8 @@ export default function WorkoutsHubPage() {
           </Button>
         </div>
       )}
+
+      {!activeSession && <NextWorkoutHero home={home} />}
 
       <section className="space-y-2.5">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500">

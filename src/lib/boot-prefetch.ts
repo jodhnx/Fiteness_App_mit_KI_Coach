@@ -1,10 +1,11 @@
-import { setCached } from "@/lib/client-cache";
+import { fetchCached, getCached, setCached } from "@/lib/client-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import {
   HOME_DATA_CACHE_KEY,
   NUTRITION_DASHBOARD_CACHE_KEY,
   PROFILE_CACHE_KEY,
 } from "@/lib/nutrition-sync";
+import { WORKOUT_ACTIVE_CACHE_KEY } from "@/lib/workout-cache-sync";
 
 async function fetchOk(url: string) {
   const res = await fetch(url, { credentials: "same-origin" });
@@ -30,6 +31,7 @@ export function runBootSecondaryPrefetch() {
   if (typeof window === "undefined") return;
 
   afterIdle(() => {
+    if (getCached("food-history")) return;
     void fetchOk("/api/food/history").then((foodHistory) => {
       if (!foodHistory) return;
       const rec = (foodHistory.recents ?? []) as unknown[];
@@ -47,9 +49,16 @@ export function runBootSecondaryPrefetch() {
 
   window.setTimeout(() => {
     afterIdle(() => {
-      void fetchOk("/api/workouts/sessions?active=1").then((active) => {
-        if (active) setCached("workouts-active", active, 180_000);
-      });
+      if (getCached(WORKOUT_ACTIVE_CACHE_KEY)) return;
+      void fetchCached(
+        WORKOUT_ACTIVE_CACHE_KEY,
+        async () => {
+          const data = await fetchOk("/api/workouts/sessions?active=1");
+          if (!data) throw new Error("active session unavailable");
+          return data;
+        },
+        90_000
+      ).catch(() => undefined);
     });
   }, 1500);
 }

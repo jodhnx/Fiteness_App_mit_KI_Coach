@@ -18,6 +18,7 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 import { PremiumCard } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
+import { getCalorieDisplay, getMacroDisplay } from "@/lib/nutrition-display";
 import { useLivePhoneSteps } from "@/hooks/use-live-phone-steps";
 import { hapticTap } from "@/lib/haptic";
 import { getCached, setCached } from "@/lib/client-cache";
@@ -103,17 +104,14 @@ function MacroBar({
   target: number;
   color: string;
 }) {
+  const macro = getMacroDisplay(value, target, label);
   const pct = target > 0 ? Math.min(100, Math.round((value / target) * 100)) : 0;
-  const left = target > 0 ? Math.max(0, target - value) : 0;
   return (
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-1">
         <p className="text-[10px] font-medium text-zinc-400">{label}</p>
         <p className="text-[11px] font-semibold tabular-nums text-zinc-200">
-          {value}
-          <span className="font-normal text-zinc-500">
-            {target > 0 ? ` / ${target}g` : " g"}
-          </span>
+          {macro.secondaryLine}
         </p>
       </div>
       <div className="mt-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
@@ -124,7 +122,7 @@ function MacroBar({
       </div>
       {target > 0 && (
         <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
-          {left > 0 ? `noch ${left}g` : "Ziel erreicht"}
+          {macro.primaryLine}
         </p>
       )}
     </div>
@@ -164,7 +162,9 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   const targetCal = nutrition.targets?.calories ?? 0;
   const waterConsumed = nutrition.water?.consumedMl ?? 0;
   const waterTarget = nutrition.water?.targetMl ?? 2500;
-  const kcalLeft = ready ? Math.max(0, Math.round(remainingCal)) : 0;
+  const cal = ready
+    ? getCalorieDisplay(consumedCal, targetCal, remainingCal)
+    : null;
   const intakePct =
     targetCal > 0 ? Math.min(100, Math.round((consumedCal / targetCal) * 100)) : 0;
   const stepPct = stepGoal > 0 ? Math.min(100, Math.round((steps / stepGoal) * 100)) : 0;
@@ -173,7 +173,6 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
 
   const proteinG = Math.round(nutrition.consumed?.proteinG ?? 0);
   const proteinTarget = Math.round(nutrition.targets?.proteinG ?? 0);
-  const proteinLeft = Math.max(0, proteinTarget - proteinG);
   const carbsG = Math.round(nutrition.consumed?.carbsG ?? 0);
   const carbsTarget = Math.round(nutrition.targets?.carbsG ?? 0);
   const fatG = Math.round(nutrition.consumed?.fatG ?? 0);
@@ -212,12 +211,20 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            kcal übrig
+            {cal?.isOver ? "Kalorien über Ziel" : "kcal übrig"}
           </p>
-          {ready ? (
-            <p className="mt-1 text-[2.65rem] font-bold leading-none tabular-nums text-white">
-              {kcalLeft.toLocaleString("de-DE")}
-            </p>
+          {ready && cal ? (
+            <>
+              <p
+                className={cn(
+                  "mt-1 text-[2.65rem] font-bold leading-none tabular-nums",
+                  cal.isOver ? "text-red-400" : "text-white"
+                )}
+              >
+                {cal.primaryValue.toLocaleString("de-DE")}
+              </p>
+              <p className="mt-1 text-xs tabular-nums text-zinc-500">{cal.secondaryLine}</p>
+            </>
           ) : (
             <Link
               href="/settings"
@@ -228,9 +235,7 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
           )}
           {ready && proteinTarget > 0 && (
             <p className="mt-2 text-sm font-medium tabular-nums text-rose-200/90">
-              {proteinLeft > 0
-                ? `Noch ${proteinLeft} g Protein`
-                : "Proteinziel erreicht"}
+              {getMacroDisplay(proteinG, proteinTarget, "Protein").primaryLine}
             </p>
           )}
           <p className="mt-1.5 text-xs tabular-nums text-zinc-400">

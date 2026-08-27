@@ -5,7 +5,6 @@ import { getCached } from "@/lib/client-cache";
 import {
   HOME_DATA_CACHE_KEY,
   HOME_DATA_EVENT,
-  NUTRITION_DASHBOARD_EVENT,
   NUTRITION_DASHBOARD_CACHE_KEY,
   PROFILE_CACHE_KEY,
 } from "@/lib/nutrition-sync";
@@ -24,6 +23,10 @@ import {
 import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
 import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh";
+
+function hasClientIntelligenceLayers(home: HomeDataPayload): boolean {
+  return Boolean(home.intelligence?.generatedAt);
+}
 
 function mergeHomeWithNutrition(
   home: HomeDataPayload,
@@ -65,7 +68,21 @@ function resolveBootHome(): HomeDataPayload {
   });
 
   if (nutrition) {
+    const macroSlice = nutritionDashboardToHomeMacros(nutrition);
+    const merged = normalizeHomeData({
+      ...withIdentity,
+      ...macroSlice,
+      nutrition,
+      coach: buildHomeCoachFromNutrition(nutrition),
+    });
+    if (hasClientIntelligenceLayers(merged)) {
+      return merged;
+    }
     return mergeHomeWithNutrition(withIdentity, nutrition);
+  }
+
+  if (hasClientIntelligenceLayers(withIdentity)) {
+    return withIdentity;
   }
   return commitHomeIntelligenceRefresh(withIdentity);
 }
@@ -81,20 +98,13 @@ export function useBootHomeData(): HomeDataPayload {
     const onHome = (e: Event) => {
       const detail = (e as CustomEvent<HomeDataPayload>).detail;
       if (detail) {
-        setHome(commitHomeIntelligenceRefresh(normalizeHomeData(detail)));
+        setHome(normalizeHomeData(detail));
       }
-    };
-    const onNutrition = (e: Event) => {
-      const nutrition = (e as CustomEvent<NutritionDashboardPayload>).detail;
-      if (!nutrition || !isValidDashboardPayload(nutrition)) return;
-      setHome((prev) => mergeHomeWithNutrition(prev, nutrition));
     };
 
     window.addEventListener(HOME_DATA_EVENT, onHome);
-    window.addEventListener(NUTRITION_DASHBOARD_EVENT, onNutrition);
     return () => {
       window.removeEventListener(HOME_DATA_EVENT, onHome);
-      window.removeEventListener(NUTRITION_DASHBOARD_EVENT, onNutrition);
     };
   }, []);
 

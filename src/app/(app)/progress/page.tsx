@@ -240,7 +240,6 @@ export default function ProgressPage() {
       }
       toast.success("Gewicht gespeichert");
       invalidateCache(PROGRESS_CACHE_KEY);
-      invalidateCache(HOME_DATA_CACHE_KEY);
       reload();
     },
     [reload]

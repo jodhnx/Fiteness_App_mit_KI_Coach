@@ -1100,7 +1100,7 @@ html.light .bottom-nav-v4-tab:not(.bottom-nav-v4-tab--active) {
 }
 
 .bottom-nav-ios-bar {
-  min-height: 3.0625rem;
+  min-height: 3.5rem;
   border-radius: 1.125rem;
   border: 1px solid color-mix(in srgb, white 10%, transparent);
   background: color-mix(in srgb, rgb(12 14 18) 82%, transparent);
@@ -1116,8 +1116,9 @@ html.light .bottom-nav-v4-tab:not(.bottom-nav-v4-tab--active) {
 }
 
 .bottom-nav-ios-label {
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   letter-spacing: 0.01em;
+  line-height: 1.1;
 }
 
 html[data-color-mode="light"] .bottom-nav-ios-bar,

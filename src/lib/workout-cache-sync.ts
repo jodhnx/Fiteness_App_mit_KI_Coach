@@ -4,6 +4,7 @@ import { HOME_WORKOUT_CACHE } from "@/lib/home-section-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { CACHE_KEYS } from "@/lib/cache-manager";
 import type { HomeDataPayload } from "@/lib/home-defaults";
+import { normalizeHomeData } from "@/lib/home-defaults";
 import {
   patchHomeAfterWorkoutComplete,
   commitHomeIntelligenceRefresh,
@@ -21,12 +22,7 @@ export function clearActiveWorkoutCaches(completed?: {
   invalidateCache(WORKOUT_ACTIVE_CACHE_KEY);
   setCached(WORKOUT_ACTIVE_CACHE_KEY, { session: null }, 90_000);
   invalidateCache(CACHE_KEYS.PLANS_LIST);
-  invalidateCache("workouts-my-plans-hub");
-  invalidateCache("workouts-journey-hub");
   invalidateCache(CACHE_KEYS.JOURNEY);
-  invalidateCache("workouts-journey");
-  invalidateCache("workouts-recovery-hub");
-  invalidateCache("workouts-recovery");
   invalidateCache(PROGRESS_CACHE_KEY);
   invalidateCache("gamification-full");
 
@@ -51,6 +47,49 @@ export function clearActiveWorkoutCaches(completed?: {
     setCached(
       HOME_WORKOUT_CACHE,
       { ...workoutSection, activeSession: null },
+      120_000
+    );
+  }
+}
+
+type ActiveSessionPatch = {
+  id: string;
+  name: string;
+  startedAt: string;
+};
+
+/** Mirror active session into home cache when a workout starts. */
+export function patchHomeActiveSession(session: ActiveSessionPatch | null) {
+  if (typeof window === "undefined") return;
+
+  setCached(
+    WORKOUT_ACTIVE_CACHE_KEY,
+    { session: session ? { id: session.id, name: session.name } : null },
+    90_000
+  );
+
+  const prev = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
+  if (!prev) {
+    window.dispatchEvent(new CustomEvent(WORKOUT_ACTIVE_EVENT));
+    return;
+  }
+
+  const next = normalizeHomeData({
+    ...prev,
+    activeSession: session,
+  });
+  setCached(HOME_DATA_CACHE_KEY, next, 120_000);
+  window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: next }));
+  window.dispatchEvent(new CustomEvent(WORKOUT_ACTIVE_EVENT));
+
+  const workoutSection = getCached<{
+    nextWorkout: HomeDataPayload["nextWorkout"];
+    activeSession: ActiveSessionPatch | null;
+  }>(HOME_WORKOUT_CACHE);
+  if (workoutSection) {
+    setCached(
+      HOME_WORKOUT_CACHE,
+      { ...workoutSection, activeSession: session },
       120_000
     );
   }

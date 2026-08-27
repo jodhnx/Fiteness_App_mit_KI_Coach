@@ -34,6 +34,19 @@ export const NutritionDataContext = createContext<NutritionContextValue | null>(
   null
 );
 
+function nutritionSnapshotsMatch(
+  a: NutritionDashboardPayload,
+  b: NutritionDashboardPayload
+): boolean {
+  return (
+    a.date === b.date &&
+    a.consumed.calories === b.consumed.calories &&
+    a.remaining.calories === b.remaining.calories &&
+    a.targets.calories === b.targets.calories &&
+    (a.mealsByType?.length ?? 0) === (b.mealsByType?.length ?? 0)
+  );
+}
+
 function resolveInitialDashboard(
   initialDashboard: NutritionDashboardPayload | null
 ): NutritionDashboardPayload {
@@ -89,7 +102,12 @@ export function NutritionDataProvider({
       return resolved;
     });
     if (isNutritionDashboardToday(resolved.date)) {
-      publishNutritionDashboard(resolved);
+      const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
+        allowStale: true,
+      });
+      if (!cached || !nutritionSnapshotsMatch(cached, resolved)) {
+        publishNutritionDashboard(resolved);
+      }
     }
   }, [initialDashboard]);
 

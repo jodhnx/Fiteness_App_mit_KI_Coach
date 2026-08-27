@@ -120,8 +120,8 @@ export const BottomNav = memo(function BottomNav() {
                 onFocus={() => warmIntent(href)}
                 onClick={() => navigate(href)}
                 className={cn(
-                  "bottom-nav-ios-tab flex flex-1 flex-col items-center justify-center gap-0.5",
-                  "min-h-11 min-w-0 px-1 py-1.5 touch-manipulation select-none",
+                  "bottom-nav-ios-tab flex flex-1 flex-col items-center justify-center gap-1",
+                  "min-h-[2.75rem] min-w-0 px-1 py-1.5 touch-manipulation select-none",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-lg",
                   active ? "bottom-nav-ios-tab--active" : "bottom-nav-ios-tab--idle"
                 )}
@@ -130,7 +130,7 @@ export const BottomNav = memo(function BottomNav() {
               >
                 <Icon
                   className={cn(
-                    "h-[22px] w-[22px] shrink-0 transition-colors",
+                    "h-6 w-6 shrink-0 transition-colors",
                     active ? "text-accent" : "text-zinc-500"
                   )}
                   strokeWidth={active ? 2.25 : 1.85}
