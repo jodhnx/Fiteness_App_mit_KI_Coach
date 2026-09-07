@@ -183,15 +183,23 @@ export function validateSupabaseDatabaseEnv(): DatabaseEnvValidation {
     };
   }
 
+  // Runtime only needs the pooled DATABASE_URL.
+  // DIRECT_URL is CLI-only (prisma migrate/studio) — optional here so a missing
+  // DIRECT_URL on Vercel cannot break login/register with a fake "wrong password".
   const issues: string[] = [
     ...validateSingleUrl("DATABASE_URL", databaseUrl, {
       requirePgbouncer: true,
       requiredPort: "6543",
     }),
-    ...validateSingleUrl("DIRECT_URL", directUrl, {
-      forbiddenPort: "6543",
-    }),
   ];
+
+  if (directUrl) {
+    issues.push(
+      ...validateSingleUrl("DIRECT_URL", directUrl, {
+        forbiddenPort: "6543",
+      })
+    );
+  }
 
   if (issues.length > 0) {
     return { ok: false, issues };
@@ -202,9 +210,9 @@ export function validateSupabaseDatabaseEnv(): DatabaseEnvValidation {
   return {
     ok: true,
     databaseUrl,
-    directUrl,
+    directUrl: directUrl || databaseUrl,
     databaseUrlMasked: maskDatabaseUrl(databaseUrl),
-    directUrlMasked: maskDatabaseUrl(directUrl),
+    directUrlMasked: maskDatabaseUrl(directUrl || databaseUrl),
     host: parsed.host,
     user: parsed.user,
     port: parsed.port,
@@ -218,6 +226,20 @@ export function getRuntimeDatabaseUrl(): string {
     throw new Error(validation.issues.join(" "));
   }
   return validation.databaseUrl;
+}
+
+/** True when Error came from our env/URL validation (not a wrong password). */
+export function isDatabaseConfigError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return (
+    /DATABASE_URL/i.test(msg) ||
+    /DIRECT_URL/i.test(msg) ||
+    /Connection string/i.test(msg) ||
+    /Ungültige Connection/i.test(msg) ||
+    /kein Supabase-Host/i.test(msg) ||
+    /pgbouncer=true fehlt/i.test(msg) ||
+    /Port muss/i.test(msg)
+  );
 }
 
 /** CLI / migrations connection string (direct/session). */

@@ -18,10 +18,15 @@ import {
   UnverifiedEmailError,
 } from "@/lib/auth-errors";
 import { isDatabaseConnectionError } from "@/lib/prisma-errors";
+import { isDatabaseConfigError } from "@/lib/database-url";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { AuthLog, logAuth, logAuthServer, logAuthEnvOnce } from "@/lib/auth-logger";
 import { looksLikeEphemeralDeploymentUrl } from "@/lib/auth-redirect";
 import { handleJwtCallbackWithDb } from "@/lib/auth-jwt";
+
+function isAuthInfrastructureError(error: unknown): boolean {
+  return isDatabaseConnectionError(error) || isDatabaseConfigError(error);
+}
 
 if (!process.env.AUTH_SECRET?.trim() && !process.env.NEXTAUTH_SECRET?.trim()) {
   logAuthServer("startup_error", {
@@ -98,7 +103,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               await ensureAdminUser();
               logAuthServer("admin_ensure", { email, ok: true });
             } catch (e) {
-              if (isDatabaseConnectionError(e)) {
+              if (isAuthInfrastructureError(e)) {
                 logAuthServer("login_failed", {
                   email,
                   reason: "database_connection",
@@ -147,7 +152,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                   ? String((e as { code: unknown }).code)
                   : undefined,
             });
-            if (isDatabaseConnectionError(e)) throw new DatabaseConnectionError();
+            if (isAuthInfrastructureError(e)) throw new DatabaseConnectionError();
             throw e;
           }
 
@@ -223,7 +228,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             });
             throw error;
           }
-          if (isDatabaseConnectionError(error)) {
+          if (isAuthInfrastructureError(error)) {
             logAuthServer("authorize_throw", {
               email: emailHint,
               code: "database_connection",
@@ -239,6 +244,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             message: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack?.split("\n").slice(0, 4) : undefined,
           });
+          // Do not mask infra failures as wrong password
           throw new InvalidCredentialsError();
         }
       },

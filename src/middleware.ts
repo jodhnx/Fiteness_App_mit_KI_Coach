@@ -29,7 +29,6 @@ export default auth((req) => {
     isApiRegister ||
     isApiVerify ||
     isApiReset ||
-    path === "/api/auth/guest" ||
     path === "/api/health" ||
     // OAuth callbacks must be reachable without session cookie
     path.startsWith("/api/wearables/oauth/");
