@@ -36,10 +36,13 @@ npm run db:migrate:deploy && npm run db:seed
 
 Kopiere `.env.example` nach `.env` und setze mindestens:
 
-- `DATABASE_URL`
+- `DATABASE_URL` (Supabase Transaction Pooler, Port 6543)
+- `DIRECT_URL` (Supabase Session/Direct, Port 5432 — Prisma CLI)
 - `AUTH_SECRET` (min. 32 Zeichen)
 - **E-Mail:** `RESEND_API_KEY` + `EMAIL_FROM` **oder** SMTP (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`)
 - `OPENAI_API_KEY` (für KI Coach & Bildanalyse)
+
+Siehe `docs/SUPABASE-VERCEL.md` für Vercel-Build und Connection-Strings.
 
 ### Registrierung mit E-Mail-Bestätigung
 

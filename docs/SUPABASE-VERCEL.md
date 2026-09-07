@@ -1,77 +1,70 @@
 # Supabase + Vercel Environment Variables
 
-Projekt-Referenz: **hdvitxmxrpsjfgsdbfst**
+## Prisma 7
 
-## Prisma 7 Hinweis
+In **Prisma 7** liegt die CLI-Datenbank-URL in `prisma.config.ts` (`datasource.url`).  
+`schema.prisma` enthält **keinen** `url`-Eintrag.
 
-In **Prisma 7** gibt es in `prisma.config.ts` nur noch **`datasource.url`** (kein `directUrl`).  
-`db push` / `migrate` würden sonst den Transaction-Pooler (6543) nutzen → Fehler *prepared statement "s1" already exists*.
+- **CLI** (`prisma migrate`, `studio`): bevorzugt `DIRECT_URL` (Port **5432**, Session oder Direct)
+- **Runtime** (`src/lib/prisma.ts` + `@prisma/adapter-pg`): `DATABASE_URL` (Port **6543**, Transaction Pooler, `?pgbouncer=true`)
 
 ```ts
-// prisma.config.ts — nur CLI (Migrationen, db push, studio)
+// prisma.config.ts — nur CLI
 datasource: {
-  url: process.env["DIRECT_URL"], // Port 5432 (Session oder Direct)
+  url: DIRECT_URL ?? DATABASE_URL
 }
 ```
 
-```prisma
-// prisma/schema.prisma
-datasource db {
-  provider = "postgresql"
-}
+---
+
+## Supabase Dashboard → Connect
+
+1. **Transaction pooler** (Port **6543**, Mode: Transaction) → `DATABASE_URL`  
+   Anhängen: `?pgbouncer=true&connection_limit=1`
+2. **Session pooler** oder **Direct connection** (Port **5432**) → `DIRECT_URL`
+
+Format (Passwort URL-encoded; `PROJECT_REF` aus dem aktuellen Dashboard):
+
+```text
+DATABASE_URL=postgresql://postgres.PROJECT_REF:PASSWORD@aws-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+DIRECT_URL=postgresql://postgres.PROJECT_REF:PASSWORD@aws-REGION.pooler.supabase.com:5432/postgres
 ```
 
-Die App nutzt `@prisma/adapter-pg` mit **`DATABASE_URL`** (6543, `?pgbouncer=true`) — siehe `src/lib/prisma.ts`.
+User muss `postgres.<project-ref>` sein. Host ist der Pooler — **nicht** `postgres.PROJECT_REF` als Hostname.
+
+Wenn der Pooler meldet `tenant/user postgres.… not found`, existiert das Projekt nicht mehr, ist pausiert oder die Ref/Credentials sind veraltet. Dann neue URLs aus dem Dashboard kopieren und in Vercel + lokaler `.env` ersetzen.
 
 ---
 
-## Supabase Dashboard → Settings → Database
-
-1. **Transaction pooler** (Port **6543**, Mode: Transaction) → `DATABASE_URL`
-2. **Session pooler** or **Direct** (Port **5432**) → `DIRECT_URL`
-
-Format (Passwort aus dem Dashboard, URL-encoded):
-
-```
-DATABASE_URL=postgresql://postgres.hdvitxmxrpsjfgsdbfst:DEIN_DB_PASSWORT@aws-1-eu-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
-DIRECT_URL=postgresql://postgres.hdvitxmxrpsjfgsdbfst:DEIN_DB_PASSWORT@aws-1-eu-west-2.pooler.supabase.com:5432/postgres
-```
-
-Der Benutzername ist **`postgres.hdvitxmxrpsjfgsdbfst`** (nicht `postgres.[irgendwas]`).
-
----
-
-## Vercel → Project → Settings → Environment Variables
+## Vercel → Settings → Environment Variables
 
 | Variable | Pflicht | Beschreibung |
 |----------|---------|--------------|
-| `DATABASE_URL` | Ja | Supabase **Transaction pooler** (6543), `?pgbouncer=true&connection_limit=1` |
-| `DIRECT_URL` | Ja | Supabase **Direct/Session** (5432) — für `prisma db push` in CI optional |
-| `NEXT_PUBLIC_SUPABASE_URL` | Optional | `https://hdvitxmxrpsjfgsdbfst.supabase.co` |
-| `AUTH_SECRET` | Ja | Min. 32 Zeichen Zufallsstring |
+| `DATABASE_URL` | Ja | Transaction pooler **6543** + `pgbouncer=true` |
+| `DIRECT_URL` | Ja (empfohlen) | Session/Direct **5432** — für lokale CLI / optionales `db:migrate:deploy` |
+| `AUTH_SECRET` | Ja | Min. 32 Zeichen |
 | `NEXTAUTH_SECRET` | Ja | Gleich wie `AUTH_SECRET` oder eigener Wert |
-| `NEXTAUTH_URL` / `AUTH_URL` | Empfohlen | **Nur die feste Produktions-Domain** (z. B. `https://deine-app.vercel.app`). Keine Preview- oder alten Deployment-URLs — sonst 404 `DEPLOYMENT_NOT_FOUND` nach Login. Alternativ leer lassen: `trustHost` + Redirect-Callback nutzen die aktuelle Domain. |
-| `EMAIL_VERIFICATION` | Empfohlen | `false` zum Testen, `true` in Production |
-| `RESEND_API_KEY` | Wenn E-Mail | Resend API Key |
-| `EMAIL_FROM` | Wenn E-Mail | Absender-Adresse |
-| `AUTH_GOOGLE_ID` | Optional | Google OAuth |
-| `AUTH_GOOGLE_SECRET` | Optional | Google OAuth |
+| `NEXTAUTH_URL` / `AUTH_URL` | Empfohlen | Feste Produktions-Domain |
 | `OPENAI_API_KEY` | Optional | KI Coach |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Optional | Google OAuth |
+| `RESEND_API_KEY` / `EMAIL_FROM` | Optional | E-Mail |
 
-**Nicht setzen:** `localhost`-Datenbank-URLs, Prisma-Dev-Ports `51218`/`51219`, unersetzte Connection-String-Platzhalter.
+**Build:** `vercel-build` = `prisma generate && next build`  
+→ **kein** `migrate deploy` im Production-Build (keine Schema-/Datenänderung beim Deploy).
+
+Manuelle Migrationen nur bewusst lokal/CI:
+
+```bash
+npm run db:migrate:deploy
+```
+
+**Nicht setzen:** localhost-URLs, Platzhalter-Passwörter, URLs eines gelöschten/pausierten Projekts.
 
 ---
 
-## Ersteinrichtung (lokal, einmalig)
+## Checkliste nach Credential-Update
 
-```bash
-npm run db:supabase:setup
-npm run db:verify-supabase
-npm run auth:test
-npm run dev
-```
-
-## Demo-Admin (nach Seed)
-
-- E-Mail: `admin@aifitness.local`
-- Passwort: `Admin123!`
+1. Supabase-Projekt aktiv (nicht paused)
+2. Vercel `DATABASE_URL` + `DIRECT_URL` aus frischem „Connect“-Dialog
+3. Redeploy ohne Cache
+4. Lokal: `npm run db:test-connection` (Read-only)
