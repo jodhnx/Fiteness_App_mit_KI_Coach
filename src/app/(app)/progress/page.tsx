@@ -218,6 +218,7 @@ export default function ProgressPage() {
       }
 
       const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
+      const prevHome = home ? { ...home } : null;
       if (home) {
         const weightRows = weightEntriesFromProgressCache();
         const next = commitHomeIntelligenceRefresh(
@@ -236,6 +237,10 @@ export default function ProgressPage() {
       if (!res.ok) {
         toast.error("Speichern fehlgeschlagen");
         if (prev) setCached(PROGRESS_CACHE_KEY, prev, 600_000);
+        if (prevHome) {
+          setCached(HOME_DATA_CACHE_KEY, prevHome, 900_000);
+          window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: prevHome }));
+        }
         return;
       }
       toast.success("Gewicht gespeichert");

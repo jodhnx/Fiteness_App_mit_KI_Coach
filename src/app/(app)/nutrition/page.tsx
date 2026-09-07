@@ -126,6 +126,10 @@ function NutritionPageInner() {
 
   const removeItem = useCallback(
     async (itemId: string) => {
+      if (itemId.startsWith("opt-")) {
+        toast.message("Eintrag wird noch gespeichert — kurz warten");
+        return;
+      }
       const snapshot = dashboard;
       const optimistic = optimisticRemoveMealItem(snapshot, itemId);
       if (optimistic) applyDashboard(optimistic);
@@ -143,6 +147,10 @@ function NutritionPageInner() {
 
   const deleteMeal = useCallback(
     async (mealId: string) => {
+      if (mealId.startsWith("opt-")) {
+        toast.message("Mahlzeit wird noch gespeichert — kurz warten");
+        return;
+      }
       const snapshot = dashboard;
       const optimistic = optimisticRemoveMeal(snapshot, mealId);
       if (optimistic) applyDashboard(optimistic);

@@ -24,6 +24,11 @@ import { hapticTap } from "@/lib/haptic";
 import { getCached, setCached } from "@/lib/client-cache";
 import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
 import type { HomeDataPayload } from "@/lib/home-defaults";
+import {
+  commitHomeIntelligenceRefresh,
+  weightEntriesFromProgressCache,
+} from "@/lib/intelligence/client-refresh";
+import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { toast } from "sonner";
 import { format } from "date-fns";
 type TrainingStatus = "active" | "done" | "planned" | "open";
@@ -422,14 +427,44 @@ function HomeWeightNudge({ weightKg }: { weightKg: number | null }) {
 
   const persist = useCallback((next: number) => {
     const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
+    const prevHome = home ? { ...home } : null;
+    const prevProgress = getCached<{
+      entries?: { id: string; date: string; weightKg?: number }[];
+      profile?: { weightKg?: number | null; targetWeightKg?: number | null; targetWeightDate?: string | null };
+    }>(PROGRESS_CACHE_KEY, { allowStale: true });
+    const today = format(new Date(), "yyyy-MM-dd");
+
+    if (prevProgress) {
+      setCached(
+        PROGRESS_CACHE_KEY,
+        {
+          ...prevProgress,
+          profile: prevProgress.profile
+            ? { ...prevProgress.profile, weightKg: next }
+            : { weightKg: next, targetWeightKg: null, targetWeightDate: null },
+          entries: [
+            {
+              id: `optimistic-${Date.now()}`,
+              date: today,
+              weightKg: next,
+            },
+            ...(prevProgress.entries ?? []).filter((e) => e.date !== today),
+          ],
+        },
+        600_000
+      );
+    }
+
     if (home) {
-      const merged = { ...home, weightKg: next };
-      setCached(HOME_DATA_CACHE_KEY, merged, 900_000);
-      window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: merged }));
+      const refreshed = commitHomeIntelligenceRefresh(
+        { ...home, weightKg: next },
+        { weightEntries: weightEntriesFromProgressCache() }
+      );
+      setCached(HOME_DATA_CACHE_KEY, refreshed, 900_000);
+      window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: refreshed }));
     }
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      const today = format(new Date(), "yyyy-MM-dd");
       void fetch("/api/progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -437,6 +472,11 @@ function HomeWeightNudge({ weightKg }: { weightKg: number | null }) {
       }).then((res) => {
         if (!res.ok) {
           toast.error("Gewicht nicht gespeichert");
+          if (prevProgress) setCached(PROGRESS_CACHE_KEY, prevProgress, 600_000);
+          if (prevHome) {
+            setCached(HOME_DATA_CACHE_KEY, prevHome, 900_000);
+            window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: prevHome }));
+          }
           return;
         }
         setSaved(true);

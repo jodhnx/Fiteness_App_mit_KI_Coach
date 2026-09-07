@@ -5,7 +5,8 @@ import { PremiumCard } from "@/components/ui/premium-card";
 import { useLivePhoneSteps } from "@/hooks/use-live-phone-steps";
 
 type Props = {
-  caloriesLeft: number;
+  /** Null when calorie target is missing — never invent "0 kcal übrig". */
+  caloriesLeft: number | null;
   proteinG: number;
   proteinTarget: number;
   steps: number;
@@ -27,8 +28,12 @@ export const HomeDaySummary = memo(function HomeDaySummary({
 }: Props) {
   const steps = useLivePhoneSteps(serverSteps);
   const lines = [
-    `${Math.round(caloriesLeft).toLocaleString("de-DE")} kcal noch übrig`,
-    `Protein ${Math.round(proteinG)}/${Math.round(proteinTarget)} g`,
+    caloriesLeft != null
+      ? `${Math.round(caloriesLeft).toLocaleString("de-DE")} kcal noch übrig`
+      : null,
+    proteinTarget > 0
+      ? `Protein ${Math.round(proteinG)}/${Math.round(proteinTarget)} g`
+      : null,
     `Schritte ${steps.toLocaleString("de-DE")} von ${stepGoal.toLocaleString("de-DE")}`,
     sleepHours != null ? `Schlaf ${sleepHours.toFixed(1)} h` : null,
     streakDays > 0 ? `Streak ${streakDays} Tage` : null,

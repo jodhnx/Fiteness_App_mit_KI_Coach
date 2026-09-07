@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useRouter } from "next/navigation";
-import { WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
+import { WORKOUT_ACTIVE_CACHE_KEY, WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
 import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
 import { getCached } from "@/lib/client-cache";
 import { PageShell } from "@/components/layout/page-shell";
@@ -22,6 +22,7 @@ import {
   History,
   Map,
   Play,
+  Sparkles,
   Trophy,
   Zap,
 } from "lucide-react";
@@ -57,9 +58,20 @@ export default function WorkoutsHubPage() {
   }, []);
 
   useEffect(() => {
-    const clear = () => setActiveCleared(true);
-    window.addEventListener(WORKOUT_ACTIVE_EVENT, clear);
-    return () => window.removeEventListener(WORKOUT_ACTIVE_EVENT, clear);
+    const onActive = () => {
+      const cached = getCached<{ session: { id: string } | null }>(
+        WORKOUT_ACTIVE_CACHE_KEY,
+        { allowStale: true }
+      );
+      const homeCached = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
+        allowStale: true,
+      });
+      if (homeCached) setHome(homeCached);
+      const hasSession = Boolean(cached?.session?.id ?? homeCached?.activeSession?.id);
+      setActiveCleared(!hasSession);
+    };
+    window.addEventListener(WORKOUT_ACTIVE_EVENT, onActive);
+    return () => window.removeEventListener(WORKOUT_ACTIVE_EVENT, onActive);
   }, []);
 
   useEffect(() => {
@@ -129,6 +141,13 @@ export default function WorkoutsHubPage() {
           description="Push/Pull · Ganzkörper · Muskelaufbau"
           icon={BookOpen}
           iconClassName="bg-cyan-500/15 text-cyan-400"
+        />
+        <TrainingChoiceCard
+          href="/workouts/generator"
+          title="KI Plan-Generator"
+          description="Ziel, Tage, Equipment → persönlicher Plan"
+          icon={Sparkles}
+          iconClassName="bg-fuchsia-500/15 text-fuchsia-400"
         />
         <TrainingChoiceCard
           href="/workouts/cardio"

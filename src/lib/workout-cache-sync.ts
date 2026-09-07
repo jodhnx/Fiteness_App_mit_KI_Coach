@@ -25,6 +25,10 @@ export function clearActiveWorkoutCaches(completed?: {
   invalidateCache(CACHE_KEYS.JOURNEY);
   invalidateCache(PROGRESS_CACHE_KEY);
   invalidateCache("gamification-full");
+  invalidateCache("workout-history-sessions");
+  invalidateCache("workouts-records-v2");
+  invalidateCache("workouts-prs");
+  invalidateCache("workouts-my-plans-hub");
 
   if (typeof window === "undefined") return;
 

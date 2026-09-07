@@ -19,7 +19,11 @@ export function loadCachedCoachChat(): CachedCoachChat | null {
       localStorage.removeItem(STORAGE_KEY);
       return null;
     }
-    return parsed;
+    // Drop incomplete streaming placeholders so reload never sticks on "schreibt…"
+    const messages = (parsed.messages ?? []).filter(
+      (m) => m.role !== "assistant" || Boolean(m.content?.trim())
+    );
+    return { ...parsed, messages };
   } catch {
     return null;
   }
@@ -28,7 +32,14 @@ export function loadCachedCoachChat(): CachedCoachChat | null {
 export function saveCachedCoachChat(data: Omit<CachedCoachChat, "updatedAt">) {
   if (typeof window === "undefined") return;
   try {
-    const payload: CachedCoachChat = { ...data, updatedAt: Date.now() };
+    const messages = data.messages.filter(
+      (m) => m.role !== "assistant" || Boolean(m.content?.trim())
+    );
+    const payload: CachedCoachChat = {
+      ...data,
+      messages,
+      updatedAt: Date.now(),
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
     /* quota */

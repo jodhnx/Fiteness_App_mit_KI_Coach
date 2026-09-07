@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Play } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { startWorkoutAndNavigate } from "@/lib/workout-start";
+import { toast } from "sonner";
 
 type CalendarData = {
   completed: { id: string; name: string; completedAt: string; durationSec: number | null }[];
@@ -31,13 +33,13 @@ export default function WorkoutCalendarPage() {
   }, []);
 
   async function start(planId: string, dayId: string, name: string) {
-    const res = await fetch("/api/workouts/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "start", workoutPlanId: planId, workoutDayId: dayId, name }),
+    const result = await startWorkoutAndNavigate(router, {
+      action: "start",
+      workoutPlanId: planId,
+      workoutDayId: dayId,
+      name,
     });
-    const d = await res.json();
-    if (res.ok) router.push(`/workouts/live/${d.session.id}`);
+    if (!result.ok) toast.error(result.error);
   }
 
   return (

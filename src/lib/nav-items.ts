@@ -10,6 +10,7 @@ import {
   FolderOpen,
   Medal,
   Bookmark,
+  Wand2,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -51,6 +52,7 @@ export const MORE_TAB_ROUTES = [
   "/workouts/my-plans",
   "/workouts/records",
   "/workouts/catalog",
+  "/workouts/generator",
   "/workouts/history",
   "/workouts/calendar",
 ] as const;
@@ -78,6 +80,12 @@ export const MORE_HUB_TRAINING: NavItem[] = [
     label: "Meine Pläne",
     icon: FolderOpen,
     description: "Trainingspläne verwalten",
+  },
+  {
+    href: "/workouts/generator",
+    label: "KI Plan-Generator",
+    icon: Wand2,
+    description: "Persönlichen Plan erstellen",
   },
   {
     href: "/workouts/records",

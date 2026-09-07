@@ -375,7 +375,7 @@ export default function CoachPage() {
                 content={m.content}
                 actions={m.actions}
               />
-            ) : (
+            ) : streaming || loading ? (
               <div
                 key={i}
                 className="mr-auto flex items-center gap-2 px-1 text-sm text-zinc-400"
@@ -394,7 +394,7 @@ export default function CoachPage() {
                 </span>
                 Coach schreibt…
               </div>
-            )
+            ) : null
           )}
           {retryPrompt && !busy && (
             <button

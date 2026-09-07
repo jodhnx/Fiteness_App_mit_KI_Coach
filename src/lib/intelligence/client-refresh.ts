@@ -62,8 +62,12 @@ export function patchHomeAfterWorkoutComplete(
     };
   }
 
-  const streak = next.trainingStreak?.currentDays ?? next.streak?.currentDays ?? 0;
-  if (streak >= 0) {
+  // Streak is day-based: only bump when this is the first completed session today.
+  const prevCompletedAt = home.lastCompletedWorkout?.completedAt;
+  const alreadyTrainedToday =
+    prevCompletedAt != null && isSameDay(new Date(prevCompletedAt), completedAt);
+  if (!alreadyTrainedToday) {
+    const streak = next.trainingStreak?.currentDays ?? next.streak?.currentDays ?? 0;
     next.trainingStreak = {
       currentDays: streak + 1,
       longestDays: Math.max(next.trainingStreak?.longestDays ?? 0, streak + 1),

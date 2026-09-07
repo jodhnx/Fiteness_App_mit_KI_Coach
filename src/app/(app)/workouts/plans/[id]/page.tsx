@@ -19,6 +19,7 @@ import type { LibraryExercise } from "@/hooks/use-exercise-library-search";
 import { getCached } from "@/lib/client-cache";
 import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
 import type { HomeDataPayload } from "@/lib/home-defaults";
+import { startWorkoutAndNavigate } from "@/lib/workout-start";
 
 const PlanDaySortableList = dynamic(
   () =>
@@ -406,18 +407,13 @@ export default function PlanEditorPage() {
 
   async function startDay() {
     if (!plan || !activeDay) return;
-    const res = await fetch("/api/workouts/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "start",
-        workoutPlanId: plan.id,
-        workoutDayId: activeDay.id,
-        name: `${plan.name} – ${activeDay.name}`,
-      }),
+    const result = await startWorkoutAndNavigate(router, {
+      action: "start",
+      workoutPlanId: plan.id,
+      workoutDayId: activeDay.id,
+      name: `${plan.name} – ${activeDay.name}`,
     });
-    const data = await res.json();
-    if (res.ok) router.push(`/workouts/live/${data.session.id}`);
+    if (!result.ok) toast.error(result.error);
   }
 
   function handlePickerPick(exercise: LibraryExercise) {

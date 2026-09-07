@@ -536,11 +536,6 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
   async function saveCompletedWorkout(name: string) {
     setEndOpen(false);
     hapticSuccess();
-    clearActiveWorkoutCaches({
-      name,
-      completedAt: new Date().toISOString(),
-    });
-    bumpWorkoutSeq();
 
     try {
       const res = await fetch(`/api/workouts/sessions/${sessionId}`, {
@@ -553,6 +548,11 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         toast.error("Fehler beim Speichern — bitte erneut versuchen");
         return;
       }
+      clearActiveWorkoutCaches({
+        name,
+        completedAt: new Date().toISOString(),
+      });
+      bumpWorkoutSeq();
       if (data.newPRs?.length) {
         toast.success(`${data.newPRs.length} neue Personal Records!`, {
           icon: <Trophy className="h-4 w-4" />,

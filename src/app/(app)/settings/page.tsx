@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { previewTargetsFromForm } from "@/lib/calorie-target";
 import { fetchJson } from "@/lib/fetch-json";
-import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +50,7 @@ import {
 } from "@/lib/profile-labels";
 import { ACTIVITY_LABELS } from "@/lib/profile-calculations";
 import { getCached, setCached } from "@/lib/client-cache";
+import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh";
 
 type CalcPreview = {
   bmi: number;
@@ -374,21 +374,23 @@ function SettingsPageInner() {
             fatG: Math.max(0, targets.fatG - prevDash.consumed.fatG),
           },
         });
-        const updatedDash = getCached<NutritionDashboardPayload>(
-          NUTRITION_DASHBOARD_CACHE_KEY
-        );
-        if (prevHome) {
-          const nextHome: HomeDataPayload = {
-            ...prevHome,
-            ...(updatedDash ? nutritionDashboardToHomeMacros(updatedDash) : {}),
-            userName: data.user?.name ?? prevHome.userName ?? null,
+        // publishNutritionDashboard already refreshed home intelligence —
+        // only patch identity fields on top of the refreshed cache.
+        const refreshedHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
+          allowStale: true,
+        });
+        if (refreshedHome || prevHome) {
+          const base = refreshedHome ?? prevHome!;
+          const nextHome = commitHomeIntelligenceRefresh({
+            ...base,
+            userName: data.user?.name ?? base.userName ?? null,
             userImage:
-              data.user?.image !== undefined ? data.user.image : prevHome.userImage,
+              data.user?.image !== undefined ? data.user.image : base.userImage,
             weightKg:
               typeof data.profile?.weightKg === "number"
                 ? Number(data.profile.weightKg)
-                : prevHome.weightKg,
-          };
+                : base.weightKg,
+          });
           setCached(HOME_DATA_CACHE_KEY, nextHome, 900_000);
           window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: nextHome }));
         }

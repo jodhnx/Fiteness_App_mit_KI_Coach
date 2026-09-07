@@ -200,7 +200,10 @@ function GeraetePageInner() {
   }, [searchParams]);
 
   const activeConnections = useMemo(
-    () => connections.filter((c) => c.isActive),
+    () =>
+      connections.filter(
+        (c) => c.isActive && c.syncStatus === "connected"
+      ),
     [connections]
   );
   const hasWearable = activeConnections.length > 0;

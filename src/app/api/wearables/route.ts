@@ -47,20 +47,26 @@ export async function GET() {
         const meta = parseMeta(c.metadata);
         const providerMeta = HEALTH_PROVIDERS.find((p) => p.id === c.provider);
         let syncStatus: string = "connected";
-        if (!c.isActive) {
+        if (meta.status === "oauth_pending") {
+          syncStatus = "oauth_pending";
+        } else if (!c.isActive) {
           syncStatus =
             meta.status === "native_bridge_pending" || meta.requiresCompanion
               ? "pending_companion"
               : "disconnected";
         } else if (c.lastSyncError) syncStatus = "error";
-        else if (meta.status === "oauth_pending") syncStatus = "oauth_pending";
         else if (meta.status === "native_bridge" || meta.status === "native_bridge_pending")
           syncStatus = meta.lastIngestAt ? "connected" : "pending_companion";
+
+        const fullyConnected =
+          Boolean(c.isActive) &&
+          syncStatus === "connected" &&
+          Boolean(c.accessToken || meta.lastIngestAt);
 
         return {
           id: c.id,
           provider: c.provider,
-          isActive: c.isActive,
+          isActive: fullyConnected,
           lastSyncAt: c.lastSyncAt?.toISOString() ?? null,
           lastSyncError: c.lastSyncError ?? null,
           connectedAt:
@@ -114,6 +120,7 @@ export async function POST(req: NextRequest) {
 
     const connectedAt = new Date().toISOString();
     const isNative = !oauthUrl;
+    // Never mark as fully connected until OAuth tokens exist (callback) or native ingest.
     const connection = await prisma.wearableConnection.upsert({
       where: {
         userId_provider: {
@@ -124,8 +131,7 @@ export async function POST(req: NextRequest) {
       create: {
         userId: session.user.id,
         provider,
-        // Native: pending until first /api/health/ingest — don't pretend fully synced
-        isActive: isNative ? false : true,
+        isActive: false,
         metadata: JSON.stringify({
           status: oauthUrl ? "oauth_pending" : "native_bridge_pending",
           connectedAt,
@@ -135,7 +141,7 @@ export async function POST(req: NextRequest) {
         }),
       },
       update: {
-        isActive: isNative ? false : true,
+        isActive: false,
         lastSyncError: isNative
           ? "Companion-App erforderlich für HealthKit / Health Connect Sync"
           : null,

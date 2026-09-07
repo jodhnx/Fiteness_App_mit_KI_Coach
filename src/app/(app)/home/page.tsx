@@ -320,7 +320,7 @@ export default function HomePage() {
           ),
           daySummary: (
             <HomeDaySummary
-              caloriesLeft={ready ? nutrition.remaining.calories : 0}
+              caloriesLeft={ready ? nutrition.remaining.calories : null}
               proteinG={nutrition.consumed.proteinG}
               proteinTarget={nutrition.targets.proteinG}
               steps={serverSteps}

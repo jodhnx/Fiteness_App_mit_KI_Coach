@@ -8,7 +8,11 @@ import {
   resolveNutritionDisplayState,
   computeNutritionRemaining,
 } from "../src/lib/nutrition-display";
-import { createEmptyNutritionDashboard } from "../src/lib/nutrition-defaults";
+import {
+  createEmptyNutritionDashboard,
+  normalizeNutritionDashboard,
+} from "../src/lib/nutrition-defaults";
+import { rolloverNutritionDashboardToToday } from "../src/lib/nutrition-day-rollover";
 import { optimisticRemoveMeal } from "../src/lib/nutrition-sync";
 
 let passed = 0;
@@ -114,6 +118,27 @@ console.log("Nutrition Display Tests\n");
   assert("delete meal reduces consumed", next != null && next.consumed.calories === 1600);
   assert("delete meal increases remaining", next != null && next.remaining.calories === 1400);
   assert("delete meal reduces protein", next != null && next.consumed.proteinG === 140);
+}
+
+// 9. Day rollover / normalize must recompute remaining (not keep shell 0)
+{
+  const prev = createEmptyNutritionDashboard();
+  prev.targets.calories = 3000;
+  prev.targets.proteinG = 150;
+  prev.consumed.calories = 1760;
+  prev.remaining.calories = 0;
+  const rolled = rolloverNutritionDashboardToToday(prev);
+  assert("rollover resets consumed", rolled.consumed.calories === 0);
+  assert("rollover keeps target", rolled.targets.calories === 3000);
+  assert("rollover remaining = full target", rolled.remaining.calories === 3000);
+
+  const normalized = normalizeNutritionDashboard({
+    ...prev,
+    targets: { ...prev.targets, calories: 3000 },
+    consumed: { ...prev.consumed, calories: 0 },
+    remaining: { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+  });
+  assert("normalize recomputes remaining from 0 consumed", normalized.remaining.calories === 3000);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

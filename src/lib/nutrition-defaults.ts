@@ -148,11 +148,19 @@ export function normalizeNutritionDashboard(
     fiberG: Number(data.consumed?.fiberG) || 0,
   };
 
+  // Always recompute remaining. Trusting stale remaining=0 after day
+  // rollover incorrectly shows "0 kcal übrig" when nothing was eaten yet.
+  // Formula must match computeNutritionRemaining() in nutrition-display.ts.
+  const exerciseBurned = {
+    calories: Number(data.exerciseBurned?.calories) || 0,
+    estimated: Boolean(data.exerciseBurned?.estimated),
+  };
+  const burned = exerciseBurned.calories;
   const remaining = {
-    calories: Number(data.remaining?.calories ?? targets.calories - consumed.calories) || 0,
-    proteinG: Number(data.remaining?.proteinG ?? targets.proteinG - consumed.proteinG) || 0,
-    carbsG: Number(data.remaining?.carbsG ?? targets.carbsG - consumed.carbsG) || 0,
-    fatG: Number(data.remaining?.fatG ?? targets.fatG - consumed.fatG) || 0,
+    calories: Math.max(0, targets.calories - consumed.calories + burned),
+    proteinG: Math.max(0, targets.proteinG - consumed.proteinG),
+    carbsG: Math.max(0, targets.carbsG - consumed.carbsG),
+    fatG: Math.max(0, targets.fatG - consumed.fatG),
   };
 
   const water = {
@@ -187,6 +195,7 @@ export function normalizeNutritionDashboard(
     targets,
     consumed,
     remaining,
+    exerciseBurned,
     water,
     mealsByType,
     favorites: Array.isArray(data.favorites) ? data.favorites : [],

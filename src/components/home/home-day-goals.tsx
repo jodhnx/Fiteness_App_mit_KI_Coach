@@ -46,16 +46,33 @@ export const HomeDayGoals = memo(function HomeDayGoals({
       : null;
 
   const goals: Goal[] = [
-    {
-      id: "kcal",
-      label: "Kalorien",
-      current: cal?.isOver ? cal.overBy : cal?.remaining ?? 0,
-      target: cal?.isOver ? 0 : cal?.remaining ?? calorieTarget,
-      unit: cal?.isOver ? "kcal über" : "kcal übrig",
-      color: cal?.isOver ? "bg-red-400" : "bg-accent",
-      Icon: Flame,
-      detail: cal?.secondaryLine,
-    },
+    ...(cal
+      ? [
+          {
+            id: "kcal",
+            label: "Kalorien",
+            current: cal.isOver ? cal.overBy : cal.remaining,
+            target: cal.isOver ? 0 : cal.remaining,
+            unit: cal.isOver ? "kcal über" : "kcal übrig",
+            color: cal.isOver ? "bg-red-400" : "bg-accent",
+            Icon: Flame,
+            detail: cal.secondaryLine,
+          } satisfies Goal,
+        ]
+      : calorieTarget <= 0
+        ? [
+            {
+              id: "kcal",
+              label: "Kalorien",
+              current: 0,
+              target: 0,
+              unit: "",
+              color: "bg-zinc-600",
+              Icon: Flame,
+              detail: "Kalorienziel festlegen",
+            } satisfies Goal,
+          ]
+        : []),
     {
       id: "steps",
       label: "Schritte",
@@ -108,9 +125,11 @@ export const HomeDayGoals = memo(function HomeDayGoals({
                     ? trainingDone
                       ? "Erledigt"
                       : "Offen"
-                    : id === "kcal" && cal
-                      ? `${cal.primaryValue.toLocaleString("de-DE")} ${cal.isOver ? "über Ziel" : "übrig"}`
-                      : `${Math.round(current).toLocaleString("de-DE")}${unit ? ` ${unit}` : ""} / ${Math.round(target).toLocaleString("de-DE")}${unit && id !== "kcal" ? ` ${unit}` : ""}`}
+                    : id === "kcal" && !cal
+                      ? "Ziel fehlt"
+                      : id === "kcal" && cal
+                        ? `${cal.primaryValue.toLocaleString("de-DE")} ${cal.isOver ? "über Ziel" : "übrig"}`
+                        : `${Math.round(current).toLocaleString("de-DE")}${unit ? ` ${unit}` : ""} / ${Math.round(target).toLocaleString("de-DE")}${unit && id !== "kcal" ? ` ${unit}` : ""}`}
                 </span>
               </div>
               {detail && id === "kcal" && (
