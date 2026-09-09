@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -32,25 +32,32 @@ function LoginForm() {
   const params = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+  const urlErrorHandled = useRef(false);
 
   useEffect(() => {
     router.prefetch(DEFAULT_POST_LOGIN);
   }, [router]);
 
+  // Show URL error once, then strip query so the red box is not sticky forever.
   useEffect(() => {
+    if (urlErrorHandled.current) return;
     const err = params.get("error");
-    if (err) {
-      const msg = getLoginErrorMessage(err === "CredentialsSignin" ? "invalid_credentials" : err);
-      setLastError(msg);
-      toast.error(msg);
-    }
-  }, [params]);
+    const code = params.get("code");
+    if (!err && !code) return;
+    urlErrorHandled.current = true;
+    const errCode = resolveErrorCode(err, code);
+    const msg = getLoginErrorMessage(errCode);
+    setLastError(msg);
+    toast.error(msg);
+    router.replace("/login", { scroll: false });
+  }, [params, router]);
 
   useEffect(() => {
     if (params.get("verified") === "1") {
       toast.success("E-Mail bestätigt. Du kannst dich jetzt anmelden.");
+      router.replace("/login", { scroll: false });
     }
-  }, [params]);
+  }, [params, router]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -62,6 +69,8 @@ function LoginForm() {
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
 
     try {
+      // Prevent previous account caches from flashing after login
+      clearAllUserClientState();
       const res = await signInCredentials(email, password, DEFAULT_POST_LOGIN);
       if (res.ok) {
         warmPostLoginCaches();
@@ -73,9 +82,6 @@ function LoginForm() {
       const message = getLoginErrorMessage(errCode);
       setLastError(message);
       toast.error(message);
-      if (errCode === "email_not_verified") {
-        toast.error("Bitte E-Mail bestätigen oder Support kontaktieren.");
-      }
     } catch {
       toast.error("Anmeldung fehlgeschlagen");
     } finally {
@@ -100,18 +106,37 @@ function LoginForm() {
       }
     >
       {lastError && (
-        <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mb-4">
+        <p
+          className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mb-4"
+          role="alert"
+        >
           {lastError}
         </p>
       )}
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <Label htmlFor="email">E-Mail</Label>
-          <Input id="email" name="email" type="email" required disabled={loading} className="mt-1.5 h-12 rounded-xl keyboard-stable-input" />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            disabled={loading}
+            className="mt-1.5 h-12 rounded-xl keyboard-stable-input"
+          />
         </div>
         <div>
           <Label htmlFor="password">Passwort</Label>
-          <Input id="password" name="password" type="password" required disabled={loading} className="mt-1.5 h-12 rounded-xl keyboard-stable-input" />
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            disabled={loading}
+            className="mt-1.5 h-12 rounded-xl keyboard-stable-input"
+          />
         </div>
         <Button type="submit" className="w-full h-14 rounded-2xl btn-accent" disabled={loading}>
           {loading ? "Wird angemeldet…" : "Anmelden"}

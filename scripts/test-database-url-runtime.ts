@@ -1,8 +1,8 @@
 /**
- * Assert runtime DB validation does not require DIRECT_URL.
+ * Assert runtime DB validation does not require DIRECT_URL
+ * and ignores invalid DIRECT_URL when DATABASE_URL is valid.
  * Run: npx tsx scripts/test-database-url-runtime.ts
  */
-import assert from "node:assert/strict";
 import {
   validateSupabaseDatabaseEnv,
   isDatabaseConfigError,
@@ -55,11 +55,14 @@ withEnv({ DATABASE_URL: sampleDb, DIRECT_URL: sampleDirect }, () => {
 withEnv(
   {
     DATABASE_URL: sampleDb,
-    DIRECT_URL: sampleDb, // wrong: 6543 forbidden for DIRECT
+    DIRECT_URL: sampleDb, // wrong: 6543 on DIRECT — must NOT block runtime
   },
   () => {
     const v = validateSupabaseDatabaseEnv();
-    check("invalid DIRECT_URL still fails when set", v.ok === false);
+    check("invalid DIRECT_URL ignored for runtime", v.ok === true);
+    if (v.ok) {
+      check("falls back to DATABASE_URL as direct", v.directUrl === sampleDb);
+    }
   }
 );
 
@@ -69,8 +72,13 @@ withEnv({ DATABASE_URL: undefined, DIRECT_URL: sampleDirect }, () => {
 });
 
 check(
-  "isDatabaseConfigError detects DATABASE_URL message",
+  "isDatabaseConfigError detects DATABASE_URL fehlt",
   isDatabaseConfigError(new Error("DATABASE_URL fehlt in .env"))
+);
+
+check(
+  "isDatabaseConfigError ignores generic connection string noise",
+  !isDatabaseConfigError(new Error("Invalid connection string from driver"))
 );
 
 console.log(`\n${passed} checks passed`);

@@ -41,7 +41,7 @@ Wenn der Pooler meldet `tenant/user postgres.… not found`, existiert das Proje
 | Variable | Pflicht | Beschreibung |
 |----------|---------|--------------|
 | `DATABASE_URL` | Ja | Transaction pooler **6543** + `pgbouncer=true` — **Runtime / Login** |
-| `DIRECT_URL` | Empfohlen | Session/Direct **5432** — nur Prisma CLI (`migrate`/`studio`). **Login braucht DIRECT_URL nicht.** |
+| `DIRECT_URL` | Empfohlen | Session/Direct **5432** — nur Prisma CLI. Ungültiges `DIRECT_URL` blockiert Login **nicht** mehr. |
 | `AUTH_SECRET` | Ja | Min. 32 Zeichen |
 | `NEXTAUTH_SECRET` | Ja | Gleich wie `AUTH_SECRET` oder eigener Wert |
 | `NEXTAUTH_URL` / `AUTH_URL` | Empfohlen | Feste Produktions-Domain |

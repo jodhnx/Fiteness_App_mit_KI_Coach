@@ -167,42 +167,50 @@ function validateSingleUrl(
 
 export function validateSupabaseDatabaseEnv(): DatabaseEnvValidation {
   const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
-  const directUrl = process.env.DIRECT_URL?.trim() ?? "";
+  const directUrlRaw = process.env.DIRECT_URL?.trim() ?? "";
 
   if (allowLocalDatabase() && isLocalDatabaseUrl(databaseUrl)) {
     const parsed = parseDatabaseUrl(databaseUrl);
     return {
       ok: true,
       databaseUrl,
-      directUrl: directUrl || databaseUrl,
+      directUrl: directUrlRaw || databaseUrl,
       databaseUrlMasked: maskDatabaseUrl(databaseUrl),
-      directUrlMasked: maskDatabaseUrl(directUrl || databaseUrl),
+      directUrlMasked: maskDatabaseUrl(directUrlRaw || databaseUrl),
       host: parsed.host,
       user: parsed.user,
       port: parsed.port,
     };
   }
 
-  // Runtime only needs the pooled DATABASE_URL.
-  // DIRECT_URL is CLI-only (prisma migrate/studio) — optional here so a missing
-  // DIRECT_URL on Vercel cannot break login/register with a fake "wrong password".
-  const issues: string[] = [
-    ...validateSingleUrl("DATABASE_URL", databaseUrl, {
-      requirePgbouncer: true,
-      requiredPort: "6543",
-    }),
-  ];
-
-  if (directUrl) {
-    issues.push(
-      ...validateSingleUrl("DIRECT_URL", directUrl, {
-        forbiddenPort: "6543",
-      })
-    );
-  }
+  // Runtime MUST succeed based on DATABASE_URL alone.
+  // Invalid/missing DIRECT_URL must never block login/register (CLI-only).
+  const issues = validateSingleUrl("DATABASE_URL", databaseUrl, {
+    requirePgbouncer: true,
+    requiredPort: "6543",
+  });
 
   if (issues.length > 0) {
     return { ok: false, issues };
+  }
+
+  let directUrl = directUrlRaw;
+  if (directUrlRaw) {
+    const directIssues = validateSingleUrl("DIRECT_URL", directUrlRaw, {
+      forbiddenPort: "6543",
+    });
+    if (directIssues.length > 0) {
+      // Ignore bad DIRECT_URL for app runtime — keep pooled DATABASE_URL.
+      if (process.env.NODE_ENV !== "production" || process.env.DEBUG_DB === "1") {
+        console.warn(
+          "[db] DIRECT_URL invalid — ignored for runtime:",
+          directIssues.join("; ")
+        );
+      }
+      directUrl = databaseUrl;
+    }
+  } else {
+    directUrl = databaseUrl;
   }
 
   const parsed = parseDatabaseUrl(databaseUrl);
@@ -210,9 +218,9 @@ export function validateSupabaseDatabaseEnv(): DatabaseEnvValidation {
   return {
     ok: true,
     databaseUrl,
-    directUrl: directUrl || databaseUrl,
+    directUrl,
     databaseUrlMasked: maskDatabaseUrl(databaseUrl),
-    directUrlMasked: maskDatabaseUrl(directUrl || databaseUrl),
+    directUrlMasked: maskDatabaseUrl(directUrl),
     host: parsed.host,
     user: parsed.user,
     port: parsed.port,
@@ -228,17 +236,20 @@ export function getRuntimeDatabaseUrl(): string {
   return validation.databaseUrl;
 }
 
-/** True when Error came from our env/URL validation (not a wrong password). */
+/**
+ * True when Error came from our env/URL validation helpers.
+ * Keep narrow — do not treat arbitrary Prisma/pg messages as config errors.
+ */
 export function isDatabaseConfigError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);
   return (
-    /DATABASE_URL/i.test(msg) ||
-    /DIRECT_URL/i.test(msg) ||
-    /Connection string/i.test(msg) ||
-    /Ungültige Connection/i.test(msg) ||
-    /kein Supabase-Host/i.test(msg) ||
+    /^DATABASE_URL\b/m.test(msg) ||
+    /DATABASE_URL fehlt/i.test(msg) ||
+    /DATABASE_URL enthält noch Platzhalter/i.test(msg) ||
+    /DATABASE_URL: /i.test(msg) ||
+    /DATABASE_URL zeigt auf localhost/i.test(msg) ||
     /pgbouncer=true fehlt/i.test(msg) ||
-    /Port muss/i.test(msg)
+    (/Port muss 6543 sein/i.test(msg) && /DATABASE_URL/i.test(msg))
   );
 }
 

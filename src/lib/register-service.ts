@@ -8,7 +8,6 @@ import {
 } from "@/lib/prisma-errors";
 import { formatApiErrorMessage } from "@/lib/format-api-error";
 import {
-  validateSupabaseDatabaseEnv,
   explainSupabasePoolerError,
   flattenErrorMessage,
 } from "@/lib/database-url";
@@ -35,17 +34,11 @@ function mapPrismaError(error: unknown): RegisterResult | null {
   if (isDatabaseConnectionError(error)) {
     const flat = flattenErrorMessage(error);
     const poolerHint = explainSupabasePoolerError(flat);
-    if (poolerHint) {
-      return { ok: false, status: 503, error: poolerHint };
-    }
-    const env = validateSupabaseDatabaseEnv();
-    const detail = env.ok
-      ? "Supabase-Host nicht erreichbar — Passwort oder Projekt-Status prüfen."
-      : env.issues.join(" ");
+    console.error("[register] db connection", poolerHint ?? flat);
     return {
       ok: false,
       status: 503,
-      error: `Datenbank nicht erreichbar: ${detail}`,
+      error: "Registrierung vorübergehend nicht möglich. Bitte später erneut versuchen.",
     };
   }
 
@@ -58,10 +51,11 @@ function mapPrismaError(error: unknown): RegisterResult | null {
   }
 
   if (error instanceof Prisma.PrismaClientInitializationError) {
+    console.error("[register] prisma init", error.message);
     return {
       ok: false,
       status: 503,
-      error: "Datenbank nicht initialisiert. Führe aus: npm run db:setup",
+      error: "Registrierung vorübergehend nicht möglich. Bitte später erneut versuchen.",
     };
   }
 

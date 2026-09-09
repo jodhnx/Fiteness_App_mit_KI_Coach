@@ -3,23 +3,10 @@ import dns from "node:dns/promises";
 import {
   validateSupabaseDatabaseEnv,
   parseDatabaseUrl,
-  maskDatabaseUrl,
   explainSupabasePoolerError,
   flattenErrorMessage,
 } from "../src/lib/database-url";
-import { prisma } from "../src/lib/prisma";
-
-async function checkProjectDns(user: string): Promise<string | null> {
-  const ref = user.replace(/^postgres\./, "");
-  if (!/^[a-z0-9]+$/.test(ref)) return null;
-  const host = `db.${ref}.supabase.co`;
-  try {
-    await dns.lookup(host);
-    return null;
-  } catch {
-    return `DNS: ${host} existiert nicht — Supabase-Projekt „${ref}" ist gelöscht, pausiert oder die Referenz in .env ist falsch.`;
-  }
-}
+import { prisma, pingDatabase } from "../src/lib/prisma";
 
 async function main() {
   console.log("=== Datenbank-Diagnose ===\n");
@@ -37,15 +24,22 @@ async function main() {
   console.log("User:", validation.user);
   console.log("Port:", validation.port);
 
-  const dnsIssue = await checkProjectDns(validation.user);
-  if (dnsIssue) {
-    console.error("\n✗", dnsIssue);
-    console.error(
-      "\n-> Supabase Dashboard: neues Projekt oder korrekte URLs aus Connect -> Prisma kopieren."
-    );
+  // Check the host we actually connect to (pooler), not db.<ref>.supabase.co
+  try {
+    const parsed = parseDatabaseUrl(validation.databaseUrl);
+    await dns.lookup(parsed.host);
+    console.log("\n✓ DNS für Pooler-Host OK:", parsed.host);
+  } catch (e) {
+    console.error("\n✗ Pooler-DNS fehlgeschlagen:", e instanceof Error ? e.message : e);
     process.exit(1);
   }
-  console.log("\n✓ DNS für Supabase-Projekt OK");
+
+  const ping = await pingDatabase();
+  if (!ping) {
+    console.error("\n✗ pingDatabase fehlgeschlagen");
+    process.exit(1);
+  }
+  console.log("✓ pingDatabase OK");
 
   try {
     const count = await prisma.user.count();

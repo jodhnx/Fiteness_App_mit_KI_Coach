@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool, type PoolConfig } from "pg";
-import { validateSupabaseDatabaseEnv, maskDatabaseUrl } from "@/lib/database-url";
+import { maskDatabaseUrl, getRuntimeDatabaseUrl } from "@/lib/database-url";
 import { isDatabaseConnectionError } from "@/lib/prisma-errors";
 import {
   logDatabaseConnected,
@@ -19,11 +19,7 @@ let pool: Pool | undefined = globalForPrisma.pool;
 let client: PrismaClient | undefined = globalForPrisma.prisma;
 
 function getConnectionString(): string {
-  const validation = validateSupabaseDatabaseEnv();
-  if (!validation.ok) {
-    throw new Error(validation.issues.join(" "));
-  }
-  return validation.databaseUrl;
+  return getRuntimeDatabaseUrl();
 }
 
 function poolConfig(connectionString: string): PoolConfig {

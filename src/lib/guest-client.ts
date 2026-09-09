@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import type { OnboardingDraft } from "@/lib/onboarding-draft";
 import { storageSetJson, storageRemove } from "@/lib/storage-service";
 import { warmTrainingCaches } from "@/lib/cache-manager";
+import { clearAllUserClientState } from "@/lib/clear-user-client-state";
 
 export const GUEST_CREDS_KEY = "guest-credentials";
 
@@ -17,8 +18,15 @@ export async function startGuestSession(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    return { ok: false, error: data.error ?? "Gastmodus fehlgeschlagen" };
+    const msg =
+      typeof data.error === "string" && data.error.trim()
+        ? data.error
+        : "Gastmodus fehlgeschlagen";
+    return { ok: false, error: msg };
   }
+
+  // Wipe previous account caches before switching into guest session
+  clearAllUserClientState();
 
   storageSetJson(GUEST_CREDS_KEY, { email: data.email, password: data.password });
 
@@ -29,7 +37,7 @@ export async function startGuestSession(
   });
 
   if (login?.error) {
-    return { ok: false, error: "Anmeldung fehlgeschlagen" };
+    return { ok: false, error: "Gast-Anmeldung fehlgeschlagen. Bitte erneut versuchen." };
   }
 
   warmTrainingCaches(true);
