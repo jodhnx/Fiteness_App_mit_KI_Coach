@@ -1,3 +1,5 @@
+import { getSafeDbConnectionMeta } from "@/lib/database-url";
+
 /** Structured auth logs — only when DEBUG_AUTH=1 (client + verbose dev) */
 export const AuthLog = {
   LOGIN_ATTEMPT: "LOGIN ATTEMPT",
@@ -42,11 +44,17 @@ export function logAuthEnvOnce() {
       process.env.AUTH_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim()
     ),
     hasDatabaseUrl: Boolean(process.env.DATABASE_URL?.trim()),
+    hasDirectUrl: Boolean(process.env.DIRECT_URL?.trim()),
+    hasSupabaseUrl: Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
+        process.env.SUPABASE_URL?.trim()
+    ),
     authUrl: process.env.AUTH_URL?.trim() || null,
     nextAuthUrl: process.env.NEXTAUTH_URL?.trim() || null,
     vercelProductionHost: process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || null,
     vercelUrl: process.env.VERCEL_URL?.trim() || null,
     trustHost: true,
+    db: getSafeDbConnectionMeta(),
   });
 }
 

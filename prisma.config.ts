@@ -5,8 +5,8 @@
  * Fall back to DATABASE_URL so `prisma generate` still works when only
  * the runtime pooler URL is present (generate does not open a connection).
  *
- * Runtime Prisma Client uses DATABASE_URL via @prisma/adapter-pg
- * (see src/lib/prisma.ts) — not this file.
+ * Runtime Prisma Client uses getRuntimeDatabaseUrl() via @prisma/adapter-pg
+ * (prefer DIRECT_URL :5432 / rewrite Transaction → Session; see src/lib/prisma.ts).
  */
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";

@@ -1,6 +1,11 @@
 /**
  * Validates and normalizes Supabase PostgreSQL connection strings.
- * Ensures postgres.<project-ref> is the USER, never the HOST.
+ * Ensures postgres.<project-ref> is the USER on pooler hosts, never the HOST.
+ *
+ * Prisma 7 + @prisma/adapter-pg:
+ * - Runtime MUST use Session pooler (:5432) or Direct (:5432).
+ * - Transaction pooler (:6543) breaks prepared statements because
+ *   `pgbouncer=true` is ignored by the Node pg driver adapter.
  */
 
 export type ParsedDatabaseUrl = {
@@ -18,13 +23,29 @@ export type DatabaseEnvValidation =
       ok: true;
       databaseUrl: string;
       directUrl: string;
+      runtimeUrl: string;
       databaseUrlMasked: string;
       directUrlMasked: string;
+      runtimeUrlMasked: string;
       host: string;
       user: string;
       port: string;
+      runtimePort: string;
+      poolingMode: "session" | "transaction" | "direct" | "local";
     }
   | { ok: false; issues: string[] };
+
+export type SafeDbConnectionMeta = {
+  hasDatabaseUrl: boolean;
+  hasDirectUrl: boolean;
+  databaseHost: string | null;
+  databasePort: string | null;
+  runtimeHost: string | null;
+  runtimePort: string | null;
+  poolingMode: string | null;
+  poolingEnabled: boolean;
+  environment: string | null;
+};
 
 const PLACEHOLDER_TOKENS = [
   "YOUR-PASSWORD",
@@ -97,10 +118,26 @@ function isValidSupabaseHost(host: string): boolean {
   );
 }
 
+function isDirectDbHost(host: string): boolean {
+  return /^db\.[a-z0-9]+\.supabase\.co$/i.test(host);
+}
+
+function isPoolerHost(host: string): boolean {
+  return /\.pooler\.supabase\.com$/i.test(host);
+}
+
+type UrlKind = "database" | "direct" | "runtime";
+
 function validateSingleUrl(
   name: string,
   raw: string | undefined,
-  options: { requirePgbouncer?: boolean; forbiddenPort?: string; requiredPort?: string }
+  options: {
+    kind: UrlKind;
+    requirePgbouncer?: boolean;
+    forbiddenPort?: string;
+    requiredPort?: string;
+    allowedPorts?: string[];
+  }
 ): string[] {
   const issues: string[] = [];
   if (!raw?.trim()) {
@@ -117,6 +154,18 @@ function validateSingleUrl(
 
   if (PLACEHOLDER_TOKENS.some((t) => v.includes(t))) {
     issues.push(`${name} enthält noch Platzhalter — echtes Datenbank-Passwort eintragen`);
+  }
+
+  // Unencoded `#` in userinfo truncates the URI (fragment) — password must use %23
+  const schemeSep = v.indexOf("://");
+  const userinfoEnd = v.indexOf("@", schemeSep + 3);
+  if (userinfoEnd > 0) {
+    const userinfo = v.slice(schemeSep + 3, userinfoEnd);
+    if (userinfo.includes("#")) {
+      issues.push(
+        `${name}: Passwort enthält unkodiertes „#" — in der URL als %23 encoden, sonst bricht die Connection-URL ab`
+      );
+    }
   }
 
   let parsed: ParsedDatabaseUrl;
@@ -140,14 +189,29 @@ function validateSingleUrl(
     );
   }
 
-  if (!parsed.user.startsWith("postgres.")) {
-    issues.push(
-      `${name}: Benutzer „${parsed.user}" — bei Supabase Pooler sollte der User postgres.PROJECT_REF sein`
-    );
+  // Pooler → postgres.<project-ref>; Direct db.* → postgres
+  if (isPoolerHost(parsed.host)) {
+    if (!parsed.user.startsWith("postgres.")) {
+      issues.push(
+        `${name}: Benutzer „${parsed.user}" — bei Supabase Pooler sollte der User postgres.PROJECT_REF sein`
+      );
+    }
+  } else if (isDirectDbHost(parsed.host)) {
+    if (parsed.user !== "postgres" && !parsed.user.startsWith("postgres.")) {
+      issues.push(
+        `${name}: Benutzer „${parsed.user}" — Direct Connection erwartet User „postgres"`
+      );
+    }
   }
 
   if (!parsed.password) {
     issues.push(`${name}: Passwort fehlt in der Connection URL`);
+  }
+
+  if (options.allowedPorts && !options.allowedPorts.includes(parsed.port)) {
+    issues.push(
+      `${name}: Port muss ${options.allowedPorts.join(" oder ")} sein (aktuell: ${parsed.port})`
+    );
   }
 
   if (options.requiredPort && parsed.port !== options.requiredPort) {
@@ -158,11 +222,69 @@ function validateSingleUrl(
     issues.push(`${name}: Port ${options.forbiddenPort} ist hier nicht erlaubt`);
   }
 
-  if (options.requirePgbouncer && !/[?&]pgbouncer=true/i.test(v)) {
-    issues.push(`${name}: ?pgbouncer=true fehlt (erforderlich für Transaction Pooler Port 6543)`);
+  if (options.requirePgbouncer && parsed.port === "6543" && !/[?&]pgbouncer=true/i.test(v)) {
+    issues.push(`${name}: ?pgbouncer=true fehlt (Transaction Pooler Port 6543)`);
   }
 
   return issues;
+}
+
+type PoolingMode = "session" | "transaction" | "direct" | "local";
+
+function detectPoolingMode(parsed: ParsedDatabaseUrl): PoolingMode {
+  if (isLocalDatabaseUrl(parsed.raw)) return "local";
+  if (isDirectDbHost(parsed.host)) return "direct";
+  if (parsed.port === "6543") return "transaction";
+  return "session";
+}
+
+/** Rewrite pooler Transaction :6543 → Session :5432 (same host/credentials). */
+export function rewriteTransactionPoolerToSession(raw: string): string | null {
+  try {
+    const parsed = parseDatabaseUrl(raw);
+    if (parsed.port !== "6543" || !isPoolerHost(parsed.host)) return null;
+    const url = new URL(raw.trim().replace(/^postgresql:/i, "postgres:"));
+    url.port = "5432";
+    // pgbouncer=true is a Prisma-engine flag; harmless but useless for PrismaPg
+    url.searchParams.delete("pgbouncer");
+    return url.toString().replace(/^postgres:/, "postgresql:");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pick the URL PrismaPg should use at runtime.
+ * Prefer Session (:5432) / Direct (:5432) — Transaction (:6543) breaks prepared statements
+ * with the Node pg driver adapter (`pgbouncer=true` has no effect there).
+ *
+ * If only a Transaction URL exists, rewrite pooler host to Session :5432.
+ */
+export function resolvePrismaRuntimeUrl(
+  databaseUrl: string,
+  directUrl: string
+): { url: string; mode: PoolingMode } {
+  const candidates = [directUrl, databaseUrl].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      const parsed = parseDatabaseUrl(candidate);
+      if (parsed.port === "5432" || isDirectDbHost(parsed.host)) {
+        return { url: candidate, mode: detectPoolingMode(parsed) };
+      }
+    } catch {
+      /* try next */
+    }
+  }
+
+  for (const candidate of candidates) {
+    const rewritten = rewriteTransactionPoolerToSession(candidate);
+    if (rewritten) {
+      return { url: rewritten, mode: "session" };
+    }
+  }
+
+  const parsed = parseDatabaseUrl(databaseUrl);
+  return { url: databaseUrl, mode: detectPoolingMode(parsed) };
 }
 
 export function validateSupabaseDatabaseEnv(): DatabaseEnvValidation {
@@ -171,23 +293,28 @@ export function validateSupabaseDatabaseEnv(): DatabaseEnvValidation {
 
   if (allowLocalDatabase() && isLocalDatabaseUrl(databaseUrl)) {
     const parsed = parseDatabaseUrl(databaseUrl);
+    const runtime = resolvePrismaRuntimeUrl(databaseUrl, directUrlRaw || databaseUrl);
     return {
       ok: true,
       databaseUrl,
       directUrl: directUrlRaw || databaseUrl,
+      runtimeUrl: runtime.url,
       databaseUrlMasked: maskDatabaseUrl(databaseUrl),
       directUrlMasked: maskDatabaseUrl(directUrlRaw || databaseUrl),
+      runtimeUrlMasked: maskDatabaseUrl(runtime.url),
       host: parsed.host,
       user: parsed.user,
       port: parsed.port,
+      runtimePort: parseDatabaseUrl(runtime.url).port,
+      poolingMode: runtime.mode,
     };
   }
 
-  // Runtime MUST succeed based on DATABASE_URL alone.
-  // Invalid/missing DIRECT_URL must never block login/register (CLI-only).
+  // DATABASE_URL: accept Transaction (6543) or Session (5432) pooler
   const issues = validateSingleUrl("DATABASE_URL", databaseUrl, {
-    requirePgbouncer: true,
-    requiredPort: "6543",
+    kind: "database",
+    allowedPorts: ["6543", "5432"],
+    requirePgbouncer: true, // only enforced when port is 6543
   });
 
   if (issues.length > 0) {
@@ -197,10 +324,11 @@ export function validateSupabaseDatabaseEnv(): DatabaseEnvValidation {
   let directUrl = directUrlRaw;
   if (directUrlRaw) {
     const directIssues = validateSingleUrl("DIRECT_URL", directUrlRaw, {
+      kind: "direct",
       forbiddenPort: "6543",
+      allowedPorts: ["5432"],
     });
     if (directIssues.length > 0) {
-      // Ignore bad DIRECT_URL for app runtime — keep pooled DATABASE_URL.
       if (process.env.NODE_ENV !== "production" || process.env.DEBUG_DB === "1") {
         console.warn(
           "[db] DIRECT_URL invalid — ignored for runtime:",
@@ -214,26 +342,75 @@ export function validateSupabaseDatabaseEnv(): DatabaseEnvValidation {
   }
 
   const parsed = parseDatabaseUrl(databaseUrl);
+  const runtime = resolvePrismaRuntimeUrl(databaseUrl, directUrl);
+  const runtimeParsed = parseDatabaseUrl(runtime.url);
+
+  if (runtime.mode === "transaction") {
+    console.warn(
+      "[db] Runtime uses Transaction pooler (:6543). PrismaPg may fail with prepared statements — set DIRECT_URL to Session pooler :5432."
+    );
+  }
 
   return {
     ok: true,
     databaseUrl,
     directUrl,
+    runtimeUrl: runtime.url,
     databaseUrlMasked: maskDatabaseUrl(databaseUrl),
     directUrlMasked: maskDatabaseUrl(directUrl),
+    runtimeUrlMasked: maskDatabaseUrl(runtime.url),
     host: parsed.host,
     user: parsed.user,
     port: parsed.port,
+    runtimePort: runtimeParsed.port,
+    poolingMode: runtime.mode,
   };
 }
 
-/** Runtime connection string for Prisma Client (pooled). */
+/** Runtime connection string for Prisma Client (PrismaPg adapter). */
 export function getRuntimeDatabaseUrl(): string {
   const validation = validateSupabaseDatabaseEnv();
   if (!validation.ok) {
     throw new Error(validation.issues.join(" "));
   }
-  return validation.databaseUrl;
+  return validation.runtimeUrl;
+}
+
+/** Safe connection metadata for logs / health — never includes secrets. */
+export function getSafeDbConnectionMeta(): SafeDbConnectionMeta {
+  const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
+  const hasDirectUrl = Boolean(process.env.DIRECT_URL?.trim());
+  const validation = validateSupabaseDatabaseEnv();
+  if (!validation.ok) {
+    return {
+      hasDatabaseUrl,
+      hasDirectUrl,
+      databaseHost: null,
+      databasePort: null,
+      runtimeHost: null,
+      runtimePort: null,
+      poolingMode: null,
+      poolingEnabled: false,
+      environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? null,
+    };
+  }
+  let runtimeHost: string | null = null;
+  try {
+    runtimeHost = parseDatabaseUrl(validation.runtimeUrl).host;
+  } catch {
+    runtimeHost = validation.host;
+  }
+  return {
+    hasDatabaseUrl,
+    hasDirectUrl,
+    databaseHost: validation.host,
+    databasePort: validation.port,
+    runtimeHost,
+    runtimePort: validation.runtimePort,
+    poolingMode: validation.poolingMode,
+    poolingEnabled: validation.poolingMode === "session" || validation.poolingMode === "transaction",
+    environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? null,
+  };
 }
 
 /**
@@ -249,7 +426,7 @@ export function isDatabaseConfigError(error: unknown): boolean {
     /DATABASE_URL: /i.test(msg) ||
     /DATABASE_URL zeigt auf localhost/i.test(msg) ||
     /pgbouncer=true fehlt/i.test(msg) ||
-    (/Port muss 6543 sein/i.test(msg) && /DATABASE_URL/i.test(msg))
+    (/Port muss/i.test(msg) && /DATABASE_URL/i.test(msg))
   );
 }
 
@@ -265,7 +442,11 @@ export function getDirectDatabaseUrl(): string {
   if (!direct) {
     throw new Error("DIRECT_URL fehlt. Supabase Dashboard → Session pooler (5432).");
   }
-  const issues = validateSingleUrl("DIRECT_URL", direct, { forbiddenPort: "6543" });
+  const issues = validateSingleUrl("DIRECT_URL", direct, {
+    kind: "direct",
+    forbiddenPort: "6543",
+    allowedPorts: ["5432"],
+  });
   if (issues.length > 0) {
     throw new Error(issues.join(" "));
   }
@@ -294,8 +475,19 @@ export function explainSupabasePoolerError(message: string): string | null {
     return (
       `Supabase-Projekt „${ref}" existiert nicht oder ist pausiert/gelöscht. ` +
       `Das Pooler-Backend kennt diesen Tenant nicht. ` +
-      `Neues Projekt im Supabase Dashboard anlegen und DATABASE_URL + DIRECT_URL aus „Connect" kopieren. ` +
-      `DNS-Check: db.${ref}.supabase.co muss auflösbar sein.`
+      `Neues Projekt im Supabase Dashboard anlegen und DATABASE_URL + DIRECT_URL aus „Connect" kopieren.`
+    );
+  }
+  if (/prepared statement/i.test(message)) {
+    return (
+      "Prepared-Statement-Fehler — Transaction Pooler (:6543) ist inkompatibel mit PrismaPg. " +
+      "DIRECT_URL auf Session Pooler (:5432) setzen; Runtime nutzt dann automatisch :5432."
+    );
+  }
+  if (/password authentication failed|Authentication failed against the database/i.test(message)) {
+    return (
+      "Datenbank-Authentifizierung fehlgeschlagen — Passwort in DATABASE_URL/DIRECT_URL prüfen " +
+      "(Sonderzeichen wie # müssen URL-encoded sein, z.B. %23). Passwort im Supabase Dashboard zurücksetzen und URLs aktualisieren."
     );
   }
   if (/ENOTFOUND\s+db\.[a-z0-9]+\.supabase\.co/i.test(message)) {

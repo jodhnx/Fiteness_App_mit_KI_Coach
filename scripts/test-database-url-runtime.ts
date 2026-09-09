@@ -1,10 +1,11 @@
 /**
- * Assert runtime DB validation does not require DIRECT_URL
- * and ignores invalid DIRECT_URL when DATABASE_URL is valid.
+ * Assert runtime DB URL resolution for PrismaPg.
+ * Runtime must prefer Session/Direct :5432 over Transaction :6543.
  * Run: npx tsx scripts/test-database-url-runtime.ts
  */
 import {
   validateSupabaseDatabaseEnv,
+  resolvePrismaRuntimeUrl,
   isDatabaseConfigError,
 } from "../src/lib/database-url";
 
@@ -45,11 +46,26 @@ function check(name: string, cond: boolean) {
 withEnv({ DATABASE_URL: sampleDb, DIRECT_URL: undefined }, () => {
   const v = validateSupabaseDatabaseEnv();
   check("runtime ok without DIRECT_URL", v.ok === true);
+  if (v.ok) {
+    check(
+      "without DIRECT rewrites :6543 → :5432 session",
+      v.runtimePort === "5432" && v.poolingMode === "session"
+    );
+    check(
+      "rewritten URL keeps pooler host",
+      /pooler\.supabase\.com/.test(v.runtimeUrl) && !/:6543\b/.test(v.runtimeUrl)
+    );
+  }
 });
 
 withEnv({ DATABASE_URL: sampleDb, DIRECT_URL: sampleDirect }, () => {
   const v = validateSupabaseDatabaseEnv();
   check("runtime ok with both URLs", v.ok === true);
+  if (v.ok) {
+    check("runtime prefers DIRECT_URL :5432", v.runtimeUrl === sampleDirect);
+    check("runtimePort is 5432", v.runtimePort === "5432");
+    check("poolingMode is session", v.poolingMode === "session");
+  }
 });
 
 withEnv(
@@ -70,6 +86,12 @@ withEnv({ DATABASE_URL: undefined, DIRECT_URL: sampleDirect }, () => {
   const v = validateSupabaseDatabaseEnv();
   check("missing DATABASE_URL fails", v.ok === false);
 });
+
+{
+  const resolved = resolvePrismaRuntimeUrl(sampleDb, sampleDirect);
+  check("resolvePrismaRuntimeUrl picks session URL", resolved.url === sampleDirect);
+  check("resolvePrismaRuntimeUrl mode session", resolved.mode === "session");
+}
 
 check(
   "isDatabaseConfigError detects DATABASE_URL fehlt",

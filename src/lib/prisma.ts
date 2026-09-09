@@ -1,7 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool, type PoolConfig } from "pg";
-import { maskDatabaseUrl, getRuntimeDatabaseUrl } from "@/lib/database-url";
+import {
+  maskDatabaseUrl,
+  getRuntimeDatabaseUrl,
+  getSafeDbConnectionMeta,
+  flattenErrorMessage,
+  parseDatabaseUrl,
+} from "@/lib/database-url";
 import { isDatabaseConnectionError } from "@/lib/prisma-errors";
 import {
   logDatabaseConnected,
@@ -22,13 +28,24 @@ function getConnectionString(): string {
   return getRuntimeDatabaseUrl();
 }
 
+/**
+ * Prefer discrete host/user/password over connectionString.
+ * Passwords with `#`/`@` break URI parsing if not perfectly encoded;
+ * Supabase pooler user `postgres.<ref>` is safer as an explicit field.
+ */
 function poolConfig(connectionString: string): PoolConfig {
   const isSupabase = /supabase\.(co|com)/i.test(connectionString);
   const isVercel = Boolean(process.env.VERCEL);
+  const parsed = parseDatabaseUrl(connectionString);
 
   return {
-    connectionString,
-    connectionTimeoutMillis: 15_000,
+    user: parsed.user,
+    password: parsed.password,
+    host: parsed.host,
+    port: Number(parsed.port) || 5432,
+    database: parsed.database,
+    // Fail fast in serverless instead of hanging the login request
+    connectionTimeoutMillis: isVercel ? 8_000 : 15_000,
     idleTimeoutMillis: isVercel ? 5_000 : 20_000,
     max: isVercel ? 1 : 5,
     keepAlive: true,
@@ -39,6 +56,16 @@ function poolConfig(connectionString: string): PoolConfig {
 
 function createPool(): Pool {
   const connectionString = getConnectionString();
+  const meta = getSafeDbConnectionMeta();
+  console.error(
+    JSON.stringify({
+      tag: "[db]",
+      phase: "pool_create",
+      ...meta,
+      connectionStringMasked: maskDatabaseUrl(connectionString),
+    })
+  );
+
   const p = new Pool(poolConfig(connectionString));
 
   p.on("error", (err) => {
@@ -57,10 +84,9 @@ function buildPrismaClient(): PrismaClient {
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.pool = pool;
-    globalForPrisma.prisma = prismaClient;
-  }
+  // Always reuse on warm serverless instances / HMR
+  globalForPrisma.pool = pool;
+  globalForPrisma.prisma = prismaClient;
 
   return prismaClient;
 }
@@ -80,7 +106,7 @@ export async function resetPrismaClient(): Promise<void> {
 
 export function getPrismaClient(): PrismaClient {
   if (!client) {
-    client = buildPrismaClient();
+    client = globalForPrisma.prisma ?? buildPrismaClient();
   }
   return client;
 }
@@ -96,16 +122,16 @@ export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   },
 });
 
-async function tryPgPing(connectionString: string): Promise<boolean> {
+async function tryPgPing(connectionString: string): Promise<{ ok: boolean; error?: string }> {
   const probe = new Pool({
     ...poolConfig(connectionString),
     max: 1,
   });
   try {
     await probe.query("SELECT 1");
-    return true;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: flattenErrorMessage(e) };
   } finally {
     await probe.end().catch((e) => logDatabaseError(e));
   }
@@ -124,10 +150,10 @@ export async function pingDatabase(): Promise<boolean> {
     return false;
   }
 
-  if (!(await tryPgPing(connectionString))) {
-    const masked = maskDatabaseUrl(connectionString);
+  const ping = await tryPgPing(connectionString);
+  if (!ping.ok) {
     logDatabaseError(
-      `Supabase nicht erreichbar (${masked}). Prüfe Host, Passwort und ob das Projekt aktiv ist.`
+      `Supabase ping failed (${maskDatabaseUrl(connectionString)}): ${ping.error ?? "unknown"}`
     );
     await resetPrismaClient();
     return false;

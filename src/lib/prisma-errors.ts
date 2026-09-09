@@ -44,13 +44,17 @@ export function isDatabaseConnectionError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);
   if (
     /tenant\/user\s+postgres\.[a-z0-9]+\s+not found/i.test(msg) ||
-    /ENOTFOUND.*tenant\/user/i.test(msg)
+    /ENOTFOUND.*tenant\/user/i.test(msg) ||
+    /prepared statement/i.test(msg) ||
+    /MaxClientsInSessionMode/i.test(msg) ||
+    /remaining connection slots/i.test(msg)
   ) {
     return true;
   }
   return (
     /ECONNREFUSED/i.test(msg) ||
     /ECONNRESET/i.test(msg) ||
+    /ETIMEDOUT/i.test(msg) ||
     /Can't reach database server/i.test(msg) ||
     /Server has closed the connection/i.test(msg) ||
     /closed the connection/i.test(msg) ||
