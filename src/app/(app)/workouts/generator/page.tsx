@@ -129,8 +129,11 @@ export default function PlanGeneratorPage() {
             </select>
           </div>
           <Button className="w-full" onClick={generate} disabled={loading}>
-            {loading ? "KI erstellt Plan..." : "Plan generieren"}
+            {loading ? "KI erstellt Plan..." : "Plan generieren & speichern"}
           </Button>
+          <p className="text-xs text-zinc-500 text-center">
+            Danach kannst du den Plan bearbeiten und ein Workout starten.
+          </p>
         </CardContent>
       </Card>
     </div>

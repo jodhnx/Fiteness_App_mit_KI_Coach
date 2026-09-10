@@ -19,7 +19,7 @@ import {
   PlanDayPickerSheet,
   type PlanDayOption,
 } from "@/components/workout/plan-day-picker-sheet";
-import { Pencil, Play, Plus, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, Pencil, Play, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -41,25 +41,33 @@ type Plan = {
 
 function formatLastSession(iso: string | null | undefined) {
   if (!iso) return "Noch nicht trainiert";
-  return new Date(iso).toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return "Noch nicht trainiert";
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfThen = new Date(then);
+  startOfThen.setHours(0, 0, 0, 0);
+  const days = Math.round((startOfToday.getTime() - startOfThen.getTime()) / 86_400_000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return `vor ${days} Tagen`;
 }
 
 function PlanRow({
   plan,
   onDelete,
+  onArchive,
+  onDuplicate,
 }: {
   plan: Plan;
   onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
+  onDuplicate: (id: string) => void;
 }) {
   const router = useRouter();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [starting, setStarting] = useState(false);
 
-  const exerciseCount = plan.days.reduce((s, d) => s + d.exercises.length, 0);
   const statuses = (plan.dayStatuses ?? []).filter((d) => d.status !== "rest");
   const trainingDayCount = plan.days.length;
 
@@ -113,37 +121,50 @@ function PlanRow({
 
   return (
     <>
-      <li className="rounded-3xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-zinc-950 overflow-hidden">
-        {/* Header row */}
-        <div className="px-5 pt-5 pb-3">
+      <li className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 overflow-hidden">
+        <div className="px-4 pt-4 pb-2">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-lg font-bold text-white truncate">{plan.name}</p>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="inline-flex items-center gap-1 text-xs text-zinc-400 bg-zinc-800/70 rounded-lg px-2 py-0.5">
-                  <span className="text-white font-semibold">{trainingDayCount}</span>
-                  {" "}{trainingDayCount === 1 ? "Tag" : "Tage"}
-                </span>
-                <span className="inline-flex items-center gap-1 text-xs text-zinc-400 bg-zinc-800/70 rounded-lg px-2 py-0.5">
-                  <span className="text-white font-semibold">{exerciseCount}</span>
-                  {" "}{exerciseCount === 1 ? "Übung" : "Übungen"}
-                </span>
-              </div>
+              <p className="text-base font-semibold text-white truncate">{plan.name}</p>
+              <p className="text-sm text-zinc-400 mt-0.5">
+                {trainingDayCount} {trainingDayCount === 1 ? "Tag" : "Tage"}/Woche
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">
+                Last workout: {formatLastSession(plan.lastSessionAt)}
+              </p>
             </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 rounded-xl text-zinc-500 hover:text-red-400 shrink-0"
-              onClick={confirmDelete}
-              aria-label="Plan löschen"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            <details className="relative shrink-0">
+              <summary className="list-none [&::-webkit-details-marker]:hidden [&::marker]:hidden h-11 w-11 rounded-xl flex items-center justify-center text-zinc-500 cursor-pointer hover:bg-white/5">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Weitere Optionen</span>
+              </summary>
+              <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-white/[0.08] bg-zinc-900 p-1 shadow-lg">
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/5"
+                  onClick={() => onDuplicate(plan.id)}
+                >
+                  <Copy className="h-4 w-4" />
+                  Duplizieren
+                </button>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/5"
+                  onClick={() => onArchive(plan.id)}
+                >
+                  Archivieren
+                </button>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-white/5"
+                  onClick={confirmDelete}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Löschen
+                </button>
+              </div>
+            </details>
           </div>
-
-          <p className="text-[11px] text-zinc-500 mt-1.5">
-            Zuletzt: {formatLastSession(plan.lastSessionAt)}
-          </p>
         </div>
 
         {/* Day status badges */}
@@ -182,7 +203,7 @@ function PlanRow({
             ) : (
               <>
                 <Play className="h-4 w-4 fill-current" />
-                Starten
+                Start
               </>
             )}
           </button>
@@ -192,7 +213,7 @@ function PlanRow({
             className="flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors"
           >
             <Pencil className="h-4 w-4" />
-            Bearbeiten
+            Edit
           </Link>
         </div>
       </li>
@@ -217,7 +238,7 @@ export default function MyPlansPage() {
   );
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
-  const { data, loading } = useCachedFetch<{ plans: Plan[] }>(
+  const { data, loading, reload } = useCachedFetch<{ plans: Plan[] }>(
     CACHE_KEYS.PLANS_LIST,
     "/api/workouts/plans",
     120_000,
@@ -248,6 +269,39 @@ export default function MyPlansPage() {
       toast.error("Plan konnte nicht gelöscht werden");
     }
   }, []);
+
+  const archivePlan = useCallback(async (id: string) => {
+    setRemovedIds((prev) => new Set(prev).add(id));
+    invalidateCache(CACHE_KEYS.PLANS_LIST);
+    invalidateCache("workouts-my-plans-hub");
+    const res = await fetch(`/api/workouts/plans/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archive: true }),
+    });
+    if (!res.ok) {
+      setRemovedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast.error("Plan konnte nicht archiviert werden");
+      return;
+    }
+    toast.success("Plan archiviert");
+  }, []);
+
+  const duplicatePlan = useCallback(async (id: string) => {
+    const res = await fetch(`/api/workouts/plans/${id}/duplicate`, { method: "POST" });
+    if (!res.ok) {
+      toast.error("Plan konnte nicht dupliziert werden");
+      return;
+    }
+    invalidateCache(CACHE_KEYS.PLANS_LIST);
+    invalidateCache("workouts-my-plans-hub");
+    toast.success("Plan dupliziert");
+    void reload();
+  }, [reload]);
 
   const plans = (data?.plans ?? []).filter((p) => !removedIds.has(p.id));
   const showSkeleton = loading && !data && !hadCache;
@@ -285,7 +339,13 @@ export default function MyPlansPage() {
       {!showSkeleton && (
         <ul className="space-y-3">
           {plans.map((plan) => (
-            <PlanRow key={plan.id} plan={plan} onDelete={deletePlan} />
+            <PlanRow
+              key={plan.id}
+              plan={plan}
+              onDelete={deletePlan}
+              onArchive={archivePlan}
+              onDuplicate={duplicatePlan}
+            />
           ))}
         </ul>
       )}
@@ -296,12 +356,20 @@ export default function MyPlansPage() {
             <Plus className="h-7 w-7 text-zinc-500" />
           </div>
           <div>
-            <p className="text-sm font-medium text-zinc-400">Noch keine Trainingspläne</p>
-            <p className="text-xs text-zinc-600 mt-0.5">Erstelle deinen ersten Plan</p>
+            <p className="text-sm font-medium text-zinc-400">Noch kein Trainingsplan</p>
+            <p className="text-xs text-zinc-600 mt-0.5">Erstelle einen Plan oder starte direkt</p>
           </div>
-          <Link href="/workouts/create">
-            <Button className="rounded-2xl px-6">Plan erstellen</Button>
-          </Link>
+          <div className="flex flex-col items-center gap-2">
+            <Link href="/workouts/create">
+              <Button className="rounded-2xl px-6">Plan erstellen</Button>
+            </Link>
+            <Link href="/workouts/quick">
+              <Button variant="secondary" className="rounded-2xl px-6">Quick Workout</Button>
+            </Link>
+            <Link href="/workouts/generator">
+              <Button variant="ghost" className="rounded-2xl px-6">AI Plan Generator</Button>
+            </Link>
+          </div>
         </div>
       )}
     </div>

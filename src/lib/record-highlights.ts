@@ -122,7 +122,10 @@ export async function buildRecordHighlights(userId: string): Promise<RecordHighl
   let highestSessionVolume: RecordHighlights["highestSessionVolume"] = null;
   for (const s of sessions) {
     let vol = 0;
-    for (const set of s.sets) vol += setVolume(set.reps, set.weightKg);
+    for (const set of s.sets) {
+      if (set.completed !== true) continue;
+      vol += setVolume(set.reps, set.weightKg);
+    }
     if (!highestSessionVolume || vol > highestSessionVolume.volumeKg) {
       highestSessionVolume = {
         volumeKg: Math.round(vol),

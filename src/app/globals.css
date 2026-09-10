@@ -422,8 +422,20 @@ html[data-density="large"] .hub-card-pad { padding: 1.35rem; min-height: 88px; }
 }
 
 .keyboard-stable-input {
-  scroll-margin: 0;
+  scroll-margin-top: 6.5rem;
+  scroll-margin-bottom: 12rem;
   font-size: 16px;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 body[data-mobileSheet] nav[aria-label="Hauptnavigation"],
@@ -812,6 +824,34 @@ body[data-profilePanel="open"] nav[aria-label="Hauptnavigation"] {
   button:not(:disabled):active,
   .ui-pressable:active {
     transform: scale(0.97);
+  }
+
+  .set-complete-flash {
+    animation: set-complete 200ms ease-out;
+  }
+
+  .set-row-enter {
+    animation: set-row-enter 180ms ease-out;
+  }
+}
+
+@keyframes set-complete {
+  from {
+    background-color: rgba(16, 185, 129, 0.28);
+  }
+  to {
+    background-color: rgba(16, 185, 129, 0.12);
+  }
+}
+
+@keyframes set-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

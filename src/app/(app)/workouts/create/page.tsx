@@ -77,7 +77,7 @@ export default function CreatePlanPage() {
           <Input
             id="planName"
             className="mt-2 h-14 text-lg rounded-2xl"
-            placeholder="z. B. Sommer Push"
+            placeholder="Upper A"
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus

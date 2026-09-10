@@ -73,6 +73,26 @@ export function clearActiveWorkoutCaches(completed?: {
   }
 
   window.dispatchEvent(new CustomEvent(WORKOUT_ACTIVE_EVENT));
+
+  void fetch("/api/workouts/recovery")
+    .then((r) => r.json())
+    .then((d) => {
+      if (!d?.recovery) return;
+      const current = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
+        allowStale: true,
+      });
+      if (!current) return;
+      const next = {
+        ...current,
+        recovery: {
+          highlights: d.highlights ?? current.recovery?.highlights ?? [],
+          muscles: d.recovery,
+        },
+      };
+      setCached(HOME_DATA_CACHE_KEY, next, 120_000);
+      window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: next }));
+    })
+    .catch(() => {});
 }
 
 type ActiveSessionPatch = {

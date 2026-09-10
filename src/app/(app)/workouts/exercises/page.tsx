@@ -41,6 +41,7 @@ type Tab = "all" | "favorites" | "recent";
 export default function ExercisesPage() {
   const [search, setSearch] = useState("");
   const [muscle, setMuscle] = useState("");
+  const [equipment, setEquipment] = useState("");
   const [tab, setTab] = useState<Tab>("all");
   const [recent, setRecent] = useState<LibraryExercise[]>([]);
   const [favorites, setFavorites] = useState<LibraryExercise[]>([]);
@@ -51,13 +52,13 @@ export default function ExercisesPage() {
 
   const { exercises: searchResults, loading: searchLoading } = useExerciseLibrarySearch(
     search,
-    { muscle: muscle || undefined },
+    { muscle: muscle || undefined, equipment: equipment || undefined },
     { limit: 100, enabled: isSearching, debounceMs: 120 }
   );
 
   const { exercises: browseResults, loading: browseLoading } = useExerciseLibrarySearch(
     "",
-    { muscle: muscle || undefined },
+    { muscle: muscle || undefined, equipment: equipment || undefined },
     { limit: 80, enabled: tab === "all" && !isSearching, debounceMs: 0 }
   );
 
@@ -107,21 +108,30 @@ export default function ExercisesPage() {
   );
 
   const list = useMemo(() => {
+    let rows: LibraryExercise[];
     if (isSearching) {
       if (tab === "favorites") {
         const ids = new Set(favorites.map((f) => f.id));
-        return searchResults.filter((e) => ids.has(e.id));
-      }
-      if (tab === "recent") {
+        rows = searchResults.filter((e) => ids.has(e.id));
+      } else if (tab === "recent") {
         const ids = new Set(recent.map((f) => f.id));
-        return searchResults.filter((e) => ids.has(e.id));
+        rows = searchResults.filter((e) => ids.has(e.id));
+      } else {
+        rows = searchResults;
       }
-      return searchResults;
+    } else if (tab === "favorites") {
+      rows = favorites;
+    } else if (tab === "recent") {
+      rows = recent;
+    } else {
+      rows = browseResults;
     }
-    if (tab === "favorites") return favorites;
-    if (tab === "recent") return recent;
-    return browseResults;
-  }, [isSearching, searchResults, tab, favorites, recent, browseResults]);
+    if (tab !== "all" || !isSearching) {
+      if (muscle) rows = rows.filter((e) => e.muscleGroup === muscle);
+      if (equipment) rows = rows.filter((e) => e.equipment === equipment);
+    }
+    return rows;
+  }, [isSearching, searchResults, tab, favorites, recent, browseResults, muscle, equipment]);
 
   const loading = isSearching ? searchLoading : tab === "all" ? browseLoading : listsLoading;
 
@@ -145,10 +155,11 @@ export default function ExercisesPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
         <Input
-          placeholder="Übung suchen…"
+          placeholder="Exercise suchen"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-12 pl-10 rounded-2xl bg-zinc-900 border-zinc-800"
+          aria-label="Exercise suchen"
         />
       </div>
 
@@ -161,11 +172,41 @@ export default function ExercisesPage() {
             className={cn(
               "rounded-full min-h-11 px-3 text-xs font-medium whitespace-nowrap shrink-0",
               muscle === m.id
-                ? "bg-cyan-500 text-zinc-950"
+                ? "bg-white text-zinc-950"
                 : "bg-zinc-900 text-zinc-400 border border-zinc-800"
             )}
           >
             {m.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <button
+          type="button"
+          onClick={() => setEquipment("")}
+          className={cn(
+            "rounded-full min-h-11 px-3 text-xs font-medium whitespace-nowrap shrink-0",
+            equipment === ""
+              ? "bg-white text-zinc-950"
+              : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+          )}
+        >
+          Equipment
+        </button>
+        {Object.entries(EQUIPMENT_DE).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setEquipment(id === equipment ? "" : id)}
+            className={cn(
+              "rounded-full min-h-11 px-3 text-xs font-medium whitespace-nowrap shrink-0",
+              equipment === id
+                ? "bg-white text-zinc-950"
+                : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+            )}
+          >
+            {label}
           </button>
         ))}
       </div>
@@ -190,7 +231,7 @@ export default function ExercisesPage() {
         </div>
 
       {selected && (
-        <div className="rounded-2xl border border-cyan-500/30 bg-zinc-900/80 p-4 space-y-3">
+        <div className="rounded-2xl border border-white/[0.1] bg-zinc-900/80 p-4 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-lg font-bold text-white">{selected.name}</p>
@@ -217,7 +258,7 @@ export default function ExercisesPage() {
             <InfoRow label="Genutzt" value={`${selected.popularity}×`} />
           </div>
           <Link href={`/workouts/exercises/${selected.id}`}>
-            <span className="flex items-center justify-center gap-1 w-full h-11 rounded-xl bg-cyan-500/15 text-cyan-400 text-sm font-medium">
+            <span className="flex items-center justify-center gap-1 w-full h-11 rounded-xl bg-white/10 text-white text-sm font-medium">
               Ausführung & Statistik
               <ChevronRight className="h-4 w-4" />
             </span>
@@ -255,14 +296,14 @@ export default function ExercisesPage() {
             className={cn(
               "w-full flex items-center justify-between rounded-2xl px-4 py-3.5 text-left border transition-colors active:scale-[0.98]",
               selected?.id === ex.id
-                ? "border-cyan-500/40 bg-cyan-500/10"
+                ? "border-white/20 bg-zinc-800/80"
                 : "border-zinc-800 bg-zinc-900/60 hover:border-zinc-700"
             )}
           >
             <div className="min-w-0">
               <p className="font-semibold text-white truncate">{ex.name}</p>
               <p className="text-xs text-zinc-500 mt-0.5">
-                {ex.muscleGroup} · {DIFFICULTY_DE[ex.difficulty] ?? ex.difficulty}
+                {ex.muscleGroup} · {EQUIPMENT_DE[ex.equipment] ?? ex.equipment}
               </p>
             </div>
             <ChevronRight className="h-5 w-5 text-zinc-600 shrink-0" />

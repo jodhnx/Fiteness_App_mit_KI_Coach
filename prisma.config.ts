@@ -8,8 +8,11 @@
  * Runtime Prisma Client uses getRuntimeDatabaseUrl() via @prisma/adapter-pg
  * (prefer DIRECT_URL :5432 / rewrite Transaction → Session; see src/lib/prisma.ts).
  */
-import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { config as loadEnv } from "dotenv";
+import { defineConfig } from "prisma/config";
+
+loadEnv({ path: ".env.local" });
+loadEnv();
 
 function cliDatabaseUrl(): string {
   const direct = process.env.DIRECT_URL?.trim();
@@ -18,8 +21,9 @@ function cliDatabaseUrl(): string {
   const pooled = process.env.DATABASE_URL?.trim();
   if (pooled) return pooled;
 
-  // Clear Prisma error when neither variable is set
-  return env("DIRECT_URL");
+  // `prisma generate` does not open a connection. Keep CLI usable when env
+  // is injected later by Next/Vercel instead of this process.
+  return "postgresql://127.0.0.1:5432/postgres";
 }
 
 export default defineConfig({

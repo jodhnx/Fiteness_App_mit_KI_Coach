@@ -9,6 +9,7 @@ type StartPayload = {
   name: string;
   workoutPlanId?: string;
   workoutDayId?: string;
+  exercises?: { exerciseLibraryId: string; exerciseName: string }[];
 };
 
 type SessionRow = {

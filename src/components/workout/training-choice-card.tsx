@@ -40,7 +40,7 @@ export function TrainingChoiceCard({
         <p className="text-base font-bold text-white">{title}</p>
         <p className="mt-0.5 text-sm leading-snug text-zinc-400">{description}</p>
         {meta && (
-          <p className="mt-1.5 text-xs font-medium text-cyan-400/85">{meta}</p>
+          <p className="mt-1.5 text-xs font-medium text-zinc-500">{meta}</p>
         )}
       </div>
       <ChevronRight className="h-5 w-5 shrink-0 text-zinc-600" />
@@ -50,7 +50,7 @@ export function TrainingChoiceCard({
   const className = cn(
     "flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition-all active:scale-[0.99]",
     featured
-      ? "border-cyan-500/25 bg-gradient-to-br from-cyan-500/10 to-zinc-900/80 hover:border-cyan-500/40"
+      ? "border-white/[0.14] bg-zinc-900 hover:border-white/[0.2]"
       : "border-white/[0.08] bg-zinc-900/70 hover:border-white/[0.14] hover:bg-zinc-900"
   );
 

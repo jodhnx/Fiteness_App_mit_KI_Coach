@@ -2,9 +2,7 @@ import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { awardXP, checkAndAwardAchievements } from "@/lib/gamification";
-import { updateTrainingStreak } from "@/lib/workout-plans";
-import { computePRUpdates, sessionDurationSec, setVolume } from "@/lib/workout-metrics";
+import { sessionCompletedVolume } from "@/lib/workout-metrics";
 import { parsePlanSetTargets, DEFAULT_SET_COUNT } from "@/lib/plan-exercise-sets";
 import { recordExerciseUsage } from "@/lib/workout-plans";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
@@ -24,18 +22,70 @@ const startSchema = z.object({
     .optional(),
 });
 
-const setSchema = z.object({
-  exerciseLibraryId: z.string().optional(),
-  exerciseName: z.string(),
-  setNumber: z.number().int().positive(),
-  reps: z.number().int().nonnegative().optional(),
-  weightKg: z.number().nonnegative().optional(),
-  rpe: z.number().min(0).max(10).optional(),
-  restSeconds: z.number().int().nonnegative().optional(),
-  durationSec: z.number().int().nonnegative().optional(),
-  completed: z.boolean().optional(),
-  notes: z.string().optional(),
-});
+type InitialSet = {
+  exerciseLibraryId?: string;
+  exerciseName: string;
+  setNumber: number;
+  reps?: number;
+  weightKg?: number;
+  rpe?: number;
+  restSeconds?: number;
+  durationSec?: number;
+  completed?: boolean;
+  notes?: string;
+};
+
+const resumeInclude = {
+  sets: { orderBy: [{ exerciseName: "asc" as const }, { setNumber: "asc" as const }] },
+};
+
+const activeSelect = {
+  id: true,
+  name: true,
+  startedAt: true,
+  status: true,
+  workoutPlanId: true,
+  workoutDayId: true,
+};
+
+async function lastCompletedSetsByExercise(
+  userId: string,
+  exerciseIds: string[],
+  takePerExercise: number
+) {
+  const map = new Map<string, { reps: number | null; weightKg: number | null }[]>();
+  if (exerciseIds.length === 0) return map;
+
+  const rows = await prisma.workoutSet.findMany({
+    where: {
+      exerciseLibraryId: { in: exerciseIds },
+      completed: true,
+      session: { userId, status: "COMPLETED" },
+    },
+    orderBy: [{ session: { completedAt: "desc" } }, { setNumber: "asc" }],
+    take: Math.min(800, exerciseIds.length * Math.max(takePerExercise, 6) * 4),
+    select: {
+      exerciseLibraryId: true,
+      workoutSessionId: true,
+      setNumber: true,
+      reps: true,
+      weightKg: true,
+    },
+  });
+
+  const sessionOf = new Map<string, string>();
+  for (const row of rows) {
+    const eid = row.exerciseLibraryId;
+    if (!eid) continue;
+    if (!sessionOf.has(eid)) sessionOf.set(eid, row.workoutSessionId);
+    if (row.workoutSessionId !== sessionOf.get(eid)) continue;
+    const list = map.get(eid) ?? [];
+    if (list.length >= takePerExercise) continue;
+    list.push({ reps: row.reps, weightKg: row.weightKg });
+    map.set(eid, list);
+  }
+  return map;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -46,26 +96,51 @@ export async function GET(req: NextRequest) {
     if (activeOnly) {
       const active = await prisma.workoutSession.findFirst({
         where: { userId: session.user.id, status: "IN_PROGRESS" },
-        include: {
-          sets: { orderBy: [{ exerciseName: "asc" }, { setNumber: "asc" }] },
-          plan: true,
-          day: { include: { exercises: { include: { exercise: true } } } },
-        },
+        select: activeSelect,
       });
       return jsonOk({ session: active });
     }
 
+    const rawLimit = Number(req.nextUrl.searchParams.get("limit") ?? 20);
+    const take = Number.isFinite(rawLimit)
+      ? Math.min(100, Math.max(1, Math.floor(rawLimit)))
+      : 20;
+    const rawOffset = Number(req.nextUrl.searchParams.get("offset") ?? 0);
+    const skip = Number.isFinite(rawOffset) ? Math.max(0, Math.floor(rawOffset)) : 0;
+
     const sessions = await prisma.workoutSession.findMany({
-      where: { userId: session.user.id },
-      include: {
-        sets: true,
-        plan: true,
-        day: true,
+      where: { userId: session.user.id, status: "COMPLETED" },
+      select: {
+        id: true,
+        name: true,
+        startedAt: true,
+        completedAt: true,
+        durationSec: true,
+        caloriesBurned: true,
+        sets: {
+          where: { completed: true },
+          select: { reps: true, weightKg: true },
+        },
       },
-      orderBy: { startedAt: "desc" },
-      take: 100,
+      orderBy: { completedAt: "desc" },
+      take,
+      skip,
     });
-    return jsonOk({ sessions });
+
+    return jsonOk({
+      sessions: sessions.map((s) => ({
+        id: s.id,
+        name: s.name,
+        startedAt: s.startedAt,
+        completedAt: s.completedAt,
+        durationSec: s.durationSec,
+        caloriesBurned: s.caloriesBurned,
+        setCount: s.sets.length,
+        volumeKg: Math.round(sessionCompletedVolume(s.sets)),
+        _count: { sets: s.sets.length },
+      })),
+      hasMore: sessions.length === take,
+    });
   } catch (e) {
     return handleApiError(e);
   }
@@ -83,13 +158,12 @@ export async function POST(req: NextRequest) {
 
       const existing = await prisma.workoutSession.findFirst({
         where: { userId: session.user.id, status: "IN_PROGRESS" },
+        include: resumeInclude,
       });
       if (existing) {
         return jsonOk({ session: existing, resumed: true });
       }
 
-      // Never link a new session to another user's plan/day:
-      // WorkoutSession -> WorkoutDay -> WorkoutPlan -> User
       const dayId = parsed.data.workoutDayId;
       const planId = parsed.data.workoutPlanId;
 
@@ -112,7 +186,7 @@ export async function POST(req: NextRequest) {
         if (!ownedPlan) return jsonError("Trainingsplan nicht gefunden", 404);
       }
 
-      let initialSets: z.infer<typeof setSchema>[] = [];
+      let initialSets: InitialSet[] = [];
 
       if (parsed.data.duplicateSessionId) {
         const prev = await prisma.workoutSession.findFirst({
@@ -134,17 +208,14 @@ export async function POST(req: NextRequest) {
       } else if (parsed.data.exercises?.length) {
         const exerciseIds = parsed.data.exercises.map((e) => e.exerciseLibraryId);
         void recordExerciseUsage(session.user.id, exerciseIds);
+        const lastByEx = await lastCompletedSetsByExercise(
+          session.user.id,
+          exerciseIds,
+          DEFAULT_SET_COUNT
+        );
 
         for (const ex of parsed.data.exercises) {
-          const lastSessionSets = await prisma.workoutSet.findMany({
-            where: {
-              exerciseLibraryId: ex.exerciseLibraryId,
-              session: { userId: session.user.id, status: "COMPLETED" },
-            },
-            orderBy: [{ session: { completedAt: "desc" } }, { setNumber: "asc" }],
-            take: DEFAULT_SET_COUNT,
-          });
-
+          const lastSessionSets = lastByEx.get(ex.exerciseLibraryId) ?? [];
           for (let i = 0; i < DEFAULT_SET_COUNT; i++) {
             const ls = lastSessionSets[i];
             initialSets.push({
@@ -167,6 +238,19 @@ export async function POST(req: NextRequest) {
           include: { exercises: { include: { exercise: true }, orderBy: { orderIndex: "asc" } } },
         });
         if (day) {
+          const exerciseIds = day.exercises.map((ex) => ex.exerciseLibraryId);
+          const maxSets = Math.max(
+            DEFAULT_SET_COUNT,
+            ...day.exercises.map((ex) =>
+              Math.max(parsePlanSetTargets(ex.setTargets, ex.targetSets, ex.targetReps).length, ex.targetSets, 1)
+            )
+          );
+          const lastByEx = await lastCompletedSetsByExercise(
+            session.user.id,
+            exerciseIds,
+            maxSets
+          );
+
           for (const ex of day.exercises) {
             const planSets = parsePlanSetTargets(
               ex.setTargets,
@@ -174,43 +258,20 @@ export async function POST(req: NextRequest) {
               ex.targetReps
             );
             const setCount = Math.max(planSets.length, ex.targetSets, 1);
+            const lastSessionSets = lastByEx.get(ex.exerciseLibraryId) ?? [];
 
-            const lastSessionSets = await prisma.workoutSet.findMany({
-              where: {
+            for (let i = 0; i < setCount; i++) {
+              const ls = lastSessionSets[i];
+              const planRow = planSets[i];
+              initialSets.push({
                 exerciseLibraryId: ex.exerciseLibraryId,
-                session: { userId: session.user.id, status: "COMPLETED" },
-              },
-              orderBy: [{ session: { completedAt: "desc" } }, { setNumber: "asc" }],
-              take: setCount,
-            });
-
-            if (lastSessionSets.length > 0) {
-              for (let i = 0; i < setCount; i++) {
-                const ls = lastSessionSets[i];
-                const planRow = planSets[i];
-                initialSets.push({
-                  exerciseLibraryId: ex.exerciseLibraryId,
-                  exerciseName: ex.exercise.name,
-                  setNumber: i + 1,
-                  reps: ls?.reps ?? planRow?.reps ?? undefined,
-                  weightKg: ls?.weightKg ?? planRow?.weightKg ?? undefined,
-                  restSeconds: ex.restSeconds,
-                  completed: false,
-                });
-              }
-            } else {
-              for (let i = 0; i < setCount; i++) {
-                const planRow = planSets[i];
-                initialSets.push({
-                  exerciseLibraryId: ex.exerciseLibraryId,
-                  exerciseName: ex.exercise.name,
-                  setNumber: i + 1,
-                  reps: planRow?.reps ?? undefined,
-                  weightKg: planRow?.weightKg ?? undefined,
-                  restSeconds: ex.restSeconds,
-                  completed: false,
-                });
-              }
+                exerciseName: ex.exercise.name,
+                setNumber: i + 1,
+                reps: ls?.reps ?? planRow?.reps ?? undefined,
+                weightKg: ls?.weightKg ?? planRow?.weightKg ?? undefined,
+                restSeconds: ex.restSeconds,
+                completed: false,
+              });
             }
           }
         }
@@ -227,10 +288,7 @@ export async function POST(req: NextRequest) {
             ? { create: initialSets.map((s) => ({ ...s, completed: false })) }
             : undefined,
         },
-        include: {
-          sets: { orderBy: [{ exerciseName: "asc" }, { setNumber: "asc" }] },
-          day: { include: { exercises: { include: { exercise: true } } } },
-        },
+        include: resumeInclude,
       });
 
       return jsonOk({ session: workoutSession }, 201);

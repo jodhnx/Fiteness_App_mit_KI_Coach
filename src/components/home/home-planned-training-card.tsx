@@ -71,18 +71,13 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
 
   if (activeSessionId) {
     return (
-      <div
-        className={cn(
-          "rounded-[1.25rem] border border-cyan-500/35 bg-cyan-950/25 p-5",
-          "shadow-[0_0_32px_-8px_rgba(34,211,238,0.35)]"
-        )}
-      >
-        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-300/90 mb-3">
+      <div className="rounded-2xl border border-white/[0.1] bg-zinc-900/80 p-5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500 mb-3">
           Training läuft
         </p>
         <Button className="w-full h-14 text-base rounded-2xl" onClick={() => void startTraining()}>
           <Play className="h-5 w-5 mr-2" />
-          Training fortsetzen
+          Continue Workout
         </Button>
       </div>
     );
@@ -160,7 +155,7 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
       className={cn(
         "rounded-[1.25rem] border p-5",
         highlight
-          ? "border-cyan-500/40 bg-gradient-to-br from-cyan-950/40 to-zinc-950 shadow-[0_0_36px_-8px_rgba(34,211,238,0.3)]"
+          ? "border-white/[0.12] bg-zinc-900/80"
           : "border-zinc-800/90 bg-zinc-900/50"
       )}
     >
@@ -173,8 +168,8 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
       {nextWorkout?.dayId ? (
         <>
           <div className="flex items-start gap-3 mb-3">
-            <div className="h-11 w-11 rounded-xl bg-cyan-500/15 flex items-center justify-center shrink-0 ring-1 ring-cyan-500/25">
-              <Dumbbell className="h-5 w-5 text-cyan-400" />
+            <div className="h-11 w-11 rounded-xl bg-white/[0.06] flex items-center justify-center shrink-0 ring-1 ring-white/[0.08]">
+              <Dumbbell className="h-5 w-5 text-zinc-200" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-lg font-bold text-white truncate">{nextWorkout.dayName}</p>

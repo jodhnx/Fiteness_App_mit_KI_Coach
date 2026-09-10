@@ -29,6 +29,73 @@ import {
 } from "@/lib/plan-exercise-sets";
 import { cn } from "@/lib/utils";
 import { WORKOUT_INPUT_PLACEHOLDERS } from "@/lib/workout-input-placeholders";
+import { parseReps, parseWeightKg, sanitizeRepsInput, sanitizeWeightInput } from "@/lib/workout-input";
+
+const PlanSetInputs = memo(function PlanSetInputs({
+  weightKg,
+  reps,
+  onCommit,
+}: {
+  weightKg: number | null;
+  reps: number | null;
+  onCommit: (patch: Partial<PlanSetTarget>) => void;
+}) {
+  const [weight, setWeight] = useState(weightKg == null ? "" : String(weightKg));
+  const [repText, setRepText] = useState(reps == null ? "" : String(reps));
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (focused.current) return;
+    setWeight(weightKg == null ? "" : String(weightKg));
+  }, [weightKg]);
+  useEffect(() => {
+    if (focused.current) return;
+    setRepText(reps == null ? "" : String(reps));
+  }, [reps]);
+
+  return (
+    <>
+      <div className="flex items-center gap-1.5 min-w-0">
+        <Input
+          type="text"
+          inputMode="decimal"
+          placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
+          value={weight}
+          onChange={(e) => setWeight(sanitizeWeightInput(e.target.value))}
+          className="h-11 text-base tabular-nums keyboard-stable-input appearance-none"
+          aria-label="Gewicht in Kilogramm"
+          onFocus={() => {
+            focused.current = true;
+          }}
+          onBlur={() => {
+            focused.current = false;
+            onCommit({ weightKg: parseWeightKg(weight) });
+          }}
+        />
+        <span className="text-[10px] font-semibold text-zinc-500 shrink-0">KG</span>
+      </div>
+      <Input
+        type="text"
+        inputMode="numeric"
+        placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
+        value={repText}
+        onChange={(e) => {
+          const next = sanitizeRepsInput(e.target.value);
+          if (next === "" || Number(next) <= 100) setRepText(next);
+        }}
+        onFocus={() => {
+          focused.current = true;
+        }}
+        onBlur={() => {
+          focused.current = false;
+          onCommit({ reps: parseReps(repText) });
+        }}
+        className="h-11 text-base tabular-nums keyboard-stable-input appearance-none"
+        aria-label="Wiederholungen"
+      />
+    </>
+  );
+});
 
 type Props = {
   id: string;
@@ -111,7 +178,7 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
       style={style}
       className={cn(
         "rounded-2xl border border-zinc-800/90 bg-zinc-900/70 overflow-hidden mb-3",
-        isDragging && "opacity-90 shadow-lg ring-1 ring-cyan-500/30"
+        isDragging && "opacity-90 shadow-lg ring-1 ring-white/15"
       )}
     >
       <div className="flex items-center gap-2 px-3 py-3 border-b border-zinc-800/80">
@@ -152,34 +219,10 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
             <span className="text-sm font-medium text-zinc-400 tabular-nums">
               {index + 1}
             </span>
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.5"
-              placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
-              value={set.weightKg ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                updateSet(index, {
-                  weightKg: v === "" ? null : Number(v),
-                });
-              }}
-              className="h-11 text-base tabular-nums keyboard-stable-input"
-            />
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
-              value={set.reps ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                updateSet(index, {
-                  reps: v === "" ? null : Number(v),
-                });
-              }}
-              className="h-11 text-base tabular-nums keyboard-stable-input"
+            <PlanSetInputs
+              weightKg={set.weightKg}
+              reps={set.reps}
+              onCommit={(patch) => updateSet(index, patch)}
             />
             <Button
               type="button"

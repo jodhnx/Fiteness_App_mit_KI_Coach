@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { getPlanRecoveryMessage, type MuscleRecovery } from "@/lib/recovery-shared";
@@ -16,7 +16,7 @@ import { PlanStatsBar } from "@/components/workout/plan-stats-bar";
 import { defaultPlanSets, type PlanSetTarget } from "@/lib/plan-exercise-sets";
 import type { PlanScores } from "@/lib/plan-science-engine";
 import type { LibraryExercise } from "@/hooks/use-exercise-library-search";
-import { getCached } from "@/lib/client-cache";
+import { getCached, setCached } from "@/lib/client-cache";
 import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { startWorkoutAndNavigate } from "@/lib/workout-start";
@@ -106,9 +106,26 @@ export default function PlanEditorPage() {
       getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true })
     )
   );
+  const ignoreRemotePlan = useRef(false);
+  const dayStatsRef = useRef(dayStats);
+  dayStatsRef.current = dayStats;
+
+  const cachePlan = useCallback(
+    (next: {
+      id: string;
+      name: string;
+      description: string | null;
+      days: PlanDay[];
+    }) => {
+      ignoreRemotePlan.current = true;
+      setCached(cacheKey, { plan: next, dayStats: dayStatsRef.current }, 120_000);
+    },
+    [cacheKey]
+  );
 
   useEffect(() => {
     if (planPayload?.plan) {
+      if (ignoreRemotePlan.current) return;
       setPlan(planPayload.plan);
       setDayStats(planPayload.dayStats ?? {});
       setActiveDayId((current) => {
@@ -166,6 +183,7 @@ export default function PlanEditorPage() {
 
   async function savePlanMeta() {
     if (!plan) return;
+    cachePlan(plan);
     await fetch(`/api/workouts/plans/${planId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -174,7 +192,8 @@ export default function PlanEditorPage() {
   }
 
   async function saveActiveDayMeta() {
-    if (!activeDay) return;
+    if (!activeDay || !plan) return;
+    cachePlan(plan);
     await fetch(`/api/workouts/plans/${planId}/days`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -217,13 +236,15 @@ export default function PlanEditorPage() {
     const saved = data.exercise as PlanExercise;
     setPlan((p) => {
       if (!p) return p;
-      return {
+      const next = {
         ...p,
         days: p.days.map((d) => ({
           ...d,
           exercises: d.exercises.map((e) => (e.id === replaceTargetId ? saved : e)),
         })),
       };
+      cachePlan(next);
+      return next;
     });
     setReplaceTargetId(null);
     setAlternatives([]);
@@ -255,6 +276,14 @@ export default function PlanEditorPage() {
           }
         : p
     );
+    if (plan) {
+      cachePlan({
+        ...plan,
+        days: plan.days.map((d) =>
+          d.id === activeDayId ? { ...d, exercises: reordered } : d
+        ),
+      });
+    }
     saveOrder(reordered);
   }
 
@@ -287,18 +316,19 @@ export default function PlanEditorPage() {
       };
 
       setAddingIds((s) => new Set(s).add(picked.id));
-      setPlan((p) =>
-        p
-          ? {
-              ...p,
-              days: p.days.map((d) =>
-                d.id === activeDayId
-                  ? { ...d, exercises: [...d.exercises, optimistic] }
-                  : d
-              ),
-            }
-          : p
-      );
+      setPlan((p) => {
+        if (!p) return p;
+        const next = {
+          ...p,
+          days: p.days.map((d) =>
+            d.id === activeDayId
+              ? { ...d, exercises: [...d.exercises, optimistic] }
+              : d
+          ),
+        };
+        cachePlan(next);
+        return next;
+      });
       setPickerOpen(false);
 
       const res = await fetch(`/api/workouts/plans/${planId}/exercises`, {
@@ -336,29 +366,30 @@ export default function PlanEditorPage() {
       }
 
       const ex = data.exercise as PlanExercise;
-      setPlan((p) =>
-        p
-          ? {
-              ...p,
-              days: p.days.map((d) =>
-                d.id === activeDayId
-                  ? {
-                      ...d,
-                      exercises: d.exercises.map((e) => (e.id === tempId ? ex : e)),
-                    }
-                  : d
-              ),
-            }
-          : p
-      );
+      setPlan((p) => {
+        if (!p) return p;
+        const next = {
+          ...p,
+          days: p.days.map((d) =>
+            d.id === activeDayId
+              ? {
+                  ...d,
+                  exercises: d.exercises.map((e) => (e.id === tempId ? ex : e)),
+                }
+              : d
+          ),
+        };
+        cachePlan(next);
+        return next;
+      });
     },
-    [activeDayId, activeDay, plan, planId, excludeExerciseIds, addingIds]
+    [activeDayId, activeDay, plan, planId, excludeExerciseIds, addingIds, cachePlan]
   );
 
   async function saveExerciseSets(workoutExerciseId: string, setTargets: PlanSetTarget[]) {
     setPlan((p) => {
       if (!p) return p;
-      return {
+      const next = {
         ...p,
         days: p.days.map((d) => ({
           ...d,
@@ -369,6 +400,8 @@ export default function PlanEditorPage() {
           ),
         })),
       };
+      cachePlan(next);
+      return next;
     });
 
     const res = await fetch(`/api/workouts/plans/${planId}/exercises`, {
@@ -387,13 +420,15 @@ export default function PlanEditorPage() {
     const snapshot = plan;
     setPlan((p) => {
       if (!p) return p;
-      return {
+      const next = {
         ...p,
         days: p.days.map((d) => ({
           ...d,
           exercises: d.exercises.filter((e) => e.id !== exerciseId),
         })),
       };
+      cachePlan(next);
+      return next;
     });
     const res = await fetch(
       `/api/workouts/plans/${planId}/exercises?exerciseId=${exerciseId}`,
@@ -543,9 +578,9 @@ export default function PlanEditorPage() {
       )}
 
       {replaceTargetId && alternatives.length > 0 && (
-        <Card className="border-cyan-500/30">
+        <Card className="border-white/[0.08]">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-cyan-400">Alternativen</CardTitle>
+            <CardTitle className="text-sm text-zinc-400">Alternativen</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
             {alternatives.map((alt) => (

@@ -5,10 +5,17 @@ import { z } from "zod";
 import { awardXPForAction } from "@/lib/gamification";
 import { evaluateAndUnlockAchievements } from "@/lib/achievement-engine";
 import { recordExerciseUsage, updateTrainingStreak } from "@/lib/workout-plans";
-import { computePRUpdates, sessionDurationSec, setVolume } from "@/lib/workout-metrics";
+import {
+  computePRUpdates,
+  sessionDurationSec,
+  setVolume,
+  shouldApplyCompletionRewards,
+} from "@/lib/workout-metrics";
 import { analyzeWorkoutSession } from "@/lib/workout-session-analysis";
+import { upsertMissingPersonalRecords } from "@/lib/pr-recalculate";
 import { subDays } from "date-fns";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
+import type { Prisma } from "@prisma/client";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,6 +34,90 @@ const setPatchSchema = z.object({
   name: z.string().optional(),
 });
 
+const sessionSetsInclude = {
+  sets: {
+    orderBy: [{ exerciseName: "asc" as const }, { setNumber: "asc" as const }],
+    include: { exercise: { select: { muscleGroup: true } } },
+  },
+};
+
+async function previousSetsByExercise(
+  userId: string,
+  sessionId: string,
+  sets: { exerciseLibraryId: string | null; exerciseName: string }[]
+) {
+  const previousByExercise: Record<
+    string,
+    {
+      id: string;
+      exerciseLibraryId: string | null;
+      exerciseName: string;
+      setNumber: number;
+      reps: number | null;
+      weightKg: number | null;
+      completed: boolean;
+      restSeconds: number | null;
+      rpe: number | null;
+      notes: string | null;
+      workoutSessionId: string;
+    }[]
+  > = {};
+
+  const libraryIds = [
+    ...new Set(
+      sets.map((s) => s.exerciseLibraryId).filter((id): id is string => Boolean(id))
+    ),
+  ];
+  const names = [
+    ...new Set(sets.filter((s) => !s.exerciseLibraryId).map((s) => s.exerciseName)),
+  ];
+
+  const or: Prisma.WorkoutSetWhereInput[] = [];
+  if (libraryIds.length) or.push({ exerciseLibraryId: { in: libraryIds } });
+  if (names.length) or.push({ exerciseName: { in: names }, exerciseLibraryId: null });
+  if (or.length === 0) return previousByExercise;
+
+  const prev = await prisma.workoutSet.findMany({
+    where: {
+      OR: or,
+      completed: true,
+      session: {
+        userId,
+        status: "COMPLETED",
+        id: { not: sessionId },
+      },
+    },
+    orderBy: [{ session: { completedAt: "desc" } }, { setNumber: "asc" }],
+    take: 400,
+    select: {
+      id: true,
+      exerciseLibraryId: true,
+      exerciseName: true,
+      setNumber: true,
+      reps: true,
+      weightKg: true,
+      completed: true,
+      restSeconds: true,
+      rpe: true,
+      notes: true,
+      workoutSessionId: true,
+    },
+  });
+
+  const sessionOf = new Map<string, string>();
+  for (const row of prev) {
+    const key = row.exerciseLibraryId ?? row.exerciseName;
+    if (!sessionOf.has(key)) sessionOf.set(key, row.workoutSessionId);
+    if (row.workoutSessionId !== sessionOf.get(key)) continue;
+    if ((row.weightKg ?? 0) <= 0 && (row.reps ?? 0) <= 0) continue;
+    if (!previousByExercise[key]) previousByExercise[key] = [];
+    if (previousByExercise[key]!.length >= 12) continue;
+    previousByExercise[key]!.push(row);
+  }
+
+  return previousByExercise;
+}
+
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
@@ -34,34 +125,15 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const { id } = await params;
     const workoutSession = await prisma.workoutSession.findFirst({
       where: { id, userId: session.user.id },
-      include: {
-        sets: { orderBy: [{ exerciseName: "asc" }, { setNumber: "asc" }] },
-        plan: true,
-        day: { include: { exercises: { include: { exercise: true } } } },
-      },
+      include: sessionSetsInclude,
     });
     if (!workoutSession) return jsonError("Session nicht gefunden", 404);
 
-    const previousByExercise: Record<string, typeof workoutSession.sets> = {};
-    for (const s of workoutSession.sets) {
-      const key = s.exerciseLibraryId ?? s.exerciseName;
-      if (!previousByExercise[key]) {
-        const prev = await prisma.workoutSet.findMany({
-          where: {
-            exerciseLibraryId: s.exerciseLibraryId ?? undefined,
-            exerciseName: s.exerciseName,
-            session: {
-              userId: session.user.id,
-              status: "COMPLETED",
-              id: { not: id },
-            },
-          },
-          orderBy: { session: { completedAt: "desc" } },
-          take: 10,
-        });
-        previousByExercise[key] = prev as typeof workoutSession.sets;
-      }
-    }
+    const previousByExercise = await previousSetsByExercise(
+      session.user.id,
+      id,
+      workoutSession.sets
+    );
 
     return jsonOk({ session: workoutSession, previousByExercise });
   } catch (e) {
@@ -118,6 +190,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     if (body.action === "cancel") {
+      if (ws.status === "COMPLETED") {
+        return jsonError("Abgeschlossenes Training kann nicht verworfen werden", 409);
+      }
+      if (ws.status === "CANCELLED") {
+        return jsonOk({ success: true, alreadyCancelled: true });
+      }
       await prisma.workoutSession.update({
         where: { id },
         data: { status: "CANCELLED", completedAt: new Date() },
@@ -126,18 +204,42 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     if (body.action === "complete") {
+      if (ws.status === "CANCELLED") {
+        return jsonError("Abgebrochenes Training kann nicht abgeschlossen werden", 409);
+      }
+
+      if (!shouldApplyCompletionRewards(ws.status)) {
+        const existing = await prisma.workoutSession.findFirst({
+          where: { id, userId: session.user.id },
+          include: sessionSetsInclude,
+        });
+        return jsonOk({
+          session: existing,
+          newPRs: [],
+          analysis: null,
+          unlocks: [],
+          nextWorkout: null,
+          alreadyCompleted: true,
+        });
+      }
+
       const full = await prisma.workoutSession.findFirst({
-        where: { id },
+        where: { id, userId: session.user.id },
         include: { sets: true },
       });
       const durationSec = sessionDurationSec(full!.startedAt, new Date());
+      const calories =
+        typeof body.caloriesBurned === "number" && Number.isFinite(body.caloriesBurned)
+          ? Math.max(0, Math.round(body.caloriesBurned))
+          : null;
+
       const completed = await prisma.workoutSession.update({
         where: { id },
         data: {
           status: "COMPLETED",
           completedAt: new Date(),
           durationSec,
-          caloriesBurned: body.caloriesBurned ?? Math.round(durationSec / 60 * 8),
+          caloriesBurned: calories,
           notes: body.notes,
           ...(typeof body.name === "string" && body.name.trim()
             ? { name: body.name.trim() }
@@ -148,6 +250,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
       const existingPRs = await prisma.personalRecord.findMany({
         where: { userId: session.user.id },
+        select: { recordType: true, value: true, exerciseLibraryId: true },
       });
       const prUpdates = computePRUpdates(
         completed.sets.map((s) => ({
@@ -158,7 +261,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           weightKg: s.weightKg,
           completed: s.completed,
         })),
-        existingPRs.map((p) => ({ recordType: p.recordType, value: p.value }))
+        existingPRs
       );
 
       const newPRs = [];
@@ -208,6 +311,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             id: { not: id },
           },
         },
+        select: { reps: true, weightKg: true },
       });
       const recentWeeklyVolume = weekSets.reduce(
         (a, s) => a + setVolume(s.reps, s.weightKg),
@@ -227,6 +331,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
       await awardXPForAction(session.user.id, "WORKOUT_COMPLETED");
       await updateTrainingStreak(session.user.id);
+      await upsertMissingPersonalRecords(session.user.id).catch(() => 0);
       const unlocks = await evaluateAndUnlockAchievements(session.user.id);
       const { loadNextWorkoutForUser } = await import("@/lib/plan-next-day");
       const nextWorkout = await loadNextWorkoutForUser(session.user.id).catch(
@@ -239,7 +344,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         analysis,
         unlocks,
         nextWorkout,
+        alreadyCompleted: false,
       });
+    }
+
+    if (ws.status !== "IN_PROGRESS") {
+      return jsonError("Nur laufende Trainings können bearbeitet werden", 409);
     }
 
     const parsed = setPatchSchema.safeParse(body);
@@ -271,6 +381,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     if (parsed.data.action === "updateSet" && parsed.data.setId) {
       const setId = parsed.data.setId;
+      if (parsed.data.completed === true) {
+        const reps = parsed.data.reps;
+        const weight = parsed.data.weightKg;
+        if (reps == null || reps < 1 || reps > 100) {
+          return jsonError("Wiederholungen ungültig", 400);
+        }
+        if (weight == null || weight < 0 || !Number.isFinite(weight)) {
+          return jsonError("Gewicht ungültig", 400);
+        }
+      }
       const result = await prisma.workoutSet.updateMany({
         where: { id: setId, workoutSessionId: id },
         data: {

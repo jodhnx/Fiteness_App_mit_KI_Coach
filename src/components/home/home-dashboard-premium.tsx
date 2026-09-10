@@ -200,17 +200,17 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
       {trainingStatus === "active" && (
         <Link
           href={liveHref}
-          className="flex min-h-11 items-center gap-3 rounded-2xl border border-cyan-500/35 bg-cyan-500/12 px-3 py-2.5 active:scale-[0.99] transition-transform"
+          className="flex min-h-11 items-center gap-3 rounded-2xl border border-white/[0.1] bg-zinc-900/80 px-3 py-2.5 active:scale-[0.99] transition-transform"
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-500/20">
-            <Play className="h-4 w-4 text-cyan-300" />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.06]">
+            <Play className="h-4 w-4 text-zinc-200" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-cyan-300/90">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
               Training läuft
             </p>
             <p className="text-sm font-semibold text-white truncate">
-              Tippen zum Fortsetzen
+              Continue Workout
             </p>
           </div>
         </Link>
