@@ -6,7 +6,6 @@ import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
 import { useFoodFavorites } from "@/hooks/use-food-favorites";
 import { useFoodQuickAdd } from "@/hooks/use-food-quick-add";
 import {
-  invalidateAllNutritionCaches,
   applyNutritionMutationResponse,
   optimisticRemoveMealItem,
   optimisticRemoveMeal,
@@ -15,34 +14,27 @@ import {
   optimisticAddMealItem,
   optimisticAddSavedMeal,
 } from "@/lib/nutrition-sync";
-import { getCachedSavedMeals, fetchSavedMealTemplates } from "@/lib/saved-meals-cache";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { getCachedSavedMeals } from "@/lib/saved-meals-cache";
 import { PageShell } from "@/components/layout/page-shell";
 import { NutritionOrbitOverview } from "@/components/nutrition/nutrition-orbit-overview";
-import { NutritionQuickCalories } from "@/components/nutrition/nutrition-quick-calories";
-import { NutritionEmptyDayBanner } from "@/components/nutrition/nutrition-empty-day-banner";
-import { NutritionDaySummary } from "@/components/nutrition/nutrition-day-summary";
 import { MealTrackList } from "@/components/nutrition/meal-track-list";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
 import dynamic from "next/dynamic";
-import {
-  NutritionExtrasPanel,
-  NutritionShoppingList,
-} from "@/components/nutrition/nutrition-extras-panel";
-import { PageIntro } from "@/components/guide/page-intro";
-import { MEAL_TYPE_ORDER } from "@/lib/meal-types";
+import { MEAL_TYPE_ORDER, mealTypeForHour } from "@/lib/meal-types";
 import type { MealType } from "@prisma/client";
 import { toast } from "sonner";
 import {
-  RefreshCw,
-  AlertCircle,
   Settings2,
   Camera,
+  Droplets,
+  Scale,
+  Plus,
+  CookingPot,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { warmNutritionSearchCaches } from "@/lib/nav-cache-warmer";
-import { warmFoodHistoryCache, refreshFoodHistoryCache } from "@/lib/food-history-cache";
+import { refreshFoodHistoryCache } from "@/lib/food-history-cache";
 import { resetBodyScroll } from "@/lib/scroll-lock";
 import type { FoodAIItem } from "@/app/api/nutrition/food-ai/route";
 
@@ -55,6 +47,32 @@ const FoodAddPopup = dynamic(
 const FoodAISheet = dynamic(
   () =>
     import("@/components/nutrition/food-ai-sheet").then((m) => m.FoodAISheet),
+  { ssr: false }
+);
+
+const NutritionExtrasPanel = dynamic(
+  () =>
+    import("@/components/nutrition/nutrition-extras-panel").then(
+      (m) => m.NutritionExtrasPanel
+    ),
+  { ssr: false }
+);
+
+const NutritionShoppingList = dynamic(
+  () =>
+    import("@/components/nutrition/nutrition-extras-panel").then(
+      (m) => m.NutritionShoppingList
+    ),
+  { ssr: false }
+);
+
+const PageIntro = dynamic(
+  () => import("@/components/guide/page-intro").then((m) => m.PageIntro),
+  { ssr: false }
+);
+
+const ConfirmDialog = dynamic(
+  () => import("@/components/ui/confirm-dialog").then((m) => m.ConfirmDialog),
   { ssr: false }
 );
 
@@ -78,12 +96,27 @@ function NutritionPageInner() {
     mealId: string;
     label: string;
   } | null>(null);
+  const [belowFold, setBelowFold] = useState(false);
 
   useEffect(() => {
-    // Prefetch + menu history so Favoriten / Häufig / Zuletzt / Meine Mahlzeiten open instantly
-    warmNutritionSearchCaches();
-    warmFoodHistoryCache(true);
-    void fetchSavedMealTemplates();
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      void import("@/components/nutrition/food-add-popup");
+      setBelowFold(true);
+    };
+    const idleId =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback(run, { timeout: 1200 })
+        : window.setTimeout(run, 0);
+    return () => {
+      cancelled = true;
+      if (typeof cancelIdleCallback === "function" && typeof idleId === "number") {
+        cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -94,7 +127,7 @@ function NutritionPageInner() {
     }
   }, [searchParams]);
 
-  const { dashboard, error, timedOut, loading, reload, applyDashboard } = useNutritionDashboard(120_000);
+  const { dashboard, loading, reload, applyDashboard } = useNutritionDashboard(120_000);
   const dashboardRef = useRef(dashboard);
   dashboardRef.current = dashboard;
 
@@ -106,7 +139,9 @@ function NutritionPageInner() {
     [applyDashboard]
   );
 
-  const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites();
+  const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites(
+    addSheetMeal != null
+  );
 
   const closeAddPopup = useCallback(() => {
     setAddSheetMeal(null);
@@ -128,11 +163,6 @@ function NutritionPageInner() {
     applyDashboard,
     onSuccess: onFoodAdded,
   });
-
-  const refreshAll = useCallback(() => {
-    invalidateAllNutritionCaches();
-    reload();
-  }, [reload]);
 
   const removeItem = useCallback(
     async (itemId: string) => {
@@ -194,10 +224,7 @@ function NutritionPageInner() {
   }, [pendingDelete, deleteMeal]);
 
   const editItemQuantity = useCallback(
-    async (itemId: string, currentQty: number) => {
-      const raw = window.prompt("Menge in Gramm:", String(currentQty));
-      if (raw == null) return;
-      const quantityG = Number(raw);
+    async (itemId: string, quantityG: number) => {
       if (!Number.isFinite(quantityG) || quantityG <= 0) {
         toast.error("Ungültige Menge");
         return;
@@ -219,7 +246,6 @@ function NutritionPageInner() {
       if (!updated) reload();
       else {
         dashboardRef.current = updated;
-        toast.success("Eintrag aktualisiert");
       }
     },
     [applyOptimistic, reload]
@@ -400,55 +426,51 @@ function NutritionPageInner() {
 
   return (
     <PageShell
-      title="Ernährung"
-      className="nutrition-mobile-page keyboard-stable-page pb-28 space-y-2.5"
+      className="nutrition-mobile-page keyboard-stable-page pb-24 space-y-1.5"
       bottomNav={false}
-      action={
+      maxWidth="full"
+    >
+      <header className="flex items-center gap-1.5 min-h-11">
+        <h1 className="flex-1 text-lg font-semibold text-white tracking-tight">Ernährung</h1>
+        <button
+          type="button"
+          className="h-11 w-11 rounded-xl border border-white/[0.08] text-zinc-400 hover:text-white inline-flex items-center justify-center"
+          aria-label="Aktualisieren"
+          onClick={() => reload()}
+        >
+          <RefreshCw className="h-5 w-5" />
+        </button>
+        {/* AlertCircle kept in graph — turbopack HMR can crash if a prior chunk expected it. */}
+        <span className="sr-only" aria-hidden>
+          <AlertCircle className="h-0 w-0" />
+        </span>
+        <button
+          type="button"
+          className="h-11 w-11 rounded-xl border border-white/[0.08] text-zinc-400 hover:text-white inline-flex items-center justify-center"
+          aria-label="Essen fotografieren"
+          onClick={() => setFoodAIOpen(true)}
+        >
+          <Camera className="h-5 w-5" />
+        </button>
         <Link
           href="/settings"
-          className="p-2 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white"
+          className="h-11 w-11 rounded-xl border border-white/[0.08] text-zinc-400 hover:text-white inline-flex items-center justify-center"
           aria-label="Einstellungen"
         >
           <Settings2 className="h-5 w-5" />
         </Link>
-      }
-    >
-      {(error || timedOut) && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex gap-3">
-          <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm text-red-100">
-              {timedOut ? "Laden dauert zu lange" : "Daten nicht geladen"}
-            </p>
-            <Button type="button" variant="outline" size="sm" className="mt-2" onClick={refreshAll}>
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Erneut
-            </Button>
-          </div>
-        </div>
-      )}
+      </header>
 
       {!dashboard?.profileComplete && (dashboard?.targets?.calories ?? 0) <= 0 && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+        <div className="rounded-xl border border-white/[0.1] bg-zinc-900/70 px-4 py-3 text-sm text-zinc-300">
           Ziele fehlen —{" "}
-          <Link href="/settings" className="underline font-medium">
+          <Link href="/settings" className="underline font-medium text-white">
             Einstellungen öffnen
           </Link>
         </div>
       )}
 
       <NutritionOrbitOverview dashboard={dashboard} loading={loading && !dashboard} />
-
-      {dashboard && (
-        <NutritionQuickCalories dashboard={dashboard} applyDashboard={applyDashboard} />
-      )}
-
-      {dashboard && (
-        <NutritionEmptyDayBanner
-          dashboard={dashboard}
-          onAddMeal={(meal) => setAddSheetMeal(meal)}
-        />
-      )}
 
       <MealTrackList
         meals={dashboard?.mealsByType ?? []}
@@ -458,35 +480,53 @@ function NutritionPageInner() {
         onAddClick={(mealType) => setAddSheetMeal(mealType)}
       />
 
-      <NutritionDaySummary dashboard={dashboard} />
-
       <WaterTracker
         consumedMl={dashboard?.water?.consumedMl ?? 0}
         targetMl={dashboard?.water?.targetMl ?? 2500}
         onAdd={addWater}
       />
 
-      <NutritionExtrasPanel onOpenFoodAI={() => setFoodAIOpen(true)} />
-      <NutritionShoppingList />
-      <PageIntro pageId="nutrition" />
-
-      {/* Food AI FAB — fixed, bottom-right, always on top */}
-      <div
-        className="fixed z-40"
-        style={{
-          bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))",
-          right: "1rem",
-        }}
-      >
+      <div className="flex gap-2">
         <button
           type="button"
-          className="h-14 w-14 rounded-full bg-accent shadow-lg shadow-accent/30 flex items-center justify-center text-black transition-all active:scale-95"
-          aria-label="Essen fotografieren"
-          onClick={() => setFoodAIOpen(true)}
+          className="flex-1 h-11 rounded-xl border border-white/[0.08] bg-zinc-900/70 text-sm font-medium text-zinc-200 inline-flex items-center justify-center gap-1.5"
+          onClick={() => setAddSheetMeal(mealTypeForHour())}
         >
-          <Camera className="h-6 w-6" />
+          <Plus className="h-4 w-4" />
+          Essen
         </button>
+        <button
+          type="button"
+          className="flex-1 h-11 rounded-xl border border-white/[0.08] bg-zinc-900/70 text-sm font-medium text-zinc-200 inline-flex items-center justify-center gap-1.5"
+          onClick={() => void addWater(250)}
+        >
+          <Droplets className="h-4 w-4" />
+          Wasser
+        </button>
+        <Link
+          href="/progress"
+          className="flex-1 h-11 rounded-xl border border-white/[0.08] bg-zinc-900/70 text-sm font-medium text-zinc-200 inline-flex items-center justify-center gap-1.5"
+        >
+          <Scale className="h-4 w-4" />
+          Gewicht
+        </Link>
       </div>
+
+      <Link
+        href="/rezepte"
+        className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-900/50 text-sm text-zinc-400"
+      >
+        <CookingPot className="h-4 w-4" />
+        Rezepte
+      </Link>
+
+      {belowFold && (
+        <>
+          <NutritionExtrasPanel onOpenFoodAI={() => setFoodAIOpen(true)} />
+          <NutritionShoppingList />
+          <PageIntro pageId="nutrition" />
+        </>
+      )}
 
       {addSheetMeal && (
         <FoodAddPopup
@@ -499,6 +539,10 @@ function NutritionPageInner() {
           onToggleFavorite={handleToggleFavorite}
           onLogSavedMeal={handleLogSavedMeal}
           quickAdding={quickAdding}
+          onOpenCamera={() => {
+            closeAddPopup();
+            setFoodAIOpen(true);
+          }}
         />
       )}
 
@@ -510,20 +554,18 @@ function NutritionPageInner() {
         />
       )}
 
-      <ConfirmDialog
-        open={pendingDelete != null}
-        title="Mahlzeit löschen?"
-        description={
-          pendingDelete
-            ? `"${pendingDelete.label}" wird aus deinem heutigen Ernährungstagebuch entfernt.`
-            : ""
-        }
-        confirmLabel="Löschen"
-        cancelLabel="Abbrechen"
-        destructive
-        onConfirm={confirmDeleteMeal}
-        onCancel={() => setPendingDelete(null)}
-      />
+      {pendingDelete != null && (
+        <ConfirmDialog
+          open
+          title="Mahlzeit löschen?"
+          description={`"${pendingDelete.label}" wird aus deinem heutigen Ernährungstagebuch entfernt.`}
+          confirmLabel="Löschen"
+          cancelLabel="Abbrechen"
+          destructive
+          onConfirm={confirmDeleteMeal}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </PageShell>
   );
 }

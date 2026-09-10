@@ -3,6 +3,7 @@ import type { ActivityLevel, Gender, NutritionGoal, Profile, TrainingGoal } from
 import { calculateBMR, calculateMacros, trainingGoalFromNutritionGoal } from "@/lib/nutrition";
 import { recommendedTrainingDays } from "@/lib/profile-training-days";
 import type { CalculatedTargets, ProfileMetricsInput } from "@/lib/profile-types";
+import { sanitizeCalorieTarget } from "@/lib/daily-kcal";
 
 function calculateBMI(weightKg: number, heightCm: number): number {
   const h = heightCm / 100;
@@ -324,15 +325,24 @@ export function nutritionTargetsFromProfile(
   }
 
   if (profile.calorieTarget != null && profile.proteinTargetG != null) {
-    return {
-      calories: profile.calorieTarget,
-      proteinG: profile.proteinTargetG,
-      carbsG: profile.carbsTargetG ?? 0,
-      fatG: profile.fatTargetG ?? 0,
-      waterTargetMl: profile.waterTargetMl ?? 2500,
-      nutritionGoal: profile.nutritionGoal ?? null,
-      profileComplete: true,
-    };
+    const calories = sanitizeCalorieTarget(profile.calorieTarget);
+    if (calories == null) {
+      console.warn(
+        "[calorie-target] ignoring implausible profile.calorieTarget",
+        Math.round(Number(profile.calorieTarget) || 0)
+      );
+    }
+    if (calories != null) {
+      return {
+        calories,
+        proteinG: profile.proteinTargetG,
+        carbsG: profile.carbsTargetG ?? 0,
+        fatG: profile.fatTargetG ?? 0,
+        waterTargetMl: profile.waterTargetMl ?? 2500,
+        nutritionGoal: profile.nutritionGoal ?? null,
+        profileComplete: true,
+      };
+    }
   }
 
   const computed = computeProfileTargets(profile, context);

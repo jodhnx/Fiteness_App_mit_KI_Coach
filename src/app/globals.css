@@ -396,12 +396,18 @@ html[data-density="large"] .hub-card-pad { padding: 1.35rem; min-height: 88px; }
   }
 }
 
-/* Nutrition mobile page */
+/* Nutrition page — mobile first, wider meal grid on desktop */
 .nutrition-mobile-page {
   width: 100%;
-  max-width: 430px;
+  max-width: 28rem;
   margin-left: auto;
   margin-right: auto;
+}
+
+@media (min-width: 1024px) {
+  .nutrition-mobile-page {
+    max-width: 52rem;
+  }
 }
 
 /* Keyboard-stable layouts — prevent viewport resize jumps on mobile */

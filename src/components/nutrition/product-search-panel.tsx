@@ -6,9 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScanLine, AlertCircle, Clock, Search } from "lucide-react";
 import { toast } from "sonner";
-import type { FoodProduct, FoodSearchResponse } from "@/lib/food/food-product-types";
+import {
+  foodSearchUrl,
+  mergeFoodSearchResponses,
+  type FoodProduct,
+  type FoodSearchResponse,
+} from "@/lib/food/food-product-types";
 import type { MealType } from "@prisma/client";
-import { getCached, setCached } from "@/lib/client-cache";
+import { getCached, setCached, isCacheStale } from "@/lib/client-cache";
 import { ProductSearchRow } from "@/components/nutrition/product-search-row";
 import { QuickFoodStrip } from "@/components/nutrition/quick-food-strip";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
@@ -41,7 +46,6 @@ type Props = {
 };
 
 const SEARCH_CACHE_TTL = 300_000;
-const POPULAR_PRELOAD = ["banane", "haferflocken", "hähnchen", "reis", "joghurt", "pizza"];
 
 function cacheKey(q: string) {
   return `food-search:${q.toLowerCase()}`;
@@ -88,15 +92,6 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
         });
       })
       .catch(() => {});
-
-    for (const term of POPULAR_PRELOAD) {
-      if (!getCached<FoodSearchResponse>(cacheKey(term))) {
-        fetch(`/api/food/search?q=${encodeURIComponent(term)}&localOnly=1`)
-          .then((r) => r.json())
-          .then((data) => setCached(cacheKey(term), data, SEARCH_CACHE_TTL))
-          .catch(() => {});
-      }
-    }
   }, []);
 
   const search = useCallback(async (query: string) => {
@@ -110,12 +105,13 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
     }
 
     const key = cacheKey(trimmed);
-    const cached = getCached<FoodSearchResponse>(key);
+    const cached = getCached<FoodSearchResponse>(key, { allowStale: true });
     if (cached) {
       setResult(cached);
       setError(cached.offError ?? null);
       setLoading(false);
       setLoadingOff(false);
+      if (!isCacheStale(key, 0.75)) return;
     } else {
       setLoading(true);
     }
@@ -124,34 +120,40 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
     const ac = new AbortController();
     abortRef.current = ac;
     const gen = ++requestGen.current;
+    const cacheHasHits = Boolean(cached?.products?.length);
+    setLoadingOff(true);
 
     try {
-      const localRes = await fetch(
-        `/api/food/search?q=${encodeURIComponent(trimmed)}&localOnly=1`,
-        { signal: ac.signal }
-      );
-      const localData = (await localRes.json()) as FoodSearchResponse;
-      if (!ac.signal.aborted && gen === requestGen.current) {
-        setResult(localData);
+      let current = cached;
+      if (!cacheHasHits) {
+        const fastRes = await fetch(foodSearchUrl(trimmed, "fast"), {
+          signal: ac.signal,
+          credentials: "include",
+        });
+        const fastData = (await fastRes.json()) as FoodSearchResponse;
+        if (ac.signal.aborted || gen !== requestGen.current) return;
+        current = fastData;
+        setCached(key, fastData, SEARCH_CACHE_TTL);
+        setResult(fastData);
         setLoading(false);
-        setLoadingOff(true);
       }
 
-      const fullRes = await fetch(
-        `/api/food/search?q=${encodeURIComponent(trimmed)}`,
-        { signal: ac.signal }
+      const enrichRes = await fetch(foodSearchUrl(trimmed, "enrich"), {
+        signal: ac.signal,
+        credentials: "include",
+      });
+      const enrichData = (await enrichRes.json()) as FoodSearchResponse;
+      if (ac.signal.aborted || gen !== requestGen.current) return;
+      const merged = current
+        ? mergeFoodSearchResponses(current, enrichData)
+        : enrichData;
+      setCached(key, merged, SEARCH_CACHE_TTL);
+      setResult(merged);
+      setError(
+        merged.offError && (merged.products?.length ?? 0) === 0
+          ? merged.offError
+          : null
       );
-      const fullData = (await fullRes.json()) as FoodSearchResponse;
-      if (!ac.signal.aborted && gen === requestGen.current) {
-        setCached(key, fullData, SEARCH_CACHE_TTL);
-        setResult(fullData);
-        setError(
-          fullData.offError && (fullData.products?.length ?? 0) === 0
-            ? fullData.offError
-            : fullData.offError ?? null
-        );
-        setLoadingOff(false);
-      }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
       if (!cached && gen === requestGen.current) {

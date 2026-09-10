@@ -118,6 +118,17 @@ export const MORE_NAV: NavItem[] = [
 /** Quiet grouped hub — More tab. */
 export const MORE_HUB_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
+    title: "KI Coach",
+    items: [
+      {
+        href: "/coach",
+        label: "KI Coach",
+        icon: Bot,
+        description: "Fragen und tägliche Tipps",
+      },
+    ],
+  },
+  {
     title: "Training",
     items: [
       {
@@ -158,31 +169,25 @@ export const MORE_HUB_SECTIONS: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: "Intelligence",
+    title: "Fortschritt",
     items: [
-      {
-        href: "/coach",
-        label: "KI Coach",
-        icon: Bot,
-        description: "Fragen und tägliche Tipps",
-      },
       {
         href: "/progress",
         label: "Wochenanalyse",
         icon: CalendarRange,
         description: "Trends der letzten Tage",
       },
-    ],
-  },
-  {
-    title: "Fortschritt",
-    items: [
       {
         href: "/erfolge",
         label: "Erfolge",
         icon: Trophy,
         description: "Abzeichen und Meilensteine",
       },
+    ],
+  },
+  {
+    title: "Community",
+    items: [
       {
         href: "/social",
         label: "Community",
@@ -192,7 +197,7 @@ export const MORE_HUB_SECTIONS: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: "Gesundheit",
+    title: "Geräte",
     items: [
       {
         href: "/geraete",
@@ -203,7 +208,7 @@ export const MORE_HUB_SECTIONS: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: "Konto",
+    title: "Einstellungen",
     items: [
       {
         href: "/settings",

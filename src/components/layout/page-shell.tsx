@@ -37,7 +37,8 @@ export const PageShell = memo(function PageShell({
     <div
       className={cn(
         WIDTH[maxWidth],
-        "mx-auto space-y-3",
+        "mx-auto",
+        !className?.includes("space-y-") && "space-y-3",
         bottomNav && "pb-4",
         className
       )}

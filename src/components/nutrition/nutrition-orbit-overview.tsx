@@ -2,7 +2,6 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import type { MealType } from "@prisma/client";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import {
   getMacroDisplay,
@@ -14,10 +13,9 @@ import { cn } from "@/lib/utils";
 type Props = {
   dashboard: NutritionDashboardPayload | null | undefined;
   loading?: boolean;
-  onAddMeal?: (meal: MealType) => void;
 };
 
-/** YAZIO-inspired today summary — remaining kcal primary. */
+/** One remaining-kcal ring + macros. Breakfast sits directly below. */
 export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   dashboard,
   loading = false,
@@ -26,19 +24,21 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
 
   if (state.kind === "loading") {
     return (
-      <div className="rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-zinc-950/95 px-6 py-10 text-center animate-pulse">
-        <div className="h-24 w-24 rounded-full bg-white/5 mx-auto mb-4" />
-        <div className="h-4 w-32 bg-white/5 mx-auto rounded" />
+      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/70 px-3 py-2 space-y-2">
+        <div className="mx-auto h-[120px] w-[120px] rounded-full bg-white/5 animate-pulse" />
+        <div className="h-3 w-40 mx-auto bg-white/5 rounded animate-pulse" />
+        <div className="grid grid-cols-3 gap-2">
+          <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+          <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+          <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+        </div>
       </div>
     );
   }
 
   if (state.kind === "missing_target") {
     return (
-      <div className="rounded-[1.75rem] border border-amber-500/25 bg-amber-500/5 px-6 py-8 text-center space-y-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-300/80">
-          Heute
-        </p>
+      <div className="rounded-xl border border-white/[0.1] bg-zinc-900/70 px-4 py-3 space-y-2">
         <p className="text-lg font-semibold text-white">Kalorienziel festlegen</p>
         <p className="text-sm text-zinc-400">
           {state.profileIncomplete
@@ -48,7 +48,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
         <Link
           href="/settings"
           prefetch
-          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 text-sm font-semibold text-black"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white text-zinc-950 px-4 text-sm font-semibold"
         >
           Ziel festlegen
         </Link>
@@ -56,112 +56,68 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     );
   }
 
-  const dashboardSafe = dashboard!;
-  const consumed = dashboardSafe.consumed ?? {
+  const consumed = dashboard?.consumed ?? {
     calories: 0,
     proteinG: 0,
     carbsG: 0,
     fatG: 0,
   };
-  const targets = dashboardSafe.targets ?? {
+  const targets = dashboard?.targets ?? {
     calories: 0,
     proteinG: 0,
     carbsG: 0,
     fatG: 0,
   };
-  const remaining = dashboardSafe.remaining ?? {
-    calories: 0,
-    proteinG: 0,
-    carbsG: 0,
-    fatG: 0,
-  };
-  const burned = dashboardSafe.exerciseBurned?.calories ?? 0;
-  const burnedEstimated = dashboardSafe.exerciseBurned?.estimated ?? true;
   const { cal } = state;
 
   const macros = [
-    { key: "p", label: "Protein", consumed: consumed.proteinG ?? 0, target: targets.proteinG ?? 0, bar: "bg-rose-400", tint: "text-rose-400" },
-    { key: "c", label: "KH", consumed: consumed.carbsG ?? 0, target: targets.carbsG ?? 0, bar: "bg-amber-400", tint: "text-amber-400" },
-    { key: "f", label: "Fett", consumed: consumed.fatG ?? 0, target: targets.fatG ?? 0, bar: "bg-sky-400", tint: "text-sky-400" },
+    { key: "p", label: "Protein", consumed: consumed.proteinG ?? 0, target: targets.proteinG ?? 0 },
+    { key: "c", label: "Carbs", consumed: consumed.carbsG ?? 0, target: targets.carbsG ?? 0 },
+    { key: "f", label: "Fat", consumed: consumed.fatG ?? 0, target: targets.fatG ?? 0 },
   ] as const;
 
   return (
-    <div
-      className={cn(
-        "rounded-[1.75rem] border px-3.5 pt-5 pb-3.5 space-y-4",
-        "bg-gradient-to-b from-zinc-900/95 via-zinc-950/90 to-zinc-950",
-        cal.isOver
-          ? "border-red-500/35 shadow-[0_0_40px_-18px_rgba(239,68,68,0.45)]"
-          : "border-white/[0.08]"
-      )}
-    >
-      <div className="text-center space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-          Heute
-        </p>
-        <p
-          className={cn(
-            "text-[2.75rem] font-bold leading-none tabular-nums tracking-tight",
-            cal.isOver ? "text-red-400" : "text-white"
-          )}
-        >
-          {cal.primaryValue.toLocaleString("de-DE")}
-        </p>
-        <p
-          className={cn(
-            "text-sm font-semibold",
-            cal.isOver ? "text-red-400/90" : "text-zinc-300"
-          )}
-        >
-          {cal.primaryLabel}
-        </p>
-        <p className="text-xs text-zinc-500 tabular-nums">{cal.secondaryLine} kcal</p>
-      </div>
-
+    <section className="rounded-xl border border-white/[0.08] bg-zinc-900/70 px-3 py-2">
       <CalorieRing
-        consumed={consumed.calories}
-        target={targets.calories}
-        remaining={remaining.calories}
-        size={188}
-        ringId="nutrition-kcal-ring"
-        centerMode="remaining"
-        label={cal.isOver ? "ÜBER ZIEL" : "ÜBRIG"}
+        consumed={cal.consumed}
+        target={cal.target}
+        remaining={cal.remaining}
+        exerciseBurned={dashboard?.exerciseBurned?.calories ?? 0}
+        size={120}
       />
+      <p className="mt-1.5 text-center text-[11px] text-zinc-500 tabular-nums">
+        {cal.isOver
+          ? `${cal.overBy.toLocaleString("de-DE")} kcal über dem Ziel`
+          : `${cal.consumed.toLocaleString("de-DE")} gegessen von ${cal.target.toLocaleString("de-DE")} kcal`}
+      </p>
 
-      {burned > 0 && (
-        <p className="text-center text-xs text-orange-300/90 font-medium tabular-nums -mt-1">
-          🔥 {Math.round(burned)} kcal verbrannt
-          {burnedEstimated ? " (geschätzt)" : ""}
-        </p>
-      )}
-
-      <div className="grid grid-cols-3 gap-2">
+      <div className="mt-2 grid grid-cols-3 gap-2">
         {macros.map((m) => {
           if (m.target <= 0) return null;
           const macro = getMacroDisplay(m.consumed, m.target, m.label);
           const pct =
             m.target > 0 ? Math.min(100, Math.round((m.consumed / m.target) * 100)) : 0;
           return (
-            <div
-              key={m.key}
-              className="rounded-2xl border border-white/[0.06] bg-white/[0.025] px-2.5 py-2.5 text-center"
-            >
-              <p className={`text-[10px] font-semibold uppercase tracking-wide ${m.tint}`}>
-                {m.label}
+            <div key={m.key} className="min-w-0">
+              <p className="text-[10px] font-medium text-zinc-500 truncate">{m.label}</p>
+              <p
+                className={cn(
+                  "text-[12px] font-semibold tabular-nums leading-tight mt-0.5",
+                  macro.isOver ? "text-red-300" : "text-white"
+                )}
+              >
+                {macro.consumedG} / {macro.targetG} g
               </p>
-              <p className="mt-1 text-[13px] font-bold text-white tabular-nums leading-snug">
-                {macro.primaryLine.replace(` ${m.label}`, "")}
-              </p>
-              <p className="text-[10px] font-medium text-zinc-500 tabular-nums mt-0.5">
-                {macro.secondaryLine}
-              </p>
-              <div className="mt-2 h-1 rounded-full bg-zinc-800 overflow-hidden">
-                <div className={`h-full rounded-full ${m.bar}`} style={{ width: `${pct}%` }} />
+              <div className="mt-1 h-1 rounded-full bg-zinc-800 overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full", macro.isOver ? "bg-red-400" : "bg-white/70")}
+                  style={{ width: `${pct}%` }}
+                />
               </div>
             </div>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 });

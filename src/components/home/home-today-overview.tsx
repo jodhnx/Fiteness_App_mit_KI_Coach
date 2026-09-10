@@ -37,7 +37,7 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
 
   if (state.kind === "loading") {
     return (
-      <PremiumCard padding="md" className="space-y-4 min-h-[17.5rem]">
+      <PremiumCard padding="md" className="space-y-3 min-h-[12rem]">
         <div className="h-3 w-16 rounded bg-white/5 animate-pulse" />
         <div className="h-12 w-36 rounded bg-white/5 animate-pulse" />
         <div className="h-4 w-24 rounded bg-white/5 animate-pulse" />
@@ -57,7 +57,7 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
 
   if (state.kind === "missing_target") {
     return (
-      <PremiumCard padding="md" className="text-center space-y-3 min-h-[17.5rem] flex flex-col justify-center">
+      <PremiumCard padding="md" className="text-center space-y-3 min-h-[12rem] flex flex-col justify-center">
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
           Heute
         </p>
@@ -95,7 +95,7 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
   return (
     <PremiumCard
       padding="md"
-      className={cn("space-y-4", cal.isOver && "ring-1 ring-red-500/25")}
+      className={cn("space-y-3", cal.isOver && "ring-1 ring-red-500/25")}
     >
       <div>
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
@@ -103,7 +103,7 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
         </p>
         <p
           className={cn(
-            "mt-2 text-[2.85rem] font-bold leading-none tabular-nums tracking-tight",
+            "mt-1.5 text-[2.35rem] font-bold leading-none tabular-nums tracking-tight",
             cal.isOver ? "text-red-400" : "text-white"
           )}
         >

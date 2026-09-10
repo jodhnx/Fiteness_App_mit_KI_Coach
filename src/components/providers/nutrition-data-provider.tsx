@@ -72,10 +72,21 @@ export function NutritionDataProvider({
 
   useEffect(() => {
     if (!initialDashboard || !isValidDashboardPayload(initialDashboard)) return;
-    // Server/bootstrap payload wins. Do not re-prefer disk here — that was
-    // overwriting a fresh calorieTarget with a stale mobile/desktop cache.
-    const resolved = preferCanonicalNutritionDashboard(initialDashboard, null);
     setDashboard((prev) => {
+      const incomingTarget = initialDashboard.targets?.calories ?? 0;
+      // Bootstrap can briefly ship a zero-target shell after login.
+      if (prev.targets.calories > 0 && incomingTarget <= 0) {
+        return prev;
+      }
+      const resolved = preferCanonicalNutritionDashboard(initialDashboard, null);
+      // Stale bootstrap/home must not wipe fresher meal logs already on screen.
+      if (
+        prev.date === resolved.date &&
+        prev.targets.calories === resolved.targets.calories &&
+        prev.consumed.calories > resolved.consumed.calories
+      ) {
+        return prev;
+      }
       if (
         prev.date === resolved.date &&
         prev.consumed.calories === resolved.consumed.calories &&
@@ -84,14 +95,14 @@ export function NutritionDataProvider({
       ) {
         return prev;
       }
+      const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
+        allowStale: true,
+      });
+      if (!cached || !nutritionSnapshotsMatch(cached, resolved)) {
+        publishNutritionDashboard(resolved);
+      }
       return resolved;
     });
-    const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
-      allowStale: true,
-    });
-    if (!cached || !nutritionSnapshotsMatch(cached, resolved)) {
-      publishNutritionDashboard(resolved);
-    }
   }, [initialDashboard]);
 
   useEffect(() => {

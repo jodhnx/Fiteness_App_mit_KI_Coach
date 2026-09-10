@@ -10,10 +10,16 @@ import {
 } from "../src/lib/nutrition-display";
 import {
   createEmptyNutritionDashboard,
+  hasUsableNutritionDashboard,
   normalizeNutritionDashboard,
 } from "../src/lib/nutrition-defaults";
 import { rolloverNutritionDashboardToToday } from "../src/lib/nutrition-day-rollover";
 import { optimisticRemoveMeal } from "../src/lib/nutrition-sync";
+import {
+  coerceToKilocalories,
+  sanitizeCalorieTarget,
+  parseManualCalorieTargetInput,
+} from "../src/lib/daily-kcal";
 
 let passed = 0;
 let failed = 0;
@@ -150,6 +156,57 @@ console.log("Nutrition Display Tests\n");
     remaining: { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
   });
   assert("normalize recomputes remaining from 0 consumed", normalized.remaining.calories === 3000);
+}
+
+// 10. Root cause: millicalories / locale-stripped remaining must never paint as 145.284
+{
+  const cal = getCalorieDisplay(600, 2400, 145284, 145284);
+  assert("millicalorie burn not credited 1:1", cal.primaryValue === 1945 && !cal.isOver);
+  assert("stale remaining field ignored", cal.remaining === 1945);
+}
+
+{
+  const dash = createEmptyNutritionDashboard();
+  dash.targets.calories = 145284;
+  dash.consumed.calories = 0;
+  dash.remaining.calories = 145284;
+  dash.exerciseBurned = { calories: 0, estimated: false };
+  const state = resolveNutritionDisplayState(dash);
+  assert("implausible target is missing_target not 145284 remaining", state.kind === "missing_target");
+}
+
+{
+  const dash = normalizeNutritionDashboard({
+    ...createEmptyNutritionDashboard(),
+    targets: { ...createEmptyNutritionDashboard().targets, calories: 2400 },
+    consumed: { calories: 600, proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 },
+    remaining: { calories: 145284, proteinG: 0, carbsG: 0, fatG: 0 },
+    exerciseBurned: { calories: 145284, estimated: false },
+  });
+  assert("normalize millicalorie remaining", dash.remaining.calories === 1945);
+  assert("normalize millicalorie burned", dash.exerciseBurned?.calories === 145);
+}
+
+{
+  assert("145284 millicalories → 145 kcal", coerceToKilocalories(145284) === 145);
+  assert("145284 not a daily target", sanitizeCalorieTarget(145284) === null);
+  assert("German thousands 2.400", parseManualCalorieTargetInput("2.400") === 2400);
+  assert("German 145.284 rejected as target", parseManualCalorieTargetInput("145.284") === null);
+}
+
+{
+  const cal = getCalorieDisplay(600, 2400, 0, 0);
+  assert("2400 − 600 = 1800 übrig", cal.primaryValue === 1800 && !cal.isOver);
+}
+
+{
+  const cal = getCalorieDisplay(600, 2400, 0, 300);
+  assert("2400 − 600 + 300 = 2100 übrig", cal.primaryValue === 2100 && !cal.isOver);
+}
+
+{
+  const empty = createEmptyNutritionDashboard();
+  assert("empty shell is usable nutrition UI", hasUsableNutritionDashboard(empty));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

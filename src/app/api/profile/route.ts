@@ -19,6 +19,7 @@ import { startOfDay, isValid } from "date-fns";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { formatApiErrorMessage } from "@/lib/format-api-error";
 import { isSchemaMismatchError } from "@/lib/prisma-errors";
+import { sanitizeCalorieTarget } from "@/lib/daily-kcal";
 
 function logProfile(step: string, detail?: Record<string, unknown>) {
   if (process.env.NODE_ENV === "development" || process.env.DEBUG_PROFILE === "1") {
@@ -49,7 +50,7 @@ function mergeProfile(
     nutritionGoal: input.nutritionGoal,
     calorieTarget:
       manual && !recalc && patch.calorieTarget != null
-        ? patch.calorieTarget
+        ? (sanitizeCalorieTarget(patch.calorieTarget) ?? computed.calorieTarget)
         : computed.calorieTarget,
     proteinTargetG:
       manual && patch.proteinTargetG != null ? patch.proteinTargetG : computed.proteinTargetG,

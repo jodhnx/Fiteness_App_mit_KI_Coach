@@ -1,6 +1,7 @@
 import type { MealType, NutritionGoal } from "@prisma/client";
 import { format, startOfDay } from "date-fns";
 import { TRACK_MEAL_ORDER } from "@/lib/meal-types";
+import { coerceToKilocalories, sanitizeCalorieTarget, sanitizeExerciseKcal } from "@/lib/daily-kcal";
 
 export type NutritionDashboardPayload = {
   date: string;
@@ -28,7 +29,7 @@ export type NutritionDashboardPayload = {
     items: {
       id: string;
       quantityG: number;
-      food: { name: string };
+      food: { name: string; brand?: string | null };
       calories: number;
       proteinG: number;
       carbsG?: number;
@@ -120,6 +121,11 @@ export function isValidDashboardPayload(data: unknown): data is NutritionDashboa
   );
 }
 
+/** Meal slots + calorie/macro/water fields are present — page is usable. */
+export function hasUsableNutritionDashboard(data: unknown): data is NutritionDashboardPayload {
+  return isValidDashboardPayload(data) && data.mealsByType.length > 0;
+}
+
 /** Fill missing fields so stale/partial caches never crash the UI. */
 export function normalizeNutritionDashboard(
   data: Partial<NutritionDashboardPayload> | null | undefined
@@ -130,7 +136,7 @@ export function normalizeNutritionDashboard(
   const targets = {
     ...empty.targets,
     ...(data.targets ?? {}),
-    calories: Number(data.targets?.calories) || 0,
+    calories: sanitizeCalorieTarget(data.targets?.calories) ?? 0,
     proteinG: Number(data.targets?.proteinG) || 0,
     carbsG: Number(data.targets?.carbsG) || 0,
     fatG: Number(data.targets?.fatG) || 0,
@@ -141,7 +147,7 @@ export function normalizeNutritionDashboard(
   const consumed = {
     ...empty.consumed,
     ...(data.consumed ?? {}),
-    calories: Number(data.consumed?.calories) || 0,
+    calories: coerceToKilocalories(data.consumed?.calories),
     proteinG: Number(data.consumed?.proteinG) || 0,
     carbsG: Number(data.consumed?.carbsG) || 0,
     fatG: Number(data.consumed?.fatG) || 0,
@@ -152,7 +158,7 @@ export function normalizeNutritionDashboard(
   // rollover incorrectly shows "0 kcal übrig" when nothing was eaten yet.
   // Formula must match computeNutritionRemaining() in nutrition-display.ts.
   const exerciseBurned = {
-    calories: Number(data.exerciseBurned?.calories) || 0,
+    calories: sanitizeExerciseKcal(data.exerciseBurned?.calories),
     estimated: Boolean(data.exerciseBurned?.estimated),
   };
   const burned = exerciseBurned.calories;
@@ -168,27 +174,44 @@ export function normalizeNutritionDashboard(
     targetMl: Number(data.water?.targetMl ?? targets.waterTargetMl) || 2500,
   };
 
-  const mealsByType = Array.isArray(data.mealsByType)
-    ? data.mealsByType.map((slot) => ({
-        mealType: slot.mealType,
-        mealId: slot.mealId ?? null,
-        totals: {
-          calories: Number(slot.totals?.calories) || 0,
-          proteinG: Number(slot.totals?.proteinG) || 0,
-          carbsG: Number(slot.totals?.carbsG) || 0,
-          fatG: Number(slot.totals?.fatG) || 0,
-        },
-        items: Array.isArray(slot.items)
-          ? slot.items.map((item) => ({
-              ...item,
-              food: { name: item.food?.name ?? "Lebensmittel" },
-              calories: Number(item.calories) || 0,
-              proteinG: Number(item.proteinG) || 0,
-              quantityG: Number(item.quantityG) || 0,
-            }))
-          : [],
-      }))
-    : empty.mealsByType;
+  // Always keep all TRACK_MEAL_ORDER slots. An empty mealsByType array is
+  // "valid JSON" but not a paintably usable dashboard — MealTrackList can
+  // still render slots from TRACK_MEAL_ORDER, which must not trip the
+  // global "Laden dauert zu lange" banner.
+  const rawMeals = Array.isArray(data.mealsByType) ? data.mealsByType : [];
+  const mealsByType =
+    rawMeals.length > 0
+      ? TRACK_MEAL_ORDER.map((mealType) => {
+          const slot = rawMeals.find((m) => m.mealType === mealType);
+          if (!slot) {
+            return {
+              mealType,
+              mealId: null,
+              totals: { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+              items: [],
+            };
+          }
+          return {
+            mealType: slot.mealType,
+            mealId: slot.mealId ?? null,
+            totals: {
+              calories: Number(slot.totals?.calories) || 0,
+              proteinG: Number(slot.totals?.proteinG) || 0,
+              carbsG: Number(slot.totals?.carbsG) || 0,
+              fatG: Number(slot.totals?.fatG) || 0,
+            },
+            items: Array.isArray(slot.items)
+              ? slot.items.map((item) => ({
+                  ...item,
+                  food: { name: item.food?.name ?? "Lebensmittel" },
+                  calories: Number(item.calories) || 0,
+                  proteinG: Number(item.proteinG) || 0,
+                  quantityG: Number(item.quantityG) || 0,
+                }))
+              : [],
+          };
+        })
+      : empty.mealsByType;
 
   return {
     date: typeof data.date === "string" ? data.date : empty.date,

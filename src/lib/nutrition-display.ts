@@ -1,7 +1,12 @@
-/** Single source for calorie/macro UI copy — uses dashboard remaining when provided. */
+/** Single source for calorie/macro UI copy — remaining is always derived, never trusted. */
 
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { nutritionProfileIncomplete } from "@/lib/nutrition-defaults";
+import {
+  coerceToKilocalories,
+  sanitizeCalorieTarget,
+  sanitizeExerciseKcal,
+} from "@/lib/daily-kcal";
 
 export type CalorieDisplay = {
   primaryValue: number;
@@ -47,7 +52,7 @@ export function resolveNutritionDisplayState(
     return { kind: "loading" };
   }
 
-  const target = Math.round(dashboard.targets?.calories ?? 0);
+  const target = sanitizeCalorieTarget(dashboard.targets?.calories) ?? 0;
   if (target <= 0) {
     return {
       kind: "missing_target",
@@ -55,17 +60,17 @@ export function resolveNutritionDisplayState(
     };
   }
 
-  const consumed = dashboard.consumed?.calories ?? 0;
+  const consumed = coerceToKilocalories(dashboard.consumed?.calories);
   const remainingFromDashboard = dashboard.remaining?.calories ?? null;
-  const burned = dashboard.exerciseBurned?.calories ?? 0;
+  const burned = sanitizeExerciseKcal(dashboard.exerciseBurned?.calories);
+  const cal = getCalorieDisplay(consumed, target, remainingFromDashboard, burned);
 
   return {
     kind: "ready",
     consumed,
     target,
-    remainingFromDashboard:
-      remainingFromDashboard != null ? Math.round(remainingFromDashboard) : 0,
-    cal: getCalorieDisplay(consumed, target, remainingFromDashboard, burned),
+    remainingFromDashboard: cal.remaining,
+    cal,
   };
 }
 
@@ -76,12 +81,12 @@ export function resolveNutritionDisplayState(
 export function getCalorieDisplay(
   consumed: number,
   target: number,
-  remainingFromDashboard?: number | null,
+  _remainingFromDashboard?: number | null,
   exerciseBurned?: number | null
 ): CalorieDisplay {
-  const consumedR = Math.round(consumed);
-  const targetR = Math.round(target);
-  const burnedR = Math.round(exerciseBurned ?? 0);
+  const consumedR = coerceToKilocalories(consumed);
+  const targetR = sanitizeCalorieTarget(target) ?? 0;
+  const burnedR = sanitizeExerciseKcal(exerciseBurned);
 
   if (targetR <= 0) {
     return {
@@ -96,12 +101,9 @@ export function getCalorieDisplay(
     };
   }
 
-  const net =
-    exerciseBurned != null
-      ? targetR - consumedR + burnedR
-      : remainingFromDashboard != null && remainingFromDashboard > 0
-        ? Math.round(remainingFromDashboard)
-        : targetR - consumedR + burnedR;
+  // Always derive remaining. Never trust a cached remaining field — that is
+  // how millicalorie / locale-stripped targets leaked into the UI.
+  const net = targetR - consumedR + burnedR;
 
   const isOver = net < 0;
   const overBy = isOver ? Math.abs(Math.round(net)) : 0;
@@ -154,10 +156,12 @@ export function computeNutritionRemaining(dashboard: {
   >;
   exerciseBurned?: NutritionDashboardPayload["exerciseBurned"];
 }): NutritionDashboardPayload["remaining"] {
-  const burned = dashboard.exerciseBurned?.calories ?? 0;
+  const burned = sanitizeExerciseKcal(dashboard.exerciseBurned?.calories);
+  const consumedCal = coerceToKilocalories(dashboard.consumed.calories);
+  const targetCal = sanitizeCalorieTarget(dashboard.targets.calories) ?? 0;
   const { consumed, targets } = dashboard;
   return {
-    calories: Math.max(0, targets.calories - consumed.calories + burned),
+    calories: Math.max(0, targetCal - consumedCal + burned),
     proteinG: Math.max(0, targets.proteinG - consumed.proteinG),
     carbsG: Math.max(0, targets.carbsG - consumed.carbsG),
     fatG: Math.max(0, targets.fatG - consumed.fatG),

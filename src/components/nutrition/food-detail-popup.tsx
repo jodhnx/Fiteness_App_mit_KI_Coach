@@ -167,59 +167,64 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
 
           <div>
             <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-              Portion
+              Menge
             </p>
+            <div className="flex items-center gap-2 mb-2">
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={customMode ? customGrams : String(selectedGrams)}
+                onChange={(e) => {
+                  setCustomMode(true);
+                  setCustomGrams(e.target.value.replace(/[^0-9.,]/g, ""));
+                }}
+                className="h-12 flex-1 text-base rounded-xl bg-zinc-900 border-white/10 tabular-nums"
+                aria-label="Menge in Gramm"
+              />
+              <span className="text-xs font-semibold text-zinc-500 w-6">g</span>
+            </div>
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-              {presets.map((p) => (
+              {[50, 100, 150, 200].map((g) => (
                 <button
-                  key={p.label}
+                  key={g}
                   type="button"
                   onClick={() => {
                     setCustomMode(false);
-                    setSelectedGrams(p.grams);
+                    setSelectedGrams(g);
+                    setCustomGrams(String(g));
                   }}
                   className={`shrink-0 min-h-11 rounded-xl px-3.5 text-sm font-medium border ${
-                    !customMode && selectedGrams === p.grams
-                      ? "bg-cyan-500/25 border-cyan-400/50 text-cyan-50"
+                    !customMode && selectedGrams === g
+                      ? "bg-white/15 border-white/25 text-white"
                       : "bg-zinc-900/80 border-zinc-700 text-zinc-300"
                   }`}
                 >
-                  {p.label}
+                  {g} g
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => setCustomMode(true)}
-                className={`shrink-0 min-h-11 rounded-xl px-3.5 text-sm font-medium border ${
-                  customMode
-                    ? "bg-cyan-500/25 border-cyan-400/50 text-cyan-50"
-                    : "bg-zinc-900/80 border-zinc-700 text-zinc-300"
-                }`}
-              >
-                Eigene Gramm
-              </button>
+              {presets
+                .filter((p) => ![50, 100, 150, 200].includes(p.grams))
+                .slice(0, 3)
+                .map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      setCustomMode(false);
+                      setSelectedGrams(p.grams);
+                      setCustomGrams(String(p.grams));
+                    }}
+                    className={`shrink-0 min-h-11 rounded-xl px-3.5 text-sm font-medium border ${
+                      !customMode && selectedGrams === p.grams
+                        ? "bg-white/15 border-white/25 text-white"
+                        : "bg-zinc-900/80 border-zinc-700 text-zinc-300"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
             </div>
           </div>
-
-          {customMode && (
-            <div>
-              <label className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2 block">
-                Gramm eingeben
-              </label>
-              <Input
-                type="number"
-                inputMode="decimal"
-                min={1}
-                max={5000}
-                step={1}
-                value={customGrams}
-                onChange={(e) => setCustomGrams(e.target.value)}
-                className="h-12 text-base rounded-xl bg-zinc-900 border-zinc-700"
-                placeholder="z.B. 125"
-                autoFocus
-              />
-            </div>
-          )}
 
           <div>
             <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2">
@@ -233,7 +238,7 @@ export const FoodDetailPopup = memo(function FoodDetailPopup({
                   onClick={() => setMeal(m)}
                   className={`shrink-0 min-h-11 rounded-xl px-3.5 text-sm font-medium border ${
                     meal === m
-                      ? "bg-cyan-500/25 border-cyan-400/50 text-cyan-50"
+                      ? "bg-white/15 border-white/25 text-white"
                       : "bg-zinc-900/80 border-zinc-700 text-zinc-300"
                   }`}
                 >
@@ -271,7 +276,7 @@ function MacroPill({
     <div
       className={`rounded-xl px-2 py-2.5 text-center border ${
         highlight
-          ? "bg-cyan-500/12 border-cyan-500/30"
+          ? "bg-white/10 border-white/20"
           : "bg-zinc-900/70 border-zinc-800"
       }`}
     >

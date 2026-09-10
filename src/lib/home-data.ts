@@ -5,7 +5,6 @@ import { getActivityWeekSummary, getRecentActivity } from "@/lib/activity-servic
 import { loadHealthDashboard } from "@/lib/activity-health";
 import { loadExtendedHealthDashboard } from "@/lib/health/health-dashboard";
 import { prisma } from "@/lib/prisma";
-import { startOfDay } from "date-fns";
 import {
   createEmptyHomeData,
   normalizeHomeData,
@@ -13,6 +12,7 @@ import {
 } from "@/lib/home-defaults";
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
+import { nutritionDayKey, nutritionDayUtc } from "@/lib/nutrition-day";
 import { computeWeightGoalProgress } from "@/lib/smart-goals";
 import { buildWeeklyReport } from "@/lib/weekly-report";
 import { loadMuscleRecovery } from "@/lib/recovery-service";
@@ -79,7 +79,8 @@ export type HomeEnrichmentPayload = Pick<
 export async function loadHomeEnrichment(
   userId: string
 ): Promise<HomeEnrichmentPayload> {
-  const today = startOfDay(new Date());
+  // Same calendar key as nutrition/bootstrap — never process-local startOfDay().
+  const today = nutritionDayUtc(nutritionDayKey());
   const [
     healthMetric,
     activityWeek,
@@ -262,9 +263,15 @@ export async function loadHomeEnrichment(
 }
 
 /** Single bundled home load — no duplicate DB work inside coach insights. */
-export async function loadHomeData(userId: string): Promise<HomeDataPayload> {
+export async function loadHomeData(
+  userId: string,
+  day?: Date
+): Promise<HomeDataPayload> {
   try {
-    const today = startOfDay(new Date());
+    // Prefer explicit day from resolveNutritionDay; fallback to runtime local
+    // calendar day as UTC midnight (not date-fns startOfDay — that shifts YMD
+    // west of UTC and loads the wrong meal day).
+    const today = day ?? nutritionDayUtc(nutritionDayKey());
 
     const [
       nutrition,

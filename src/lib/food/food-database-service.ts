@@ -109,6 +109,7 @@ export async function searchLocalFoods(
           OR: [
             { name: { contains: t, mode: "insensitive" as const } },
             { brand: { contains: t, mode: "insensitive" as const } },
+            { barcode: t },
           ],
         }))
       : [
@@ -126,15 +127,6 @@ export async function searchLocalFoods(
   try {
     const rows = await prisma.foodItem.findMany({
       where,
-      select: foodSelect,
-      take: limit,
-      orderBy: { name: "asc" },
-    });
-    return rows.map(mapDbFoodToProduct);
-  } catch (e) {
-    console.error("[food-database] full select failed, minimal fallback", e);
-    const rows = await prisma.foodItem.findMany({
-      where,
       select: foodSelectMinimal,
       take: limit,
       orderBy: { name: "asc" },
@@ -148,6 +140,9 @@ export async function searchLocalFoods(
         dataSource: "local",
       })
     );
+  } catch (e) {
+    console.error("[food-database] search failed", e);
+    return [];
   }
 }
 

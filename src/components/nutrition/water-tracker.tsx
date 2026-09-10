@@ -1,9 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import { Droplets } from "lucide-react";
-
-const QUICK_AMOUNTS = [250, 500, 750] as const;
 
 type Props = {
   consumedMl: number;
@@ -20,46 +17,34 @@ export const WaterTracker = memo(function WaterTracker({
   targetMl,
   onAdd,
 }: Props) {
-  const pct = Math.min(100, Math.round((consumedMl / Math.max(targetMl, 1)) * 100));
   const canRemove = consumedMl > 0;
   return (
-    <section className="rounded-2xl border border-sky-500/20 bg-sky-950/30 px-3 py-2.5">
-      <div className="flex items-center gap-2 mb-1.5">
-        <Droplets className="h-4 w-4 text-sky-400 shrink-0" />
+    <section className="rounded-xl border border-white/[0.08] bg-zinc-900/70 px-3 py-2">
+      <div className="flex items-center gap-2">
         <p className="text-sm font-medium text-white flex-1">
           Wasser{" "}
-          <span className="text-sky-300 tabular-nums font-semibold">
+          <span className="tabular-nums font-semibold">
             {formatLiters(consumedMl)}
           </span>
           <span className="text-zinc-500 font-normal"> / {formatLiters(targetMl)} L</span>
         </p>
-        <div className="h-1.5 w-16 rounded-full bg-zinc-800 overflow-hidden">
-          <div
-            className="h-full bg-sky-400 transition-[width] duration-200"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
-      <div className="flex gap-1.5">
         <button
           type="button"
           disabled={!canRemove}
-          className="h-8 min-w-[3.25rem] rounded-lg border border-sky-800/50 bg-sky-950/40 px-2 text-xs font-semibold text-sky-100 disabled:opacity-40 active:bg-sky-900/50"
+          className="h-11 min-w-[4.5rem] rounded-xl border border-white/10 px-2 text-xs font-semibold text-zinc-200 disabled:opacity-40"
           onClick={() => onAdd(-250)}
           aria-label="250 Milliliter Wasser entfernen"
         >
-          −250
+          −250 ml
         </button>
-        {QUICK_AMOUNTS.map((ml) => (
-          <button
-            key={ml}
-            type="button"
-            className="flex-1 h-8 rounded-lg border border-sky-800/50 bg-sky-950/40 text-xs font-semibold text-sky-100 active:bg-sky-900/50"
-            onClick={() => onAdd(ml)}
-          >
-            +{ml}
-          </button>
-        ))}
+        <button
+          type="button"
+          className="h-11 min-w-[4.5rem] rounded-xl border border-white/10 px-2 text-xs font-semibold text-zinc-200"
+          onClick={() => onAdd(250)}
+          aria-label="250 Milliliter Wasser hinzufügen"
+        >
+          +250 ml
+        </button>
       </div>
     </section>
   );

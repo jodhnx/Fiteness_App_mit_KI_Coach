@@ -128,8 +128,12 @@ async function searchLocalWithSynonyms(
   userId: string,
   query: string,
   country: FoodCountryCode,
-  limit: number
+  limit: number,
+  mode: "fast" | "deep" = "fast"
 ): Promise<FoodProduct[]> {
+  if (mode === "fast") {
+    return searchLocalFoods(userId, query, limit).catch(() => [] as FoodProduct[]);
+  }
   const terms = expandFoodSearchTerms(query, country);
   const batches = await Promise.all(
     terms.slice(0, 4).map((t) =>
@@ -164,7 +168,8 @@ export async function searchFoodProductsLocalOnly(
   country?: FoodCountryCode
 ): Promise<FoodSearchResponse> {
   const q = query.trim();
-  const countryCode = country ?? (await resolveUserCountry(userId));
+  // Prefer caller country — avoid a Profile round-trip on the hot path.
+  const countryCode = country ?? "AT";
   if (q.length < 2) {
     return {
       products: [],
@@ -177,9 +182,16 @@ export async function searchFoodProductsLocalOnly(
     };
   }
 
-  const [localResult, layers] = await Promise.all([
-    searchLocalWithSynonyms(userId, q, countryCode, 24),
-    Promise.resolve(searchStaticLayers(q, countryCode)),
+  const layers = searchStaticLayers(q, countryCode);
+
+  // Cap DB wait so static DACH/catalog hits still paint under ~1s.
+  const localResult = await Promise.race([
+    searchLocalWithSynonyms(userId, q, countryCode, 16, "fast").catch(
+      () => [] as FoodProduct[]
+    ),
+    new Promise<FoodProduct[]>((resolve) =>
+      setTimeout(() => resolve([]), 700)
+    ),
   ]);
 
   const products = mergeAndRank(
@@ -204,6 +216,69 @@ export async function searchFoodProductsLocalOnly(
   };
 }
 
+export async function searchFoodProductsEnrich(
+  userId: string,
+  query: string,
+  country?: FoodCountryCode
+): Promise<FoodSearchResponse> {
+  const q = query.trim();
+  const countryCode = country ?? (await resolveUserCountry(userId));
+  if (q.length < 2) {
+    return {
+      products: [],
+      suggestions: [],
+      query: q,
+      source: "openfoodfacts",
+      offAvailable: false,
+      localCount: 0,
+      offCount: 0,
+    };
+  }
+
+  const primaryOffQuery = expandFoodSearchTerms(q, countryCode)[0] ?? q;
+  const offResult = await Promise.race([
+    searchOpenFoodFacts(primaryOffQuery, 24, countryCode),
+    new Promise<{
+      products: FoodProduct[];
+      error?: string;
+      source?: string | null;
+    }>((resolve) =>
+      setTimeout(
+        () =>
+          resolve({
+            products: [],
+            error: undefined,
+            source: null,
+          }),
+        2000
+      )
+    ),
+  ]);
+
+  const products = mergeAndRank(
+    [],
+    [],
+    [],
+    [],
+    [],
+    offResult.products,
+    q,
+    countryCode
+  ).slice(0, 30);
+
+  return {
+    products,
+    suggestions: [],
+    query: q,
+    source: "openfoodfacts",
+    offAvailable: products.length > 0,
+    offError: products.length > 0 ? null : offResult.error ?? null,
+    localCount: 0,
+    offCount: products.length,
+    offSource: offResult.source ?? null,
+  };
+}
+
 export async function searchFoodProducts(
   userId: string,
   query: string,
@@ -211,16 +286,29 @@ export async function searchFoodProducts(
     suggestions?: boolean;
     recordHistory?: boolean;
     localOnly?: boolean;
+    enrich?: boolean;
     countryCode?: FoodCountryCode;
   }
 ): Promise<FoodSearchResponse> {
   const q = query.trim();
-  const countryCode =
-    options?.countryCode ?? (await resolveUserCountry(userId));
+
+  if (options?.enrich) {
+    const countryCode =
+      options?.countryCode ?? (await resolveUserCountry(userId));
+    return searchFoodProductsEnrich(userId, q, countryCode);
+  }
 
   if (options?.localOnly) {
-    return searchFoodProductsLocalOnly(userId, q, countryCode);
+    // Fast path: no Profile lookup — static layers + capped local DB.
+    return searchFoodProductsLocalOnly(
+      userId,
+      q,
+      options?.countryCode ?? "AT"
+    );
   }
+
+  const countryCode =
+    options?.countryCode ?? (await resolveUserCountry(userId));
 
   const cacheKey = `${userId}:${countryCode}:${q.toLowerCase()}`;
   const hit = searchCache.get(cacheKey);

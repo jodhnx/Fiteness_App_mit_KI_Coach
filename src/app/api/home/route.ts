@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { loadHomeData, loadHomeEnrichment } from "@/lib/home-data";
 import { createEmptyHomeData, isValidHomePayload } from "@/lib/home-defaults";
 import { jsonOk, jsonError } from "@/lib/api-response";
+import { resolveNutritionDay } from "@/lib/nutrition-day";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +15,12 @@ export async function GET(req: NextRequest) {
 
     const userId = session.user.id;
     const enrichOnly = req.nextUrl.searchParams.get("enrich") === "1";
+    const q = req.nextUrl.searchParams;
+    const resolved = resolveNutritionDay({
+      day: q.get("day"),
+      date: q.get("date"),
+      tzOffset: q.get("tzOffset"),
+    });
 
     if (enrichOnly) {
       const extras = await loadHomeEnrichment(userId);
@@ -23,8 +30,8 @@ export async function GET(req: NextRequest) {
     }
 
     const getHome = unstable_cache(
-      async () => loadHomeData(userId),
-      [`home-data-v3-${userId}`],
+      async () => loadHomeData(userId, resolved.date),
+      [`home-data-v4-${userId}-${resolved.ymd}`],
       { revalidate: 90, tags: [`home-${userId}`] }
     );
 

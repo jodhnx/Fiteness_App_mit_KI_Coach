@@ -2,7 +2,7 @@ import { loadNutritionDashboard } from "@/lib/nutrition-service";
 import { loadTrainingSnapshot } from "@/lib/training-snapshot";
 import { loadHealthDashboard } from "@/lib/activity-health";
 import { prisma } from "@/lib/prisma";
-import { startOfDay, subDays } from "date-fns";
+import { subDays } from "date-fns";
 import {
   createEmptyHomeData,
   normalizeHomeData,
@@ -10,6 +10,7 @@ import {
 } from "@/lib/home-defaults";
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
+import { nutritionDayKey, nutritionDayUtc } from "@/lib/nutrition-day";
 import { computeWeightGoalProgress } from "@/lib/smart-goals";
 import { buildHomeCoachFromNutrition } from "@/lib/nutrition-coach";
 import { loadNutritionStreak } from "@/lib/nutrition-streak";
@@ -28,7 +29,7 @@ export async function loadHomeCriticalData(
   range?: { from: Date; to: Date }
 ): Promise<HomeDataPayload> {
   try {
-    const today = day ?? startOfDay(new Date());
+    const today = day ?? nutritionDayUtc(nutritionDayKey());
 
     const [
       nutrition,
@@ -45,7 +46,7 @@ export async function loadHomeCriticalData(
     ] = await Promise.all([
       loadNutritionDashboard(userId, today, range).catch(() => createEmptyNutritionDashboard()),
       loadTrainingSnapshot(userId).catch(() => null),
-      loadHealthDashboard(userId).catch(() => null),
+      loadHealthDashboard(userId, { boot: true }).catch(() => null),
       prisma.user
         .findUnique({
           where: { id: userId },

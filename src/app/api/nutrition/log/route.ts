@@ -87,6 +87,12 @@ export async function POST(req: NextRequest) {
     const dashboard = await loadNutritionDashboard(session.user.id, date);
     const { loadNutritionStreak } = await import("@/lib/nutrition-streak");
     const streak = await loadNutritionStreak(session.user.id);
+    try {
+      const { revalidateTag } = await import("next/cache");
+      revalidateTag(`home-${session.user.id}`);
+    } catch {
+      /* ignore */
+    }
     return jsonOk(
       { ok: true, dashboard, nutritionStreak: streak.effectiveDays },
       201

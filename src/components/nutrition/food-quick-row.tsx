@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { Star } from "lucide-react";
 import type { FoodProduct } from "@/lib/food/food-product-types";
-import { macrosForQuantity } from "@/lib/food-macros";
+import { macrosPer100g } from "@/lib/food-per-100g";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
 import { brandDefaultServingG } from "@/data/brand-restaurant-foods";
 
@@ -47,19 +47,15 @@ export const FoodQuickRow = memo(function FoodQuickRow({
   quickAdding,
 }: Props) {
   const grams = getDefaultQuickAddGrams(food);
-  const macros = macrosForQuantity(
-    {
-      calories: food.calories,
-      proteinG: food.proteinG,
-      carbsG: food.carbsG,
-      fatG: food.fatG,
-      servingG: food.servingG || 100,
-    },
-    grams
-  );
+  const per100 = macrosPer100g({
+    calories: food.calories,
+    proteinG: food.proteinG,
+    carbsG: food.carbsG,
+    fatG: food.fatG,
+    servingG: food.servingG || 100,
+  });
   const brand = brandLine(food);
   const chip = portionChip(food, grams);
-  const showPer100 = grams === 100 && !food.servingLabel;
 
   return (
     <div className="flex items-stretch gap-2 min-h-[64px] py-2.5 border-b border-zinc-800/60 last:border-0">
@@ -77,14 +73,13 @@ export const FoodQuickRow = memo(function FoodQuickRow({
           </p>
         )}
         <p className="text-[12px] text-zinc-400 mt-1 tabular-nums leading-tight">
-          {Math.round(macros.calories)} kcal
-          {showPer100 ? " / 100 g" : ""}
+          {Math.round(per100.calories)} kcal / 100 g
           {" · "}
-          {Math.round(macros.proteinG)} P
+          {Math.round(per100.proteinG)} P
           {" · "}
-          {Math.round(macros.carbsG)} KH
+          {Math.round(per100.carbsG)} KH
           {" · "}
-          {Math.round(macros.fatG)} F
+          {Math.round(per100.fatG)} F
         </p>
       </button>
 

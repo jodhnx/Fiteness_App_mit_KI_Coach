@@ -15,15 +15,19 @@ import {
   Star,
   X,
   ChefHat,
+  Camera,
 } from "lucide-react";
 import type { MealType } from "@prisma/client";
-import type { FoodProduct, FoodSearchResponse } from "@/lib/food/food-product-types";
+import {
+  foodSearchUrl,
+  mergeFoodSearchResponses,
+  type FoodProduct,
+  type FoodSearchResponse,
+} from "@/lib/food/food-product-types";
 import { useDebounce } from "@/hooks/use-debounce";
-import { getCached, setCached } from "@/lib/client-cache";
+import { getCached, setCached, isCacheStale } from "@/lib/client-cache";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
 import { FoodQuickRow } from "@/components/nutrition/food-quick-row";
-import { FoodDetailPopup } from "@/components/nutrition/food-detail-popup";
-import { FoodManualProductSheet } from "@/components/nutrition/food-manual-product-sheet";
 import { SavedMealRow } from "@/components/nutrition/saved-meal-row";
 import dynamic from "next/dynamic";
 import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock";
@@ -56,6 +60,7 @@ type Props = {
   onToggleFavorite: (foodItemId: string) => Promise<void>;
   onLogSavedMeal?: (recipeId: string, meal: MealType) => Promise<void> | void;
   quickAdding?: boolean;
+  onOpenCamera?: () => void;
 };
 
 type ViewMode = "hub" | "favorites" | "search";
@@ -80,6 +85,22 @@ const FoodBarcodeScanner = dynamic(
   { ssr: false }
 );
 
+const FoodDetailPopup = dynamic(
+  () =>
+    import("@/components/nutrition/food-detail-popup").then(
+      (m) => m.FoodDetailPopup
+    ),
+  { ssr: false }
+);
+
+const FoodManualProductSheet = dynamic(
+  () =>
+    import("@/components/nutrition/food-manual-product-sheet").then(
+      (m) => m.FoodManualProductSheet
+    ),
+  { ssr: false }
+);
+
 function emptyHistory(): FoodHistoryPayload {
   return { frequent: [], recents: [], favorites: [] };
 }
@@ -93,6 +114,20 @@ function applyHistoryPayload(
 
 function cacheKey(q: string) {
   return `food-search:${q.toLowerCase()}`;
+}
+
+function fetchFoodSearch(
+  trimmed: string,
+  signal: AbortSignal,
+  phase: "fast" | "enrich"
+): Promise<FoodSearchResponse> {
+  return fetch(foodSearchUrl(trimmed, phase), {
+    credentials: "include",
+    signal,
+  }).then(async (res) => {
+    if (!res.ok) throw new Error("search failed");
+    return (await res.json()) as FoodSearchResponse;
+  });
 }
 
 function filterFoods(foods: FoodProduct[], query: string): FoodProduct[] {
@@ -121,6 +156,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   onToggleFavorite,
   onLogSavedMeal,
   quickAdding,
+  onOpenCamera,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -143,6 +179,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const [manualBarcode, setManualBarcode] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const requestGen = useRef(0);
+  const inflightQueryRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -156,7 +193,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     const cached = getCachedFoodHistory();
     if (cached) applyHistoryPayload(cached, setHistoryFoods);
     const t = window.setTimeout(() => {
-      if (initialQuery.trim()) inputRef.current?.focus();
+      inputRef.current?.focus();
     }, 0);
     return () => window.clearTimeout(t);
   }, [open, initialQuery]);
@@ -227,53 +264,60 @@ export const FoodAddPopup = memo(function FoodAddPopup({
       setResult(null);
       setLoading(false);
       setEnriching(false);
+      inflightQueryRef.current = null;
+      abortRef.current?.abort();
       return;
     }
 
     const key = cacheKey(trimmed);
     const cached = getCached<FoodSearchResponse>(key, { allowStale: true });
-    if (cached) {
+    const cacheHasHits = Boolean(cached?.products?.length);
+    if (cacheHasHits && cached) {
       setResult(cached);
       setLoading(false);
+      if (!isCacheStale(key, 0.75)) {
+        abortRef.current?.abort();
+        inflightQueryRef.current = null;
+        setEnriching(false);
+        return;
+      }
     } else {
       setLoading(true);
     }
 
+    if (inflightQueryRef.current === trimmed) return;
+
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
+    inflightQueryRef.current = trimmed;
     const gen = ++requestGen.current;
+    const skipFast = cacheHasHits;
+    setEnriching(skipFast);
 
     try {
-      // Phase 1: local-only (fast) — paint ASAP
-      const localRes = await fetch(
-        `/api/food/search?q=${encodeURIComponent(trimmed)}&localOnly=1`,
-        { signal: ac.signal }
-      );
-      const localData = (await localRes.json()) as FoodSearchResponse;
-      if (!ac.signal.aborted && gen === requestGen.current) {
-        setResult(localData);
+      let current = cached;
+      if (!skipFast) {
+        const fastData = await fetchFoodSearch(trimmed, ac.signal, "fast");
+        if (ac.signal.aborted || gen !== requestGen.current) return;
+        current = fastData;
+        setCached(key, fastData, SEARCH_CACHE_TTL);
+        setResult(fastData);
         setLoading(false);
-        if (localData.products?.length) {
-          setCached(key, localData, SEARCH_CACHE_TTL);
-        }
       }
 
-      // Phase 2: full merge (may include OFF) — upgrade results
       setEnriching(true);
-      const fullRes = await fetch(
-        `/api/food/search?q=${encodeURIComponent(trimmed)}`,
-        { signal: ac.signal }
-      );
-      const fullData = (await fullRes.json()) as FoodSearchResponse;
-      if (!ac.signal.aborted && gen === requestGen.current) {
-        setCached(key, fullData, SEARCH_CACHE_TTL);
-        setResult(fullData);
-        setEnriching(false);
-      }
+      const enrichData = await fetchFoodSearch(trimmed, ac.signal, "enrich");
+      if (ac.signal.aborted || gen !== requestGen.current) return;
+      const merged = current
+        ? mergeFoodSearchResponses(current, enrichData)
+        : enrichData;
+      setCached(key, merged, SEARCH_CACHE_TTL);
+      setResult(merged);
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
     } finally {
+      if (inflightQueryRef.current === trimmed) inflightQueryRef.current = null;
       if (!ac.signal.aborted && gen === requestGen.current) {
         setLoading(false);
         setEnriching(false);
@@ -407,9 +451,24 @@ export const FoodAddPopup = memo(function FoodAddPopup({
         >
           <div className="food-add-popup-inner">
             <div className="food-add-popup-search gap-2">
-              <p className="flex-1 text-sm font-bold text-white px-1 truncate min-w-0">
-                Lebensmittel hinzufügen
-              </p>
+              <input
+                ref={inputRef}
+                type="search"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setView("search");
+                }}
+                onFocus={() => {
+                  if (view !== "search") setView("search");
+                }}
+                placeholder="Lebensmittel suchen"
+                className="food-add-popup-input flex-1 min-w-0"
+                autoComplete="off"
+                enterKeyHint="search"
+                autoFocus={open}
+                aria-label="Lebensmittel suchen"
+              />
               <button
                 type="button"
                 onClick={handleClose}
@@ -420,25 +479,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
               </button>
             </div>
 
-            <div className="px-1 pb-2 space-y-2">
-              <input
-                ref={inputRef}
-                type="search"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  setView("search");
-                }}
-                onFocus={() => {
-                  if (view === "favorites") setView("search");
-                  else if (view !== "search") setView("search");
-                }}
-                placeholder="🔍 Lebensmittel suchen..."
-                className="food-add-popup-input w-full"
-                autoComplete="off"
-                enterKeyHint="search"
-                autoFocus={open}
-              />
+            <div className="px-1 pb-2">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -451,30 +492,40 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                     setQ("");
                     setResult(null);
                   }}
-                  className={`h-9 flex-1 rounded-lg border text-[11px] font-semibold flex items-center justify-center gap-1 active:scale-[0.98] ${
+                  className={`h-11 flex-1 rounded-xl border text-[11px] font-semibold flex items-center justify-center gap-1 ${
                     view === "favorites"
-                      ? "border-amber-400/40 bg-amber-500/20 text-amber-50"
-                      : "border-amber-500/20 bg-amber-500/8 text-amber-100/90"
+                      ? "border-white/20 bg-white/10 text-white"
+                      : "border-white/10 bg-zinc-900/70 text-zinc-300"
                   }`}
                 >
-                  <Star className="h-3 w-3 fill-amber-400/40 text-amber-400" />
+                  <Star className="h-3.5 w-3.5" />
                   Favoriten
                 </button>
                 <button
                   type="button"
                   onClick={() => setScannerOpen(true)}
-                  className="h-9 flex-1 rounded-lg border border-zinc-700/70 bg-zinc-900/50 text-[11px] font-semibold text-zinc-300 flex items-center justify-center gap-1 active:scale-[0.98]"
+                  className="h-11 flex-1 rounded-xl border border-white/10 bg-zinc-900/70 text-[11px] font-semibold text-zinc-300 flex items-center justify-center gap-1"
                 >
-                  <ScanBarcode className="h-3 w-3 text-violet-400" />
+                  <ScanBarcode className="h-3.5 w-3.5" />
                   Barcode
                 </button>
+                {onOpenCamera && (
+                  <button
+                    type="button"
+                    onClick={onOpenCamera}
+                    className="h-11 w-11 rounded-xl border border-white/10 bg-zinc-900/70 text-zinc-300 inline-flex items-center justify-center"
+                    aria-label="Foto AI"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </button>
+                )}
                 <Link
                   href="/nutrition/saved-meals/new"
                   onClick={handleClose}
-                  className="h-9 px-2.5 rounded-lg border border-violet-500/20 bg-violet-500/8 text-[11px] font-semibold text-violet-200/90 flex items-center justify-center gap-1 active:scale-[0.98]"
+                  className="h-11 w-11 rounded-xl border border-white/10 bg-zinc-900/70 text-zinc-300 inline-flex items-center justify-center"
                   aria-label="Neue Mahlzeit"
                 >
-                  <ChefHat className="h-3 w-3 text-violet-400" />
+                  <ChefHat className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -623,12 +674,14 @@ export const FoodAddPopup = memo(function FoodAddPopup({
         />
       ) : null}
 
-      <FoodManualProductSheet
-        open={manualOpen}
-        initialBarcode={manualBarcode}
-        onClose={() => setManualOpen(false)}
-        onCreated={(p) => setDetailProduct(p)}
-      />
+      {manualOpen ? (
+        <FoodManualProductSheet
+          open={manualOpen}
+          initialBarcode={manualBarcode}
+          onClose={() => setManualOpen(false)}
+          onCreated={(p) => setDetailProduct(p)}
+        />
+      ) : null}
     </>
   );
 });

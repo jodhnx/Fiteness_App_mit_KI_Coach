@@ -10,6 +10,7 @@ import {
   subDays,
 } from "date-fns";
 import { de } from "date-fns/locale";
+import { sanitizeExerciseKcal } from "@/lib/daily-kcal";
 
 export type HealthGoals = {
   dailyStepGoal: number;
@@ -311,7 +312,10 @@ export type HealthDashboardPayload = {
   chartWeek: { label: string; steps: number; calories: number; distanceKm: number }[];
 };
 
-export async function loadHealthDashboard(userId: string): Promise<HealthDashboardPayload> {
+export async function loadHealthDashboard(
+  userId: string,
+  opts?: { boot?: boolean }
+): Promise<HealthDashboardPayload> {
   const goals = await getHealthGoals(userId);
   const today = startOfDay(new Date());
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
@@ -323,6 +327,8 @@ export async function loadHealthDashboard(userId: string): Promise<HealthDashboa
   });
 
   const healthOk = await healthTableAvailable();
+
+  const boot = Boolean(opts?.boot);
 
   const [metric, weekMetrics, monthMetrics, weekActivities, allActivities] =
     await Promise.all([
@@ -337,7 +343,7 @@ export async function loadHealthDashboard(userId: string): Promise<HealthDashboa
             orderBy: { date: "asc" },
           })
         : Promise.resolve([]),
-      healthOk
+      healthOk && !boot
         ? prisma.dailyHealthMetric.findMany({
             where: { userId, date: { gte: monthStart } },
           })
@@ -347,13 +353,15 @@ export async function loadHealthDashboard(userId: string): Promise<HealthDashboa
           where: { userId, startedAt: { gte: weekStart } },
         })
         .catch(() => []),
-      prisma.enduranceActivity
-        .findMany({
-          where: { userId },
-          orderBy: { startedAt: "desc" },
-          take: 200,
-        })
-        .catch(() => []),
+      boot
+        ? Promise.resolve([])
+        : prisma.enduranceActivity
+            .findMany({
+              where: { userId },
+              orderBy: { startedAt: "desc" },
+              take: 200,
+            })
+            .catch(() => []),
     ]);
 
   const todayActivityMin = weekActivities
@@ -364,13 +372,23 @@ export async function loadHealthDashboard(userId: string): Promise<HealthDashboa
     .reduce((s, a) => s + (a.distanceM ?? 0), 0);
   const todayActivityCal = weekActivities
     .filter((a) => a.startedAt >= today)
-    .reduce((s, a) => s + (a.caloriesBurned ?? Math.round(a.durationSec / 60 * 7)), 0);
+    .reduce(
+      (s, a) =>
+        s +
+        sanitizeExerciseKcal(
+          a.caloriesBurned ?? Math.round((a.durationSec / 60) * 7)
+        ),
+      0
+    );
 
   const steps = metric?.steps ?? 0;
   const activeMinutes = Math.max(metric?.activeMinutes ?? 0, todayActivityMin);
   const distanceM = (metric?.distanceM ?? 0) + todayActivityDist;
   const stepCal = estimateStepCalories(steps, profile?.weightKg ?? null);
-  const caloriesBurned = stepCal + todayActivityCal + Math.max(0, (metric?.caloriesBurned ?? 0) - stepCal);
+  const metricBurned = sanitizeExerciseKcal(metric?.caloriesBurned ?? 0);
+  const caloriesBurned = sanitizeExerciseKcal(
+    stepCal + todayActivityCal + Math.max(0, metricBurned - stepCal)
+  );
 
   const weekStepSum = weekMetrics.reduce((s, m) => s + m.steps, 0);
   const weekDays = Math.max(1, weekMetrics.length);
@@ -386,7 +404,15 @@ export async function loadHealthDashboard(userId: string): Promise<HealthDashboa
   };
 
   let stepStreak = 0;
-  if (await healthTableAvailable()) {
+  if (boot) {
+    for (let i = 0; i < weekMetrics.length; i++) {
+      const d = startOfDay(subDays(today, i));
+      const row = weekMetrics.find((r) => r.date.getTime() === d.getTime());
+      if (row && row.steps >= goals.dailyStepGoal * 0.8) stepStreak++;
+      else if (i === 0 && steps >= goals.dailyStepGoal * 0.8) stepStreak++;
+      else break;
+    }
+  } else if (await healthTableAvailable()) {
     const last30 = await prisma.dailyHealthMetric.findMany({
       where: { userId, date: { gte: subDays(today, 30) } },
       orderBy: { date: "desc" },
@@ -431,7 +457,9 @@ export async function loadHealthDashboard(userId: string): Promise<HealthDashboa
     };
   });
 
-  const calorieBurn = await getCalorieBurnBreakdown(userId);
+  const calorieBurn = boot
+    ? { bmr: 0, bmrToday: 0, activityCalories: 0, stepCalories: stepCal, totalBurned: caloriesBurned }
+    : await getCalorieBurnBreakdown(userId);
   const moveValue = caloriesBurned;
   const exerciseValue = activeMinutes;
 

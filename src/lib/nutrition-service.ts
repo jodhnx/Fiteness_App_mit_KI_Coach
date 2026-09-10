@@ -19,6 +19,7 @@ import {
 import { safePrisma } from "@/lib/prisma-safe";
 import { isSchemaMismatchError } from "@/lib/prisma-errors";
 import { getTodayExerciseBurn } from "@/lib/cardio/today-burned";
+import { isPlausibleDailyCalorieTarget, sanitizeExerciseKcal } from "@/lib/daily-kcal";
 
 const foodSelectFull = {
   id: true,
@@ -73,8 +74,12 @@ async function ensureProfileTargetsPersisted(
       profile.activityLevel
   );
   if (!complete) return profile;
-  if (profile.calorieTarget != null && profile.proteinTargetG != null && profile.calorieTarget > 0) {
-    return profile;
+  if (
+    profile.calorieTarget != null &&
+    profile.proteinTargetG != null &&
+    profile.calorieTarget > 0
+  ) {
+    if (isPlausibleDailyCalorieTarget(profile.calorieTarget)) return profile;
   }
   const synced = await syncProfileTargetsToDb(userId, profile, context);
   return synced?.profile ?? profile;
@@ -177,34 +182,15 @@ export async function loadNutritionDashboard(
       }
     };
 
-    const [meals, waterLogs, favorites, recents, exerciseBurn] = await Promise.all([
+    // Critical only: meals + water + exercise burn.
+    // Favorites/recents load via /api/food/history when the add sheet opens —
+    // including them here caused hard-reload timeouts while meal cards already painted.
+    const [meals, waterLogs, exerciseBurn] = await Promise.all([
       loadMeals(),
       safePrisma(
         () => prisma.waterLog.findMany({ where: { userId, date: day } }),
         [] as { amountMl: number }[],
         { logLabel: "waterLog" }
-      ),
-      safePrisma(
-        () =>
-          prisma.foodFavorite.findMany({
-            where: { userId },
-            include: { foodItem: { select: foodSelectMinimal } },
-            orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
-            take: 20,
-          }),
-        [],
-        { logLabel: "foodFavorite" }
-      ),
-      safePrisma(
-        () =>
-          prisma.foodRecent.findMany({
-            where: { userId },
-            include: { foodItem: { select: foodSelectMinimal } },
-            orderBy: { lastUsedAt: "desc" },
-            take: 15,
-          }),
-        [],
-        { logLabel: "foodRecent" }
       ),
       getTodayExerciseBurn(userId, day, range),
     ]);
@@ -271,7 +257,7 @@ export async function loadNutritionDashboard(
         // Budget: Ziel − gegessen + verbrannt (Übung)
         calories: Math.max(
           0,
-          targets.calories - consumed.calories + (exerciseBurn.calories || 0)
+          targets.calories - consumed.calories + sanitizeExerciseKcal(exerciseBurn.calories)
         ),
         proteinG: Math.max(0, targets.proteinG - consumed.proteinG),
         carbsG: Math.max(0, targets.carbsG - consumed.carbsG),
@@ -283,8 +269,8 @@ export async function loadNutritionDashboard(
       },
       water: { consumedMl: waterMl, targetMl: targets.waterTargetMl },
       mealsByType,
-      favorites: favorites.map((f) => f.foodItem),
-      recents: recents.map((r) => ({ ...r.foodItem, useCount: r.useCount })),
+      favorites: [],
+      recents: [],
       profileComplete,
       empty: consumed.calories === 0 && meals.every((m) => m.items.length === 0),
     };

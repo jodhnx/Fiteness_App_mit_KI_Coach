@@ -181,7 +181,7 @@ export function optimisticAddMealItem(
   food: Pick<
     FoodProduct,
     "name" | "calories" | "proteinG" | "carbsG" | "fatG" | "fiberG" | "servingG"
-  >,
+  > & { brand?: string | null },
   quantityG: number,
   mealType: MealType
 ): NutritionDashboardPayload | null {
@@ -206,7 +206,7 @@ export function optimisticAddMealItem(
   const newItem = {
     id: tempId,
     quantityG,
-    food: { name: food.name },
+    food: { name: food.name, brand: food.brand ?? null },
     calories: macros.calories,
     proteinG: macros.proteinG,
     carbsG: macros.carbsG,

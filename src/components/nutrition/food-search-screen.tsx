@@ -5,8 +5,13 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { Input } from "@/components/ui/input";
 import { Search, Star, ChefHat, UtensilsCrossed } from "lucide-react";
 import { FavoriteStar } from "@/components/nutrition/favorite-star";
-import type { FoodProduct, FoodSearchResponse } from "@/lib/food/food-product-types";
-import { getCached, setCached } from "@/lib/client-cache";
+import {
+  foodSearchUrl,
+  mergeFoodSearchResponses,
+  type FoodProduct,
+  type FoodSearchResponse,
+} from "@/lib/food/food-product-types";
+import { getCached, setCached, isCacheStale } from "@/lib/client-cache";
 import { macrosPer100g } from "@/lib/food-per-100g";
 import { fmtG, fmtKcal } from "@/lib/format-macros";
 import { cn } from "@/lib/utils";
@@ -224,10 +229,12 @@ export function FoodSearchScreen({
       return;
     }
     const cacheKey = `food-search:${trimmed.toLowerCase()}`;
-    const cached = getCached<FoodSearchResponse>(cacheKey);
-    if (cached) {
+    const cached = getCached<FoodSearchResponse>(cacheKey, { allowStale: true });
+    const cacheHasHits = Boolean(cached?.products?.length);
+    if (cached && cacheHasHits) {
       setResult(cached);
       setLoading(false);
+      if (!isCacheStale(cacheKey, 0.75)) return;
     } else {
       setLoading(true);
     }
@@ -235,15 +242,30 @@ export function FoodSearchScreen({
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      const res = await fetch(
-        `/api/food/search?q=${encodeURIComponent(trimmed)}`,
-        { signal: ac.signal }
-      );
-      const data = await res.json();
-      if (!ac.signal.aborted) {
-        setResult(data);
-        setCached(cacheKey, data, SEARCH_TTL);
+      let current = cached;
+      if (!cacheHasHits) {
+        const fastRes = await fetch(foodSearchUrl(trimmed, "fast"), {
+          signal: ac.signal,
+          credentials: "include",
+        });
+        const fastData = (await fastRes.json()) as FoodSearchResponse;
+        if (ac.signal.aborted) return;
+        current = fastData;
+        setResult(fastData);
+        setCached(cacheKey, fastData, SEARCH_TTL);
+        setLoading(false);
       }
+      const enrichRes = await fetch(foodSearchUrl(trimmed, "enrich"), {
+        signal: ac.signal,
+        credentials: "include",
+      });
+      const enrichData = (await enrichRes.json()) as FoodSearchResponse;
+      if (ac.signal.aborted) return;
+      const merged = current
+        ? mergeFoodSearchResponses(current, enrichData)
+        : enrichData;
+      setResult(merged);
+      setCached(cacheKey, merged, SEARCH_TTL);
     } catch {
       /* aborted */
     } finally {

@@ -89,6 +89,12 @@ export async function POST(req: NextRequest) {
       await awardXPForAction(session.user.id, "PROTEIN_GOAL");
     }
     const streak = await loadNutritionStreak(session.user.id);
+    try {
+      const { revalidateTag } = await import("next/cache");
+      revalidateTag(`home-${session.user.id}`);
+    } catch {
+      /* ignore */
+    }
     return jsonOk(
       { ok: true, dashboard, nutritionStreak: streak.effectiveDays },
       201

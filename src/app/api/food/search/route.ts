@@ -13,18 +13,25 @@ export async function GET(req: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
 
-    const localOnly = req.nextUrl.searchParams.get("localOnly") === "1";
+    const enrich = req.nextUrl.searchParams.get("enrich") === "1";
+    const localOnly = !enrich;
+    const countryParam = req.nextUrl.searchParams.get("country");
+    const countryCode =
+      countryParam === "AT" || countryParam === "DE" ? countryParam : undefined;
 
     const result = await searchFoodProducts(session.user.id, q.trim(), {
       suggestions: false,
-      recordHistory: q.trim().length >= 3 && !localOnly,
+      recordHistory: q.trim().length >= 3 && enrich,
       localOnly,
+      enrich,
+      countryCode,
     });
 
     if (process.env.NODE_ENV === "development") {
       console.log("[api/food/search] OK", {
         ms: Date.now() - started,
         products: result.products.length,
+        phase: enrich ? "enrich" : "fast",
         offSource: result.offSource,
       });
     }

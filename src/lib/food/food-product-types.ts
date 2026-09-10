@@ -45,3 +45,40 @@ export type FoodSearchResponse = {
   offSource?: string | null;
   localError?: string | null;
 };
+
+export function foodSearchUrl(
+  query: string,
+  phase: "fast" | "enrich"
+): string {
+  const extra = phase === "enrich" ? "enrich=1" : "fast=1";
+  // Country hint skips Profile lookup on the hot fast path.
+  return `/api/food/search?q=${encodeURIComponent(query)}&${extra}&country=AT`;
+}
+
+export function mergeFoodSearchResponses(
+  base: FoodSearchResponse,
+  extra: FoodSearchResponse
+): FoodSearchResponse {
+  const seen = new Set<string>();
+  const products: FoodProduct[] = [];
+  for (const p of [...(base.products ?? []), ...(extra.products ?? [])]) {
+    const key = (p.offCode ?? p.id ?? `${p.name}-${p.brand ?? ""}`).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    products.push(p);
+  }
+  const offCount = extra.offCount ?? extra.products?.length ?? 0;
+  return {
+    ...base,
+    ...extra,
+    products: products.slice(0, 45),
+    query: base.query || extra.query,
+    source: offCount > 0 && (base.products?.length ?? 0) > 0 ? "merged" : extra.source ?? base.source,
+    offAvailable: Boolean(base.offAvailable || extra.offAvailable),
+    offError: extra.offError ?? base.offError ?? null,
+    localCount: base.localCount ?? base.products?.length ?? 0,
+    offCount,
+    offSource: extra.offSource ?? base.offSource ?? null,
+    suggestions: extra.suggestions?.length ? extra.suggestions : base.suggestions,
+  };
+}

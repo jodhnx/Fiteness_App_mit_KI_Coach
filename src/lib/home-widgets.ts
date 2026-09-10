@@ -1,5 +1,7 @@
 /** Home widget layout — persisted in localStorage, additive over existing sections. */
 
+import { getCacheOwner } from "@/lib/client-cache";
+
 export type HomeWidgetId =
   | "quickAccess"
   | "dashboard"
@@ -21,10 +23,16 @@ export type HomeWidgetConfig = {
 };
 
 /** Current storage key — new saves always use this. */
-const STORAGE_KEY = "nexform:home-widgets-v8";
+const STORAGE_KEY = "nexform:home-widgets-v9";
+
+function widgetStorageKey(base = STORAGE_KEY): string {
+  const owner = getCacheOwner();
+  return owner ? `${base}:${owner}` : base;
+}
 
 /** Older keys — read-only fallback for migration (never write back to these). */
 const LEGACY_STORAGE_KEYS = [
+  "nexform:home-widgets-v8",
   "nexform:home-widgets-v7",
   "nexform:home-widgets-v6",
   "nexform:home-widgets-v5",
@@ -69,6 +77,21 @@ function mergeWithDefaults(parsed: HomeWidgetConfig[]): HomeWidgetConfig[] {
     }
   }
 
+  // One calorie hero: hide redundant remaining-kcal widgets when Heute is on.
+  const todayOn = merged.find((w) => w.id === "todayOverview")?.visible !== false;
+  if (todayOn) {
+    for (const w of merged) {
+      if (
+        w.id === "dashboard" ||
+        w.id === "dayGoals" ||
+        w.id === "todayGlance" ||
+        w.id === "daySummary"
+      ) {
+        w.visible = false;
+      }
+    }
+  }
+
   return merged;
 }
 
@@ -86,11 +109,16 @@ function readStoredWidgets(): { widgets: HomeWidgetConfig[]; migrated: boolean }
     }
   };
 
-  const current = tryParse(localStorage.getItem(STORAGE_KEY));
-  if (current) return { widgets: current, migrated: false };
+  const scoped = tryParse(localStorage.getItem(widgetStorageKey()));
+  if (scoped) return { widgets: scoped, migrated: false };
+
+  const unscoped = tryParse(localStorage.getItem(STORAGE_KEY));
+  if (unscoped) return { widgets: unscoped, migrated: Boolean(getCacheOwner()) };
 
   for (const legacyKey of LEGACY_STORAGE_KEYS) {
-    const legacy = tryParse(localStorage.getItem(legacyKey));
+    const legacy =
+      tryParse(localStorage.getItem(widgetStorageKey(legacyKey))) ??
+      tryParse(localStorage.getItem(legacyKey));
     if (legacy) {
       return { widgets: legacy, migrated: true };
     }
@@ -112,7 +140,7 @@ export function loadHomeWidgets(): HomeWidgetConfig[] {
 
 export function saveHomeWidgets(widgets: HomeWidgetConfig[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets));
+  localStorage.setItem(widgetStorageKey(), JSON.stringify(widgets));
 }
 
 export function moveWidget(

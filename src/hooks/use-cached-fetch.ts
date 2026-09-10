@@ -64,31 +64,47 @@ export function useCachedFetch<T>(
     return body as T;
   }, [url, timeoutMs]);
 
-  const reload = useCallback(async () => {
-    invalidateCache(key);
-    setLoading(true);
-    setError(null);
-    setTimedOut(false);
+  const load = useCallback(
+    async (opts?: { invalidate?: boolean }) => {
+      if (opts?.invalidate) invalidateCache(key);
+      setLoading(true);
+      setError(null);
+      setTimedOut(false);
 
-    try {
-      const json = await fetchCached(key, fetcher, ttlMs);
-      if (mounted.current) setData(json);
-    } catch (e) {
-      if (process.env.NODE_ENV === "development") {
-        console.error(`[useCachedFetch] ${key}`, e);
-      }
-      if (mounted.current) {
+      try {
+        const json = await fetchCached(key, fetcher, ttlMs);
+        if (mounted.current) {
+          setData(json);
+          setError(null);
+          setTimedOut(false);
+        }
+      } catch (e) {
+        if (process.env.NODE_ENV === "development") {
+          console.error(`[useCachedFetch] ${key}`, e);
+        }
+        if (!mounted.current) return;
+        // Hydrate / another writer may have filled the cache while we waited.
+        const recovered = getCached<T>(key, { allowStale: true });
+        if (recovered) {
+          setData(recovered);
+          setError(null);
+          setTimedOut(false);
+          return;
+        }
         if (e instanceof FetchTimeoutError) {
           setTimedOut(true);
           setError(e.message);
         } else {
           setError(e instanceof Error ? e.message : "Fehler beim Laden");
         }
+      } finally {
+        if (mounted.current) setLoading(false);
       }
-    } finally {
-      if (mounted.current) setLoading(false);
-    }
-  }, [key, fetcher, ttlMs]);
+    },
+    [key, fetcher, ttlMs]
+  );
+
+  const reload = useCallback(() => load({ invalidate: true }), [load]);
 
   useEffect(() => {
     mounted.current = true;
@@ -122,11 +138,11 @@ export function useCachedFetch<T>(
       };
     }
 
-    reload();
+    void load();
     return () => {
       mounted.current = false;
     };
-  }, [key, reload, revalidateOnMount, staleRatio, fetcher, ttlMs, cacheOnly]);
+  }, [key, load, revalidateOnMount, staleRatio, fetcher, ttlMs, cacheOnly]);
 
   return { data, loading, error, timedOut, reload };
 }

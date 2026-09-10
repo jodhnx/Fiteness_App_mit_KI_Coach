@@ -58,6 +58,7 @@ import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh
 import { fetchBootstrapShared, applyBootstrapPayload } from "@/lib/app-init";
 import { computeNutritionRemaining } from "@/lib/nutrition-display";
 import { nutritionDayKey, nutritionDayQueryString } from "@/lib/nutrition-day";
+import { parseManualCalorieTargetInput } from "@/lib/daily-kcal";
 
 type CalcPreview = {
   bmi: number;
@@ -253,7 +254,9 @@ function SettingsPageInner() {
           : undefined,
         manualCalorieTarget: manualMacros ? true : undefined,
         calorieTarget:
-          manualMacros && form.calorieTarget ? Number(form.calorieTarget) : undefined,
+          manualMacros && form.calorieTarget
+            ? parseManualCalorieTargetInput(form.calorieTarget) ?? undefined
+            : undefined,
         proteinTargetG:
           manualMacros && form.proteinTargetG ? Number(form.proteinTargetG) : undefined,
         carbsTargetG:
@@ -946,7 +949,23 @@ function SettingsPageInner() {
               inputMode="numeric"
               placeholder="z. B. 2200"
               value={form.calorieTarget}
-              onChange={(e) => setForm({ ...form, calorieTarget: e.target.value.replace(/[^\d]/g, "") })}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw.trim() === "") {
+                  setForm({ ...form, calorieTarget: "" });
+                  return;
+                }
+                const parsed = parseManualCalorieTargetInput(raw);
+                setForm({
+                  ...form,
+                  calorieTarget: parsed != null ? String(parsed) : raw.replace(/[^\d.,]/g, ""),
+                });
+              }}
+              onBlur={() => {
+                const parsed = parseManualCalorieTargetInput(form.calorieTarget);
+                if (parsed != null) setForm({ ...form, calorieTarget: String(parsed) });
+                else if (form.calorieTarget.trim()) setForm({ ...form, calorieTarget: "" });
+              }}
               className="mt-1"
             />
           </div>

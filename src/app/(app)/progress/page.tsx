@@ -21,7 +21,7 @@ import { BodyTransformationCard } from "@/components/progress/body-transformatio
 import type { BodyTransformation } from "@/lib/body-transformation";
 import { TrainingHistorySection } from "@/components/progress/training-history-section";
 import { ProgressStatsSection } from "@/components/progress/progress-stats-section";
-import { ProgressChartsSection } from "@/components/progress/progress-charts-section";
+import dynamic from "next/dynamic";
 import { Input } from "@/components/ui/input";
 import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
 import { ProgressOverviewCards } from "@/components/progress/progress-overview-cards";
@@ -30,6 +30,19 @@ import { PageIntro } from "@/components/guide/page-intro";
 import { markScreenLoaded } from "@/lib/storage-service";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { ProgressWeeklyIntelligenceCard } from "@/components/progress/progress-weekly-intelligence-card";
+
+const ProgressChartsSection = dynamic(
+  () =>
+    import("@/components/progress/progress-charts-section").then(
+      (m) => m.ProgressChartsSection
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[220px] rounded-xl bg-zinc-800/50 animate-pulse border border-white/5" />
+    ),
+  }
+);
 
 type ProgressPayload = {
   entries: {
@@ -90,6 +103,7 @@ type ProgressPayload = {
 export default function ProgressPage() {
   const logRef = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<WeightPeriod>("30d");
+  const [chartsReady, setChartsReady] = useState(false);
 
   useEffect(() => {
     try {
@@ -101,6 +115,21 @@ export default function ProgressPage() {
     if (params.get("log") === "1" && logRef.current) {
       logRef.current.scrollIntoView({ block: "start" });
     }
+  }, []);
+
+  useEffect(() => {
+    const enable = () => setChartsReady(true);
+    const idleId =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback(enable, { timeout: 1200 })
+        : 0;
+    const timeoutId = idleId === 0 ? window.setTimeout(enable, 400) : 0;
+    return () => {
+      if (idleId && typeof cancelIdleCallback === "function") {
+        cancelIdleCallback(idleId);
+      }
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
   }, []);
 
   // Cache-first: if no cache, fetch immediately; otherwise show stale + revalidate in background
@@ -320,7 +349,7 @@ export default function ProgressPage() {
           </div>
 
           {/* 3. Diagramme */}
-          {dashboard && (
+          {dashboard && chartsReady && (
             <section className="space-y-3">
               <h2 className="text-sm font-semibold text-white px-0.5">Diagramme</h2>
               <ProgressChartsSection
@@ -333,6 +362,12 @@ export default function ProgressPage() {
                 trainingVolumeTrend={dashboard.trainingVolumeTrend ?? []}
                 trainingFrequencyTrend={dashboard.trainingFrequencyTrend ?? []}
               />
+            </section>
+          )}
+          {dashboard && !chartsReady && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-white px-0.5">Diagramme</h2>
+              <div className="h-[220px] rounded-xl bg-zinc-800/50 animate-pulse border border-white/5" />
             </section>
           )}
 

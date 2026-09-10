@@ -9,6 +9,7 @@ import {
   markSyncRecord,
 } from "@/lib/health/health-sync-preferences";
 import { estimateStepCalories } from "@/lib/activity-health";
+import { sanitizeExerciseKcal } from "@/lib/daily-kcal";
 
 function mapWorkoutType(type: string): EnduranceActivityType {
   const t = type.toUpperCase();
@@ -71,7 +72,7 @@ export async function applyHealthDaySnapshot(
   let caloriesBurned = existing?.caloriesBurned ?? 0;
   if (isCategoryEnabled(prefs, "calories")) {
     const stepCal = estimateStepCalories(steps, profile?.weightKg ?? null);
-    const activeCal = day.activeCalories ?? day.caloriesBurned ?? 0;
+    const activeCal = sanitizeExerciseKcal(day.activeCalories ?? day.caloriesBurned ?? 0);
     caloriesBurned = Math.max(caloriesBurned, stepCal + activeCal);
   }
 
@@ -193,7 +194,7 @@ export async function applyWearableWorkout(
         startedAt: new Date(workout.startedAt),
         durationSec: workout.durationSec,
         distanceM: workout.distanceM,
-        caloriesBurned: workout.caloriesBurned,
+        caloriesBurned: sanitizeExerciseKcal(workout.caloriesBurned),
         avgHeartRate: workout.avgHeartRate,
         maxHeartRate: workout.maxHeartRate,
         sourceProvider: provider,

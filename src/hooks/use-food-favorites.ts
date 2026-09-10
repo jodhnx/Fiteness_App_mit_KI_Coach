@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FoodProduct } from "@/lib/food/food-product-types";
 
-export function useFoodFavorites() {
+export function useFoodFavorites(enabled = true) {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [favoriteFoods, setFavoriteFoods] = useState<FoodProduct[]>([]);
   const [ready, setReady] = useState(false);
@@ -23,8 +23,9 @@ export function useFoodFavorites() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     reload().finally(() => setReady(true));
-  }, [reload]);
+  }, [reload, enabled]);
 
   const toggleFavorite = useCallback(
     async (food: FoodProduct) => {

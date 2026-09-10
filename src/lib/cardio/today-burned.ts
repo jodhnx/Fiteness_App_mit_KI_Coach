@@ -8,6 +8,7 @@
 import { prisma } from "@/lib/prisma";
 import { estimateStepCalories } from "@/lib/activity-health";
 import { formatNutritionDayUtc, nutritionDayUtc } from "@/lib/nutrition-day";
+import { sanitizeExerciseKcal } from "@/lib/daily-kcal";
 
 export type TodayExerciseBurn = {
   /** Total exercise kcal to add back to remaining / show on Home */
@@ -101,7 +102,7 @@ export async function getTodayExerciseBurn(
 
     // Dedup: unique constraint on (userId, sourceProvider, externalId).
     const activities = endurance.map((a) => {
-      const kcal = Math.max(0, a.caloriesBurned ?? 0);
+      const kcal = sanitizeExerciseKcal(a.caloriesBurned ?? 0);
       const estimated = !a.sourceProvider || notesEstimated(a.notes);
       return {
         id: a.id,
@@ -123,7 +124,7 @@ export async function getTodayExerciseBurn(
         type: "STRENGTH",
         label: w.name || "Krafttraining",
         durationSec: w.durationSec ?? 0,
-        calories: Math.max(0, w.caloriesBurned ?? 0),
+        calories: sanitizeExerciseKcal(w.caloriesBurned ?? 0),
         estimated: true,
         source: "WORKOUT",
       }));
@@ -132,7 +133,7 @@ export async function getTodayExerciseBurn(
 
     // Residual from health metric only when it exceeds steps+logged activities
     // (covers wearable active energy not mirrored as EnduranceActivity).
-    const metricTotal = Math.max(0, metric?.caloriesBurned ?? 0);
+    const metricTotal = sanitizeExerciseKcal(metric?.caloriesBurned ?? 0);
     const loggedPlusSteps = stepKcal + enduranceKcal + workoutKcal;
     const residualHealth = Math.max(0, metricTotal - loggedPlusSteps);
 
