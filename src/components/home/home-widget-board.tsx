@@ -61,6 +61,7 @@ export const HomeWidgetBoard = memo(function HomeWidgetBoard({
         </Button>
       </div>
 
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
       {displayWidgets.map((w) => {
         const raw = slots[w.id];
         if (!raw) return null;
@@ -72,6 +73,11 @@ export const HomeWidgetBoard = memo(function HomeWidgetBoard({
             key={w.id}
             className={cn(
               "relative",
+              (w.id === "todayOverview" ||
+                w.id === "dashboard" ||
+                w.id === "dayGoals" ||
+                w.id === "daySummary") &&
+                "lg:col-span-2",
               !w.visible && edit && "opacity-40",
               edit && "rounded-2xl ring-1 ring-white/10 p-1"
             )}
@@ -130,6 +136,7 @@ export const HomeWidgetBoard = memo(function HomeWidgetBoard({
           </div>
         );
       })}
+      </div>
     </div>
   );
 });

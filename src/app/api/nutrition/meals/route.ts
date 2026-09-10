@@ -4,14 +4,19 @@ import { prisma } from "@/lib/prisma";
 import { mealSchema } from "@/lib/validations";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { findInaccessibleFoodItemIds } from "@/lib/food/food-access";
-import { startOfDay } from "date-fns";
+import { resolveNutritionDay } from "@/lib/nutrition-day";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
-    const dateParam = req.nextUrl.searchParams.get("date");
-    const date = dateParam ? startOfDay(new Date(dateParam)) : startOfDay(new Date());
+    const q = req.nextUrl.searchParams;
+    const resolved = resolveNutritionDay({
+      day: q.get("day"),
+      date: q.get("date"),
+      tzOffset: q.get("tzOffset"),
+    });
+    const date = resolved.date;
     const meals = await prisma.meal.findMany({
       where: { userId: session.user.id, date },
       include: { items: { include: { foodItem: true } } },
@@ -44,7 +49,7 @@ export async function POST(req: NextRequest) {
         userId: session.user.id,
         name: parsed.data.name,
         mealType: parsed.data.mealType,
-        date: startOfDay(new Date(parsed.data.date)),
+        date: resolveNutritionDay({ date: parsed.data.date }).date,
         items: {
           create: parsed.data.items.map((i) => ({
             foodItemId: i.foodItemId,

@@ -23,6 +23,8 @@ import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { isSameDay } from "date-fns";
 import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
+import { canonicalNutritionForDisplay } from "@/lib/nutrition-to-home";
+import { HomeQuickActions } from "@/components/home/home-quick-actions";
 
 const HomeHealthEcosystem = dynamic(
   () =>
@@ -101,7 +103,11 @@ export default function HomePage() {
   }, []);
 
   const data = useBootHomeData();
-  const { dashboard: nutrition } = useCentralNutrition();
+  const { dashboard: nutritionStore, applyDashboard } = useCentralNutrition();
+  const nutrition = useMemo(
+    () => canonicalNutritionForDisplay(nutritionStore, data),
+    [nutritionStore, data]
+  );
   const displayName = useDisplayName(data.userName);
 
   useEffect(() => {
@@ -207,12 +213,32 @@ export default function HomePage() {
     !data.userName &&
     getCached(HOME_DATA_CACHE_KEY, { allowStale: true }) == null;
 
+  const workoutHref = activeSessionId
+    ? `/workouts/live/${activeSessionId}`
+    : data.nextWorkout?.dayId
+      ? "/workouts"
+      : "/workouts/quick";
+  const workoutActionLabel = activeSessionId ? "Weiter" : "Workout";
+  const trainingHint =
+    trainingStatus === "active"
+      ? "Training läuft — jetzt fortsetzen."
+      : trainingStatus === "planned" && data.nextWorkout?.dayName
+        ? `Heute ist ${data.nextWorkout.dayName} geplant.`
+        : null;
+
   return (
     <PageShell className="space-y-3">
       <HomeGreeting
         name={displayName}
         streakDays={nutritionStreakDays}
         cue={greetingCue}
+      />
+
+      <HomeQuickActions
+        nutrition={nutrition}
+        applyDashboard={applyDashboard}
+        workoutHref={workoutHref}
+        workoutLabel={workoutActionLabel}
       />
 
       <HomeWidgetBoard
@@ -224,6 +250,7 @@ export default function HomePage() {
               loading={bootPending}
               steps={serverSteps}
               stepGoal={stepGoal}
+              trainingHint={trainingHint}
             />
           ),
           quickAccess: () => (

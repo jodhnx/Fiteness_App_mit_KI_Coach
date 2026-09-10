@@ -22,9 +22,13 @@ import { detectSessionImprovement } from "@/lib/intelligence/load-context";
  * Fast home payload for boot — no weekly reports, gamification, recovery DB,
  * extended health, or heavy chart prep. Keeps initial load under ~2s target.
  */
-export async function loadHomeCriticalData(userId: string): Promise<HomeDataPayload> {
+export async function loadHomeCriticalData(
+  userId: string,
+  day?: Date,
+  range?: { from: Date; to: Date }
+): Promise<HomeDataPayload> {
   try {
-    const today = startOfDay(new Date());
+    const today = day ?? startOfDay(new Date());
 
     const [
       nutrition,
@@ -39,7 +43,7 @@ export async function loadHomeCriticalData(userId: string): Promise<HomeDataPayl
       weightEntries14d,
       recentPr,
     ] = await Promise.all([
-      loadNutritionDashboard(userId, today).catch(() => createEmptyNutritionDashboard()),
+      loadNutritionDashboard(userId, today, range).catch(() => createEmptyNutritionDashboard()),
       loadTrainingSnapshot(userId).catch(() => null),
       loadHealthDashboard(userId).catch(() => null),
       prisma.user

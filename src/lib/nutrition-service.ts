@@ -11,6 +11,7 @@ import { loadCaloriePlanContext } from "@/lib/calorie-health-context";
 import { syncProfileTargetsToDb } from "@/lib/profile-targets-sync";
 import { startOfDay, subDays, format } from "date-fns";
 import { de } from "date-fns/locale";
+import { formatNutritionDayUtc, nutritionDayUtc } from "@/lib/nutrition-day";
 import {
   createEmptyNutritionDashboard,
   type NutritionDashboardPayload,
@@ -106,7 +107,7 @@ export function mealTotalsFromItems(
 }
 
 export async function getOrCreateMeal(userId: string, date: Date, mealType: MealType) {
-  const day = startOfDay(date);
+  const day = nutritionDayUtc(formatNutritionDayUtc(date));
   return prisma.meal.upsert({
     where: { userId_date_mealType: { userId, date: day, mealType } },
     create: { userId, date: day, mealType, name: MEAL_TYPE_LABELS[mealType] },
@@ -130,9 +131,10 @@ export async function recordFoodRecent(userId: string, foodItemId: string) {
 
 export async function loadNutritionDashboard(
   userId: string,
-  date: Date
+  date: Date,
+  range?: { from: Date; to: Date }
 ): Promise<NutritionDashboardPayload> {
-  const day = startOfDay(date);
+  const day = nutritionDayUtc(formatNutritionDayUtc(date));
   let profile: Profile | null = null;
   let calorieContext: CaloriePlanContext = {};
   try {
@@ -204,7 +206,7 @@ export async function loadNutritionDashboard(
         [],
         { logLabel: "foodRecent" }
       ),
-      getTodayExerciseBurn(userId, day),
+      getTodayExerciseBurn(userId, day, range),
     ]);
 
     const consumedMacros = roundMacros(
@@ -258,7 +260,7 @@ export async function loadNutritionDashboard(
     );
 
     return {
-      date: format(day, "yyyy-MM-dd"),
+      date: formatNutritionDayUtc(day),
       targets: {
         ...targets,
         fiberG: fiberTargetG,

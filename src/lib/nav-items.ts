@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarRange,
   Settings,
   Watch,
   Users,
@@ -119,9 +120,24 @@ export const MORE_HUB_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: "Training",
     items: [
-      { href: "/workouts/my-plans", label: "Meine Pläne", icon: FolderOpen },
-      { href: "/workouts/records", label: "Rekorde", icon: Medal },
-      { href: "/workouts/generator", label: "KI Plan-Generator", icon: Wand2 },
+      {
+        href: "/workouts/my-plans",
+        label: "Meine Pläne",
+        icon: FolderOpen,
+        description: "Gespeicherte Trainingspläne",
+      },
+      {
+        href: "/workouts/records",
+        label: "Rekorde",
+        icon: Medal,
+        description: "Persönliche Bestleistungen",
+      },
+      {
+        href: "/workouts/generator",
+        label: "KI Plan",
+        icon: Wand2,
+        description: "Plan vom Coach erstellen",
+      },
     ],
   },
   {
@@ -131,30 +147,76 @@ export const MORE_HUB_SECTIONS: { title: string; items: NavItem[] }[] = [
         href: "/nutrition",
         label: "Gespeicherte Mahlzeiten",
         icon: Bookmark,
+        description: "Favoriten und Vorlagen",
       },
-      { href: "/rezepte", label: "Rezepte", icon: CookingPot },
+      {
+        href: "/rezepte",
+        label: "Rezepte",
+        icon: CookingPot,
+        description: "Gerichte nachkochen",
+      },
     ],
   },
   {
     title: "Intelligence",
-    items: [{ href: "/coach", label: "KI Coach", icon: Bot }],
+    items: [
+      {
+        href: "/coach",
+        label: "KI Coach",
+        icon: Bot,
+        description: "Fragen und tägliche Tipps",
+      },
+      {
+        href: "/progress",
+        label: "Wochenanalyse",
+        icon: CalendarRange,
+        description: "Trends der letzten Tage",
+      },
+    ],
   },
   {
     title: "Fortschritt",
     items: [
-      { href: "/erfolge", label: "Erfolge", icon: Trophy },
-      { href: "/social", label: "Community", icon: Users },
+      {
+        href: "/erfolge",
+        label: "Erfolge",
+        icon: Trophy,
+        description: "Abzeichen und Meilensteine",
+      },
+      {
+        href: "/social",
+        label: "Community",
+        icon: Users,
+        description: "Feed und Freunde",
+      },
     ],
   },
   {
     title: "Gesundheit",
-    items: [{ href: "/geraete", label: "Geräte", icon: Watch }],
+    items: [
+      {
+        href: "/geraete",
+        label: "Geräte",
+        icon: Watch,
+        description: "Wearables und Sync",
+      },
+    ],
   },
   {
     title: "Konto",
     items: [
-      { href: "/settings", label: "Einstellungen", icon: Settings },
-      { href: "/settings/support", label: "Support", icon: LifeBuoy },
+      {
+        href: "/settings",
+        label: "Einstellungen",
+        icon: Settings,
+        description: "Profil, Ziele, Account",
+      },
+      {
+        href: "/settings/support",
+        label: "Support",
+        icon: LifeBuoy,
+        description: "Hilfe und Feedback",
+      },
     ],
   },
 ];

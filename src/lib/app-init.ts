@@ -19,8 +19,11 @@ import {
   normalizeNutritionDashboard,
   type NutritionDashboardPayload,
 } from "@/lib/nutrition-defaults";
-import { isNutritionDashboardToday } from "@/lib/nutrition-day";
-import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
+import { isNutritionDashboardToday, nutritionDayQueryString } from "@/lib/nutrition-day";
+import {
+  preferCanonicalNutritionDashboard,
+  resolveNutritionDashboardForBoot,
+} from "@/lib/nutrition-day-rollover";
 import {
   mergeHomeEnrichment,
   normalizeHomeData,
@@ -149,10 +152,11 @@ export function isAppBootReady(): boolean {
 
 function applyBootstrapPayload(payload: BootstrapPayload) {
   bootPerfMark("home_apply_start");
+  const nutrition = preferCanonicalNutritionDashboard(payload.nutrition, null);
   const home = normalizeHomeData({
     ...payload.home,
-    ...nutritionDashboardToHomeMacros(payload.nutrition),
-    nutrition: payload.nutrition,
+    ...nutritionDashboardToHomeMacros(nutrition),
+    nutrition,
   });
   // 7d hard TTL on disk — overnight reopen stays instant
   setCached(HOME_DATA_CACHE_KEY, home, 7 * 24 * 60 * 60_000);
@@ -163,13 +167,13 @@ function applyBootstrapPayload(payload: BootstrapPayload) {
   bootPerfMark("home_apply_end");
 
   bootPerfMark("nutrition_apply_end");
-  publishNutritionDashboard(normalizeNutritionDashboard(payload.nutrition));
+  publishNutritionDashboard(nutrition);
 
   if (payload.profile?.user || payload.profile?.profile) {
     setCached(PROFILE_CACHE_KEY, payload.profile, 7 * 24 * 60 * 60_000);
     bootPerfMark("profile_apply_end");
   } else {
-    const stub = profileStubFromBoot(home, payload.nutrition);
+    const stub = profileStubFromBoot(home, nutrition);
     if (stub.user?.name || stub.user?.image || stub.profile) {
       setCached(PROFILE_CACHE_KEY, stub, 7 * 24 * 60 * 60_000);
       bootPerfMark("profile_apply_end");
@@ -186,16 +190,18 @@ function applyBootstrapPayload(payload: BootstrapPayload) {
 }
 
 let bootstrapInflight: Promise<BootstrapPayload | null> | null = null;
+let bootstrapGen = 0;
 
-async function fetchBootstrap(): Promise<BootstrapPayload | null> {
+async function fetchBootstrap(gen: number): Promise<BootstrapPayload | null> {
   bootPerfMark("bootstrap_start");
   try {
     const res = await fetchWithTimeout(
-      "/api/bootstrap",
+      `/api/bootstrap?${nutritionDayQueryString()}`,
       { credentials: "same-origin" },
       8_000
     );
     const body = await res.json().catch(() => null);
+    if (gen !== bootstrapGen) return null;
     if (!res.ok || !body || typeof body !== "object") return null;
 
     const home = (body as { home?: HomeDataPayload }).home;
@@ -206,14 +212,20 @@ async function fetchBootstrap(): Promise<BootstrapPayload | null> {
     const profile = (body as { profile?: ProfileServerPrefetch }).profile ?? null;
     const progress = (body as { progress?: unknown }).progress ?? null;
 
-    if (!isHomeBootReady(home ?? null) || !nutrition || !isNutritionBootReady(nutrition, { allowStaleDate: false })) {
+    if (!isHomeBootReady(home ?? null) || !nutrition || !isNutritionBootReady(nutrition, { allowStaleDate: true })) {
       return null;
     }
 
+    const canonical = preferCanonicalNutritionDashboard(nutrition, null);
+    if (gen !== bootstrapGen) return null;
     return {
-      home: normalizeHomeData(home!),
-      nutrition: normalizeNutritionDashboard(nutrition),
-      profile: profile ?? profileStubFromBoot(home!, normalizeNutritionDashboard(nutrition)),
+      home: normalizeHomeData({
+        ...home!,
+        ...nutritionDashboardToHomeMacros(canonical),
+        nutrition: canonical,
+      }),
+      nutrition: canonical,
+      profile: profile ?? profileStubFromBoot(home!, canonical),
       progress,
     };
   } catch (e) {
@@ -225,9 +237,16 @@ async function fetchBootstrap(): Promise<BootstrapPayload | null> {
 }
 
 /** One in-flight /api/bootstrap — login warm + initializeApp share it. */
-export function fetchBootstrapShared(): Promise<BootstrapPayload | null> {
+export function fetchBootstrapShared(opts?: {
+  force?: boolean;
+}): Promise<BootstrapPayload | null> {
+  if (opts?.force) {
+    bootstrapGen += 1;
+    bootstrapInflight = null;
+  }
   if (bootstrapInflight) return bootstrapInflight;
-  const pending = fetchBootstrap();
+  const gen = bootstrapGen;
+  const pending = fetchBootstrap(gen);
   bootstrapInflight = pending;
   void pending.finally(() => {
     if (bootstrapInflight === pending) bootstrapInflight = null;

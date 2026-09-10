@@ -19,11 +19,8 @@ import {
   publishNutritionDashboard,
   ensureNutritionCacheIsToday,
 } from "@/lib/nutrition-sync";
-import { isNutritionDashboardToday } from "@/lib/nutrition-day";
 import { getCached } from "@/lib/client-cache";
-import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
-import { nutritionDayKey } from "@/lib/nutrition-day";
-import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
+import { preferCanonicalNutritionDashboard } from "@/lib/nutrition-day-rollover";
 
 export type NutritionContextValue = {
   dashboard: NutritionDashboardPayload;
@@ -47,33 +44,19 @@ function nutritionSnapshotsMatch(
   );
 }
 
-function resolveInitialDashboard(
-  initialDashboard: NutritionDashboardPayload | null
-): NutritionDashboardPayload {
+function readDiskDashboard(): NutritionDashboardPayload | null {
   const rolledFromDisk = ensureNutritionCacheIsToday();
-  if (rolledFromDisk) return normalizeNutritionDashboard(rolledFromDisk);
-
+  if (rolledFromDisk) return rolledFromDisk;
   const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
     allowStale: true,
   });
-  const fromCache = resolveNutritionDashboardForBoot(cached);
-  if (fromCache) return normalizeNutritionDashboard(fromCache);
+  return cached && isValidDashboardPayload(cached) ? cached : null;
+}
 
-  const serverValid =
-    initialDashboard &&
-    isValidDashboardPayload(initialDashboard) &&
-    isNutritionDashboardToday(initialDashboard.date);
-  if (serverValid) return normalizeNutritionDashboard(initialDashboard);
-
-  const fromServerRollover = initialDashboard
-    ? resolveNutritionDashboardForBoot(initialDashboard)
-    : null;
-  if (fromServerRollover) return normalizeNutritionDashboard(fromServerRollover);
-
-  return normalizeNutritionDashboard({
-    ...createEmptyNutritionDashboard(),
-    date: nutritionDayKey(),
-  });
+function resolveInitialDashboard(
+  initialDashboard: NutritionDashboardPayload | null
+): NutritionDashboardPayload {
+  return preferCanonicalNutritionDashboard(initialDashboard, readDiskDashboard());
 }
 
 export function NutritionDataProvider({
@@ -89,7 +72,9 @@ export function NutritionDataProvider({
 
   useEffect(() => {
     if (!initialDashboard || !isValidDashboardPayload(initialDashboard)) return;
-    const resolved = resolveInitialDashboard(initialDashboard);
+    // Server/bootstrap payload wins. Do not re-prefer disk here — that was
+    // overwriting a fresh calorieTarget with a stale mobile/desktop cache.
+    const resolved = preferCanonicalNutritionDashboard(initialDashboard, null);
     setDashboard((prev) => {
       if (
         prev.date === resolved.date &&
@@ -101,24 +86,18 @@ export function NutritionDataProvider({
       }
       return resolved;
     });
-    if (isNutritionDashboardToday(resolved.date)) {
-      const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
-        allowStale: true,
-      });
-      if (!cached || !nutritionSnapshotsMatch(cached, resolved)) {
-        publishNutritionDashboard(resolved);
-      }
+    const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
+      allowStale: true,
+    });
+    if (!cached || !nutritionSnapshotsMatch(cached, resolved)) {
+      publishNutritionDashboard(resolved);
     }
   }, [initialDashboard]);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<NutritionDashboardPayload>).detail;
-      if (
-        detail &&
-        isValidDashboardPayload(detail) &&
-        isNutritionDashboardToday(detail.date)
-      ) {
+      if (detail && isValidDashboardPayload(detail)) {
         setDashboard(normalizeNutritionDashboard(detail));
       }
     };

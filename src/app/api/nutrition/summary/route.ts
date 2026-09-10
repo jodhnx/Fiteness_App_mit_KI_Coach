@@ -4,7 +4,7 @@ import { jsonOk, jsonError } from "@/lib/api-response";
 import { loadNutritionDashboard } from "@/lib/nutrition-service";
 import { loadTrainingSnapshot } from "@/lib/training-snapshot";
 import { buildCoachInsights } from "@/lib/coach-insights";
-import { startOfDay } from "date-fns";
+import { resolveNutritionDay } from "@/lib/nutrition-day";
 import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
 
 /** Central daily summary: nutrition (macros) + training + coach */
@@ -13,8 +13,13 @@ export async function GET(req: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
 
-    const dateParam = req.nextUrl.searchParams.get("date");
-    const date = dateParam ? startOfDay(new Date(dateParam)) : startOfDay(new Date());
+    const q = req.nextUrl.searchParams;
+    const resolved = resolveNutritionDay({
+      day: q.get("day"),
+      date: q.get("date"),
+      tzOffset: q.get("tzOffset"),
+    });
+    const date = resolved.date;
     const userId = session.user.id;
 
     const [nutrition, training, coach] = await Promise.all([

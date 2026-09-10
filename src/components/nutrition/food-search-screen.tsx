@@ -53,6 +53,9 @@ function FoodChip({
       className="shrink-0 min-w-[132px] max-w-[160px] card-premium px-3 py-2.5 text-left hover:border-accent active:scale-[0.98]"
     >
       <p className="text-sm font-medium text-white truncate">{food.name}</p>
+      {food.brand ? (
+        <p className="text-[11px] text-zinc-500 truncate mt-0.5">{food.brand}</p>
+      ) : null}
       <p className="text-[11px] text-zinc-500 tabular-nums mt-0.5">
         {fmtKcal(per100.calories)} kcal
       </p>

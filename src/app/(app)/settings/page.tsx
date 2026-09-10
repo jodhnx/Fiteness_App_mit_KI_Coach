@@ -30,6 +30,10 @@ import {
 } from "@/lib/nutrition-sync";
 import { invalidateCache } from "@/lib/client-cache";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
+import {
+  createEmptyNutritionDashboard,
+  isValidDashboardPayload,
+} from "@/lib/nutrition-defaults";
 import { logoutAndClear } from "@/lib/auth-logout";
 import { usePreferences } from "@/components/providers/preferences-provider";
 import { APP_THEMES, UI_DENSITY_OPTIONS, COLOR_MODE_OPTIONS } from "@/lib/themes";
@@ -51,6 +55,9 @@ import {
 import { ACTIVITY_LABELS } from "@/lib/profile-calculations";
 import { getCached, setCached } from "@/lib/client-cache";
 import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh";
+import { fetchBootstrapShared, applyBootstrapPayload } from "@/lib/app-init";
+import { computeNutritionRemaining } from "@/lib/nutrition-display";
+import { nutritionDayKey, nutritionDayQueryString } from "@/lib/nutrition-day";
 
 type CalcPreview = {
   bmi: number;
@@ -343,53 +350,47 @@ function SettingsPageInner() {
         allowStale: true,
       });
 
-      if (data.calculations && prevDash) {
+      if (data.calculations) {
+        const base =
+          prevDash && isValidDashboardPayload(prevDash)
+            ? prevDash
+            : createEmptyNutritionDashboard();
         const targets = {
           calories: data.calculations.calorieTarget,
           proteinG: data.calculations.proteinTargetG,
           carbsG: data.calculations.carbsTargetG,
           fatG: data.calculations.fatTargetG,
+          fiberG: base.targets.fiberG,
+          waterTargetMl: base.targets.waterTargetMl,
+          nutritionGoal:
+            (data.profile?.nutritionGoal as typeof base.targets.nutritionGoal) ??
+            base.targets.nutritionGoal,
         };
         publishNutritionDashboard({
-          ...prevDash,
+          ...base,
+          date: nutritionDayKey(),
           profileComplete: true,
-          targets: {
-            ...prevDash.targets,
-            ...targets,
-            fiberG: prevDash.targets.fiberG,
-            waterTargetMl: prevDash.targets.waterTargetMl,
-            nutritionGoal:
-              (data.profile?.nutritionGoal as typeof prevDash.targets.nutritionGoal) ??
-              prevDash.targets.nutritionGoal,
-          },
-          remaining: {
-            calories: Math.max(
-              0,
-              targets.calories -
-                prevDash.consumed.calories +
-                (prevDash.exerciseBurned?.calories ?? 0)
-            ),
-            proteinG: Math.max(0, targets.proteinG - prevDash.consumed.proteinG),
-            carbsG: Math.max(0, targets.carbsG - prevDash.consumed.carbsG),
-            fatG: Math.max(0, targets.fatG - prevDash.consumed.fatG),
-          },
+          targets,
+          remaining: computeNutritionRemaining({
+            targets,
+            consumed: base.consumed,
+            exerciseBurned: base.exerciseBurned,
+          }),
         });
-        // publishNutritionDashboard already refreshed home intelligence —
-        // only patch identity fields on top of the refreshed cache.
         const refreshedHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
           allowStale: true,
         });
         if (refreshedHome || prevHome) {
-          const base = refreshedHome ?? prevHome!;
+          const homeBase = refreshedHome ?? prevHome!;
           const nextHome = commitHomeIntelligenceRefresh({
-            ...base,
-            userName: data.user?.name ?? base.userName ?? null,
+            ...homeBase,
+            userName: data.user?.name ?? homeBase.userName ?? null,
             userImage:
-              data.user?.image !== undefined ? data.user.image : base.userImage,
+              data.user?.image !== undefined ? data.user.image : homeBase.userImage,
             weightKg:
               typeof data.profile?.weightKg === "number"
                 ? Number(data.profile.weightKg)
-                : base.weightKg,
+                : homeBase.weightKg,
           });
           setCached(HOME_DATA_CACHE_KEY, nextHome, 900_000);
           window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: nextHome }));
@@ -406,12 +407,18 @@ function SettingsPageInner() {
       }
 
       // Fresh nutrition targets in background (publishNutritionDashboard also patches home macros)
-      void fetch("/api/nutrition/dashboard", { credentials: "same-origin" })
+      void fetch(`/api/nutrition/dashboard?${nutritionDayQueryString()}`, {
+        credentials: "same-origin",
+      })
         .then((r) => (r.ok ? r.json() : null))
         .then((dash) => {
           if (dash) publishNutritionDashboard(dash);
         })
         .catch(() => undefined);
+
+      void fetchBootstrapShared({ force: true }).then((fresh) => {
+        if (fresh) applyBootstrapPayload(fresh);
+      });
 
       if (data.user?.image !== undefined) {
         setUserImage(data.user.image);

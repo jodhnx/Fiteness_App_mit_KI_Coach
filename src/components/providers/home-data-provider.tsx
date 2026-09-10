@@ -24,7 +24,7 @@ export function HomeDataProvider({
 }) {
   const seededKey = useRef<string | null>(null);
   if (initialHome) {
-    const key = `${initialHome.caloriesIntake ?? 0}-${initialHome.userName ?? ""}`;
+    const key = `${initialHome.calorieTarget ?? 0}-${initialHome.caloriesIntake ?? 0}-${initialHome.caloriesRemaining ?? 0}-${initialHome.userName ?? ""}`;
     if (seededKey.current !== key) {
       seedHomeCache(initialHome);
       seededKey.current = key;

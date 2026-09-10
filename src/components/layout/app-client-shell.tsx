@@ -22,6 +22,12 @@ import {
   type BootstrapPayload,
 } from "@/lib/app-init";
 import { getCacheOwner, hydratePersistentCaches } from "@/lib/client-cache";
+import {
+  HOME_DATA_EVENT,
+  NUTRITION_DASHBOARD_EVENT,
+} from "@/lib/nutrition-sync";
+import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
+import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
 
 /** After first paint — never blocks Home (no artificial delay). */
 function schedulePostBootWarm() {
@@ -91,6 +97,43 @@ export function AppClientShell({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [userId, status]);
+
+  useEffect(() => {
+    const onNutrition = (e: Event) => {
+      const nutrition = (e as CustomEvent<NutritionDashboardPayload>).detail;
+      if (!nutrition || !isValidDashboardPayload(nutrition)) return;
+      setBootPayload((prev) => {
+        if (!prev) return prev;
+        if (
+          prev.nutrition?.targets?.calories === nutrition.targets.calories &&
+          prev.nutrition?.remaining?.calories === nutrition.remaining.calories &&
+          prev.nutrition?.consumed?.calories === nutrition.consumed.calories
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          nutrition,
+          home: {
+            ...prev.home,
+            ...nutritionDashboardToHomeMacros(nutrition),
+            nutrition,
+          },
+        };
+      });
+    };
+    const onHome = (e: Event) => {
+      const home = (e as CustomEvent<HomeDataPayload>).detail;
+      if (!home) return;
+      setBootPayload((prev) => (prev ? { ...prev, home } : prev));
+    };
+    window.addEventListener(NUTRITION_DASHBOARD_EVENT, onNutrition);
+    window.addEventListener(HOME_DATA_EVENT, onHome);
+    return () => {
+      window.removeEventListener(NUTRITION_DASHBOARD_EVENT, onNutrition);
+      window.removeEventListener(HOME_DATA_EVENT, onHome);
+    };
+  }, []);
 
   const initialHome: HomeDataPayload | null = bootPayload?.home ?? null;
   const initialNutrition: NutritionDashboardPayload | null =

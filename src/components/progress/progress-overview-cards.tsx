@@ -2,13 +2,8 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { Scale, Target, Flame, Beef, Footprints, Dumbbell } from "lucide-react";
+import { Scale, Target } from "lucide-react";
 import { PremiumCard } from "@/components/ui/premium-card";
-import { getCached } from "@/lib/client-cache";
-import { HOME_DATA_CACHE_KEY, NUTRITION_DASHBOARD_CACHE_KEY } from "@/lib/nutrition-sync";
-import type { HomeDataPayload } from "@/lib/home-defaults";
-import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
-import { getPhoneStepsToday } from "@/lib/phone-sensors";
 
 type Props = {
   currentKg: number | null;
@@ -17,37 +12,24 @@ type Props = {
   weekChangeKg?: number | null;
 };
 
-/** Top overview strip — weight, goals, macros, steps, training. */
+/** Top overview — current weight and goal only. Charts follow. */
 export const ProgressOverviewCards = memo(function ProgressOverviewCards({
   currentKg,
   targetKg,
-  trainingSessions = 0,
   weekChangeKg = null,
 }: Props) {
-  const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
-  const nutrition = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY);
-  const phone = typeof window !== "undefined" ? getPhoneStepsToday() : null;
-  const steps = Math.max(home?.healthToday?.steps ?? 0, phone?.steps ?? 0);
-  const stepGoal = home?.healthToday?.stepGoal ?? 10_000;
-  const calories = Math.round(nutrition?.consumed?.calories ?? 0);
-  const calorieTarget = Math.round(nutrition?.targets?.calories ?? 0);
-  const protein = Math.round(nutrition?.consumed?.proteinG ?? 0);
-  const proteinTarget = Math.round(nutrition?.targets?.proteinG ?? 0);
-
   const cards = [
     {
       key: "w",
-      label: "Gewicht",
+      label: "Aktuelles Gewicht",
       value:
         currentKg != null
           ? `${currentKg.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg`
           : "—",
       sub:
         weekChangeKg != null
-          ? `${weekChangeKg > 0 ? "+" : ""}${weekChangeKg.toFixed(1)} kg · 7T`
-          : targetKg != null
-            ? `Ziel ${targetKg.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg`
-            : "Ziel setzen",
+          ? `${weekChangeKg > 0 ? "+" : ""}${weekChangeKg.toFixed(1)} kg · 7 Tage`
+          : "Eintragen",
       icon: Scale,
       tint: "text-emerald-400",
       href: "/progress?log=1",
@@ -59,55 +41,22 @@ export const ProgressOverviewCards = memo(function ProgressOverviewCards({
         targetKg != null
           ? `${targetKg.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg`
           : "—",
-      sub: currentKg != null && targetKg != null
-        ? `${(currentKg - targetKg).toLocaleString("de-DE", { maximumFractionDigits: 1, signDisplay: "exceptZero" })} kg Diff.`
-        : "In Einstellungen",
+      sub:
+        currentKg != null && targetKg != null
+          ? `${(currentKg - targetKg).toLocaleString("de-DE", {
+              maximumFractionDigits: 1,
+              signDisplay: "exceptZero",
+            })} kg Differenz`
+          : "In Einstellungen",
       icon: Target,
       tint: "text-accent",
       href: "/settings#settings-ziele",
-    },
-    {
-      key: "c",
-      label: "Kalorien",
-      value: calories > 0 ? calories.toLocaleString("de-DE") : "—",
-      sub: calorieTarget > 0 ? `Ziel ${calorieTarget.toLocaleString("de-DE")}` : "heute",
-      icon: Flame,
-      tint: "text-orange-400",
-      href: "/nutrition",
-    },
-    {
-      key: "p",
-      label: "Protein",
-      value: protein > 0 ? `${protein}g` : "—",
-      sub: proteinTarget > 0 ? `Ziel ${proteinTarget}g` : "heute",
-      icon: Beef,
-      tint: "text-rose-400",
-      href: "/nutrition",
-    },
-    {
-      key: "s",
-      label: "Schritte",
-      value: steps > 0 ? steps.toLocaleString("de-DE") : "—",
-      sub: `Ziel ${stepGoal.toLocaleString("de-DE")}`,
-      icon: Footprints,
-      tint: "text-cyan-400",
-      href: "/settings#settings-geraete",
-    },
-    {
-      key: "t",
-      label: "Training",
-      value: trainingSessions > 0 ? String(trainingSessions) : "—",
-      sub: "Sessions gelistet",
-      icon: Dumbbell,
-      tint: "text-violet-400",
-      href: "/workouts",
     },
   ] as const;
 
   return (
     <PremiumCard padding="sm" className="space-y-2">
-      <h2 className="text-sm font-semibold text-white px-0.5">Übersicht</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {cards.map((c) => {
           const Icon = c.icon;
           return (
@@ -115,16 +64,16 @@ export const ProgressOverviewCards = memo(function ProgressOverviewCards({
               key={c.key}
               href={c.href}
               prefetch
-              className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5 active:bg-white/[0.06]"
+              className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 min-h-11 active:bg-white/[0.06]"
             >
-              <div className="flex items-center gap-1 text-[9px] uppercase tracking-wide text-zinc-400">
-                <Icon className={`h-3 w-3 ${c.tint}`} />
+              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-zinc-400">
+                <Icon className={`h-3.5 w-3.5 ${c.tint}`} aria-hidden />
                 {c.label}
               </div>
-              <p className="text-lg font-bold text-white tabular-nums mt-1 leading-tight">
+              <p className="text-xl font-bold text-white tabular-nums mt-1.5 leading-tight">
                 {c.value}
               </p>
-              <p className="text-[10px] text-zinc-400 mt-0.5 truncate">{c.sub}</p>
+              <p className="text-[11px] text-zinc-400 mt-0.5 truncate">{c.sub}</p>
             </Link>
           );
         })}

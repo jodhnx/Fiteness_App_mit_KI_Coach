@@ -10,7 +10,7 @@ import {
 import { getCached } from "@/lib/client-cache";
 import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
 
-const DASHBOARD_URL = "/api/nutrition/dashboard";
+import { nutritionDayQueryString } from "@/lib/nutrition-day";
 
 /**
  * Ernährung page — reads from central nutrition store; API only for background refresh.
@@ -30,7 +30,7 @@ export function useNutritionDashboard(ttlMs = 120_000) {
     reload: refetch,
   } = useCachedFetch(
     NUTRITION_DASHBOARD_CACHE_KEY,
-    DASHBOARD_URL,
+    `/api/nutrition/dashboard?${nutritionDayQueryString()}`,
     ttlMs,
     8_000,
     { revalidateOnMount: !hadCache, staleRatio: 0.85 }

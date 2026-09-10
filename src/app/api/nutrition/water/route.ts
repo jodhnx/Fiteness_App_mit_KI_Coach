@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { waterLogSchema } from "@/lib/validations";
-import { startOfDay } from "date-fns";
+import { resolveNutritionDay } from "@/lib/nutrition-day";
 import { loadNutritionDashboard } from "@/lib/nutrition-service";
 import { tableExists } from "@/lib/prisma-safe";
 import { isSchemaMismatchError } from "@/lib/prisma-errors";
@@ -12,8 +12,13 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
-    const dateParam = req.nextUrl.searchParams.get("date");
-    const date = dateParam ? startOfDay(new Date(dateParam)) : startOfDay(new Date());
+    const q = req.nextUrl.searchParams;
+    const resolved = resolveNutritionDay({
+      day: q.get("day"),
+      date: q.get("date"),
+      tzOffset: q.get("tzOffset"),
+    });
+    const date = resolved.date;
     if (!(await tableExists("WaterLog"))) {
       return jsonOk({ logs: [], totalMl: 0 });
     }
@@ -42,9 +47,7 @@ export async function POST(req: NextRequest) {
         503
       );
     }
-    const date = startOfDay(
-      parsed.data.date ? new Date(parsed.data.date) : new Date()
-    );
+    const date = resolveNutritionDay({ date: parsed.data.date ?? null }).date;
     let amountMl = parsed.data.amountMl;
     if (amountMl < 0) {
       const current = await prisma.waterLog.aggregate({

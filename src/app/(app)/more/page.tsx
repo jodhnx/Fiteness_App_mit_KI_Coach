@@ -29,8 +29,13 @@ function Section({ title, items }: { title: string; items: NavItem[] }) {
             className="flex w-full items-center gap-3 px-4 min-h-11 py-3 text-left active:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
           >
             <item.icon className="h-5 w-5 text-zinc-400 shrink-0" />
-            <span className="flex-1 min-w-0 text-sm font-medium text-zinc-100">
-              {item.label}
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-medium text-zinc-100">{item.label}</span>
+              {item.description ? (
+                <span className="block text-[12px] text-zinc-500 mt-0.5 leading-snug">
+                  {item.description}
+                </span>
+              ) : null}
             </span>
             <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" aria-hidden />
           </Link>

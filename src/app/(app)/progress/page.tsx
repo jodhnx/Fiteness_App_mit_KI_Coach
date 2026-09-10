@@ -289,11 +289,6 @@ export default function ProgressPage() {
         weekChangeKg={analytics.changeWeekKg}
       />
 
-      <ProgressWeeklyIntelligenceCard
-        intelligence={weeklyIntelligence}
-        adaptiveRecommendations={adaptiveRecommendations}
-      />
-
       {showSkeleton && (
         <div className="space-y-4">
           <div className="h-36 rounded-2xl bg-white/[0.03] border border-white/[0.06]" />
@@ -340,6 +335,11 @@ export default function ProgressPage() {
               />
             </section>
           )}
+
+          <ProgressWeeklyIntelligenceCard
+            intelligence={weeklyIntelligence}
+            adaptiveRecommendations={adaptiveRecommendations}
+          />
 
           {/* 4. Weitere Fortschritte */}
           <section className="space-y-4">

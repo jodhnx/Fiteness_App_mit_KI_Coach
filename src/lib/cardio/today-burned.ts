@@ -6,8 +6,8 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { endOfDay, startOfDay } from "date-fns";
 import { estimateStepCalories } from "@/lib/activity-health";
+import { formatNutritionDayUtc, nutritionDayUtc } from "@/lib/nutrition-day";
 
 export type TodayExerciseBurn = {
   /** Total exercise kcal to add back to remaining / show on Home */
@@ -39,10 +39,12 @@ function labelFromNotes(type: string, notes?: string | null) {
 
 export async function getTodayExerciseBurn(
   userId: string,
-  day: Date = new Date()
+  day: Date = new Date(),
+  range?: { from: Date; to: Date }
 ): Promise<TodayExerciseBurn> {
-  const from = startOfDay(day);
-  const to = endOfDay(day);
+  const metricDay = nutritionDayUtc(formatNutritionDayUtc(day));
+  const from = range?.from ?? metricDay;
+  const to = range?.to ?? new Date(metricDay.getTime() + 24 * 60 * 60 * 1000 - 1);
 
   const empty: TodayExerciseBurn = {
     calories: 0,
@@ -82,7 +84,7 @@ export async function getTodayExerciseBurn(
       }),
       prisma.dailyHealthMetric
         .findUnique({
-          where: { userId_date: { userId, date: from } },
+          where: { userId_date: { userId, date: metricDay } },
           select: { steps: true, caloriesBurned: true },
         })
         .catch(() => null),

@@ -20,7 +20,10 @@ import {
 } from "@/lib/home-section-cache";
 import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh";
 import { nutritionDayKey, isNutritionDashboardToday } from "@/lib/nutrition-day";
-import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
+import {
+  resolveNutritionDashboardForBoot,
+  rolloverNutritionDashboardToToday,
+} from "@/lib/nutrition-day-rollover";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { buildHomeCoachFromNutrition } from "@/lib/nutrition-coach";
 import { computeNutritionRemaining } from "@/lib/nutrition-display";
@@ -119,12 +122,12 @@ function patchProgressNutritionToday(nutrition: NutritionDashboardPayload) {
 
 /** Push fresh dashboard to all client caches + notify mounted pages */
 export function publishNutritionDashboard(dashboard: NutritionDashboardPayload) {
-  const nutrition = normalizeNutritionDashboard(
+  let nutrition = normalizeNutritionDashboard(
     isValidDashboardPayload(dashboard) ? dashboard : createEmptyNutritionDashboard()
   );
 
   if (!isNutritionDashboardToday(nutrition.date)) {
-    return;
+    nutrition = rolloverNutritionDashboardToToday(nutrition);
   }
 
   const summary: NutritionSummaryPayload = { nutrition };

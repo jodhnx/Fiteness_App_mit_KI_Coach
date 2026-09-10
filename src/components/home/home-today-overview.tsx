@@ -16,6 +16,7 @@ type Props = {
   loading?: boolean;
   steps?: number;
   stepGoal?: number;
+  trainingHint?: string | null;
 };
 
 const MACROS = [
@@ -30,6 +31,7 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
   loading = false,
   steps = 0,
   stepGoal = 10_000,
+  trainingHint = null,
 }: Props) {
   const state = resolveNutritionDisplayState(nutrition, { loading });
 
@@ -82,6 +84,14 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
   const waterTarget = nutrition.water?.targetMl ?? 2500;
   const burned = Math.round(nutrition.exerciseBurned?.calories ?? 0);
 
+  const proteinLeft = Math.max(0, Math.round((targets.proteinG ?? 0) - (consumed.proteinG ?? 0)));
+  const cue =
+    proteinLeft >= 20
+      ? `Protein fehlen noch ${proteinLeft} g.`
+      : trainingHint
+        ? trainingHint
+        : null;
+
   return (
     <PremiumCard
       padding="md"
@@ -107,6 +117,7 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
         >
           {cal.isOver ? "kcal über dem Ziel" : "kcal übrig"}
         </p>
+        <p className="mt-1 text-xs text-zinc-500 tabular-nums">{cal.secondaryLine}</p>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -170,6 +181,10 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
           </p>
         </div>
       </div>
+
+      {cue ? (
+        <p className="text-[13px] leading-snug text-zinc-400">{cue}</p>
+      ) : null}
     </PremiumCard>
   );
 });

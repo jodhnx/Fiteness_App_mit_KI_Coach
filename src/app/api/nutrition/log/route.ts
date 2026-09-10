@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { getOrCreateMeal, loadNutritionDashboard, recordFoodRecent } from "@/lib/nutrition-service";
 import { updateNutritionStreak } from "@/lib/nutrition-streak";
-import { startOfDay } from "date-fns";
+import { resolveNutritionDay } from "@/lib/nutrition-day";
 import type { MealType } from "@prisma/client";
 
 const VALID_MEAL_TYPES = new Set<string>(["BREAKFAST", "LUNCH", "DINNER", "SNACK"]);
@@ -51,7 +51,8 @@ export async function POST(req: NextRequest) {
     const fatG = Math.max(0, Number(body.fatG) || 0);
     const isFoodAI = body.source === "food-ai";
 
-    const date = startOfDay(body.date ? new Date(body.date) : new Date());
+    const resolved = resolveNutritionDay({ date: body.date ?? null });
+    const date = resolved.date;
 
     // Normalise to per-100g for the FoodItem catalog entry
     const factor = 100 / quantityG;

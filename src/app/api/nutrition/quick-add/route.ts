@@ -8,7 +8,7 @@ import {
   recordFoodRecent,
   loadNutritionDashboard,
 } from "@/lib/nutrition-service";
-import { startOfDay } from "date-fns";
+import { resolveNutritionDay } from "@/lib/nutrition-day";
 import { importOffProductByCode } from "@/lib/food/food-database-service";
 import {
   accessibleFoodItemFilter,
@@ -43,25 +43,24 @@ export async function POST(req: NextRequest) {
     const parsed = quickAddFoodSchema.safeParse(body);
     if (!parsed.success) return jsonError("Ungültige Eingabe");
 
-    const resolved = await resolveFoodItemId(
+    const foodResolved = await resolveFoodItemId(
       parsed.data.foodItemId,
       parsed.data.offCode,
       session.user.id
     );
-    if ("error" in resolved) return jsonError(resolved.error, 404);
+    if ("error" in foodResolved) return jsonError(foodResolved.error, 404);
 
     const food = await prisma.foodItem.findFirst({
       where: {
-        id: resolved.id,
+        id: foodResolved.id,
         ...accessibleFoodItemFilter(session.user.id),
       },
       select: { id: true },
     });
     if (!food) return jsonError("Lebensmittel nicht gefunden", 404);
 
-    const date = startOfDay(
-      parsed.data.date ? new Date(parsed.data.date) : new Date()
-    );
+    const day = resolveNutritionDay({ date: parsed.data.date ?? null });
+    const date = day.date;
     const meal = await getOrCreateMeal(
       session.user.id,
       date,
