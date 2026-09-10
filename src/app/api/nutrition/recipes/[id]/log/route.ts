@@ -26,7 +26,7 @@ export async function POST(
       session.user.id,
       id,
       parsed.data.mealType as MealType,
-      parsed.data.date ? new Date(parsed.data.date) : new Date()
+      parsed.data.date ?? null
     );
     if ("error" in result && result.error) return jsonError(result.error, 404);
     return jsonOk(result);

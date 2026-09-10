@@ -1146,25 +1146,25 @@ html.light .bottom-nav-v4-tab:not(.bottom-nav-v4-tab--active) {
 }
 
 .bottom-nav-ios-bar {
-  min-height: 3.65rem;
-  border-radius: 1.75rem;
-  border: 1px solid color-mix(in srgb, white 12%, transparent);
-  background: color-mix(in srgb, rgb(16 18 24) 72%, transparent);
-  backdrop-filter: blur(var(--nav-blur, 32px)) saturate(1.35);
-  -webkit-backdrop-filter: blur(var(--nav-blur, 32px)) saturate(1.35);
+  min-height: 3.55rem;
+  border-radius: 1.85rem;
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  background: color-mix(in srgb, rgb(14 16 20) 78%, transparent);
+  backdrop-filter: blur(var(--nav-blur, 28px)) saturate(1.25);
+  -webkit-backdrop-filter: blur(var(--nav-blur, 28px)) saturate(1.25);
   box-shadow:
-    0 -1px 0 color-mix(in srgb, white 8%, transparent),
-    0 10px 36px rgb(0 0 0 / 38%);
+    0 -1px 0 color-mix(in srgb, white 6%, transparent),
+    0 8px 28px rgb(0 0 0 / 32%);
 }
 
 .bottom-nav-ios-indicator {
   position: absolute;
-  top: -0.7rem;
+  top: -0.55rem;
   border-radius: 9999px;
   background: var(--accent, #22d3ee);
   box-shadow:
-    0 10px 24px color-mix(in srgb, var(--accent, #22d3ee) 42%, transparent),
-    0 0 0 3px color-mix(in srgb, rgb(12 14 18) 55%, transparent);
+    0 8px 18px color-mix(in srgb, var(--accent, #22d3ee) 34%, transparent),
+    0 0 0 2px color-mix(in srgb, rgb(12 14 18) 65%, transparent);
   pointer-events: none;
   z-index: 0;
 }

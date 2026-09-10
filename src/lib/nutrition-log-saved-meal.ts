@@ -5,13 +5,14 @@ import {
   recordFoodRecent,
   loadNutritionDashboard,
 } from "@/lib/nutrition-service";
-import { startOfDay } from "date-fns";
+import { resolveNutritionDay } from "@/lib/nutrition-day";
+import { updateNutritionStreak, loadNutritionStreak } from "@/lib/nutrition-streak";
 
 export async function logSavedMealToDiary(
   userId: string,
   recipeId: string,
   mealType: MealType,
-  date = new Date()
+  dateInput?: string | Date | null
 ) {
   const recipe = await prisma.recipe.findFirst({
     where: { id: recipeId, userId },
@@ -19,8 +20,14 @@ export async function logSavedMealToDiary(
   });
   if (!recipe) return { error: "Mahlzeit nicht gefunden" as const };
 
-  const day = startOfDay(date);
-  const meal = await getOrCreateMeal(userId, day, mealType);
+  const ymd =
+    typeof dateInput === "string"
+      ? dateInput
+      : dateInput instanceof Date
+        ? dateInput.toISOString().slice(0, 10)
+        : null;
+  const day = resolveNutritionDay({ date: ymd });
+  const meal = await getOrCreateMeal(userId, day.date, mealType);
 
   for (const ing of recipe.ingredients) {
     await prisma.mealItem.create({
@@ -33,6 +40,18 @@ export async function logSavedMealToDiary(
     await recordFoodRecent(userId, ing.foodItemId);
   }
 
-  const dashboard = await loadNutritionDashboard(userId, day);
-  return { dashboard, recipeName: recipe.name };
+  await updateNutritionStreak(userId, day.date);
+  const streak = await loadNutritionStreak(userId);
+  const dashboard = await loadNutritionDashboard(userId, day.date);
+  try {
+    const { revalidateTag } = await import("next/cache");
+    revalidateTag(`home-${userId}`);
+  } catch {
+    /* ignore */
+  }
+  return {
+    dashboard,
+    recipeName: recipe.name,
+    nutritionStreak: streak.effectiveDays,
+  };
 }

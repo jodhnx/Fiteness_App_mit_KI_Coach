@@ -67,15 +67,6 @@ type ViewMode = "hub" | "favorites" | "search";
 
 const SEARCH_CACHE_TTL = 300_000;
 const SEARCH_DEBOUNCE_MS = 140;
-const DISH_CHIPS = [
-  "Pizza",
-  "Döner",
-  "Schnitzel",
-  "Burger",
-  "Pasta",
-  "Salat",
-  "Banane",
-];
 
 const FoodBarcodeScanner = dynamic(
   () =>
@@ -514,16 +505,16 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                     type="button"
                     onClick={onOpenCamera}
                     className="h-11 w-11 rounded-xl border border-white/10 bg-zinc-900/70 text-zinc-300 inline-flex items-center justify-center"
-                    aria-label="Foto AI"
+                    aria-label="Foto aufnehmen"
                   >
                     <Camera className="h-4 w-4" />
                   </button>
                 )}
                 <Link
-                  href="/nutrition/saved-meals/new"
+                  href="/rezepte"
                   onClick={handleClose}
                   className="h-11 w-11 rounded-xl border border-white/10 bg-zinc-900/70 text-zinc-300 inline-flex items-center justify-center"
-                  aria-label="Neue Mahlzeit"
+                  aria-label="Rezepte"
                 >
                   <ChefHat className="h-4 w-4" />
                 </Link>
@@ -576,31 +567,23 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                   )}
                   {!q.trim() ? (
                     <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2 px-1">
-                        {DISH_CHIPS.map((label) => (
-                          <button
-                            key={label}
-                            type="button"
-                            onClick={() => {
-                              setQ(label);
-                              setView("search");
-                            }}
-                            className="min-h-11 rounded-xl border border-white/10 bg-zinc-900/70 px-3 text-xs font-semibold text-zinc-200"
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
+                      {historyFoods.recents.length > 0 && (
+                        <FoodSection title="Zuletzt">
+                          {historyFoods.recents.slice(0, 8).map((food) => renderRow(food))}
+                        </FoodSection>
+                      )}
+                      {historyFoods.favorites.length > 0 && (
+                        <FoodSection title="Favoriten">
+                          {historyFoods.favorites.slice(0, 8).map((food) => renderRow(food))}
+                        </FoodSection>
+                      )}
                       {renderSavedSection(savedMeals.slice(0, 8))}
-                      <FoodSection title="🕘 Zuletzt verwendet">
-                        {historyFoods.recents.length === 0 ? (
-                          <p className="text-sm text-zinc-400 py-3 text-center px-2">
-                            Noch keine Lebensmittel verwendet.
+                      {historyFoods.recents.length === 0 &&
+                        historyFoods.favorites.length === 0 && (
+                          <p className="text-sm text-zinc-400 py-6 text-center px-4">
+                            Suche oben starten — Recent und Favoriten erscheinen hier.
                           </p>
-                        ) : (
-                          historyFoods.recents.slice(0, 8).map((food) => renderRow(food))
                         )}
-                      </FoodSection>
                     </div>
                   ) : !queryTooShort ? (
                     <>

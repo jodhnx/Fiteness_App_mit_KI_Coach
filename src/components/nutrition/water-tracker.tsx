@@ -19,33 +19,31 @@ export const WaterTracker = memo(function WaterTracker({
 }: Props) {
   const canRemove = consumedMl > 0;
   return (
-    <section className="rounded-xl border border-white/[0.08] bg-zinc-900/70 px-3 py-2">
-      <div className="flex items-center gap-2">
-        <p className="text-sm font-medium text-white flex-1">
-          Wasser{" "}
-          <span className="tabular-nums font-semibold">
-            {formatLiters(consumedMl)}
-          </span>
-          <span className="text-zinc-500 font-normal"> / {formatLiters(targetMl)} L</span>
-        </p>
-        <button
-          type="button"
-          disabled={!canRemove}
-          className="h-11 min-w-[4.5rem] rounded-xl border border-white/10 px-2 text-xs font-semibold text-zinc-200 disabled:opacity-40"
-          onClick={() => onAdd(-250)}
-          aria-label="250 Milliliter Wasser entfernen"
-        >
-          −250 ml
-        </button>
-        <button
-          type="button"
-          className="h-11 min-w-[4.5rem] rounded-xl border border-white/10 px-2 text-xs font-semibold text-zinc-200"
-          onClick={() => onAdd(250)}
-          aria-label="250 Milliliter Wasser hinzufügen"
-        >
-          +250 ml
-        </button>
-      </div>
+    <section className="flex items-center gap-2 px-0.5 py-1">
+      <p className="text-sm text-zinc-300 flex-1 min-w-0">
+        Wasser{" "}
+        <span className="tabular-nums font-semibold text-white">
+          {formatLiters(consumedMl)}
+        </span>
+        <span className="text-zinc-500"> / {formatLiters(targetMl)} L</span>
+      </p>
+      <button
+        type="button"
+        disabled={!canRemove}
+        className="h-11 min-w-[4.25rem] rounded-xl text-xs font-semibold text-zinc-300 disabled:opacity-35 hover:text-white"
+        onClick={() => onAdd(-250)}
+        aria-label="250 Milliliter Wasser entfernen"
+      >
+        −250
+      </button>
+      <button
+        type="button"
+        className="h-11 min-w-[4.25rem] rounded-xl text-xs font-semibold text-zinc-300 hover:text-white"
+        onClick={() => onAdd(250)}
+        aria-label="250 Milliliter Wasser hinzufügen"
+      >
+        +250
+      </button>
     </section>
   );
 });

@@ -13,7 +13,7 @@ import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
 import { toast } from "sonner";
 
 type Options = {
-  dashboard: NutritionDashboardPayload;
+  dashboard: NutritionDashboardPayload | null | undefined;
   applyDashboard: (next: NutritionDashboardPayload) => void;
   onSuccess?: () => void;
 };
@@ -79,6 +79,10 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
 
       const grams = quantityG ?? getDefaultQuickAddGrams(product);
       const snapshot = dashboard;
+      if (!snapshot) {
+        toast.error("Erährungsdaten noch nicht geladen");
+        return;
+      }
       const optimistic = optimisticAddMealItem(snapshot, product, grams, targetMeal);
       if (optimistic) applyDashboard(optimistic);
       onSuccess?.();
@@ -113,6 +117,10 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
     ) => {
       if (!opts?.mealType) return;
       const targetMeal = opts.mealType;
+      if (!dashboard) {
+        toast.error("Erährungsdaten noch nicht geladen");
+        return;
+      }
       const product =
         opts.product ??
         ({

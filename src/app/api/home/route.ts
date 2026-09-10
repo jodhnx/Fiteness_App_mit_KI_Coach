@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     const getHome = unstable_cache(
       async () => loadHomeData(userId, resolved.date),
-      [`home-data-v4-${userId}-${resolved.ymd}`],
+      [`home-data-v5-${userId}-${resolved.ymd}`],
       { revalidate: 90, tags: [`home-${userId}`] }
     );
 

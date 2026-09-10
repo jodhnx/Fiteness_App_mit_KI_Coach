@@ -4,10 +4,7 @@ import { memo } from "react";
 import Link from "next/link";
 import { Droplets, Flame, Footprints } from "lucide-react";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
-import {
-  getMacroDisplay,
-  resolveNutritionDisplayState,
-} from "@/lib/nutrition-display";
+import { resolveNutritionDisplayState } from "@/lib/nutrition-display";
 import { PremiumCard } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
 
@@ -19,13 +16,7 @@ type Props = {
   trainingHint?: string | null;
 };
 
-const MACROS = [
-  { key: "protein", label: "Protein", field: "proteinG" as const, tint: "text-rose-400" },
-  { key: "carbs", label: "Kohlenhydrate", field: "carbsG" as const, tint: "text-amber-400" },
-  { key: "fat", label: "Fett", field: "fatG" as const, tint: "text-sky-400" },
-];
-
-/** Dominant home today overview — calories + macros first, activity compact. */
+/** Compact home today strip — remaining kcal as text; macros as one line (ring lives on Nutrition). */
 export const HomeTodayOverview = memo(function HomeTodayOverview({
   nutrition,
   loading = false,
@@ -37,15 +28,10 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
 
   if (state.kind === "loading") {
     return (
-      <PremiumCard padding="md" className="space-y-3 min-h-[12rem]">
+      <PremiumCard padding="md" className="space-y-3 min-h-[8rem]">
         <div className="h-3 w-16 rounded bg-white/5 animate-pulse" />
-        <div className="h-12 w-36 rounded bg-white/5 animate-pulse" />
-        <div className="h-4 w-24 rounded bg-white/5 animate-pulse" />
-        <div className="grid grid-cols-3 gap-2">
-          <div className="h-16 rounded-2xl bg-white/5 animate-pulse" />
-          <div className="h-16 rounded-2xl bg-white/5 animate-pulse" />
-          <div className="h-16 rounded-2xl bg-white/5 animate-pulse" />
-        </div>
+        <div className="h-10 w-28 rounded bg-white/5 animate-pulse" />
+        <div className="h-4 w-40 rounded bg-white/5 animate-pulse" />
         <div className="grid grid-cols-3 gap-2">
           <div className="h-12 rounded-xl bg-white/5 animate-pulse" />
           <div className="h-12 rounded-xl bg-white/5 animate-pulse" />
@@ -57,7 +43,7 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
 
   if (state.kind === "missing_target") {
     return (
-      <PremiumCard padding="md" className="text-center space-y-3 min-h-[12rem] flex flex-col justify-center">
+      <PremiumCard padding="md" className="text-center space-y-3 min-h-[8rem] flex flex-col justify-center">
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
           Heute
         </p>
@@ -92,6 +78,19 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
         ? trainingHint
         : null;
 
+  const macroBits = (
+    [
+      { label: "P", field: "proteinG" as const },
+      { label: "KH", field: "carbsG" as const },
+      { label: "F", field: "fatG" as const },
+    ] as const
+  )
+    .filter(({ field }) => (targets[field] ?? 0) > 0)
+    .map(({ label, field }) => {
+      const left = Math.max(0, Math.round((targets[field] ?? 0) - (consumed[field] ?? 0)));
+      return `${label} ${left}g`;
+    });
+
   return (
     <PremiumCard
       padding="md"
@@ -103,44 +102,32 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
         </p>
         <p
           className={cn(
-            "mt-1.5 text-[2.35rem] font-bold leading-none tabular-nums tracking-tight",
+            "mt-1.5 text-[1.75rem] font-bold leading-none tabular-nums tracking-tight",
             cal.isOver ? "text-red-400" : "text-white"
           )}
         >
           {cal.primaryValue.toLocaleString("de-DE")}
-        </p>
-        <p
-          className={cn(
-            "mt-1 text-sm font-semibold uppercase tracking-wide",
-            cal.isOver ? "text-red-400/90" : "text-zinc-300"
-          )}
-        >
-          {cal.isOver ? "kcal über dem Ziel" : "kcal übrig"}
+          <span
+            className={cn(
+              "ml-2 text-sm font-semibold uppercase tracking-wide",
+              cal.isOver ? "text-red-400/90" : "text-zinc-400"
+            )}
+          >
+            {cal.isOver ? "kcal über Ziel" : "kcal übrig"}
+          </span>
         </p>
         <p className="mt-1 text-xs text-zinc-500 tabular-nums">{cal.secondaryLine}</p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        {MACROS.map(({ key, label, field, tint }) => {
-          const macro = getMacroDisplay(consumed[field], targets[field], label);
-          if (targets[field] <= 0) return null;
-          return (
-            <div
-              key={key}
-              className="rounded-2xl border border-white/[0.06] bg-white/[0.025] px-2.5 py-2.5"
+        {macroBits.length > 0 ? (
+          <p className="mt-1.5 text-[13px] font-medium tabular-nums text-zinc-400">
+            {macroBits.join(" · ")}
+            <Link
+              href="/nutrition"
+              className="ml-2 text-accent/90 hover:text-accent"
             >
-              <p className={cn("text-[10px] font-semibold uppercase tracking-wide", tint)}>
-                {label === "Kohlenhydrate" ? "KH" : label}
-              </p>
-              <p className="mt-1 text-[13px] font-bold text-white tabular-nums leading-snug">
-                {macro.primaryLine.replace(` ${label}`, "").replace(" Protein", "").replace(" Kohlenhydrate", "").replace(" Fett", "")}
-              </p>
-              <p className="text-[10px] text-zinc-500 tabular-nums mt-0.5">
-                {macro.secondaryLine}
-              </p>
-            </div>
-          );
-        })}
+              Details
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-3 gap-2">

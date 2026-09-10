@@ -1,5 +1,6 @@
 import { loadNutritionDashboard } from "@/lib/nutrition-service";
 import { loadTrainingSnapshot } from "@/lib/training-snapshot";
+import { loadNutritionStreak } from "@/lib/nutrition-streak";
 import { buildCoachInsightsFromContext } from "@/lib/coach-insights";
 import { getActivityWeekSummary, getRecentActivity } from "@/lib/activity-service";
 import { loadHealthDashboard } from "@/lib/activity-health";
@@ -283,6 +284,7 @@ export async function loadHomeData(
       user,
       profile,
       trainingStreak,
+      nutritionStreakRow,
       lastSessions,
       weightStart,
       weeklyReport,
@@ -329,6 +331,12 @@ export async function loadHomeData(
         prisma.trainingStreak
           .findUnique({ where: { userId }, select: { currentDays: true } })
           .catch(() => null),
+        loadNutritionStreak(userId).catch(() => ({
+          currentDays: 0,
+          longestDays: 0,
+          lastTrackedAt: null,
+          effectiveDays: 0,
+        })),
         prisma.workoutSession
           .findMany({
             where: { userId, status: "COMPLETED" },
@@ -455,7 +463,14 @@ export async function loadHomeData(
       nutrition,
       weightKg: training?.weightKg ?? null,
       streak: training?.streak ?? null,
-      trainingStreak: training?.trainingStreak ?? training?.streak ?? null,
+      trainingStreak:
+        trainingStreak != null
+          ? { currentDays: trainingStreak.currentDays }
+          : training?.trainingStreak ?? training?.streak ?? null,
+      nutritionStreak: {
+        currentDays: nutritionStreakRow.effectiveDays,
+        longestDays: nutritionStreakRow.longestDays,
+      },
       activeSession: training?.activeSession ?? null,
       nextWorkout: training?.nextWorkout ?? null,
       coach,

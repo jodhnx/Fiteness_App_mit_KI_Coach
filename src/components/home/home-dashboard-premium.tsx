@@ -4,7 +4,6 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Droplets,
-  Flame,
   Footprints,
   Moon,
   Dumbbell,
@@ -18,7 +17,7 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 import { PremiumCard } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
-import { getCalorieDisplay, getMacroDisplay } from "@/lib/nutrition-display";
+import { getCalorieDisplay } from "@/lib/nutrition-display";
 import { useLivePhoneSteps } from "@/hooks/use-live-phone-steps";
 import { hapticTap } from "@/lib/haptic";
 import { getCached, setCached } from "@/lib/client-cache";
@@ -52,87 +51,6 @@ type Props = {
   recoveryScore?: number | null;
   weekPulse?: WeekPulse | null;
 };
-
-function Ring({
-  pct,
-  color,
-  size = 64,
-  children,
-}: {
-  pct: number;
-  color: string;
-  size?: number;
-  children: React.ReactNode;
-}) {
-  const r = (size - 8) / 2;
-  const c = 2 * Math.PI * r;
-  const offset = c - (Math.min(100, Math.max(0, pct)) / 100) * c;
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="rotate-[-90deg]" aria-hidden>
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke="rgba(255,255,255,0.06)"
-          strokeWidth={5}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth={5}
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function MacroBar({
-  label,
-  value,
-  target,
-  color,
-}: {
-  label: string;
-  value: number;
-  target: number;
-  color: string;
-}) {
-  const macro = getMacroDisplay(value, target, label);
-  const pct = target > 0 ? Math.min(100, Math.round((value / target) * 100)) : 0;
-  return (
-    <div className="min-w-0">
-      <div className="flex items-baseline justify-between gap-1">
-        <p className="text-[10px] font-medium text-zinc-400">{label}</p>
-        <p className="text-[11px] font-semibold tabular-nums text-zinc-200">
-          {macro.secondaryLine}
-        </p>
-      </div>
-      <div className="mt-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-        <div
-          className={cn("h-full rounded-full transition-all", color)}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      {target > 0 && (
-        <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
-          {macro.primaryLine}
-        </p>
-      )}
-    </div>
-  );
-}
 
 function trainingHref(
   status: TrainingStatus,
@@ -216,56 +134,47 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
         </Link>
       )}
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            {cal?.isOver ? "Kalorien über Ziel" : "kcal übrig"}
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+          {cal?.isOver ? "Kalorien über Ziel" : "kcal übrig"}
+        </p>
+        {ready && cal ? (
+          <p
+            className={cn(
+              "mt-1 text-[1.75rem] font-bold leading-none tabular-nums",
+              cal.isOver ? "text-red-400" : "text-white"
+            )}
+          >
+            {cal.primaryValue.toLocaleString("de-DE")}
+            <span className="ml-2 text-sm font-semibold text-zinc-400">
+              {cal.isOver ? "über Ziel" : "übrig"}
+            </span>
           </p>
-          {ready && cal ? (
-            <>
-              <p
-                className={cn(
-                  "mt-1 text-[2.65rem] font-bold leading-none tabular-nums",
-                  cal.isOver ? "text-red-400" : "text-white"
-                )}
-              >
-                {cal.primaryValue.toLocaleString("de-DE")}
-              </p>
-            </>
-          ) : (
-            <Link
-              href="/settings"
-              className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-accent"
-            >
-              Kalorienziel festlegen
+        ) : (
+          <Link
+            href="/settings"
+            className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-accent"
+          >
+            Kalorienziel festlegen
+          </Link>
+        )}
+        {ready && (
+          <p className="mt-2 text-[13px] font-medium tabular-nums text-zinc-400">
+            {[
+              proteinTarget > 0
+                ? `P ${Math.max(0, proteinTarget - proteinG)}g`
+                : null,
+              carbsTarget > 0 ? `KH ${Math.max(0, carbsTarget - carbsG)}g` : null,
+              fatTarget > 0 ? `F ${Math.max(0, fatTarget - fatG)}g` : null,
+              intakePct > 0 ? `${intakePct}% Ziel` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            <Link href="/nutrition" className="ml-2 text-accent/90 hover:text-accent">
+              Details
             </Link>
-          )}
-          {ready && proteinTarget > 0 && (
-            <p className="mt-2 text-sm font-medium tabular-nums text-rose-200/90">
-              {getMacroDisplay(proteinG, proteinTarget, "Protein").primaryLine}
-            </p>
-          )}
-        </div>
-        <Ring pct={intakePct} color="var(--accent)" size={76}>
-          <Flame className="h-4 w-4 text-accent" />
-          <span className="text-[11px] font-bold tabular-nums text-white">{intakePct}%</span>
-        </Ring>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <MacroBar
-          label="Protein"
-          value={proteinG}
-          target={proteinTarget}
-          color="bg-rose-400"
-        />
-        <MacroBar
-          label="Carbs"
-          value={carbsG}
-          target={carbsTarget}
-          color="bg-amber-400"
-        />
-        <MacroBar label="Fett" value={fatG} target={fatTarget} color="bg-sky-400" />
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">

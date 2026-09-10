@@ -21,6 +21,25 @@ type ProfileCache = {
   user?: { name?: string; email?: string; image?: string | null };
 };
 
+const FAQ = [
+  {
+    title: "Account Hilfe",
+    body: "Passwort ändern und Account löschen findest du unter Einstellungen → Konto bzw. Datenschutz.",
+  },
+  {
+    title: "Nutrition Hilfe",
+    body: "Kalorienziel und Makros werden aus deinem Profil berechnet. Manuelle Overrides bleiben erhalten, bis du Körperdaten änderst und speicherst.",
+  },
+  {
+    title: "Training Hilfe",
+    body: "Pläne und Workouts findest du unter Training. Live-Sessions speichern Fortschritt serverseitig.",
+  },
+  {
+    title: "Privacy",
+    body: "Unter Datenschutz siehst du, welche Daten gespeichert werden und kannst deinen Account dauerhaft löschen.",
+  },
+] as const;
+
 export default function SupportPage() {
   const { data: profile } = useCachedFetch<ProfileCache>(
     PROFILE_CACHE_KEY,
@@ -32,12 +51,14 @@ export default function SupportPage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
   const [category, setCategory] = useState<SupportCategory>("OTHER");
   const [message, setMessage] = useState("");
   const [website, setWebsite] = useState("");
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [emailSent, setEmailSent] = useState(true);
+  const [ticketId, setTicketId] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile?.user?.name && !name) setName(profile.user.name);
@@ -52,6 +73,9 @@ export default function SupportPage() {
     }
     setSending(true);
     try {
+      const composed = subject.trim()
+        ? `Betreff: ${subject.trim()}\n\n${message.trim()}`
+        : message.trim();
       const res = await fetch("/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -59,7 +83,7 @@ export default function SupportPage() {
           name: name.trim(),
           email: email.trim(),
           category,
-          message: message.trim(),
+          message: composed,
           website,
         }),
       });
@@ -70,37 +94,53 @@ export default function SupportPage() {
       }
       setSuccess(true);
       setEmailSent((data as { emailSent?: boolean }).emailSent !== false);
+      setTicketId(
+        typeof (data as { id?: string }).id === "string"
+          ? (data as { id: string }).id
+          : typeof (data as { requestId?: string }).requestId === "string"
+            ? (data as { requestId: string }).requestId
+            : null
+      );
       setMessage("");
+      setSubject("");
     } catch {
       toast.error("Verbindungsfehler. Bitte erneut versuchen.");
     } finally {
       setSending(false);
     }
-  }, [sending, name, email, category, message, website]);
+  }, [sending, name, email, category, message, website, subject]);
 
   if (success) {
     return (
       <div className="max-w-lg mx-auto space-y-6 pb-24">
-        <PageHeader title="Support & Feedback" subtitle="Wir sind für dich da" />
-        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center space-y-3">
-          <CheckCircle2 className="h-12 w-12 text-emerald-400 mx-auto" aria-hidden />
+        <PageHeader title="Support Center" subtitle="Anfrage erhalten" />
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-6 text-center space-y-3">
+          <CheckCircle2 className="h-11 w-11 text-emerald-400 mx-auto" aria-hidden />
           <p className="text-emerald-100 font-medium leading-relaxed">
             Deine Anfrage wurde erfolgreich gesendet.
             {emailSent
-              ? " Du erhältst in Kürze eine Bestätigungs-E-Mail an deine Adresse. Unser Team antwortet in der Regel innerhalb von 24 Stunden."
-              : " Deine Nachricht wurde gespeichert. Unser Team prüft sie und meldet sich bei dir."}
+              ? " Du erhältst in Kürze eine Bestätigung."
+              : " Deine Nachricht wurde gespeichert — wir melden uns."}
           </p>
+          {ticketId ? (
+            <p className="text-xs text-emerald-200/80 tabular-nums">
+              Referenz: {ticketId}
+            </p>
+          ) : null}
           <div className="flex flex-col gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
-              className="w-full"
-              onClick={() => setSuccess(false)}
+              className="w-full min-h-11"
+              onClick={() => {
+                setSuccess(false);
+                setTicketId(null);
+              }}
             >
               Weitere Anfrage senden
             </Button>
             <Link href="/settings">
-              <Button type="button" variant="ghost" className="w-full">
+              <Button type="button" variant="ghost" className="w-full min-h-11">
                 Zurück zu Einstellungen
               </Button>
             </Link>
@@ -115,32 +155,33 @@ export default function SupportPage() {
       <div className="flex items-center gap-2">
         <Link
           href="/settings"
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-zinc-400 hover:text-white"
           aria-label="Zurück"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <PageHeader title="Support & Feedback" subtitle="Problem · Verbesserung · Frage · Kontakt" />
+        <PageHeader title="Support Center" subtitle="FAQ · Kontakt · Feedback" />
       </div>
 
       <section className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500 px-0.5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500 px-0.5">
           Schnellauswahl
         </p>
-        <div className="grid gap-2">
+        <div className="grid gap-1.5">
           {SUPPORT_QUICK_TOPICS.map((topic) => (
             <button
               key={topic.title}
               type="button"
               onClick={() => {
                 setCategory(topic.category);
+                setSubject(topic.title);
                 document.getElementById("support-form")?.scrollIntoView({ behavior: "smooth" });
               }}
               className={cn(
-                "rounded-xl border px-4 py-3 text-left transition-colors active:opacity-90",
-                category === topic.category && topic.title !== "Sonstiges"
-                  ? "border-cyan-500/40 bg-cyan-500/10"
-                  : "border-white/10 bg-zinc-900/60"
+                "rounded-2xl border px-4 py-3 text-left transition-colors",
+                category === topic.category
+                  ? "border-white/20 bg-white/[0.06]"
+                  : "border-white/[0.08] bg-zinc-900/40"
               )}
             >
               <p className="font-medium text-white text-sm">{topic.title}</p>
@@ -150,15 +191,34 @@ export default function SupportPage() {
         </div>
       </section>
 
+      <section className="space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500 px-0.5">
+          FAQ
+        </p>
+        <div className="space-y-2">
+          {FAQ.map((item) => (
+            <details
+              key={item.title}
+              className="rounded-2xl border border-white/[0.08] bg-zinc-900/35 px-4 py-3"
+            >
+              <summary className="cursor-pointer text-sm font-medium text-white list-none">
+                {item.title}
+              </summary>
+              <p className="text-sm text-zinc-400 mt-2 leading-relaxed">{item.body}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       <form
         id="support-form"
-        className="card-premium p-4 space-y-4"
+        className="rounded-2xl border border-white/[0.08] bg-zinc-900/35 p-4 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
         }}
       >
-        <h2 className="font-semibold text-white text-lg">Kontaktformular</h2>
+        <h2 className="font-semibold text-white text-base">Support kontaktieren</h2>
 
         <input
           type="text"
@@ -199,13 +259,25 @@ export default function SupportPage() {
         </div>
 
         <div>
+          <Label htmlFor="support-subject">Betreff</Label>
+          <Input
+            id="support-subject"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            maxLength={160}
+            className="mt-1 h-12 text-base"
+            placeholder="Kurzer Betreff"
+          />
+        </div>
+
+        <div>
           <Label htmlFor="support-category">Kategorie *</Label>
           <select
             id="support-category"
             value={category}
             onChange={(e) => setCategory(e.target.value as SupportCategory)}
             required
-            className="mt-1 w-full h-12 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-base"
+            className="mt-1 w-full h-12 rounded-xl border border-zinc-700 bg-zinc-900 px-3 text-base"
           >
             {SUPPORT_CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>
@@ -226,21 +298,19 @@ export default function SupportPage() {
             maxLength={5000}
             rows={5}
             placeholder="Beschreibe dein Anliegen…"
-            className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-3 text-base text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 resize-none"
+            className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-3 text-base text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-white/20 resize-none"
           />
           <p className="text-[10px] text-zinc-600 mt-1 text-right">{message.length}/5000</p>
         </div>
 
-        <div className="sticky-cta-bar pt-2">
-          <Button
-            type="submit"
-            disabled={sending}
-            className="w-full h-14 text-base font-semibold btn-accent rounded-2xl"
-          >
-            <Send className="h-5 w-5 mr-2" aria-hidden />
-            {sending ? "Wird gesendet…" : "Nachricht senden"}
-          </Button>
-        </div>
+        <Button
+          type="submit"
+          disabled={sending}
+          className="w-full min-h-12 text-base font-semibold rounded-xl bg-white text-zinc-950 hover:bg-zinc-100"
+        >
+          <Send className="h-4 w-4 mr-2" aria-hidden />
+          {sending ? "Wird gesendet…" : "Support kontaktieren"}
+        </Button>
       </form>
     </div>
   );

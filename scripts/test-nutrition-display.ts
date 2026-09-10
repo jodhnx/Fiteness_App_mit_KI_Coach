@@ -10,7 +10,7 @@ import {
 } from "../src/lib/nutrition-display";
 import {
   createEmptyNutritionDashboard,
-  hasUsableNutritionDashboard,
+  isValidDashboardPayload,
   normalizeNutritionDashboard,
 } from "../src/lib/nutrition-defaults";
 import { rolloverNutritionDashboardToToday } from "../src/lib/nutrition-day-rollover";
@@ -206,7 +206,10 @@ console.log("Nutrition Display Tests\n");
 
 {
   const empty = createEmptyNutritionDashboard();
-  assert("empty shell is usable nutrition UI", hasUsableNutritionDashboard(empty));
+  assert(
+    "empty shell is usable nutrition UI",
+    isValidDashboardPayload(empty) && empty.mealsByType.length > 0
+  );
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

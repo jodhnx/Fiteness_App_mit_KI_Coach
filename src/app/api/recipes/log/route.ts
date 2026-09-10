@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { startOfDay } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
@@ -14,11 +13,13 @@ import {
   recordFoodRecent,
   loadNutritionDashboard,
 } from "@/lib/nutrition-service";
-import { updateNutritionStreak, effectiveNutritionStreakDays } from "@/lib/nutrition-streak";
+import { updateNutritionStreak, loadNutritionStreak } from "@/lib/nutrition-streak";
+import { resolveNutritionDay } from "@/lib/nutrition-day";
 
 const schema = z.object({
   recipeId: z.string().min(1),
   mealType: z.enum(["BREAKFAST", "LUNCH", "DINNER", "SNACK"]),
+  date: z.string().optional(),
 });
 
 /** Log a catalog recipe into today's nutrition for the selected meal. */
@@ -57,7 +58,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const date = startOfDay(new Date());
+    const day = resolveNutritionDay({ date: parsed.data.date ?? null });
+    const date = day.date;
     const meal = await getOrCreateMeal(
       session.user.id,
       date,
@@ -73,15 +75,22 @@ export async function POST(req: NextRequest) {
     });
     await recordFoodRecent(session.user.id, food.id);
 
-    const streakRow = await updateNutritionStreak(session.user.id, date);
+    await updateNutritionStreak(session.user.id, date);
+    const streak = await loadNutritionStreak(session.user.id);
 
     const dashboard = await loadNutritionDashboard(session.user.id, date);
+    try {
+      const { revalidateTag } = await import("next/cache");
+      revalidateTag(`home-${session.user.id}`);
+    } catch {
+      /* ignore */
+    }
     return jsonOk(
       {
         ok: true,
         dashboard,
         recipeName: recipe.name,
-        nutritionStreak: effectiveNutritionStreakDays(streakRow),
+        nutritionStreak: streak.effectiveDays,
       },
       201
     );

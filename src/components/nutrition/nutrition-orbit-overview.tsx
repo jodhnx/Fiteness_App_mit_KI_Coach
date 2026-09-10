@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import Link from "next/link";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import {
@@ -15,22 +15,43 @@ type Props = {
   loading?: boolean;
 };
 
-/** One remaining-kcal ring + macros. Breakfast sits directly below. */
+function useRingSize() {
+  const [size, setSize] = useState(168);
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+      if (w >= 1024) setSize(188);
+      else if (w >= 430) setSize(176);
+      else if (w >= 390) setSize(168);
+      else setSize(156);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return size;
+}
+
+/** One remaining-kcal ring + macros. Meals sit directly below. */
 export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   dashboard,
   loading = false,
 }: Props) {
+  const ringSize = useRingSize();
   const state = resolveNutritionDisplayState(dashboard, { loading });
 
   if (state.kind === "loading") {
     return (
-      <div className="rounded-xl border border-white/[0.08] bg-zinc-900/70 px-3 py-2 space-y-2">
-        <div className="mx-auto h-[120px] w-[120px] rounded-full bg-white/5 animate-pulse" />
-        <div className="h-3 w-40 mx-auto bg-white/5 rounded animate-pulse" />
-        <div className="grid grid-cols-3 gap-2">
-          <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
-          <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
-          <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+      <div className="px-1 py-2 space-y-3">
+        <div
+          className="mx-auto rounded-full bg-white/5 animate-pulse"
+          style={{ width: ringSize, height: ringSize }}
+        />
+        <div className="h-3 w-44 mx-auto bg-white/5 rounded animate-pulse" />
+        <div className="grid grid-cols-3 gap-3">
+          <div className="h-12 bg-white/5 rounded-xl animate-pulse" />
+          <div className="h-12 bg-white/5 rounded-xl animate-pulse" />
+          <div className="h-12 bg-white/5 rounded-xl animate-pulse" />
         </div>
       </div>
     );
@@ -38,9 +59,9 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
 
   if (state.kind === "missing_target") {
     return (
-      <div className="rounded-xl border border-white/[0.1] bg-zinc-900/70 px-4 py-3 space-y-2">
-        <p className="text-lg font-semibold text-white">Kalorienziel festlegen</p>
-        <p className="text-sm text-zinc-400">
+      <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/40 px-4 py-4 space-y-2">
+        <p className="text-base font-semibold text-white">Kalorienziel festlegen</p>
+        <p className="text-sm text-zinc-400 leading-relaxed">
           {state.profileIncomplete
             ? "Bitte Gewicht und Ziel vervollständigen."
             : "Lege dein Kalorienziel fest, um deine verbleibenden kcal zu sehen."}
@@ -77,40 +98,47 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   ] as const;
 
   return (
-    <section className="rounded-xl border border-white/[0.08] bg-zinc-900/70 px-3 py-2">
+    <section className="px-0.5 py-1">
       <CalorieRing
         consumed={cal.consumed}
         target={cal.target}
         remaining={cal.remaining}
         exerciseBurned={dashboard?.exerciseBurned?.calories ?? 0}
-        size={120}
+        size={ringSize}
       />
-      <p className="mt-1.5 text-center text-[11px] text-zinc-500 tabular-nums">
+      {/* Secondary context only — never a second remaining number */}
+      <p className="mt-2.5 text-center text-[12px] text-zinc-500 tabular-nums">
         {cal.isOver
-          ? `${cal.overBy.toLocaleString("de-DE")} kcal über dem Ziel`
-          : `${cal.consumed.toLocaleString("de-DE")} gegessen von ${cal.target.toLocaleString("de-DE")} kcal`}
+          ? null
+          : `${cal.consumed.toLocaleString("de-DE")} gegessen · ${cal.target.toLocaleString("de-DE")} kcal Ziel`}
       </p>
 
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="mt-4 grid grid-cols-3 gap-3">
         {macros.map((m) => {
           if (m.target <= 0) return null;
           const macro = getMacroDisplay(m.consumed, m.target, m.label);
           const pct =
             m.target > 0 ? Math.min(100, Math.round((m.consumed / m.target) * 100)) : 0;
           return (
-            <div key={m.key} className="min-w-0">
-              <p className="text-[10px] font-medium text-zinc-500 truncate">{m.label}</p>
+            <div key={m.key} className="min-w-0 text-center">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                {m.label}
+              </p>
               <p
                 className={cn(
-                  "text-[12px] font-semibold tabular-nums leading-tight mt-0.5",
+                  "text-[13px] font-semibold tabular-nums leading-tight mt-1",
                   macro.isOver ? "text-red-300" : "text-white"
                 )}
               >
-                {macro.consumedG} / {macro.targetG} g
+                {macro.consumedG}
+                <span className="text-zinc-500 font-medium"> / {macro.targetG} g</span>
               </p>
-              <div className="mt-1 h-1 rounded-full bg-zinc-800 overflow-hidden">
+              <div className="mt-1.5 mx-auto h-1 w-full max-w-[4.5rem] rounded-full bg-zinc-800 overflow-hidden">
                 <div
-                  className={cn("h-full rounded-full", macro.isOver ? "bg-red-400" : "bg-white/70")}
+                  className={cn(
+                    "h-full rounded-full transition-[width] duration-400",
+                    macro.isOver ? "bg-red-400" : "bg-white/75"
+                  )}
                   style={{ width: `${pct}%` }}
                 />
               </div>

@@ -463,7 +463,7 @@ function SettingsPageInner() {
           title="Einstellungen"
           subtitle="Konto, Geräte & App — klar und übersichtlich"
         />
-        {(form.name || form.username) && (
+        {(profileLoaded || form.name || form.email) && (
           <SettingsProfileHero
             form={form}
             userImage={userImage}
@@ -473,7 +473,12 @@ function SettingsPageInner() {
             onImageUpdated={(url) => setUserImage(url)}
           />
         )}
-        <SettingsHubNav />
+        <section className="space-y-1">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500 px-0.5">
+            Account
+          </h3>
+          <SettingsHubNav />
+        </section>
       </div>
     );
   }

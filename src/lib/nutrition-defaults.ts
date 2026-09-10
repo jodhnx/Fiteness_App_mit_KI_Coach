@@ -121,11 +121,6 @@ export function isValidDashboardPayload(data: unknown): data is NutritionDashboa
   );
 }
 
-/** Meal slots + calorie/macro/water fields are present — page is usable. */
-export function hasUsableNutritionDashboard(data: unknown): data is NutritionDashboardPayload {
-  return isValidDashboardPayload(data) && data.mealsByType.length > 0;
-}
-
 /** Fill missing fields so stale/partial caches never crash the UI. */
 export function normalizeNutritionDashboard(
   data: Partial<NutritionDashboardPayload> | null | undefined

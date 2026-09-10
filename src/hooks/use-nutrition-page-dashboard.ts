@@ -8,23 +8,26 @@ import {
   invalidateAllNutritionCaches,
 } from "@/lib/nutrition-sync";
 import { getCached } from "@/lib/client-cache";
-import {
-  hasUsableNutritionDashboard,
-  isValidDashboardPayload,
-} from "@/lib/nutrition-defaults";
-
+import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { nutritionDayQueryString } from "@/lib/nutrition-day";
+
+function isPaintReadyDashboard(data: unknown): data is NutritionDashboardPayload {
+  if (!data || typeof data !== "object") return false;
+  const d = data as NutritionDashboardPayload;
+  return (
+    Array.isArray(d.mealsByType) &&
+    d.mealsByType.length > 0 &&
+    typeof d.targets?.calories === "number" &&
+    typeof d.consumed?.calories === "number"
+  );
+}
 
 /**
  * Ernährung page — reads from central nutrition store; API only for background refresh.
- *
- * When meal slots / water / targets are already paintably present (cache, bootstrap,
- * or empty shell), a slow dashboard refresh must NEVER surface as
- * "Laden dauert zu lange". Optional food history / AI / recipes are separate.
  */
-export function useNutritionDashboard(ttlMs = 120_000) {
+export function useNutritionPageDashboard(ttlMs = 120_000) {
   const { dashboard, applyDashboard } = useCentralNutrition();
-  const usable = hasUsableNutritionDashboard(dashboard);
+  const usable = isPaintReadyDashboard(dashboard);
   const cacheHit =
     getCached(NUTRITION_DASHBOARD_CACHE_KEY, { allowStale: true }) != null;
   const paintReady = usable || cacheHit;
@@ -42,13 +45,12 @@ export function useNutritionDashboard(ttlMs = 120_000) {
     8_000,
     {
       revalidateOnMount: true,
-      // Soft-revalidate when UI already has meal slots / cache — never block.
       staleRatio: paintReady ? 0 : 0.5,
     }
   );
 
   useEffect(() => {
-    if (fetched && isValidDashboardPayload(fetched)) {
+    if (fetched && isPaintReadyDashboard(fetched)) {
       applyDashboard(fetched);
     }
   }, [fetched, applyDashboard]);
@@ -67,3 +69,6 @@ export function useNutritionDashboard(ttlMs = 120_000) {
     applyDashboard,
   };
 }
+
+/** @deprecated use useNutritionPageDashboard — kept for any residual imports */
+export const useNutritionDashboard = useNutritionPageDashboard;

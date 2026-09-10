@@ -71,7 +71,7 @@ export const MealTrackList = memo(function MealTrackList({
   }, [draft, editing, onEdit]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-4">
       {slots.map((slot) => {
         const items = Array.isArray(slot.items) ? slot.items : [];
         const totals = slot.totals ?? { calories: 0, proteinG: 0 };
@@ -80,69 +80,48 @@ export const MealTrackList = memo(function MealTrackList({
         const mealLabel = MEAL_TYPE_LABELS[slot.mealType] ?? slot.mealType;
 
         return (
-          <section
-            key={slot.mealType}
-            className="rounded-xl border border-white/[0.08] bg-zinc-900/70 overflow-hidden"
-          >
-            {hasItems ? (
-              <div className="flex items-center gap-2 px-3 min-h-11">
-                <h2 className="flex-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                  {mealLabel}
-                </h2>
+          <section key={slot.mealType} className="space-y-1">
+            <div className="flex items-center gap-2 min-h-10 px-0.5">
+              <h2 className="flex-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                {mealLabel}
+              </h2>
+              {hasItems ? (
                 <p className="text-sm font-semibold text-white tabular-nums">
                   {kcal.toLocaleString("de-DE")} kcal
                 </p>
-                {slot.mealId && onDeleteMeal && (
-                  <button
-                    type="button"
-                    className="h-11 w-11 inline-flex items-center justify-center rounded-xl text-zinc-500 hover:text-red-400"
-                    aria-label={`${mealLabel} löschen`}
-                    onClick={() => onDeleteMeal(slot.mealId!, mealLabel)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div>
-                <h2 className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                  {mealLabel}
-                </h2>
+              ) : null}
+              {hasItems && slot.mealId && onDeleteMeal ? (
                 <button
                   type="button"
-                  onClick={() => onAddClick?.(slot.mealType)}
-                  className="flex w-full min-h-11 items-center gap-1.5 px-3 text-sm text-zinc-300 hover:text-white"
+                  className="h-11 w-11 inline-flex items-center justify-center rounded-xl text-zinc-500 hover:text-red-400"
+                  aria-label={`${mealLabel} löschen`}
+                  onClick={() => onDeleteMeal(slot.mealId!, mealLabel)}
                 >
-                  <Plus className="h-4 w-4" />
-                  Essen hinzufügen
+                  <Trash2 className="h-4 w-4" />
                 </button>
-              </div>
-            )}
+              ) : null}
+            </div>
 
-            {hasItems && (
-              <ul className="px-3 space-y-1 pb-0.5">
+            {hasItems ? (
+              <ul className="space-y-0.5">
                 {items.map((item) => (
                   <li
                     key={item.id}
                     className={cn(
-                      "flex items-center gap-2 min-h-11",
+                      "flex items-center gap-2 min-h-11 rounded-xl px-1",
                       item.id.startsWith("opt-") && "opacity-70"
                     )}
                   >
                     <button
                       type="button"
-                      className="min-w-0 flex-1 text-left py-1"
+                      className="min-w-0 flex-1 text-left py-1.5"
                       onClick={() => onEdit && setEditing({ id: item.id, qty: item.quantityG })}
                     >
-                      <p className="text-sm font-medium text-white truncate leading-tight">
+                      <p className="text-[15px] font-medium text-white truncate leading-tight">
                         {item.food?.name ?? "Lebensmittel"}
                       </p>
-                      {item.food?.brand ? (
-                        <p className="text-[11px] text-zinc-500 truncate leading-tight">
-                          {item.food.brand}
-                        </p>
-                      ) : null}
-                      <p className="text-[11px] text-zinc-500 tabular-nums leading-tight">
+                      <p className="text-[11px] text-zinc-500 truncate leading-tight mt-0.5">
+                        {item.food?.brand ? `${item.food.brand} · ` : ""}
                         {item.quantityG} g
                       </p>
                     </button>
@@ -160,10 +139,10 @@ export const MealTrackList = memo(function MealTrackList({
                   </li>
                 ))}
               </ul>
-            )}
+            ) : null}
 
             {editing && items.some((i) => i.id === editing.id) && (
-              <div className="px-3.5 pb-2 space-y-2">
+              <div className="px-1 pb-1 space-y-2">
                 <div className="flex items-center gap-2">
                   <input
                     ref={inputRef}
@@ -203,16 +182,14 @@ export const MealTrackList = memo(function MealTrackList({
               </div>
             )}
 
-            {hasItems && (
-              <button
-                type="button"
-                onClick={() => onAddClick?.(slot.mealType)}
-                className="flex w-full min-h-11 items-center gap-2 px-3 text-sm text-zinc-300 hover:text-white border-t border-white/[0.06]"
-              >
-                <Plus className="h-4 w-4" />
-                Essen hinzufügen
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => onAddClick?.(slot.mealType)}
+              className="flex w-full min-h-11 items-center gap-2 rounded-xl px-1 text-sm text-zinc-400 hover:text-white transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Essen hinzufügen
+            </button>
           </section>
         );
       })}

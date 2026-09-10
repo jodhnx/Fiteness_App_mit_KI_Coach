@@ -13,13 +13,13 @@ type Props = {
   className?: string;
 };
 
-/** Single remaining-kcal ring — quiet, compact, Apple-like. */
+/** Single remaining-kcal ring — primary Nutrition visualization. */
 export const CalorieRing = memo(function CalorieRing({
   consumed,
   target,
   remaining,
   exerciseBurned,
-  size = 120,
+  size = 168,
   className,
 }: Props) {
   const autoId = useId();
@@ -36,13 +36,17 @@ export const CalorieRing = memo(function CalorieRing({
   const pct = hasTarget
     ? Math.min(100, Math.round((kcalConsumed / safeTarget) * 100))
     : 0;
-  const r = (size - 12) / 2;
+  const strokeW = Math.max(8, Math.round(size * 0.048));
+  const r = (size - strokeW * 1.5) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (pct / 100) * c;
-  const strokeW = 7;
   const digits = String(centerValue).length;
   const numberClass =
-    digits >= 5 ? "text-xl" : digits >= 4 ? "text-2xl" : "text-[1.75rem]";
+    digits >= 5
+      ? "text-2xl"
+      : digits >= 4
+        ? "text-[1.85rem]"
+        : "text-[2.15rem]";
 
   return (
     <div className={cn("flex flex-col items-center", className)}>
@@ -57,7 +61,7 @@ export const CalorieRing = memo(function CalorieRing({
                 </>
               ) : (
                 <>
-                  <stop offset="0%" stopColor="#e4e4e7" />
+                  <stop offset="0%" stopColor="#f4f4f5" />
                   <stop offset="100%" stopColor="#a1a1aa" />
                 </>
               )}
@@ -82,10 +86,11 @@ export const CalorieRing = memo(function CalorieRing({
               strokeLinecap="round"
               strokeDasharray={c}
               strokeDashoffset={offset}
+              className="transition-[stroke-dashoffset] duration-500 ease-out"
             />
           )}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-2 pointer-events-none">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-3 pointer-events-none">
           <p
             className={cn(
               "font-semibold tabular-nums leading-none tracking-tight",
@@ -97,7 +102,7 @@ export const CalorieRing = memo(function CalorieRing({
           </p>
           <p
             className={cn(
-              "mt-1 text-[10px] font-medium leading-none",
+              "mt-1.5 text-[11px] font-medium leading-none",
               isOver ? "text-red-400/80" : "text-zinc-500"
             )}
           >

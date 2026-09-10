@@ -44,12 +44,14 @@ export async function POST(req: NextRequest) {
     const name = body.name?.trim();
     if (!name) return jsonError("Name fehlt");
 
-    const quantityG = Number(body.quantityG) || 100;
-    const calories = Math.max(0, Number(body.calories) || 0);
-    const proteinG = Math.max(0, Number(body.proteinG) || 0);
-    const carbsG = Math.max(0, Number(body.carbsG) || 0);
-    const fatG = Math.max(0, Number(body.fatG) || 0);
-    const isFoodAI = body.source === "food-ai";
+    const quantityG = Math.min(5000, Math.max(1, Number(body.quantityG) || 100));
+    const calories = Math.min(10_000, Math.max(0, Number(body.calories) || 0));
+    const proteinG = Math.min(1000, Math.max(0, Number(body.proteinG) || 0));
+    const carbsG = Math.min(1000, Math.max(0, Number(body.carbsG) || 0));
+    const fatG = Math.min(1000, Math.max(0, Number(body.fatG) || 0));
+    const source = typeof body.source === "string" ? body.source : "";
+    const isFoodAI = source === "food-ai";
+    const isQuickEntry = source === "quick-entry";
 
     const resolved = resolveNutritionDay({ date: body.date ?? null });
     const date = resolved.date;
@@ -59,14 +61,14 @@ export async function POST(req: NextRequest) {
     const foodItem = await prisma.foodItem.create({
       data: {
         slug: makeSlug(name),
-        name,
-        brand: isFoodAI ? "Food AI" : null,
+        name: isQuickEntry ? "Schnelleintrag" : name,
+        brand: isFoodAI ? "Food AI" : isQuickEntry ? "Schnelleintrag" : null,
         calories: Math.round(calories * factor),
         proteinG: Number((proteinG * factor).toFixed(2)),
         carbsG: Number((carbsG * factor).toFixed(2)),
         fatG: Number((fatG * factor).toFixed(2)),
         servingG: 100,
-        dataSource: isFoodAI ? "food-ai" : "local",
+        dataSource: isFoodAI ? "food-ai" : isQuickEntry ? "quick-entry" : "local",
         userId: session.user.id,
       },
     });
