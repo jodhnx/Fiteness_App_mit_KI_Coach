@@ -784,7 +784,7 @@ function SettingsPageInner() {
               disabled={saving || !isDirty}
               className="w-full disabled:opacity-40"
             >
-              {saving ? "Speichern…" : "Speichern & neu berechnen"}
+              {saving ? "Speichern…" : "SPEICHERN & NEU BERECHNEN"}
             </Button>
           </>
         ) : (
@@ -1158,11 +1158,11 @@ function SettingsPageInner() {
         <div className="max-w-2xl mx-auto">
           <Button
             type="button"
-            className="w-full h-12 text-base rounded-2xl disabled:opacity-40 disabled:bg-zinc-700 disabled:text-zinc-400 disabled:pointer-events-none"
+            className="w-full h-12 text-base font-semibold tracking-wide rounded-2xl disabled:opacity-40 disabled:bg-zinc-700 disabled:text-zinc-400 disabled:pointer-events-none"
             onClick={() => void save()}
             disabled={saving || !profileLoaded || !isDirty}
           >
-            {saving ? "Speichern…" : "Speichern & neu berechnen"}
+            {saving ? "Speichern…" : "SPEICHERN & NEU BERECHNEN"}
           </Button>
         </div>
       </div>

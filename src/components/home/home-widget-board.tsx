@@ -43,12 +43,12 @@ export const HomeWidgetBoard = memo(function HomeWidgetBoard({
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-end">
+      <div className="flex justify-end -mt-1 -mb-2">
         <Button
           type="button"
           size="icon"
           variant="ghost"
-          className="text-zinc-400 h-11 w-11"
+          className="text-zinc-500 h-8 w-8"
           aria-label={edit ? "Widget-Bearbeitung beenden" : "Widgets anordnen"}
           aria-pressed={edit}
           onClick={() => {

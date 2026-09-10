@@ -87,6 +87,17 @@ console.log("Nutrition Display Tests\n");
   assert("remaining includes burned", rem.calories === 1000);
 }
 
+// 7b. Over-target display must include exercise credit
+{
+  const cal = getCalorieDisplay(2200, 2000, 100, 300);
+  assert("burned credit keeps remaining", cal.primaryValue === 100 && !cal.isOver);
+}
+
+{
+  const cal = getCalorieDisplay(2500, 2000, 0, 100);
+  assert("over after burned credit", cal.primaryValue === 400 && cal.isOver);
+}
+
 // 8. Meal delete optimistic
 {
   const dash = createEmptyNutritionDashboard();

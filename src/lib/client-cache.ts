@@ -3,6 +3,7 @@ import {
   readPersistentCache,
   clearPersistentCache,
   clearPersistentCacheByPrefix,
+  CACHE_OWNER_STORAGE_KEY,
 } from "@/lib/persistent-cache";
 
 type CacheEntry<T> = { data: T; expires: number; cachedAt: number };
@@ -10,12 +11,10 @@ type CacheEntry<T> = { data: T; expires: number; cachedAt: number };
 const store = new Map<string, CacheEntry<unknown>>();
 const inflight = new Map<string, Promise<unknown>>();
 
-const OWNER_KEY = "nexform:cache-owner";
-
 export function getCacheOwner(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return localStorage.getItem(OWNER_KEY);
+    return localStorage.getItem(CACHE_OWNER_STORAGE_KEY);
   } catch {
     return null;
   }
@@ -24,7 +23,7 @@ export function getCacheOwner(): string | null {
 export function setCacheOwner(userId: string) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(OWNER_KEY, userId);
+    localStorage.setItem(CACHE_OWNER_STORAGE_KEY, userId);
   } catch {
     /* ignore */
   }
@@ -33,7 +32,7 @@ export function setCacheOwner(userId: string) {
 export function clearCacheOwner() {
   if (typeof window === "undefined") return;
   try {
-    localStorage.removeItem(OWNER_KEY);
+    localStorage.removeItem(CACHE_OWNER_STORAGE_KEY);
   } catch {
     /* ignore */
   }

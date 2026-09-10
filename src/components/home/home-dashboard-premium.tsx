@@ -160,15 +160,18 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
 }: Props) {
   const steps = useLivePhoneSteps(serverSteps);
   const ready = hasNutritionTargets(nutrition);
-  const burned = nutrition.exerciseBurned?.calories ?? 0;
-  const burnedEstimated = nutrition.exerciseBurned?.estimated ?? true;
   const remainingCal = nutrition.remaining?.calories ?? 0;
   const consumedCal = nutrition.consumed?.calories ?? 0;
   const targetCal = nutrition.targets?.calories ?? 0;
   const waterConsumed = nutrition.water?.consumedMl ?? 0;
   const waterTarget = nutrition.water?.targetMl ?? 2500;
   const cal = ready
-    ? getCalorieDisplay(consumedCal, targetCal, remainingCal)
+    ? getCalorieDisplay(
+        consumedCal,
+        targetCal,
+        remainingCal,
+        nutrition.exerciseBurned?.calories ?? 0
+      )
     : null;
   const intakePct =
     targetCal > 0 ? Math.min(100, Math.round((consumedCal / targetCal) * 100)) : 0;
@@ -228,7 +231,6 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
               >
                 {cal.primaryValue.toLocaleString("de-DE")}
               </p>
-              <p className="mt-1 text-xs tabular-nums text-zinc-500">{cal.secondaryLine}</p>
             </>
           ) : (
             <Link
@@ -243,12 +245,6 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
               {getMacroDisplay(proteinG, proteinTarget, "Protein").primaryLine}
             </p>
           )}
-          <p className="mt-1.5 text-xs tabular-nums text-zinc-400">
-            <span className="text-orange-300/90">
-              {Math.round(burned)} kcal verbrannt
-              {burned > 0 && burnedEstimated ? " (geschätzt)" : ""}
-            </span>
-          </p>
         </div>
         <Ring pct={intakePct} color="var(--accent)" size={76}>
           <Flame className="h-4 w-4 text-accent" />

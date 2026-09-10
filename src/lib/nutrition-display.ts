@@ -57,6 +57,7 @@ export function resolveNutritionDisplayState(
 
   const consumed = dashboard.consumed?.calories ?? 0;
   const remainingFromDashboard = dashboard.remaining?.calories ?? null;
+  const burned = dashboard.exerciseBurned?.calories ?? 0;
 
   return {
     kind: "ready",
@@ -64,17 +65,23 @@ export function resolveNutritionDisplayState(
     target,
     remainingFromDashboard:
       remainingFromDashboard != null ? Math.round(remainingFromDashboard) : 0,
-    cal: getCalorieDisplay(consumed, target, remainingFromDashboard),
+    cal: getCalorieDisplay(consumed, target, remainingFromDashboard, burned),
   };
 }
 
+/**
+ * remaining = target − consumed + exerciseBurned
+ * Over-target uses the same net (never ignore exercise credit).
+ */
 export function getCalorieDisplay(
   consumed: number,
   target: number,
-  remainingFromDashboard?: number | null
+  remainingFromDashboard?: number | null,
+  exerciseBurned?: number | null
 ): CalorieDisplay {
   const consumedR = Math.round(consumed);
   const targetR = Math.round(target);
+  const burnedR = Math.round(exerciseBurned ?? 0);
 
   if (targetR <= 0) {
     return {
@@ -89,12 +96,16 @@ export function getCalorieDisplay(
     };
   }
 
-  const overBy = Math.max(0, consumedR - targetR);
-  const isOver = overBy > 0;
-  const remaining =
-    remainingFromDashboard != null && !isOver
-      ? Math.max(0, Math.round(remainingFromDashboard))
-      : Math.max(0, targetR - consumedR);
+  const net =
+    exerciseBurned != null
+      ? targetR - consumedR + burnedR
+      : remainingFromDashboard != null && remainingFromDashboard > 0
+        ? Math.round(remainingFromDashboard)
+        : targetR - consumedR + burnedR;
+
+  const isOver = net < 0;
+  const overBy = isOver ? Math.abs(Math.round(net)) : 0;
+  const remaining = Math.max(0, Math.round(net));
 
   return {
     primaryValue: isOver ? overBy : remaining,

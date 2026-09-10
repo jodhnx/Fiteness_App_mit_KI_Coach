@@ -439,7 +439,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                 enterKeyHint="search"
                 autoFocus={open}
               />
-              <div className="grid grid-cols-3 gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -451,30 +451,30 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                     setQ("");
                     setResult(null);
                   }}
-                  className={`min-h-11 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                  className={`h-9 flex-1 rounded-lg border text-[11px] font-semibold flex items-center justify-center gap-1 active:scale-[0.98] ${
                     view === "favorites"
                       ? "border-amber-400/40 bg-amber-500/20 text-amber-50"
-                      : "border-amber-500/25 bg-amber-500/10 text-amber-100"
+                      : "border-amber-500/20 bg-amber-500/8 text-amber-100/90"
                   }`}
                 >
-                  <Star className="h-3.5 w-3.5 fill-amber-400/40 text-amber-400" />
+                  <Star className="h-3 w-3 fill-amber-400/40 text-amber-400" />
                   Favoriten
                 </button>
                 <button
                   type="button"
                   onClick={() => setScannerOpen(true)}
-                  className="min-h-11 rounded-xl border border-zinc-700/80 bg-zinc-900/60 text-xs font-semibold text-zinc-200 flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  className="h-9 flex-1 rounded-lg border border-zinc-700/70 bg-zinc-900/50 text-[11px] font-semibold text-zinc-300 flex items-center justify-center gap-1 active:scale-[0.98]"
                 >
-                  <ScanBarcode className="h-3.5 w-3.5 text-violet-400" />
+                  <ScanBarcode className="h-3 w-3 text-violet-400" />
                   Barcode
                 </button>
                 <Link
                   href="/nutrition/saved-meals/new"
                   onClick={handleClose}
-                  className="min-h-11 rounded-xl border border-violet-500/25 bg-violet-500/10 text-xs font-semibold text-violet-100 flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                  className="h-9 px-2.5 rounded-lg border border-violet-500/20 bg-violet-500/8 text-[11px] font-semibold text-violet-200/90 flex items-center justify-center gap-1 active:scale-[0.98]"
+                  aria-label="Neue Mahlzeit"
                 >
-                  <ChefHat className="h-3.5 w-3.5 text-violet-400" />
-                  Neu
+                  <ChefHat className="h-3 w-3 text-violet-400" />
                 </Link>
               </div>
             </div>
@@ -482,12 +482,6 @@ export const FoodAddPopup = memo(function FoodAddPopup({
             <div className="food-add-popup-scroll">
               {view === "hub" && (
                 <div className="space-y-2 px-1 pb-4">
-                  {renderSavedSection(savedMeals.slice(0, 8))}
-                  {historyFoods.frequent.length > 0 && (
-                    <FoodSection title="⚡ Häufig verwendet">
-                      {historyFoods.frequent.slice(0, 8).map((food) => renderRow(food))}
-                    </FoodSection>
-                  )}
                   <FoodSection title="🕘 Zuletzt verwendet">
                     {historyFoods.recents.length === 0 ? (
                       <p className="text-sm text-zinc-400 py-3 text-center px-2">
@@ -497,6 +491,12 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                       historyFoods.recents.slice(0, 10).map((food) => renderRow(food))
                     )}
                   </FoodSection>
+                  {historyFoods.frequent.length > 0 && (
+                    <FoodSection title="⚡ Häufig verwendet">
+                      {historyFoods.frequent.slice(0, 8).map((food) => renderRow(food))}
+                    </FoodSection>
+                  )}
+                  {renderSavedSection(savedMeals.slice(0, 8))}
                 </div>
               )}
 

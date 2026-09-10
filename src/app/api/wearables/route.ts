@@ -46,7 +46,7 @@ export async function GET() {
       connections: connections.map((c) => {
         const meta = parseMeta(c.metadata);
         const providerMeta = HEALTH_PROVIDERS.find((p) => p.id === c.provider);
-        let syncStatus: string = "connected";
+        let syncStatus: string = "disconnected";
         if (meta.status === "oauth_pending") {
           syncStatus = "oauth_pending";
         } else if (!c.isActive) {
@@ -57,6 +57,7 @@ export async function GET() {
         } else if (c.lastSyncError) syncStatus = "error";
         else if (meta.status === "native_bridge" || meta.status === "native_bridge_pending")
           syncStatus = meta.lastIngestAt ? "connected" : "pending_companion";
+        else if (c.accessToken || meta.lastIngestAt) syncStatus = "connected";
 
         const fullyConnected =
           Boolean(c.isActive) &&

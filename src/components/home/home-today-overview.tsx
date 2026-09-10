@@ -96,9 +96,8 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
             cal.isOver ? "text-red-400/90" : "text-zinc-300"
           )}
         >
-          {cal.isOver ? "über dem Ziel" : "übrig"}
+          {cal.isOver ? "kcal über dem Ziel" : "kcal übrig"}
         </p>
-        <p className="mt-2 text-sm tabular-nums text-zinc-500">{cal.secondaryLine} kcal</p>
       </div>
 
       <div className="grid grid-cols-3 gap-2">

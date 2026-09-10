@@ -26,6 +26,9 @@ const LOCAL_KEYS = [
   "nexform:guest-credentials",
   "nexform:cache-owner",
   "nexform:cache:recipe-catalog-favorites",
+  "nexform:home-widgets-v8",
+  "nexform:home-widgets-v7",
+  "nexform:home-widgets-v6",
 ] as const;
 
 const SESSION_KEYS = [

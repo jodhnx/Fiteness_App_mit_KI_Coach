@@ -1100,15 +1100,27 @@ html.light .bottom-nav-v4-tab:not(.bottom-nav-v4-tab--active) {
 }
 
 .bottom-nav-ios-bar {
-  min-height: 3.5rem;
-  border-radius: 1.125rem;
-  border: 1px solid color-mix(in srgb, white 10%, transparent);
-  background: color-mix(in srgb, rgb(12 14 18) 82%, transparent);
-  backdrop-filter: blur(var(--nav-blur, 28px));
-  -webkit-backdrop-filter: blur(var(--nav-blur, 28px));
+  min-height: 3.65rem;
+  border-radius: 1.75rem;
+  border: 1px solid color-mix(in srgb, white 12%, transparent);
+  background: color-mix(in srgb, rgb(16 18 24) 72%, transparent);
+  backdrop-filter: blur(var(--nav-blur, 32px)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--nav-blur, 32px)) saturate(1.35);
   box-shadow:
-    0 -1px 0 color-mix(in srgb, white 6%, transparent),
-    0 8px 32px rgb(0 0 0 / 35%);
+    0 -1px 0 color-mix(in srgb, white 8%, transparent),
+    0 10px 36px rgb(0 0 0 / 38%);
+}
+
+.bottom-nav-ios-indicator {
+  position: absolute;
+  top: -0.7rem;
+  border-radius: 9999px;
+  background: var(--accent, #22d3ee);
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--accent, #22d3ee) 42%, transparent),
+    0 0 0 3px color-mix(in srgb, rgb(12 14 18) 55%, transparent);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .bottom-nav-ios-tab {
@@ -1123,9 +1135,16 @@ html.light .bottom-nav-v4-tab:not(.bottom-nav-v4-tab--active) {
 
 html[data-color-mode="light"] .bottom-nav-ios-bar,
 html.light .bottom-nav-ios-bar {
-  background: color-mix(in srgb, rgb(248 250 252) 88%, transparent);
+  background: color-mix(in srgb, rgb(248 250 252) 78%, transparent);
   border-color: color-mix(in srgb, rgb(15 23 42) 8%, transparent);
   box-shadow: 0 4px 24px rgb(15 23 42 / 8%);
+}
+
+html[data-color-mode="light"] .bottom-nav-ios-indicator,
+html.light .bottom-nav-ios-indicator {
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--accent, #22d3ee) 38%, transparent),
+    0 0 0 3px color-mix(in srgb, rgb(248 250 252) 80%, transparent);
 }
 
 html[data-color-mode="light"] .bottom-nav-ios-tab--idle .bottom-nav-ios-label,
