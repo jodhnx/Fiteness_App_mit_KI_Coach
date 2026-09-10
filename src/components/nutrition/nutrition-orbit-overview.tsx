@@ -92,9 +92,30 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
   const { cal } = state;
 
   const macros = [
-    { key: "p", label: "Protein", consumed: consumed.proteinG ?? 0, target: targets.proteinG ?? 0 },
-    { key: "c", label: "Carbs", consumed: consumed.carbsG ?? 0, target: targets.carbsG ?? 0 },
-    { key: "f", label: "Fat", consumed: consumed.fatG ?? 0, target: targets.fatG ?? 0 },
+    {
+      key: "p",
+      label: "Protein",
+      consumed: consumed.proteinG ?? 0,
+      target: targets.proteinG ?? 0,
+      bar: "bg-[var(--nutrition-protein)]",
+      soft: "text-[var(--nutrition-protein)]",
+    },
+    {
+      key: "c",
+      label: "Carbs",
+      consumed: consumed.carbsG ?? 0,
+      target: targets.carbsG ?? 0,
+      bar: "bg-[var(--nutrition-carbs)]",
+      soft: "text-[var(--nutrition-carbs)]",
+    },
+    {
+      key: "f",
+      label: "Fat",
+      consumed: consumed.fatG ?? 0,
+      target: targets.fatG ?? 0,
+      bar: "bg-[var(--nutrition-fat)]",
+      soft: "text-[var(--nutrition-fat)]",
+    },
   ] as const;
 
   return (
@@ -109,8 +130,8 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
       {/* Secondary context only — never a second remaining number */}
       <p className="mt-2.5 text-center text-[12px] text-zinc-500 tabular-nums">
         {cal.isOver
-          ? null
-          : `${cal.consumed.toLocaleString("de-DE")} gegessen · ${cal.target.toLocaleString("de-DE")} kcal Ziel`}
+          ? `${cal.overBy.toLocaleString("de-DE")} kcal über dem Ziel`
+          : `${cal.consumed.toLocaleString("de-DE")} gegessen von ${cal.target.toLocaleString("de-DE")} kcal`}
       </p>
 
       <div className="mt-4 grid grid-cols-3 gap-3">
@@ -121,7 +142,12 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
             m.target > 0 ? Math.min(100, Math.round((m.consumed / m.target) * 100)) : 0;
           return (
             <div key={m.key} className="min-w-0 text-center">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+              <p
+                className={cn(
+                  "text-[10px] font-medium uppercase tracking-wider",
+                  m.soft
+                )}
+              >
                 {m.label}
               </p>
               <p
@@ -133,11 +159,11 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
                 {macro.consumedG}
                 <span className="text-zinc-500 font-medium"> / {macro.targetG} g</span>
               </p>
-              <div className="mt-1.5 mx-auto h-1 w-full max-w-[4.5rem] rounded-full bg-zinc-800 overflow-hidden">
+              <div className="mt-1.5 mx-auto h-1.5 w-full max-w-[4.5rem] rounded-full bg-zinc-800/80 overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-[width] duration-400",
-                    macro.isOver ? "bg-red-400" : "bg-white/75"
+                    macro.isOver ? "bg-red-400" : m.bar
                   )}
                   style={{ width: `${pct}%` }}
                 />

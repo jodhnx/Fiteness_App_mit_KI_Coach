@@ -19,16 +19,7 @@ import { QuickFoodStrip } from "@/components/nutrition/quick-food-strip";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
 import { cn } from "@/lib/utils";
 
-const DISH_CHIPS = [
-  "Pizza",
-  "Döner",
-  "Schnitzel",
-  "Burger",
-  "Pasta",
-  "Sushi",
-  "Salat",
-  "Banane",
-];
+const DISH_CHIPS: string[] = [];
 
 type Props = {
   mealType: MealType;
@@ -223,7 +214,7 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
         </Button>
       </div>
 
-      {!debouncedQ && (
+      {!debouncedQ && DISH_CHIPS.length > 0 && (
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
           {DISH_CHIPS.map((label) => (
             <button

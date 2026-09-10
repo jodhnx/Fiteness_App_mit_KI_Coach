@@ -160,7 +160,10 @@ export default function SupportPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <PageHeader title="Support Center" subtitle="FAQ · Kontakt · Feedback" />
+        <PageHeader
+          title="Support Center"
+          subtitle="FAQ · Kontakt · Problem melden · Feature Request"
+        />
       </div>
 
       <section className="space-y-2">

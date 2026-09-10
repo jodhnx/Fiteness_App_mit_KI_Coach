@@ -78,6 +78,9 @@ function NutritionPageInner() {
   const [searchMeal, setSearchMeal] = useState<MealType | null>(null);
   const [quickMeal, setQuickMeal] = useState<MealType | null>(null);
   const [addInitialQuery, setAddInitialQuery] = useState("");
+  const [addInitialView, setAddInitialView] = useState<
+    "hub" | "favorites" | "search" | undefined
+  >(undefined);
   const [foodAIOpen, setFoodAIOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{
     mealId: string;
@@ -97,9 +100,17 @@ function NutritionPageInner() {
 
   useEffect(() => {
     const add = searchParams.get("add");
+    const panel = searchParams.get("panel");
     if (add && VALID_MEALS.has(add)) {
       setSearchMeal(add as MealType);
       setAddInitialQuery(searchParams.get("q")?.trim() ?? "");
+      setAddInitialView(undefined);
+      return;
+    }
+    if (panel === "food" || panel === "saved" || panel === "favorites") {
+      setSearchMeal(mealTypeForHour());
+      setAddInitialQuery("");
+      setAddInitialView("favorites");
     }
   }, [searchParams]);
 
@@ -122,8 +133,13 @@ function NutritionPageInner() {
   const closeSearchPopup = useCallback(() => {
     setSearchMeal(null);
     setAddInitialQuery("");
+    setAddInitialView(undefined);
     resetBodyScroll();
-    if (searchParams.get("add") || searchParams.get("q")) {
+    if (
+      searchParams.get("add") ||
+      searchParams.get("q") ||
+      searchParams.get("panel")
+    ) {
       router.replace("/nutrition");
     }
   }, [router, searchParams]);
@@ -488,16 +504,28 @@ function NutritionPageInner() {
 
       <MealTrackList
         meals={dashboard?.mealsByType ?? []}
+        mealTypes={["BREAKFAST", "LUNCH"]}
         onRemove={removeItem}
         onEdit={editItemQuantity}
         onDeleteMeal={requestDeleteMeal}
         onAddClick={(mealType) => setAddSheetMeal(mealType)}
+        className="lg:grid-cols-2"
       />
 
       <WaterTracker
         consumedMl={dashboard?.water?.consumedMl ?? 0}
         targetMl={dashboard?.water?.targetMl ?? 2500}
         onAdd={addWater}
+      />
+
+      <MealTrackList
+        meals={dashboard?.mealsByType ?? []}
+        mealTypes={["DINNER", "SNACK"]}
+        onRemove={removeItem}
+        onEdit={editItemQuantity}
+        onDeleteMeal={requestDeleteMeal}
+        onAddClick={(mealType) => setAddSheetMeal(mealType)}
+        className="lg:grid-cols-2"
       />
 
       {addSheetMeal && (
@@ -517,10 +545,16 @@ function NutritionPageInner() {
           mealType={searchMeal}
           favoriteIds={favoriteIds}
           initialQuery={addInitialQuery}
+          initialView={addInitialView}
           onClose={closeSearchPopup}
           onQuickAddFood={quickAdd}
           onToggleFavorite={handleToggleFavorite}
           onLogSavedMeal={handleLogSavedMeal}
+          onQuickEntry={() => {
+            const meal = searchMeal;
+            closeSearchPopup();
+            setQuickMeal(meal);
+          }}
           quickAdding={quickAdding}
           onOpenCamera={() => {
             closeSearchPopup();

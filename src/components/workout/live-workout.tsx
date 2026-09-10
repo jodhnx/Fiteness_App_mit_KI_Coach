@@ -172,7 +172,9 @@ const LiveSetRow = memo(function LiveSetRow({
               onPatch(set.id, { weightKg: parseWeightKg(weight) });
             }}
           />
-          <span className="text-[10px] font-semibold text-zinc-500 shrink-0 w-6">KG</span>
+          <span className="text-[10px] font-bold text-zinc-400 shrink-0 w-6 tracking-wide">
+            KG
+          </span>
         </div>
         <Button
           size="icon"
@@ -828,7 +830,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         onSaveAndExit={saveAndExit}
         onDiscard={() => void discardWorkout()}
       />
-    <div className="space-y-4 pb-52 max-w-lg lg:max-w-4xl mx-auto keyboard-stable-page">
+    <div className="space-y-4 pb-[calc(10.5rem+env(safe-area-inset-bottom,0px))] max-w-lg lg:max-w-4xl mx-auto keyboard-stable-page">
       <div className="sticky top-0 z-20 py-2 bg-zinc-950/95 backdrop-blur-md border-b border-white/[0.06] -mx-1 px-1">
         <div className="flex items-center gap-2">
           <Button
@@ -846,15 +848,6 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
             </h1>
             <LiveElapsedClock startedAt={session.startedAt} />
           </div>
-          <Button
-            className="h-11 px-4 rounded-xl shrink-0 text-sm font-semibold"
-            onClick={() => {
-              setDefaultEndName(session.name || nextDefaultWorkoutName());
-              setDialog("finish");
-            }}
-          >
-            Fertig
-          </Button>
         </div>
         <p className="text-xs text-zinc-500 mt-1.5 tabular-nums px-1">
           {completedExercises} / {grouped.length} Übungen
@@ -975,14 +968,23 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       })}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-zinc-950/95 border-t border-white/[0.06]">
-        <div className="max-w-lg lg:max-w-4xl mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] bg-zinc-950/95 backdrop-blur-md safe-area-pb">
+        <div className="max-w-lg lg:max-w-4xl mx-auto px-4 pt-3 pb-3 space-y-2">
+          <Button
+            className="w-full h-12 min-h-12 rounded-2xl text-base font-semibold shadow-lg shadow-accent/20 lg:h-11"
+            onClick={() => {
+              setDefaultEndName(session.name || nextDefaultWorkoutName());
+              setDialog("finish");
+            }}
+          >
+            Fertig
+          </Button>
           <Button
             variant="outline"
-            className="w-full h-14 rounded-2xl border-dashed border-white/15 text-zinc-200"
+            className="w-full h-11 rounded-2xl border-dashed border-white/15 text-zinc-300"
             onClick={() => setPickerOpen(true)}
           >
-            <Plus className="h-5 w-5 mr-2" />
+            <Plus className="h-4 w-4 mr-2" />
             Übung hinzufügen
           </Button>
         </div>

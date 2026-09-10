@@ -34,8 +34,8 @@ const ACTIONS: {
   },
   {
     id: "quick",
-    label: "Schnell eintragen",
-    hint: "Nur Kalorien & Makros",
+    label: "Schnelleintrag",
+    hint: "Nur Kalorien & Makros — ohne Lebensmittel",
     icon: Zap,
   },
   {

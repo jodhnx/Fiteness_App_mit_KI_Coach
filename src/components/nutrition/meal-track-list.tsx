@@ -27,6 +27,9 @@ type Props = {
   onEdit?: (itemId: string, quantityG: number) => void;
   onDeleteMeal?: (mealId: string, mealLabel: string) => void;
   onAddClick?: (mealType: MealType) => void;
+  /** Limit which meal slots to render (default: TRACK_MEAL_ORDER). */
+  mealTypes?: MealType[];
+  className?: string;
 };
 
 const GRAM_PRESETS = [50, 100, 150, 200];
@@ -37,8 +40,10 @@ export const MealTrackList = memo(function MealTrackList({
   onEdit,
   onDeleteMeal,
   onAddClick,
+  mealTypes = TRACK_MEAL_ORDER,
+  className,
 }: Props) {
-  const slots = TRACK_MEAL_ORDER.map((mealType) => {
+  const slots = mealTypes.map((mealType) => {
     const found = (Array.isArray(meals) ? meals : []).find((m) => m.mealType === mealType);
     return (
       found ?? {
@@ -71,7 +76,12 @@ export const MealTrackList = memo(function MealTrackList({
   }, [draft, editing, onEdit]);
 
   return (
-    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-4">
+    <div
+      className={cn(
+        "flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-5",
+        className
+      )}
+    >
       {slots.map((slot) => {
         const items = Array.isArray(slot.items) ? slot.items : [];
         const totals = slot.totals ?? { calories: 0, proteinG: 0 };
@@ -80,26 +90,32 @@ export const MealTrackList = memo(function MealTrackList({
         const mealLabel = MEAL_TYPE_LABELS[slot.mealType] ?? slot.mealType;
 
         return (
-          <section key={slot.mealType} className="space-y-1">
-            <div className="flex items-center gap-2 min-h-10 px-0.5">
-              <h2 className="flex-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                {mealLabel}
-              </h2>
-              {hasItems ? (
-                <p className="text-sm font-semibold text-white tabular-nums">
-                  {kcal.toLocaleString("de-DE")} kcal
-                </p>
-              ) : null}
-              {hasItems && slot.mealId && onDeleteMeal ? (
-                <button
-                  type="button"
-                  className="h-11 w-11 inline-flex items-center justify-center rounded-xl text-zinc-500 hover:text-red-400"
-                  aria-label={`${mealLabel} löschen`}
-                  onClick={() => onDeleteMeal(slot.mealId!, mealLabel)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              ) : null}
+          <section
+            key={slot.mealType}
+            className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3 space-y-2"
+          >
+            <div className="flex items-center gap-2 min-h-11">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                  {mealLabel}
+                </h2>
+                {hasItems ? (
+                  <p className="text-sm font-semibold text-white tabular-nums mt-0.5">
+                    {kcal.toLocaleString("de-DE")} kcal
+                  </p>
+                ) : (
+                  <p className="text-xs text-zinc-600 mt-0.5">Noch nichts eingetragen</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onAddClick?.(slot.mealType)}
+                className="inline-flex h-11 min-w-[7.5rem] items-center justify-center gap-1.5 rounded-xl bg-accent/15 px-3 text-sm font-semibold text-accent active:scale-[0.98] transition-transform"
+                aria-label={`${mealLabel}: Essen hinzufügen`}
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                Essen
+              </button>
             </div>
 
             {hasItems ? (
@@ -131,7 +147,7 @@ export const MealTrackList = memo(function MealTrackList({
                     <button
                       type="button"
                       onClick={() => onRemove(item.id)}
-                      className="h-11 w-11 inline-flex items-center justify-center text-zinc-500 hover:text-red-400 shrink-0"
+                      className="h-11 w-11 inline-flex items-center justify-center text-zinc-600 hover:text-red-400 shrink-0"
                       aria-label="Eintrag löschen"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -182,14 +198,19 @@ export const MealTrackList = memo(function MealTrackList({
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={() => onAddClick?.(slot.mealType)}
-              className="flex w-full min-h-11 items-center gap-2 rounded-xl px-1 text-sm text-zinc-400 hover:text-white transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              Essen hinzufügen
-            </button>
+            {hasItems && slot.mealId && onDeleteMeal ? (
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-zinc-500 hover:text-red-400"
+                  aria-label={`${mealLabel} komplett löschen`}
+                  onClick={() => onDeleteMeal(slot.mealId!, mealLabel)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  Mahlzeit löschen
+                </button>
+              </div>
+            ) : null}
           </section>
         );
       })}

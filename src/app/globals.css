@@ -15,6 +15,19 @@ html[data-theme="turquoise"] {
   --radius-md: 1rem;
   --radius-lg: 1.25rem;
   --radius-xl: 1.5rem;
+  /* Functional nutrition accents — subtle, not neon */
+  --nutrition-cal: #f59e0b;
+  --nutrition-cal-soft: rgba(245, 158, 11, 0.18);
+  --nutrition-protein: #818cf8;
+  --nutrition-protein-soft: rgba(129, 140, 248, 0.18);
+  --nutrition-carbs: #fbbf24;
+  --nutrition-carbs-soft: rgba(251, 191, 36, 0.16);
+  --nutrition-fat: #fb7185;
+  --nutrition-fat-soft: rgba(251, 113, 133, 0.16);
+  --nutrition-water: #38bdf8;
+  --nutrition-water-soft: rgba(56, 189, 248, 0.16);
+  --training-accent: #34d399;
+  --progress-accent: #a3e635;
 }
 
 html[data-theme="blue"] {

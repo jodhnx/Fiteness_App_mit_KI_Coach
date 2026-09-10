@@ -175,11 +175,11 @@ export const NutritionExtrasPanel = memo(function NutritionExtrasPanel({
           {remindersOn ? "Erinnerung an" : "Erinnerung"}
         </button>
         <Link
-          href="/nutrition?add=LUNCH&q=Pizza"
+          href="/nutrition?panel=food"
           className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 h-9 px-3 text-xs text-zinc-200"
         >
           <Store className="h-3.5 w-3.5 text-accent" />
-          Restaurant
+          Favoriten
         </Link>
       </div>
       <div className="flex gap-2">

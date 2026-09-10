@@ -61,8 +61,8 @@ export const CalorieRing = memo(function CalorieRing({
                 </>
               ) : (
                 <>
-                  <stop offset="0%" stopColor="#f4f4f5" />
-                  <stop offset="100%" stopColor="#a1a1aa" />
+                  <stop offset="0%" stopColor="var(--nutrition-cal)" />
+                  <stop offset="100%" stopColor="#fbbf24" />
                 </>
               )}
             </linearGradient>

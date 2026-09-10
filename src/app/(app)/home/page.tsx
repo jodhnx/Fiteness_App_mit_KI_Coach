@@ -227,7 +227,7 @@ export default function HomePage() {
         : null;
 
   return (
-    <PageShell className="space-y-3">
+    <PageShell className="space-y-2.5 lg:space-y-3">
       <HomeGreeting
         name={displayName}
         streakDays={nutritionStreakDays}

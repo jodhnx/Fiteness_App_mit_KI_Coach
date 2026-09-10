@@ -16,6 +16,8 @@ import {
   X,
   ChefHat,
   Camera,
+  Zap,
+  ChevronRight,
 } from "lucide-react";
 import type { MealType } from "@prisma/client";
 import {
@@ -46,11 +48,15 @@ import {
 } from "@/lib/saved-meals-cache";
 import Link from "next/link";
 
+type ViewMode = "hub" | "favorites" | "search";
+
 type Props = {
   open: boolean;
   mealType: MealType;
   favoriteIds: Set<string>;
   initialQuery?: string;
+  /** Open directly on favorites / search when deep-linking from More hub. */
+  initialView?: ViewMode;
   onClose: () => void;
   onQuickAddFood: (
     product: FoodProduct,
@@ -59,11 +65,11 @@ type Props = {
   ) => void;
   onToggleFavorite: (foodItemId: string) => Promise<void>;
   onLogSavedMeal?: (recipeId: string, meal: MealType) => Promise<void> | void;
+  /** Opens Schnelleintrag (kcal/macros only) for this meal. */
+  onQuickEntry?: () => void;
   quickAdding?: boolean;
   onOpenCamera?: () => void;
 };
-
-type ViewMode = "hub" | "favorites" | "search";
 
 const SEARCH_CACHE_TTL = 300_000;
 const SEARCH_DEBOUNCE_MS = 140;
@@ -142,10 +148,12 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   mealType,
   favoriteIds,
   initialQuery = "",
+  initialView,
   onClose,
   onQuickAddFood,
   onToggleFavorite,
   onLogSavedMeal,
+  onQuickEntry,
   quickAdding,
   onOpenCamera,
 }: Props) {
@@ -178,7 +186,9 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
   useEffect(() => {
     if (!open) return;
-    setView(initialQuery.trim() ? "search" : "hub");
+    if (initialQuery.trim()) setView("search");
+    else if (initialView === "favorites" || initialView === "search") setView(initialView);
+    else setView("hub");
     setQ(initialQuery.trim());
     setDetailProduct(null);
     const cached = getCachedFoodHistory();
@@ -187,7 +197,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
       inputRef.current?.focus();
     }, 0);
     return () => window.clearTimeout(t);
-  }, [open, initialQuery]);
+  }, [open, initialQuery, initialView]);
 
   useBodyScrollLock(open);
 
@@ -233,9 +243,15 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    void refreshHistory().then(() => {
-      if (cancelled) return;
-    });
+    const cachedHistory = getCachedFoodHistory();
+    if (cachedHistory) {
+      applyHistoryPayload(cachedHistory, setHistoryFoods);
+      void refreshHistory();
+    } else {
+      void refreshHistory();
+    }
+    const cachedMeals = getCachedSavedMeals();
+    if (cachedMeals?.length) setSavedMeals(cachedMeals);
     void fetchSavedMealTemplates().then((meals) => {
       if (!cancelled) setSavedMeals(meals);
     });
@@ -399,7 +415,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const renderSavedSection = (meals: SavedMealSummary[]) => {
     if (meals.length === 0 || !onLogSavedMeal) return null;
     return (
-      <FoodSection title="🍽 Meine Mahlzeiten">
+      <FoodSection title="Gespeicherte Mahlzeiten">
         {meals.map((meal) => (
           <SavedMealRow
             key={meal.id}
@@ -442,28 +458,33 @@ export const FoodAddPopup = memo(function FoodAddPopup({
         >
           <div className="food-add-popup-inner">
             <div className="food-add-popup-search gap-2">
-              <input
-                ref={inputRef}
-                type="search"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  setView("search");
-                }}
-                onFocus={() => {
-                  if (view !== "search") setView("search");
-                }}
-                placeholder="Lebensmittel suchen"
-                className="food-add-popup-input flex-1 min-w-0"
-                autoComplete="off"
-                enterKeyHint="search"
-                autoFocus={open}
-                aria-label="Lebensmittel suchen"
-              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 mb-1.5 px-0.5">
+                  Lebensmittel hinzufügen
+                </p>
+                <input
+                  ref={inputRef}
+                  type="search"
+                  value={q}
+                  onChange={(e) => {
+                    setQ(e.target.value);
+                    setView("search");
+                  }}
+                  onFocus={() => {
+                    if (view !== "search") setView("search");
+                  }}
+                  placeholder="Lebensmittel suchen"
+                  className="food-add-popup-input w-full"
+                  autoComplete="off"
+                  enterKeyHint="search"
+                  autoFocus={open}
+                  aria-label="Lebensmittel suchen"
+                />
+              </div>
               <button
                 type="button"
                 onClick={handleClose}
-                className="food-add-popup-icon-btn"
+                className="food-add-popup-icon-btn self-end mb-0.5"
                 aria-label="Schließen"
               >
                 <X className="h-5 w-5" />
@@ -500,41 +521,87 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                   <ScanBarcode className="h-3.5 w-3.5" />
                   Barcode
                 </button>
-                {onOpenCamera && (
-                  <button
-                    type="button"
-                    onClick={onOpenCamera}
-                    className="h-11 w-11 rounded-xl border border-white/10 bg-zinc-900/70 text-zinc-300 inline-flex items-center justify-center"
-                    aria-label="Foto aufnehmen"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </button>
-                )}
-                <Link
-                  href="/rezepte"
-                  onClick={handleClose}
-                  className="h-11 w-11 rounded-xl border border-white/10 bg-zinc-900/70 text-zinc-300 inline-flex items-center justify-center"
-                  aria-label="Rezepte"
-                >
-                  <ChefHat className="h-4 w-4" />
-                </Link>
               </div>
             </div>
 
             <div className="food-add-popup-scroll">
               {view === "hub" && (
-                <div className="space-y-2 px-1 pb-4">
-                  <FoodSection title="🕘 Zuletzt verwendet">
+                <div className="space-y-3 px-1 pb-4">
+                  <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden divide-y divide-white/[0.06]">
+                    {onQuickEntry ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleClose();
+                          onQuickEntry();
+                        }}
+                        className="flex w-full min-h-14 items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.05]"
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--nutrition-cal-soft)] text-[var(--nutrition-cal)]">
+                          <Zap className="h-5 w-5" aria-hidden />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[15px] font-semibold text-white">
+                            Schnelleintrag
+                          </span>
+                          <span className="block text-xs text-zinc-500 mt-0.5">
+                            Nur kcal &amp; Makros — ohne Lebensmittel
+                          </span>
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" aria-hidden />
+                      </button>
+                    ) : null}
+                    {onOpenCamera ? (
+                      <button
+                        type="button"
+                        onClick={onOpenCamera}
+                        className="flex w-full min-h-14 items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.05]"
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.07] text-zinc-100">
+                          <Camera className="h-5 w-5" aria-hidden />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[15px] font-semibold text-white">
+                            Foto aufnehmen
+                          </span>
+                          <span className="block text-xs text-zinc-500 mt-0.5">
+                            KI analysiert — du bestätigst
+                          </span>
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" aria-hidden />
+                      </button>
+                    ) : null}
+                    <Link
+                      href="/rezepte"
+                      onClick={handleClose}
+                      className="flex w-full min-h-14 items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.05]"
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.07] text-zinc-100">
+                        <ChefHat className="h-5 w-5" aria-hidden />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] font-semibold text-white">
+                          Rezepte
+                        </span>
+                        <span className="block text-xs text-zinc-500 mt-0.5">
+                          Bibliothek öffnen &amp; loggen
+                        </span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" aria-hidden />
+                    </Link>
+                  </div>
+
+                  <FoodSection title="Zuletzt verwendet">
                     {historyFoods.recents.length === 0 ? (
                       <p className="text-sm text-zinc-400 py-3 text-center px-2">
-                        Noch keine Lebensmittel verwendet. Suche oben starten.
+                        Noch keine Lebensmittel — Suche oben starten.
                       </p>
                     ) : (
                       historyFoods.recents.slice(0, 10).map((food) => renderRow(food))
                     )}
                   </FoodSection>
                   {historyFoods.frequent.length > 0 && (
-                    <FoodSection title="⚡ Häufig verwendet">
+                    <FoodSection title="Häufig verwendet">
                       {historyFoods.frequent.slice(0, 8).map((food) => renderRow(food))}
                     </FoodSection>
                   )}
