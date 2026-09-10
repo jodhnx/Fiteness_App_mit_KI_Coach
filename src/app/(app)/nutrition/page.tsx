@@ -82,6 +82,8 @@ function NutritionPageInner() {
     "hub" | "favorites" | "search" | undefined
   >(undefined);
   const [foodAIOpen, setFoodAIOpen] = useState(false);
+  /** Prevents ?panel=food from re-opening after the user closes the sheet. */
+  const panelDeepLinkConsumed = useRef(false);
   const [pendingDelete, setPendingDelete] = useState<{
     mealId: string;
     label: string;
@@ -102,17 +104,23 @@ function NutritionPageInner() {
     const add = searchParams.get("add");
     const panel = searchParams.get("panel");
     if (add && VALID_MEALS.has(add)) {
+      panelDeepLinkConsumed.current = false;
       setSearchMeal(add as MealType);
       setAddInitialQuery(searchParams.get("q")?.trim() ?? "");
       setAddInitialView(undefined);
       return;
     }
     if (panel === "food" || panel === "saved" || panel === "favorites") {
+      if (panelDeepLinkConsumed.current) return;
+      panelDeepLinkConsumed.current = true;
       setSearchMeal(mealTypeForHour());
       setAddInitialQuery("");
       setAddInitialView("favorites");
+      // Strip query immediately so Keep-Alive remount / back navigation cannot reopen the sheet.
+      router.replace("/nutrition", { scroll: false });
+      return;
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   const { dashboard, loading, reload, applyDashboard } = useNutritionPageDashboard(120_000);
   const dashboardRef = useRef(dashboard);
@@ -131,6 +139,7 @@ function NutritionPageInner() {
   );
 
   const closeSearchPopup = useCallback(() => {
+    panelDeepLinkConsumed.current = true;
     setSearchMeal(null);
     setAddInitialQuery("");
     setAddInitialView(undefined);
@@ -140,8 +149,12 @@ function NutritionPageInner() {
       searchParams.get("q") ||
       searchParams.get("panel")
     ) {
-      router.replace("/nutrition");
+      router.replace("/nutrition", { scroll: false });
     }
+    // Allow the same deep link to open again after a short cooldown.
+    window.setTimeout(() => {
+      panelDeepLinkConsumed.current = false;
+    }, 400);
   }, [router, searchParams]);
 
   const onFoodAdded = useCallback(() => {

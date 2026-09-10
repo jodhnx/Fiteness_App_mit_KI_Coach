@@ -106,11 +106,26 @@ function timeAgo(iso: string) {
 
 export default function SocialPage() {
   const [tab, setTab] = useState<Tab>("feed");
-  // Empty on first render to avoid SSR/hydration mismatch — populated from cache in useEffect
-  const [friends, setFriends] = useState<FriendRow[]>([]);
-  const [challenges, setChallenges] = useState<ChallengeRow[]>([]);
-  const [feed, setFeed] = useState<FeedItem[]>([]);
-  const [leaderboard, setLeaderboard] = useState<LeaderRow[]>([]);
+  const [friends, setFriends] = useState<FriendRow[]>(() =>
+    typeof window !== "undefined"
+      ? getCached<FriendRow[]>("social-friends", { allowStale: true }) ?? []
+      : []
+  );
+  const [challenges, setChallenges] = useState<ChallengeRow[]>(() =>
+    typeof window !== "undefined"
+      ? getCached<ChallengeRow[]>("social-challenges", { allowStale: true }) ?? []
+      : []
+  );
+  const [feed, setFeed] = useState<FeedItem[]>(() =>
+    typeof window !== "undefined"
+      ? getCached<FeedItem[]>("social-feed", { allowStale: true }) ?? []
+      : []
+  );
+  const [leaderboard, setLeaderboard] = useState<LeaderRow[]>(() =>
+    typeof window !== "undefined"
+      ? getCached<LeaderRow[]>("social-ranks-workouts", { allowStale: true }) ?? []
+      : []
+  );
   const [rankMetric, setRankMetric] = useState("workouts");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PublicUser[]>([]);
@@ -125,20 +140,11 @@ export default function SocialPage() {
   }>({});
   const debouncedQ = useDebounce(query, 250);
 
-  // Hydrate from client cache on mount (avoids SSR hydration mismatch)
-  useEffect(() => {
-    const cachedFriends = getCached<FriendRow[]>("social-friends", { allowStale: true });
-    const cachedChallenges = getCached<ChallengeRow[]>("social-challenges", { allowStale: true });
-    const cachedFeed = getCached<FeedItem[]>("social-feed", { allowStale: true });
-    const cachedRanks = getCached<LeaderRow[]>("social-ranks-workouts", { allowStale: true });
-    if (cachedFriends?.length) setFriends(cachedFriends);
-    if (cachedChallenges?.length) setChallenges(cachedChallenges);
-    if (cachedFeed?.length) setFeed(cachedFeed);
-    if (cachedRanks?.length) setLeaderboard(cachedRanks);
-  }, []);
-
   const load = useCallback(() => {
-    setLoadingFeed(true);
+    const hasCachedFeed = Boolean(
+      getCached<FeedItem[]>("social-feed", { allowStale: true })?.length
+    );
+    if (!hasCachedFeed) setLoadingFeed(true);
     setSectionErrors({});
     const p1 = fetch("/api/social/friends", { credentials: "include" })
       .then((r) => {

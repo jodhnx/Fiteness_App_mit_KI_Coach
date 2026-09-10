@@ -31,7 +31,7 @@ const ITEMS = PRIMARY_NAV as ReadonlyArray<{
 }>;
 
 const TAB_COUNT = ITEMS.length;
-const INDICATOR_SIZE_REM = 3.35;
+const INDICATOR_SIZE_REM = 3.1;
 
 function shouldHideBottomNav(pathname: string | null) {
   if (!pathname) return false;
@@ -302,26 +302,26 @@ export const BottomNav = memo(function BottomNav() {
               >
                 <Icon
                   className={cn(
-                    "h-[1.45rem] w-[1.45rem] shrink-0",
+                    "h-[1.35rem] w-[1.35rem] shrink-0",
                     active
-                      ? "text-zinc-950 -translate-y-2.5 scale-110"
-                      : "text-zinc-500 translate-y-0 scale-100"
+                      ? "text-zinc-950 -translate-y-1.5"
+                      : "text-zinc-500 translate-y-0"
                   )}
                   style={{
                     transition: reduced
                       ? "none"
-                      : "transform 180ms ease, color 180ms ease",
+                      : "transform 160ms ease, color 160ms ease",
                   }}
-                  strokeWidth={active ? 2.35 : 1.85}
+                  strokeWidth={active ? 2.25 : 1.85}
                   aria-hidden
                 />
                 <span
                   className={cn(
-                    "bottom-nav-ios-label truncate max-w-[4.75rem] text-center leading-none",
+                    "bottom-nav-ios-label truncate max-w-[4.75rem] text-center leading-none text-[10px]",
                     active ? "text-accent font-semibold" : "text-zinc-500 font-medium"
                   )}
                   style={{
-                    transition: reduced ? "none" : "color 180ms ease, opacity 180ms ease",
+                    transition: reduced ? "none" : "color 160ms ease, opacity 160ms ease",
                   }}
                 >
                   {label}

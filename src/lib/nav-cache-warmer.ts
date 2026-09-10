@@ -57,6 +57,30 @@ export function warmNavDataCaches() {
           120_000
         ).catch(() => {});
       }
+      if (isCacheStale("workouts-recovery", 0.9)) {
+        void fetchCached(
+          "workouts-recovery",
+          () => fetchJson("/api/workouts/recovery"),
+          90_000
+        ).catch(() => {});
+      }
+      if (isCacheStale("gamification-full", 0.9)) {
+        void fetchCached(
+          "gamification-full",
+          () => fetchJson("/api/gamification"),
+          120_000
+        ).catch(() => {});
+      }
+      if (isCacheStale("social-feed", 0.9)) {
+        void fetchCached(
+          "social-feed",
+          () =>
+            fetchJson<{ feed?: unknown[] }>("/api/social/feed").then(
+              (d) => d.feed ?? []
+            ),
+          90_000
+        ).catch(() => {});
+      }
     });
   }, 2000);
 }

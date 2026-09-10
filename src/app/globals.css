@@ -520,12 +520,16 @@ body[data-foodAddPopup] nav[aria-label="Hauptnavigation"] {
   align-items: center;
   justify-content: center;
   width: 2.75rem;
+  min-width: 2.75rem;
   height: 2.75rem;
+  min-height: 2.75rem;
   border-radius: 0.75rem;
   color: rgb(161 161 170);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .food-add-popup-scroll {
@@ -1172,14 +1176,15 @@ html.light .bottom-nav-v4-tab:not(.bottom-nav-v4-tab--active) {
 
 .bottom-nav-ios-indicator {
   position: absolute;
-  top: -0.55rem;
+  top: -0.4rem;
   border-radius: 9999px;
   background: var(--accent, #22d3ee);
   box-shadow:
-    0 8px 18px color-mix(in srgb, var(--accent, #22d3ee) 34%, transparent),
-    0 0 0 2px color-mix(in srgb, rgb(12 14 18) 65%, transparent);
+    0 4px 12px color-mix(in srgb, var(--accent, #22d3ee) 22%, transparent),
+    0 0 0 1.5px color-mix(in srgb, rgb(12 14 18) 55%, transparent);
   pointer-events: none;
   z-index: 0;
+  opacity: 0.95;
 }
 
 .bottom-nav-ios-tab {
@@ -1202,8 +1207,8 @@ html.light .bottom-nav-ios-bar {
 html[data-color-mode="light"] .bottom-nav-ios-indicator,
 html.light .bottom-nav-ios-indicator {
   box-shadow:
-    0 10px 24px color-mix(in srgb, var(--accent, #22d3ee) 38%, transparent),
-    0 0 0 3px color-mix(in srgb, rgb(248 250 252) 80%, transparent);
+    0 4px 14px color-mix(in srgb, var(--accent, #22d3ee) 24%, transparent),
+    0 0 0 1.5px color-mix(in srgb, rgb(248 250 252) 80%, transparent);
 }
 
 html[data-color-mode="light"] .bottom-nav-ios-tab--idle .bottom-nav-ios-label,

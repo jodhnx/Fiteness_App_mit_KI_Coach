@@ -35,14 +35,23 @@ export function mergeLiveSession(
   const merged = remote.sets.map((remoteSet) => {
     const loc = localById.get(remoteSet.id);
     if (!loc) return remoteSet;
-    if (loc.saveState === "pending" || loc.saveState === "error") {
+    // Prefer local values while a patch is in flight OR local differs from remote
+    // (covers debounce window before saveState flips to pending).
+    const localDirty =
+      loc.saveState === "pending" ||
+      loc.saveState === "error" ||
+      loc.weightKg !== remoteSet.weightKg ||
+      loc.reps !== remoteSet.reps ||
+      loc.rpe !== remoteSet.rpe ||
+      loc.completed !== remoteSet.completed;
+    if (localDirty) {
       return {
         ...remoteSet,
         weightKg: loc.weightKg,
         reps: loc.reps,
         rpe: loc.rpe,
         completed: loc.completed,
-        saveState: loc.saveState,
+        saveState: loc.saveState ?? "pending",
       };
     }
     return { ...remoteSet, saveState: loc.saveState ?? "ok" };

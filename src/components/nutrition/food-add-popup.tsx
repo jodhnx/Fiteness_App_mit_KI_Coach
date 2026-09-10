@@ -193,9 +193,13 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     setDetailProduct(null);
     const cached = getCachedFoodHistory();
     if (cached) applyHistoryPayload(cached, setHistoryFoods);
+    // Avoid autofocus on deep-link/favorites — keyboard steals the first taps (X needs 2–3 clicks).
+    const shouldFocus =
+      Boolean(initialQuery.trim()) || initialView === "search";
+    if (!shouldFocus) return;
     const t = window.setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
+      inputRef.current?.focus({ preventScroll: true });
+    }, 120);
     return () => window.clearTimeout(t);
   }, [open, initialQuery, initialView]);
 
@@ -210,6 +214,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   }, [open]);
 
   const handleClose = useCallback(() => {
+    inputRef.current?.blur();
     setDetailProduct(null);
     setView("hub");
     setQ("");
@@ -246,7 +251,10 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     const cachedHistory = getCachedFoodHistory();
     if (cachedHistory) {
       applyHistoryPayload(cachedHistory, setHistoryFoods);
-      void refreshHistory();
+      // Fresh cache → 0 history request; stale → one background refresh.
+      if (isCacheStale(FOOD_HISTORY_CACHE_KEY, 0.7)) {
+        void refreshHistory();
+      }
     } else {
       void refreshHistory();
     }
@@ -477,14 +485,23 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                   className="food-add-popup-input w-full"
                   autoComplete="off"
                   enterKeyHint="search"
-                  autoFocus={open}
+                  autoFocus={false}
                   aria-label="Lebensmittel suchen"
                 />
               </div>
               <button
                 type="button"
-                onClick={handleClose}
-                className="food-add-popup-icon-btn self-end mb-0.5"
+                onPointerDown={(e) => {
+                  // Fire before keyboard/focus steal — one tap must close.
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleClose();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className="food-add-popup-icon-btn self-end mb-0.5 relative z-20 touch-manipulation"
                 aria-label="Schließen"
               >
                 <X className="h-5 w-5" />

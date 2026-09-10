@@ -31,6 +31,8 @@ export function clearActiveWorkoutCaches(completed?: {
   invalidateCache("workouts-records-v2");
   invalidateCache("workouts-prs");
   invalidateCache("workouts-my-plans-hub");
+  invalidateCache("workouts-recovery");
+  invalidateCache("home-recovery");
 
   if (typeof window === "undefined") return;
 
@@ -78,6 +80,16 @@ export function clearActiveWorkoutCaches(completed?: {
     .then((r) => r.json())
     .then((d) => {
       if (!d?.recovery) return;
+      setCached(
+        "workouts-recovery",
+        {
+          recovery: d.recovery,
+          highlights: d.highlights ?? [],
+          deloadRecommended: d.deloadRecommended,
+          fatigueScore: d.fatigueScore,
+        },
+        90_000
+      );
       const current = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
         allowStale: true,
       });

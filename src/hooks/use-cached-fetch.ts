@@ -113,7 +113,12 @@ export function useCachedFetch<T>(
     if (hit !== null) {
       setData(hit);
       setLoading(false);
-      if (!cacheOnly && revalidateOnMount && isCacheStale(key, staleRatio)) {
+      // Cache-first: always paint immediately; refresh in background when stale
+      // (or when caller forces revalidateOnMount even for near-fresh entries).
+      const shouldRefresh =
+        !cacheOnly &&
+        (revalidateOnMount || isCacheStale(key, staleRatio));
+      if (shouldRefresh) {
         refreshCached(
           key,
           fetcher,

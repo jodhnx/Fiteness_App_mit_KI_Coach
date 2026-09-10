@@ -55,6 +55,10 @@ export default function WorkoutsHubPage() {
   const { data: plansData } = useCachedFetch<{
     plans: HubPlan[];
   }>("workouts-my-plans-hub", "/api/workouts/plans", 120_000, 6_000, fetchOpts);
+  const { data: recoveryData } = useCachedFetch<{
+    recovery: MuscleRecovery[];
+    highlights?: string[];
+  }>("workouts-recovery", "/api/workouts/recovery", 90_000, 6_000, fetchOpts);
 
   useEffect(() => {
     const onHome = (e: Event) => {
@@ -106,7 +110,9 @@ export default function WorkoutsHubPage() {
   const activePlan = plans.find((p) => p.isActive) ?? plans[0];
   const weekGoal = activePlan?.days?.length ?? 0;
   const recoveryMuscles = filterDisplayMuscles(
-    (home?.recovery?.muscles ?? []) as MuscleRecovery[]
+    (recoveryData?.recovery?.length
+      ? recoveryData.recovery
+      : (home?.recovery?.muscles ?? [])) as MuscleRecovery[]
   );
 
   return (
@@ -115,13 +121,13 @@ export default function WorkoutsHubPage() {
 
       <p className="text-sm text-zinc-400 tabular-nums">
         {weekWorkouts}
-        {weekGoal > 0 ? ` / ${weekGoal}` : ""} workouts this week
+        {weekGoal > 0 ? ` / ${weekGoal}` : ""} Workouts diese Woche
       </p>
 
       {activeSession ? (
         <section className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 px-4 py-4 space-y-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-            Today&apos;s Workout
+            Heutiges Training
           </p>
           <h2 className="text-xl font-semibold text-white leading-tight">
             {sessionData?.session?.name ?? "Training"}
@@ -131,7 +137,7 @@ export default function WorkoutsHubPage() {
             onClick={() => router.push(`/workouts/live/${activeSession.id}`)}
           >
             <Play className="mr-2 h-5 w-5 fill-current" />
-            Continue
+            Fortsetzen
           </Button>
         </section>
       ) : (
@@ -141,13 +147,32 @@ export default function WorkoutsHubPage() {
         />
       )}
 
+      <MuscleRecoveryPanel
+        muscles={recoveryMuscles}
+        variant="section"
+        title="Regeneration"
+      />
+
+      <section className="space-y-2.5">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+          Vorgefertigte Pläne
+        </h2>
+        <TrainingChoiceCard
+          href="/workouts/catalog"
+          title="Plan-Bibliothek"
+          description="Push/Pull · Ganzkörper · Muskelaufbau"
+          icon={BookOpen}
+          iconClassName="bg-white/[0.06] text-zinc-300"
+        />
+      </section>
+
       <section className="space-y-2.5">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
           Start
         </h2>
         <TrainingChoiceCard
           href="/workouts/my-plans"
-          title="My Plans"
+          title="Meine Pläne"
           description="Eigene Pläne · Schnell starten"
           icon={FolderOpen}
           iconClassName="bg-white/[0.06] text-zinc-200"
@@ -161,8 +186,6 @@ export default function WorkoutsHubPage() {
           iconClassName="bg-white/[0.06] text-zinc-200"
         />
       </section>
-
-      <MuscleRecoveryPanel muscles={recoveryMuscles} variant="section" />
 
       <section className="space-y-2.5">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
@@ -188,13 +211,6 @@ export default function WorkoutsHubPage() {
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
           Mehr
         </h2>
-        <TrainingChoiceCard
-          href="/workouts/catalog"
-          title="Vorgefertigte Pläne"
-          description="Push/Pull · Ganzkörper · Muskelaufbau"
-          icon={BookOpen}
-          iconClassName="bg-white/[0.06] text-zinc-300"
-        />
         <TrainingChoiceCard
           href="/workouts/generator"
           title="KI Plan-Generator"

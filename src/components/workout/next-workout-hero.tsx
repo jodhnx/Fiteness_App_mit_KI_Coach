@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dumbbell, Play, Zap } from "lucide-react";
 import type { HomeDataPayload } from "@/lib/home-defaults";
@@ -17,26 +17,41 @@ type Props = {
 export const NextWorkoutHero = memo(function NextWorkoutHero({ home, hasPlans }: Props) {
   const router = useRouter();
   const next = home?.nextWorkout;
+  const [starting, setStarting] = useState(false);
+  const startLock = useRef(false);
 
   const start = useCallback(async () => {
-    if (!next?.dayId) {
-      router.push("/workouts/quick");
-      return;
+    if (startLock.current || starting) return;
+    startLock.current = true;
+    setStarting(true);
+    try {
+      if (!next?.dayId) {
+        router.push("/workouts/quick");
+        return;
+      }
+      const result = await startWorkoutAndNavigate(router, {
+        action: "start",
+        workoutPlanId: next.planId,
+        workoutDayId: next.dayId,
+        name: `${next.planName} – ${next.dayName}`,
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        startLock.current = false;
+        setStarting(false);
+      }
+    } catch {
+      toast.error("Training konnte nicht gestartet werden");
+      startLock.current = false;
+      setStarting(false);
     }
-    const result = await startWorkoutAndNavigate(router, {
-      action: "start",
-      workoutPlanId: next.planId,
-      workoutDayId: next.dayId,
-      name: `${next.planName} – ${next.dayName}`,
-    });
-    if (!result.ok) toast.error(result.error);
-  }, [next, router]);
+  }, [next, router, starting]);
 
   if (!hasPlans && !next?.dayId) {
     return (
       <section className="rounded-[1.75rem] border border-white/[0.08] bg-zinc-900/80 px-4 py-5 space-y-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">
-          Today&apos;s Workout
+          Heutiges Training
         </p>
         <h2 className="text-xl font-bold text-white leading-tight">Noch kein Trainingsplan</h2>
         <p className="text-sm text-zinc-400">
@@ -64,7 +79,7 @@ export const NextWorkoutHero = memo(function NextWorkoutHero({ home, hasPlans }:
             className="h-12 w-full rounded-2xl font-semibold"
             onClick={() => router.push("/workouts/generator")}
           >
-            AI Plan erstellen
+            KI-Plan erstellen
           </Button>
         </div>
       </section>
@@ -75,9 +90,9 @@ export const NextWorkoutHero = memo(function NextWorkoutHero({ home, hasPlans }:
     return (
       <section className="rounded-[1.75rem] border border-white/[0.08] bg-zinc-900/80 px-4 py-4 space-y-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">
-          Today&apos;s Workout
+          Heutiges Training
         </p>
-        <h2 className="text-xl font-bold text-white leading-tight">Rest Day</h2>
+        <h2 className="text-xl font-bold text-white leading-tight">Ruhetag</h2>
         <p className="text-sm text-zinc-400">Kein geplantes Training heute.</p>
         <Button
           type="button"
@@ -113,7 +128,7 @@ export const NextWorkoutHero = memo(function NextWorkoutHero({ home, hasPlans }:
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">
-            Today&apos;s Workout
+            Heutiges Training
           </p>
           <h2 className="text-xl font-bold text-white leading-tight mt-0.5 truncate">
             {title}
@@ -127,10 +142,11 @@ export const NextWorkoutHero = memo(function NextWorkoutHero({ home, hasPlans }:
       <Button
         type="button"
         className="h-14 w-full rounded-2xl text-base font-bold tracking-wide"
+        disabled={starting}
         onClick={() => void start()}
       >
         <Play className="mr-2 h-5 w-5 fill-current" />
-        Start Workout
+        {starting ? "Startet…" : "Workout starten"}
       </Button>
     </section>
   );

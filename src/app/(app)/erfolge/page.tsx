@@ -41,7 +41,7 @@ export default function ErfolgePage() {
     GAMIFICATION_URL,
     120_000,
     FETCH_TIMEOUT_MS,
-    { revalidateOnMount: true, staleRatio: 0.85 }
+    { revalidateOnMount: false, staleRatio: 0.9 }
   );
   const [category, setCategory] = useState<string>("all");
   const [tab, setTab] = useState<

@@ -457,11 +457,41 @@ function SettingsPageInner() {
   }
 
   if (!view) {
+    const hubSummary = {
+      personalLine: [
+        form.name?.trim() || null,
+        form.age ? `${form.age} J.` : null,
+        form.gender ? GENDER_LABELS[form.gender] : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "—",
+      bodyLine: [
+        form.heightCm ? `${form.heightCm} cm` : null,
+        form.weightKg ? `${form.weightKg} kg` : null,
+        form.targetWeightKg ? `Ziel ${form.targetWeightKg} kg` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "—",
+      goalLine: NUTRITION_GOAL_LABELS[form.nutritionGoal] ?? "—",
+      activityLine: ACTIVITY_LABELS[form.activityLevel] ?? "—",
+      experienceLine:
+        ONBOARDING_EXPERIENCE_OPTIONS.find((o) => o.value === form.experienceLevel)
+          ?.label ?? "—",
+      nutritionLine: preview?.calorieTarget
+        ? `${preview.calorieTarget.toLocaleString("de-DE")} kcal`
+        : form.calorieTarget
+          ? `${form.calorieTarget} kcal`
+          : "—",
+      trainingLine: form.workoutDaysPerWeek
+        ? `${form.workoutDaysPerWeek}× / Woche`
+        : "—",
+    };
+
     return (
       <div className="space-y-5 max-w-2xl pb-24 mx-auto w-full">
         <PageHeader
           title="Einstellungen"
-          subtitle="Profil, Ziele und App — klar und übersichtlich"
+          subtitle="Profil, Präferenzen und Konto"
         />
         {(profileLoaded || form.name || form.email) && (
           <SettingsProfileHero
@@ -473,80 +503,18 @@ function SettingsPageInner() {
             onImageUpdated={(url) => setUserImage(url)}
           />
         )}
-        <section className="space-y-2">
-          <div className="px-0.5">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              Profil auf einen Blick
-            </h3>
-            <p className="text-xs text-zinc-600 mt-0.5">Onboarding-Daten — tippen zum Bearbeiten</p>
-          </div>
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden divide-y divide-white/[0.06]">
-            {[
-              {
-                label: "Körper",
-                value: [
-                  form.heightCm ? `${form.heightCm} cm` : null,
-                  form.weightKg ? `${form.weightKg} kg` : null,
-                  form.age ? `${form.age} J.` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "—",
-              },
-              {
-                label: "Ziel",
-                value: NUTRITION_GOAL_LABELS[form.nutritionGoal] ?? "—",
-              },
-              {
-                label: "Aktivität",
-                value: ACTIVITY_LABELS[form.activityLevel] ?? "—",
-              },
-              {
-                label: "Erfahrung",
-                value:
-                  ONBOARDING_EXPERIENCE_OPTIONS.find(
-                    (o) => o.value === form.experienceLevel
-                  )?.label ?? "—",
-              },
-              {
-                label: "Ernährung",
-                value: preview?.calorieTarget
-                  ? `${preview.calorieTarget.toLocaleString("de-DE")} kcal`
-                  : form.calorieTarget
-                    ? `${form.calorieTarget} kcal`
-                    : "—",
-              },
-              {
-                label: "Training",
-                value: form.workoutDaysPerWeek
-                  ? `${form.workoutDaysPerWeek}× / Woche`
-                  : "—",
-              },
-            ].map((row) => (
-              <button
-                key={row.label}
-                type="button"
-                onClick={() => router.push("/settings?view=konto")}
-                className="flex w-full min-h-14 items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.04]"
-              >
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                    {row.label}
-                  </span>
-                  <span className="block text-sm font-semibold text-white mt-0.5 truncate">
-                    {row.value}
-                  </span>
-                </span>
-                <ChevronLeft className="h-4 w-4 text-zinc-600 shrink-0 rotate-180" aria-hidden />
-              </button>
-            ))}
-          </div>
-        </section>
-        <section className="space-y-1">
-          <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500 px-0.5">
-            Mehr
-          </h3>
-          <SettingsHubNav />
-        </section>
+        <SettingsHubNav
+          summary={hubSummary}
+          loggingOut={loggingOut}
+          onLogout={async () => {
+            setLoggingOut(true);
+            try {
+              await logoutAndClear("/login");
+            } finally {
+              setLoggingOut(false);
+            }
+          }}
+        />
       </div>
     );
   }
