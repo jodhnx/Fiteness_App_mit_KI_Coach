@@ -228,7 +228,10 @@ export async function loadNutritionDashboard(
     const consumed = { ...consumedMacros, fiberG };
     const fiberTargetG = Math.max(25, Math.min(50, Math.round(targets.calories / 1000) * 14));
 
-    const waterMl = waterLogs.reduce((s, w) => s + w.amountMl, 0);
+    const waterMl = Math.max(
+      0,
+      waterLogs.reduce((s, w) => s + w.amountMl, 0)
+    );
 
     const mealsByType = TRACK_MEAL_ORDER.map(
       (type) => {

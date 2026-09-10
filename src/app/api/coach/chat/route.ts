@@ -193,25 +193,29 @@ export async function POST(req: NextRequest) {
                 )
               );
             }
-            const tokens = Math.ceil(full.length / 4);
-            await prisma.aIChatMessage.create({
-              data: { chatId, role: "assistant", content: full, tokens },
-            });
-            await prisma.aIChat.update({
-              where: { id: chatId },
-              data: { updatedAt: new Date() },
-            });
-            await logAIUsage(
-              session.user!.id,
-              "chat-stream",
-              tokens,
-              result.model
-            );
+            const trimmed = full.trim();
+            // Never persist empty assistant bubbles ("Coach schreibt..." ghosts).
+            if (trimmed) {
+              const tokens = Math.ceil(trimmed.length / 4);
+              await prisma.aIChatMessage.create({
+                data: { chatId, role: "assistant", content: trimmed, tokens },
+              });
+              await prisma.aIChat.update({
+                where: { id: chatId },
+                data: { updatedAt: new Date() },
+              });
+              await logAIUsage(
+                session.user!.id,
+                "chat-stream",
+                tokens,
+                result.model
+              );
+            }
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
                   type: "done",
-                  message: full,
+                  message: trimmed,
                   actions,
                   mode,
                 })}\n\n`
@@ -246,16 +250,20 @@ export async function POST(req: NextRequest) {
       openAiMessages,
       session.user.id
     );
+    const trimmed = (content ?? "").trim();
+    if (!trimmed) {
+      return jsonError("Leere Coach-Antwort — bitte erneut versuchen", 502);
+    }
 
     await prisma.aIChatMessage.create({
-      data: { chatId, role: "assistant", content, tokens },
+      data: { chatId, role: "assistant", content: trimmed, tokens },
     });
     await prisma.aIChat.update({
       where: { id: chatId },
       data: { updatedAt: new Date() },
     });
 
-    return jsonOk({ chatId, message: content, mode, actions });
+    return jsonOk({ chatId, message: trimmed, mode, actions });
   } catch (e) {
     return handleApiError(e);
   }

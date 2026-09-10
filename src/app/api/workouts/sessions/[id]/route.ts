@@ -20,10 +20,11 @@ const setPatchSchema = z.object({
   setNumber: z.number().int().positive().optional(),
   reps: z.number().optional(),
   weightKg: z.number().optional(),
-  rpe: z.number().optional(),
+  rpe: z.number().min(1).max(10).nullable().optional(),
   restSeconds: z.number().optional(),
   completed: z.boolean().optional(),
   notes: z.string().optional(),
+  name: z.string().optional(),
 });
 
 export async function GET(_req: NextRequest, { params }: Params) {
@@ -227,8 +228,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       await awardXPForAction(session.user.id, "WORKOUT_COMPLETED");
       await updateTrainingStreak(session.user.id);
       const unlocks = await evaluateAndUnlockAchievements(session.user.id);
+      const { loadNextWorkoutForUser } = await import("@/lib/plan-next-day");
+      const nextWorkout = await loadNextWorkoutForUser(session.user.id).catch(
+        () => null
+      );
 
-      return jsonOk({ session: completed, newPRs, analysis, unlocks });
+      return jsonOk({
+        session: completed,
+        newPRs,
+        analysis,
+        unlocks,
+        nextWorkout,
+      });
     }
 
     const parsed = setPatchSchema.safeParse(body);

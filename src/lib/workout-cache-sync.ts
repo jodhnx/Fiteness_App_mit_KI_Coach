@@ -18,6 +18,8 @@ export const PENDING_LIVE_SESSION_KEY = "workout-pending-live-session";
 export function clearActiveWorkoutCaches(completed?: {
   name: string;
   completedAt: string;
+  workoutDayId?: string | null;
+  nextWorkout?: HomeDataPayload["nextWorkout"];
 }) {
   invalidateCache(WORKOUT_ACTIVE_CACHE_KEY);
   setCached(WORKOUT_ACTIVE_CACHE_KEY, { session: null }, 90_000);
@@ -32,7 +34,7 @@ export function clearActiveWorkoutCaches(completed?: {
 
   if (typeof window === "undefined") return;
 
-  const prev = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
+  const prev = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
   if (prev) {
     const patched = completed
       ? patchHomeAfterWorkoutComplete(prev, completed)
@@ -40,20 +42,37 @@ export function clearActiveWorkoutCaches(completed?: {
     const next = commitHomeIntelligenceRefresh(patched);
     setCached(HOME_DATA_CACHE_KEY, next, 120_000);
     window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: next }));
+
+    const workoutSection = getCached<{
+      nextWorkout: HomeDataPayload["nextWorkout"];
+      activeSession: null;
+    }>(HOME_WORKOUT_CACHE, { allowStale: true });
+    if (workoutSection || next.nextWorkout !== undefined) {
+      setCached(
+        HOME_WORKOUT_CACHE,
+        {
+          ...(workoutSection ?? { nextWorkout: null, activeSession: null }),
+          nextWorkout: next.nextWorkout ?? null,
+          activeSession: null,
+        },
+        120_000
+      );
+    }
+  } else {
+    const workoutSection = getCached<{
+      nextWorkout: HomeDataPayload["nextWorkout"];
+      activeSession: null;
+    }>(HOME_WORKOUT_CACHE, { allowStale: true });
+    if (workoutSection) {
+      setCached(
+        HOME_WORKOUT_CACHE,
+        { ...workoutSection, activeSession: null },
+        120_000
+      );
+    }
   }
 
   window.dispatchEvent(new CustomEvent(WORKOUT_ACTIVE_EVENT));
-
-  const workoutSection = getCached<{ nextWorkout: HomeDataPayload["nextWorkout"]; activeSession: null }>(
-    HOME_WORKOUT_CACHE
-  );
-  if (workoutSection) {
-    setCached(
-      HOME_WORKOUT_CACHE,
-      { ...workoutSection, activeSession: null },
-      120_000
-    );
-  }
 }
 
 type ActiveSessionPatch = {

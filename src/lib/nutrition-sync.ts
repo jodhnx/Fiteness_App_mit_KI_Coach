@@ -42,11 +42,12 @@ export type NutritionSummaryPayload = {
 export function invalidateAllNutritionCaches() {
   invalidateCache(NUTRITION_DASHBOARD_CACHE_KEY);
   invalidateCache(NUTRITION_SUMMARY_CACHE_KEY);
-  invalidateCache(HOME_DATA_CACHE_KEY);
+  // Do NOT wipe HOME_DATA_CACHE_KEY — publishNutritionDashboard patches macros
+  // onto the existing home payload. Clearing home forces createEmptyHomeData()
+  // and drops nextWorkout / streaks / weight until full boot.
   invalidateCache(HOME_HEUTE_CACHE);
   invalidateCache(HOME_COACH_CACHE);
   invalidateCache(HOME_INSIGHTS_CACHE);
-  invalidateCache(HOME_WORKOUT_CACHE);
   invalidateCache("nutrition-coach");
   invalidateCache(PROGRESS_CACHE_KEY);
   invalidateIntelligenceSectionCaches();
@@ -132,9 +133,13 @@ export function publishNutritionDashboard(dashboard: NutritionDashboardPayload) 
   setCached(NUTRITION_DASHBOARD_CACHE_KEY, nutrition, ttl);
   setCached(NUTRITION_SUMMARY_CACHE_KEY, summary, ttl);
 
-  const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
+  const prevHome = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
+    allowStale: true,
+  });
   const macroSlice = nutritionDashboardToHomeMacros(nutrition);
   const coach = buildHomeCoachFromNutrition(nutrition);
+  // Patch macros onto existing home when present. Cold start (no home yet) still
+  // seeds a shell — safe because we no longer wipe home on nutrition reload.
   const nextHome: HomeDataPayload = commitHomeIntelligenceRefresh(
     {
       ...(prevHome ?? createEmptyHomeData()),
@@ -370,13 +375,13 @@ export function optimisticRemoveMealItem(
   };
 }
 
-/** Optimistic UI while water POST is in flight */
+/** Optimistic UI while water POST is in flight (amountMl may be negative to undo). */
 export function optimisticAddWater(
   dashboard: NutritionDashboardPayload,
   amountMl: number
 ): NutritionDashboardPayload | null {
-  if (amountMl <= 0) return null;
-  const consumedMl = dashboard.water.consumedMl + amountMl;
+  if (amountMl === 0) return null;
+  const consumedMl = Math.max(0, dashboard.water.consumedMl + amountMl);
   return {
     ...dashboard,
     date: nutritionDayKey(),

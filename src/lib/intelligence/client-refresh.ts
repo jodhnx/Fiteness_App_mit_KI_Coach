@@ -38,7 +38,12 @@ export function weightEntriesFromProgressCache(): { date: Date; weightKg: number
 /** Optimistic workout-complete patch for activity/week counters. */
 export function patchHomeAfterWorkoutComplete(
   home: HomeDataPayload,
-  completed: { name: string; completedAt: string }
+  completed: {
+    name: string;
+    completedAt: string;
+    workoutDayId?: string | null;
+    nextWorkout?: HomeDataPayload["nextWorkout"];
+  }
 ): HomeDataPayload {
   const completedAt = new Date(completed.completedAt);
   const next: HomeDataPayload = {
@@ -46,6 +51,17 @@ export function patchHomeAfterWorkoutComplete(
     activeSession: null,
     lastCompletedWorkout: completed,
   };
+
+  // Advance next-workout pointer from server when provided; otherwise clear a
+  // stale pointer that still points at the day just finished.
+  if (completed.nextWorkout !== undefined) {
+    next.nextWorkout = completed.nextWorkout;
+  } else if (
+    completed.workoutDayId &&
+    home.nextWorkout?.dayId === completed.workoutDayId
+  ) {
+    next.nextWorkout = null;
+  }
 
   if (!isSameDay(completedAt, new Date())) return next;
 

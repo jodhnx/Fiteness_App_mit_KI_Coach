@@ -208,7 +208,10 @@ export const nutritionGoalSchema = z.object({
 });
 
 export const waterLogSchema = z.object({
-  amountMl: z.coerce.number().int().positive().max(2000),
+  /** Positive = add, negative = undo/remove (clamped server-side to ≥ 0). */
+  amountMl: z.coerce.number().int().min(-2000).max(2000).refine((n) => n !== 0, {
+    message: "amountMl must not be 0",
+  }),
   date: z.string().optional(),
 });
 

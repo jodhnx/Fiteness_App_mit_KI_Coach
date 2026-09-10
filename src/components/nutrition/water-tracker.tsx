@@ -21,6 +21,7 @@ export const WaterTracker = memo(function WaterTracker({
   onAdd,
 }: Props) {
   const pct = Math.min(100, Math.round((consumedMl / Math.max(targetMl, 1)) * 100));
+  const canRemove = consumedMl > 0;
   return (
     <section className="rounded-2xl border border-sky-500/20 bg-sky-950/30 px-3 py-2.5">
       <div className="flex items-center gap-2 mb-1.5">
@@ -40,6 +41,15 @@ export const WaterTracker = memo(function WaterTracker({
         </div>
       </div>
       <div className="flex gap-1.5">
+        <button
+          type="button"
+          disabled={!canRemove}
+          className="h-8 min-w-[3.25rem] rounded-lg border border-sky-800/50 bg-sky-950/40 px-2 text-xs font-semibold text-sky-100 disabled:opacity-40 active:bg-sky-900/50"
+          onClick={() => onAdd(-250)}
+          aria-label="250 Milliliter Wasser entfernen"
+        >
+          −250
+        </button>
         {QUICK_AMOUNTS.map((ml) => (
           <button
             key={ml}

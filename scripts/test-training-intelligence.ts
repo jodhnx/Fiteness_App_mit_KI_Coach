@@ -212,14 +212,36 @@ console.log("Training Intelligence 3.0 Tests\n");
 // CASE 14 — workout complete refresh is single client rebuild (no training perf API)
 {
   let rebuildCount = 0;
-  const home = createEmptyHomeData();
+  const home = {
+    ...createEmptyHomeData(),
+    nextWorkout: {
+      planName: "PPL",
+      dayName: "Push",
+      planId: "plan-1",
+      dayId: "day-push",
+      dayNumber: 1,
+      exerciseCount: 6,
+      estimatedDurationMin: 55,
+    },
+  };
   const patched = patchHomeAfterWorkoutComplete(home, {
     name: "Upper B",
     completedAt: new Date().toISOString(),
+    workoutDayId: "day-push",
+    nextWorkout: {
+      planName: "PPL",
+      dayName: "Pull",
+      planId: "plan-1",
+      dayId: "day-pull",
+      dayNumber: 2,
+      exerciseCount: 6,
+      estimatedDurationMin: 55,
+    },
   });
   const refreshed = rebuildHomeIntelligenceLayers(patched);
   rebuildCount++;
   assert("CASE 14: patch clears active session", patched.activeSession == null);
+  assert("CASE 14: nextWorkout advances", patched.nextWorkout?.dayId === "day-pull");
   assert("CASE 14: refresh produces intelligence", refreshed.intelligence != null);
   assert("CASE 14: single rebuild path", rebuildCount === 1);
 }

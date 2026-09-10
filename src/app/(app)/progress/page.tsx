@@ -236,7 +236,10 @@ export default function ProgressPage() {
       });
       if (!res.ok) {
         toast.error("Speichern fehlgeschlagen");
-        if (prev) setCached(PROGRESS_CACHE_KEY, prev, 600_000);
+        if (prev) {
+          setCached(PROGRESS_CACHE_KEY, prev, 600_000);
+          setCacheRev((v) => v + 1);
+        }
         if (prevHome) {
           setCached(HOME_DATA_CACHE_KEY, prevHome, 900_000);
           window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: prevHome }));

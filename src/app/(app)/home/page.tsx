@@ -236,9 +236,11 @@ export default function HomePage() {
                       href: `/workouts/live/${activeSessionId}`,
                       label: "Weiter",
                     }
-                  : data.nextWorkout?.dayId
-                    ? { label: "Starten", onStart: () => void startTraining() }
-                    : { href: "/workouts/quick", label: "Training" }
+                  : trainingStatus === "done"
+                    ? { href: "/workouts", label: "Training" }
+                    : data.nextWorkout?.dayId
+                      ? { label: "Starten", onStart: () => void startTraining() }
+                      : { href: "/workouts/quick", label: "Training" }
               }
             />
           ),

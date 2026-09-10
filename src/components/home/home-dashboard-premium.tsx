@@ -428,6 +428,7 @@ function HomeWeightNudge({ weightKg }: { weightKg: number | null }) {
   const persist = useCallback((next: number) => {
     const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
     const prevHome = home ? { ...home } : null;
+    const prevKg = home?.weightKg ?? null;
     const prevProgress = getCached<{
       entries?: { id: string; date: string; weightKg?: number }[];
       profile?: { weightKg?: number | null; targetWeightKg?: number | null; targetWeightDate?: string | null };
@@ -477,6 +478,7 @@ function HomeWeightNudge({ weightKg }: { weightKg: number | null }) {
             setCached(HOME_DATA_CACHE_KEY, prevHome, 900_000);
             window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: prevHome }));
           }
+          setKg(prevKg);
           return;
         }
         setSaved(true);

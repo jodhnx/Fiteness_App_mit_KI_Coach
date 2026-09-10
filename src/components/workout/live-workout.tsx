@@ -13,6 +13,7 @@ import { clearActiveWorkoutCaches, PENDING_LIVE_SESSION_KEY } from "@/lib/workou
 import { hapticSuccess, hapticTap } from "@/lib/haptic";
 import { WORKOUT_INPUT_PLACEHOLDERS } from "@/lib/workout-input-placeholders";
 import type { LibraryExercise } from "@/hooks/use-exercise-library-search";
+import type { HomeDataPayload } from "@/lib/home-defaults";
 
 const WORKOUT_SEQ_KEY = "workout-save-seq";
 
@@ -60,94 +61,128 @@ const LiveSetRow = memo(function LiveSetRow({
     set.weightKg == null ? "" : String(set.weightKg)
   );
   const [reps, setReps] = useState(set.reps == null ? "" : String(set.reps));
+  const [rpe, setRpe] = useState(set.rpe == null ? "" : String(set.rpe));
 
   useEffect(() => {
     setWeight(set.weightKg == null ? "" : String(set.weightKg));
     setReps(set.reps == null ? "" : String(set.reps));
-  }, [set.id, set.weightKg, set.reps]);
+    setRpe(set.rpe == null ? "" : String(set.rpe));
+  }, [set.id, set.weightKg, set.reps, set.rpe]);
 
   return (
-    <div
-      className={`grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)_3.25rem_3.25rem] gap-2 items-center rounded-xl p-1.5 ${
-        set.completed
-          ? "bg-cyan-500/15 border border-cyan-500/35"
-          : "bg-zinc-800/50"
-      }`}
-    >
-      <span className="text-base font-semibold text-zinc-300 pl-1 tabular-nums">
-        {index + 1}
-      </span>
-      <div className="flex items-center gap-1.5 min-w-0">
-        <Input
-          type="text"
-          inputMode="decimal"
-          pattern="[0-9]*[.,]?[0-9]*"
-          placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
-          className="h-14 min-w-0 flex-1 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
-          value={weight}
-          onChange={(e) => {
-            setWeight(e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""));
-          }}
-          onBlur={() => {
-            const v = weight.replace(",", ".").replace(/[^0-9.]/g, "");
-            onPatch(set.id, {
-              weightKg: v === "" || v === "." ? null : Number(v),
-            });
-          }}
-        />
-        <span className="text-xs font-semibold text-zinc-500 shrink-0 w-6">KG</span>
+    <div className="space-y-1.5">
+      <div
+        className={`grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)_3.25rem_3.25rem] gap-2 items-center rounded-xl p-1.5 ${
+          set.completed
+            ? "bg-cyan-500/15 border border-cyan-500/35"
+            : "bg-zinc-800/50"
+        }`}
+      >
+        <span className="text-base font-semibold text-zinc-300 pl-1 tabular-nums">
+          {index + 1}
+        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Input
+            type="text"
+            inputMode="decimal"
+            pattern="[0-9]*[.,]?[0-9]*"
+            placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
+            className="h-14 min-w-0 flex-1 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
+            value={weight}
+            onChange={(e) => {
+              setWeight(e.target.value.replace(",", ".").replace(/[^0-9.]/g, ""));
+            }}
+            onBlur={() => {
+              const v = weight.replace(",", ".").replace(/[^0-9.]/g, "");
+              onPatch(set.id, {
+                weightKg: v === "" || v === "." ? null : Number(v),
+              });
+            }}
+          />
+          <span className="text-xs font-semibold text-zinc-500 shrink-0 w-6">KG</span>
+        </div>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
+            className="h-14 min-w-0 flex-1 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
+            value={reps}
+            onChange={(e) => {
+              setReps(e.target.value.replace(/[^0-9]/g, ""));
+            }}
+            onBlur={() => {
+              const v = reps.replace(/[^0-9]/g, "");
+              onPatch(set.id, { reps: v === "" ? null : Number(v) });
+            }}
+          />
+          <span className="text-[10px] font-semibold text-zinc-500 shrink-0 w-8">
+            REPS
+          </span>
+        </div>
+        <Button
+          size="icon"
+          variant={set.completed ? "default" : "secondary"}
+          className="h-14 w-14 rounded-xl"
+          onClick={() => {
+              const w = weight.replace(",", ".").replace(/[^0-9.]/g, "");
+              const r = reps.replace(/[^0-9]/g, "");
+              const p = rpe.replace(/[^0-9]/g, "");
+              const parsedW = Number(w);
+              const parsedR = Number(r);
+              const parsedRpe = Number(p);
+              onComplete({
+                ...set,
+                weightKg:
+                  w === "" || w === "." || !Number.isFinite(parsedW)
+                    ? set.weightKg
+                    : parsedW,
+                reps: r === "" || !Number.isFinite(parsedR) ? set.reps : parsedR,
+                rpe:
+                  p === "" || !Number.isFinite(parsedRpe)
+                    ? set.rpe
+                    : Math.min(10, Math.max(1, parsedRpe)),
+              });
+            }}
+          aria-label={set.completed ? "Satz wieder öffnen" : "Satz abschließen"}
+        >
+          <Check className="h-6 w-6" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-14 w-14 rounded-xl"
+          disabled={!canDelete}
+          onClick={() => onDelete(set.id)}
+        >
+          <Trash2 className="h-5 w-5 text-red-400" />
+        </Button>
       </div>
-      <div className="flex items-center gap-1.5 min-w-0">
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 w-10">
+          RPE
+        </span>
         <Input
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
-          placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
-          className="h-14 min-w-0 flex-1 text-xl text-center rounded-xl tabular-nums keyboard-stable-input"
-          value={reps}
+          placeholder="—"
+          className="h-9 w-14 text-sm text-center rounded-lg tabular-nums keyboard-stable-input"
+          value={rpe}
           onChange={(e) => {
-            setReps(e.target.value.replace(/[^0-9]/g, ""));
+            const v = e.target.value.replace(/[^0-9]/g, "");
+            if (v === "" || (Number(v) >= 1 && Number(v) <= 10)) setRpe(v);
           }}
           onBlur={() => {
-            const v = reps.replace(/[^0-9]/g, "");
-            onPatch(set.id, { reps: v === "" ? null : Number(v) });
+            const v = rpe.replace(/[^0-9]/g, "");
+            const n = v === "" ? null : Math.min(10, Math.max(1, Number(v)));
+            onPatch(set.id, { rpe: n });
           }}
+          aria-label="RPE 1 bis 10"
         />
-        <span className="text-[10px] font-semibold text-zinc-500 shrink-0 w-8">
-          REPS
-        </span>
+        <span className="text-[10px] text-zinc-600">1–10</span>
       </div>
-      <Button
-        size="icon"
-        variant={set.completed ? "default" : "secondary"}
-        className="h-14 w-14 rounded-xl"
-        onClick={() => {
-            const w = weight.replace(",", ".").replace(/[^0-9.]/g, "");
-            const r = reps.replace(/[^0-9]/g, "");
-            const parsedW = Number(w);
-            const parsedR = Number(r);
-            onComplete({
-              ...set,
-              weightKg:
-                w === "" || w === "." || !Number.isFinite(parsedW)
-                  ? set.weightKg
-                  : parsedW,
-              reps: r === "" || !Number.isFinite(parsedR) ? set.reps : parsedR,
-            });
-          }}
-        aria-label={set.completed ? "Satz wieder öffnen" : "Satz abschließen"}
-      >
-        <Check className="h-6 w-6" />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        className="h-14 w-14 rounded-xl"
-        disabled={!canDelete}
-        onClick={() => onDelete(set.id)}
-      >
-        <Trash2 className="h-5 w-5 text-red-400" />
-      </Button>
     </div>
   );
 });
@@ -296,6 +331,8 @@ type SessionData = {
   name: string;
   startedAt: string;
   sets: SetRow[];
+  workoutDayId?: string | null;
+  workoutPlanId?: string | null;
 };
 
 export function LiveWorkout({ sessionId }: { sessionId: string }) {
@@ -396,7 +433,8 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
             body: JSON.stringify({ action: "updateSet", setId, ...data }),
           });
           if (!res.ok) {
-            setSession(prev);
+            // Prefer refetch over stale snapshot when concurrent edits raced.
+            await load();
             toast.error("Speichern fehlgeschlagen");
           }
         } catch {
@@ -420,7 +458,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         }, 400)
       );
     },
-    [sessionId]
+    [sessionId, load]
   );
 
   const deleteSet = useCallback(
@@ -455,6 +493,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
           completed: !row.completed,
           weightKg: row.weightKg,
           reps: row.reps,
+          rpe: row.rpe,
         },
         true
       );
@@ -551,6 +590,9 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       clearActiveWorkoutCaches({
         name,
         completedAt: new Date().toISOString(),
+        workoutDayId: sessionRef.current?.workoutDayId ?? null,
+        nextWorkout:
+          (data.nextWorkout as HomeDataPayload["nextWorkout"]) ?? null,
       });
       bumpWorkoutSeq();
       if (data.newPRs?.length) {

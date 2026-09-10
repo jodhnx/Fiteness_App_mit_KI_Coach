@@ -97,7 +97,10 @@ export default function CoachPage() {
     hydratedRef.current = true;
     const cached = loadCachedCoachChat();
     if (cached?.messages.length) {
-      setMessages(cached.messages);
+      const cleaned = cached.messages.filter(
+        (m) => m.role === "user" || Boolean(m.content?.trim())
+      );
+      setMessages(cleaned);
       setChatId(cached.chatId);
     }
     const cacheFresh =
@@ -108,9 +111,12 @@ export default function CoachPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.messages?.length) {
-          setMessages(d.messages);
+          const cleaned = (d.messages as UiMessage[]).filter(
+            (m) => m.role === "user" || Boolean(m.content?.trim())
+          );
+          setMessages(cleaned);
           if (d.chatId) setChatId(d.chatId);
-          saveCachedCoachChat({ chatId: d.chatId, messages: d.messages });
+          saveCachedCoachChat({ chatId: d.chatId, messages: cleaned });
         }
       })
       .catch(() => {});
@@ -118,9 +124,13 @@ export default function CoachPage() {
 
   useEffect(() => {
     if (messages.length === 0 && !chatId) return;
+    // Persist only real content — never cache empty "typing" assistant rows.
+    const persistable = messages
+      .filter((m) => m.role === "user" || Boolean(m.content?.trim()))
+      .map(({ role, content }) => ({ role, content }));
     saveCachedCoachChat({
       chatId,
-      messages: messages.map(({ role, content }) => ({ role, content })),
+      messages: persistable,
     });
   }, [messages, chatId]);
 

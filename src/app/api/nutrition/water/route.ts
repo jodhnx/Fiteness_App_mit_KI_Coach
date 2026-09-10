@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "asc" },
     });
     const totalMl = logs.reduce((s, l) => s + l.amountMl, 0);
-    return jsonOk({ logs, totalMl });
+    return jsonOk({ logs, totalMl: Math.max(0, totalMl) });
   } catch (e) {
     if (isSchemaMismatchError(e)) return jsonOk({ logs: [], totalMl: 0 });
     return handleApiError(e);
@@ -36,20 +36,34 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = waterLogSchema.safeParse(body);
     if (!parsed.success) return jsonError("Ungültige Eingabe");
-    const date = startOfDay(
-      parsed.data.date ? new Date(parsed.data.date) : new Date()
-    );
     if (!(await tableExists("WaterLog"))) {
       return jsonError(
         "Wasser-Tracking ist vorübergehend nicht verfügbar.",
         503
       );
     }
+    const date = startOfDay(
+      parsed.data.date ? new Date(parsed.data.date) : new Date()
+    );
+    let amountMl = parsed.data.amountMl;
+    if (amountMl < 0) {
+      const current = await prisma.waterLog.aggregate({
+        where: { userId: session.user.id, date },
+        _sum: { amountMl: true },
+      });
+      const total = current._sum.amountMl ?? 0;
+      // Clamp so total never goes below 0.
+      amountMl = -Math.min(total, Math.abs(amountMl));
+      if (amountMl === 0) {
+        const dashboard = await loadNutritionDashboard(session.user.id, date);
+        return jsonOk({ log: null, totalMl: total, dashboard });
+      }
+    }
     const log = await prisma.waterLog.create({
       data: {
         userId: session.user.id,
         date,
-        amountMl: parsed.data.amountMl,
+        amountMl,
       },
     });
     const totalMl = await prisma.waterLog.aggregate({
@@ -58,7 +72,7 @@ export async function POST(req: NextRequest) {
     });
     const dashboard = await loadNutritionDashboard(session.user.id, date);
     return jsonOk(
-      { log, totalMl: totalMl._sum.amountMl ?? 0, dashboard },
+      { log, totalMl: Math.max(0, totalMl._sum.amountMl ?? 0), dashboard },
       201
     );
   } catch (e) {

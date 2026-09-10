@@ -43,6 +43,42 @@ function check(name: string, cond: boolean) {
   passed++;
 }
 
+withEnv(
+  {
+    DATABASE_URL:
+      "postgresql://postgres.abc123ref:Secret%23123@aws-1-eu-west-2.pooler.supabase.com:6543/postgres",
+    DIRECT_URL: sampleDirect,
+  },
+  () => {
+    const v = validateSupabaseDatabaseEnv();
+    check(
+      "6543 without pgbouncer still OK when DIRECT_URL present",
+      v.ok === true
+    );
+    if (v.ok) {
+      check(
+        "runtime still prefers DIRECT_URL",
+        v.runtimeUrl === sampleDirect && v.runtimePort === "5432"
+      );
+    }
+  }
+);
+
+withEnv(
+  {
+    DATABASE_URL:
+      "postgresql://postgres.abc123ref:Secret%23123@aws-1-eu-west-2.pooler.supabase.com:6543/postgres",
+    DIRECT_URL: undefined,
+  },
+  () => {
+    const v = validateSupabaseDatabaseEnv();
+    check("6543 without pgbouncer rewrites to session", v.ok === true);
+    if (v.ok) {
+      check("rewritten runtimePort 5432", v.runtimePort === "5432");
+    }
+  }
+);
+
 withEnv({ DATABASE_URL: sampleDb, DIRECT_URL: undefined }, () => {
   const v = validateSupabaseDatabaseEnv();
   check("runtime ok without DIRECT_URL", v.ok === true);
@@ -87,10 +123,48 @@ withEnv({ DATABASE_URL: undefined, DIRECT_URL: sampleDirect }, () => {
   check("missing DATABASE_URL fails", v.ok === false);
 });
 
+withEnv(
+  {
+    DATABASE_URL: sampleDb,
+    DIRECT_URL:
+      "postgresql://postgres:Secret%23123@db.hdvitxmxrpsjfgsdbfst.supabase.co:5432/postgres",
+    VERCEL: "1",
+  },
+  () => {
+    const v = validateSupabaseDatabaseEnv();
+    check("on Vercel: ok with Direct + Transaction URLs", v.ok === true);
+    if (v.ok) {
+      check(
+        "on Vercel: prefers pooler session over db.* Direct",
+        v.poolingMode === "session" &&
+          /pooler\.supabase\.com/.test(v.runtimeUrl) &&
+          v.runtimePort === "5432"
+      );
+    }
+  }
+);
+
 {
   const resolved = resolvePrismaRuntimeUrl(sampleDb, sampleDirect);
   check("resolvePrismaRuntimeUrl picks session URL", resolved.url === sampleDirect);
   check("resolvePrismaRuntimeUrl mode session", resolved.mode === "session");
+}
+
+{
+  const directDb =
+    "postgresql://postgres:Secret%23123@db.abc123ref.supabase.co:5432/postgres";
+  const prev = process.env.VERCEL;
+  process.env.VERCEL = "1";
+  try {
+    const resolved = resolvePrismaRuntimeUrl(sampleDb, directDb);
+    check(
+      "resolve on Vercel rewrites pooler over Direct db.*",
+      resolved.mode === "session" && /pooler\.supabase\.com/.test(resolved.url)
+    );
+  } finally {
+    if (prev === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prev;
+  }
 }
 
 check(

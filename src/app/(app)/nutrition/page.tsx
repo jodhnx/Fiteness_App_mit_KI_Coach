@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useNutritionDashboard } from "@/hooks/use-nutrition-dashboard";
 import { useFoodFavorites } from "@/hooks/use-food-favorites";
@@ -95,6 +95,16 @@ function NutritionPageInner() {
   }, [searchParams]);
 
   const { dashboard, error, timedOut, loading, reload, applyDashboard } = useNutritionDashboard(120_000);
+  const dashboardRef = useRef(dashboard);
+  dashboardRef.current = dashboard;
+
+  const applyOptimistic = useCallback(
+    (next: NonNullable<ReturnType<typeof optimisticRemoveMealItem>>) => {
+      dashboardRef.current = next;
+      applyDashboard(next);
+    },
+    [applyDashboard]
+  );
 
   const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites();
 
@@ -130,19 +140,21 @@ function NutritionPageInner() {
         toast.message("Eintrag wird noch gespeichert — kurz warten");
         return;
       }
-      const snapshot = dashboard;
+      const snapshot = dashboardRef.current;
       const optimistic = optimisticRemoveMealItem(snapshot, itemId);
-      if (optimistic) applyDashboard(optimistic);
+      if (optimistic) applyOptimistic(optimistic);
       const res = await fetch(`/api/nutrition/items/${itemId}`, { method: "DELETE" });
       if (!res.ok) {
-        applyDashboard(snapshot);
+        // Avoid stale snapshot rollback when rapid deletes race — refetch SSOT.
+        reload();
         toast.error("Löschen fehlgeschlagen");
         return;
       }
       const updated = await applyNutritionMutationResponse(res);
-      if (!updated) applyDashboard(snapshot);
+      if (!updated) reload();
+      else dashboardRef.current = updated;
     },
-    [dashboard, applyDashboard]
+    [applyOptimistic, reload]
   );
 
   const deleteMeal = useCallback(
@@ -151,20 +163,23 @@ function NutritionPageInner() {
         toast.message("Mahlzeit wird noch gespeichert — kurz warten");
         return;
       }
-      const snapshot = dashboard;
+      const snapshot = dashboardRef.current;
       const optimistic = optimisticRemoveMeal(snapshot, mealId);
-      if (optimistic) applyDashboard(optimistic);
+      if (optimistic) applyOptimistic(optimistic);
       const res = await fetch(`/api/nutrition/meals/${mealId}`, { method: "DELETE" });
       if (!res.ok) {
-        applyDashboard(snapshot);
+        reload();
         toast.error("Mahlzeit konnte nicht gelöscht werden");
         return;
       }
       const updated = await applyNutritionMutationResponse(res);
-      if (!updated) applyDashboard(snapshot);
-      else toast.success("Mahlzeit gelöscht");
+      if (!updated) reload();
+      else {
+        dashboardRef.current = updated;
+        toast.success("Mahlzeit gelöscht");
+      }
     },
-    [dashboard, applyDashboard]
+    [applyOptimistic, reload]
   );
 
   const requestDeleteMeal = useCallback((mealId: string, label: string) => {
@@ -187,45 +202,50 @@ function NutritionPageInner() {
         toast.error("Ungültige Menge");
         return;
       }
-      const snapshot = dashboard;
+      const snapshot = dashboardRef.current;
       const optimistic = optimisticPatchItemQuantity(snapshot, itemId, quantityG);
-      if (optimistic) applyDashboard(optimistic);
+      if (optimistic) applyOptimistic(optimistic);
       const res = await fetch(`/api/nutrition/items/${itemId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quantityG }),
       });
       if (!res.ok) {
-        applyDashboard(snapshot);
+        reload();
         toast.error("Speichern fehlgeschlagen");
         return;
       }
       const updated = await applyNutritionMutationResponse(res);
-      if (!updated) applyDashboard(snapshot);
-      else toast.success("Eintrag aktualisiert");
+      if (!updated) reload();
+      else {
+        dashboardRef.current = updated;
+        toast.success("Eintrag aktualisiert");
+      }
     },
-    [dashboard, applyDashboard]
+    [applyOptimistic, reload]
   );
 
   const addWater = useCallback(
     async (amountMl: number) => {
-      const snapshot = dashboard;
+      if (amountMl === 0) return;
+      const snapshot = dashboardRef.current;
       const optimistic = optimisticAddWater(snapshot, amountMl);
-      if (optimistic) applyDashboard(optimistic);
+      if (optimistic) applyOptimistic(optimistic);
       const res = await fetch("/api/nutrition/water", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amountMl }),
       });
       if (!res.ok) {
-        applyDashboard(snapshot);
+        reload();
         toast.error("Wasser konnte nicht gespeichert werden");
         return;
       }
       const updated = await applyNutritionMutationResponse(res);
-      if (!updated) applyDashboard(snapshot);
+      if (!updated) reload();
+      else dashboardRef.current = updated;
     },
-    [dashboard, applyDashboard]
+    [applyOptimistic, reload]
   );
 
   const handleToggleFavorite = useCallback(
@@ -259,13 +279,13 @@ function NutritionPageInner() {
 
       const cached = getCachedSavedMeals()?.find((m) => m.id === recipeId);
       const macros = cached?.macros?.perServing ?? cached?.macros?.total;
-      const snapshot = dashboard;
+      const base = dashboardRef.current;
       if (cached && macros) {
         const quantityG =
           cached.ingredients?.reduce((sum, i) => sum + (i.quantityG || 0), 0) ||
           100;
         const optimistic = optimisticAddSavedMeal(
-          snapshot,
+          base,
           {
             name: cached.name,
             calories: macros.calories,
@@ -276,7 +296,7 @@ function NutritionPageInner() {
           },
           logMealType
         );
-        if (optimistic) applyDashboard(optimistic);
+        if (optimistic) applyOptimistic(optimistic);
       }
 
       closeAddPopup();
@@ -291,7 +311,7 @@ function NutritionPageInner() {
             body: JSON.stringify({ mealType: logMealType }),
           });
           if (!res.ok) {
-            applyDashboard(snapshot);
+            reload();
             const err = await res.json().catch(() => ({}));
             toast.error(
               (err as { error?: string }).error ??
@@ -300,21 +320,21 @@ function NutritionPageInner() {
             return;
           }
           const updated = await applyNutritionMutationResponse(res);
-          if (!updated) applyDashboard(snapshot);
+          if (!updated) reload();
+          else dashboardRef.current = updated;
           refreshFoodHistoryCache();
         } catch {
-          applyDashboard(snapshot);
+          reload();
           toast.error("Netzwerkfehler — Eintrag wurde zurückgesetzt");
         }
       })();
     },
-    [dashboard, applyDashboard, closeAddPopup]
+    [applyOptimistic, closeAddPopup, reload]
   );
 
   const handleFoodAITrack = useCallback(
     async (items: FoodAIItem[], mealType: MealType) => {
-      const snapshot = dashboard;
-      let nextDash = dashboard;
+      let nextDash = dashboardRef.current;
       for (const item of items) {
         const product = {
           name: item.name,
@@ -333,7 +353,7 @@ function NutritionPageInner() {
         );
         if (optimistic) {
           nextDash = optimistic;
-          applyDashboard(optimistic);
+          applyOptimistic(optimistic);
         }
       }
       try {
@@ -358,23 +378,24 @@ function NutritionPageInner() {
             const updated = await applyNutritionMutationResponse(res);
             if (updated) {
               nextDash = updated;
+              dashboardRef.current = updated;
               applyDashboard(updated);
             }
           } else {
-            applyDashboard(snapshot);
+            reload();
             toast.error("Mahlzeit konnte nicht gespeichert werden — Eintrag wurde zurückgesetzt");
             throw new Error("log failed");
           }
         }
       } catch (err) {
         if (err instanceof Error && err.message === "log failed") throw err;
-        applyDashboard(snapshot);
+        reload();
         throw err;
       }
       refreshFoodHistoryCache();
       toast.success("Mahlzeit hinzugefügt ✓", { duration: 2000 });
     },
-    [dashboard, applyDashboard]
+    [applyOptimistic, applyDashboard, reload]
   );
 
   return (

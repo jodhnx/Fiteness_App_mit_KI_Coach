@@ -15,6 +15,7 @@ export function isNavActive(pathname: string | null | undefined, href: string): 
       "/workouts/catalog",
       "/workouts/history",
       "/workouts/calendar",
+      "/workouts/generator",
     ];
     return !moreWorkoutPrefixes.some(
       (r) => pathname === r || pathname.startsWith(`${r}/`)

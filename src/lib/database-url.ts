@@ -255,31 +255,63 @@ export function rewriteTransactionPoolerToSession(raw: string): string | null {
 
 /**
  * Pick the URL PrismaPg should use at runtime.
- * Prefer Session (:5432) / Direct (:5432) — Transaction (:6543) breaks prepared statements
- * with the Node pg driver adapter (`pgbouncer=true` has no effect there).
+ * Prefer Session pooler (:5432 on *.pooler.supabase.com) over Direct (db.*).
+ * Transaction (:6543) breaks prepared statements with the Node pg adapter
+ * (`pgbouncer=true` has no effect there) — rewrite to Session :5432.
  *
- * If only a Transaction URL exists, rewrite pooler host to Session :5432.
+ * On Vercel, Direct `db.*.supabase.co` is often IPv6-only / unreachable —
+ * never prefer it when a pooler URL can be used instead.
  */
 export function resolvePrismaRuntimeUrl(
   databaseUrl: string,
   directUrl: string
 ): { url: string; mode: PoolingMode } {
+  const onVercel = Boolean(process.env.VERCEL);
   const candidates = [directUrl, databaseUrl].filter(Boolean);
+
+  // 1) Explicit Session pooler :5432
   for (const candidate of candidates) {
     try {
       const parsed = parseDatabaseUrl(candidate);
-      if (parsed.port === "5432" || isDirectDbHost(parsed.host)) {
-        return { url: candidate, mode: detectPoolingMode(parsed) };
+      if (parsed.port === "5432" && isPoolerHost(parsed.host)) {
+        return { url: candidate, mode: "session" };
       }
     } catch {
       /* try next */
     }
   }
 
+  // 2) Rewrite Transaction pooler :6543 → Session :5432 (same host/credentials)
   for (const candidate of candidates) {
     const rewritten = rewriteTransactionPoolerToSession(candidate);
     if (rewritten) {
       return { url: rewritten, mode: "session" };
+    }
+  }
+
+  // 3) Direct db.* — OK locally; skip on Vercel when pooler rewrite already tried
+  if (!onVercel) {
+    for (const candidate of candidates) {
+      try {
+        const parsed = parseDatabaseUrl(candidate);
+        if (isDirectDbHost(parsed.host) && parsed.port === "5432") {
+          return { url: candidate, mode: "direct" };
+        }
+      } catch {
+        /* try next */
+      }
+    }
+  }
+
+  // 4) Any remaining :5432 (including Direct on Vercel as last resort)
+  for (const candidate of candidates) {
+    try {
+      const parsed = parseDatabaseUrl(candidate);
+      if (parsed.port === "5432") {
+        return { url: candidate, mode: detectPoolingMode(parsed) };
+      }
+    } catch {
+      /* try next */
     }
   }
 
@@ -310,15 +342,34 @@ export function validateSupabaseDatabaseEnv(): DatabaseEnvValidation {
     };
   }
 
-  // DATABASE_URL: accept Transaction (6543) or Session (5432) pooler
+  // DATABASE_URL: accept Transaction (6543) or Session (5432) pooler.
+  // Do NOT hard-require ?pgbouncer=true for runtime: PrismaPg uses the Node `pg`
+  // driver and prefers DIRECT_URL :5432 (or rewrites :6543 → session). The
+  // pgbouncer query flag is a Prisma-engine CLI hint — rejecting login solely
+  // for a missing flag was the production root cause of DatabaseConnectionError.
   const issues = validateSingleUrl("DATABASE_URL", databaseUrl, {
     kind: "database",
     allowedPorts: ["6543", "5432"],
-    requirePgbouncer: true, // only enforced when port is 6543
+    requirePgbouncer: false,
   });
 
   if (issues.length > 0) {
     return { ok: false, issues };
+  }
+
+  try {
+    const parsedEarly = parseDatabaseUrl(databaseUrl);
+    if (
+      parsedEarly.port === "6543" &&
+      !/[?&]pgbouncer=true/i.test(databaseUrl)
+    ) {
+      console.warn(
+        "[db] DATABASE_URL :6543 without ?pgbouncer=true — OK for PrismaPg runtime " +
+          "(uses DIRECT_URL / session rewrite). Add the flag for Prisma CLI/migrate."
+      );
+    }
+  } catch {
+    /* already validated */
   }
 
   let directUrl = directUrlRaw;
