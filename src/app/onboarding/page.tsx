@@ -168,6 +168,7 @@ export default function OnboardingPage() {
       }
       setResult(data.calculations);
       await update({ onboardingComplete: true });
+      void import("@/lib/post-login-cache").then((m) => m.warmPostLoginCaches());
       toast.success("Dein Plan ist bereit!");
       setStep(5);
     } catch {
@@ -227,7 +228,12 @@ export default function OnboardingPage() {
 
           <Button
             className="w-full h-14 text-base font-semibold mt-6 rounded-2xl btn-accent"
-            onClick={() => router.push("/home")}
+            onClick={() => {
+              void import("@/lib/post-login-cache").then((m) =>
+                m.warmPostLoginCaches()
+              );
+              router.push("/home");
+            }}
           >
             Los geht&apos;s
           </Button>

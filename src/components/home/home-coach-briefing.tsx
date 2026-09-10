@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { Bot, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { DailyFitnessIntelligence } from "@/lib/intelligence/types";
 import type { AdaptiveRecommendations } from "@/lib/intelligence/recommendations/types";
 import type { DailyActionPlan } from "@/lib/intelligence/daily-plan/types";
@@ -19,7 +19,6 @@ type Props = {
 
 /** Daily Action Plan first — clear answer to "what matters today?" */
 export const HomeCoachBriefing = memo(function HomeCoachBriefing({
-  streakDays = 0,
   dailyActionPlan,
   intelligence,
   adaptiveRecommendations,
@@ -27,24 +26,12 @@ export const HomeCoachBriefing = memo(function HomeCoachBriefing({
   const hasPlan = Boolean(dailyActionPlan?.primary);
 
   return (
-    <div className="rounded-[1.75rem] border border-white/[0.07] bg-gradient-to-b from-zinc-900/95 to-zinc-950 overflow-hidden">
+    <div className="rounded-[1.25rem] border border-white/[0.07] bg-zinc-900/40 overflow-hidden">
       <div className="px-4 pt-4 pb-2 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-cyan-500/20 to-violet-500/20 border border-white/10 flex items-center justify-center">
-            <Bot className="h-4 w-4 text-cyan-400" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">Was heute wichtig ist</p>
-            <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest">
-              Daily Action Plan
-            </p>
-          </div>
+        <div>
+          <p className="text-sm font-semibold text-white">Heute wichtig</p>
+          <p className="text-[11px] text-zinc-500">Nächster Schritt</p>
         </div>
-        {streakDays > 0 && (
-          <span className="text-xs font-bold text-amber-300 tabular-nums">
-            🔥 {streakDays}
-          </span>
-        )}
       </div>
 
       <div className="mx-4 mb-3">

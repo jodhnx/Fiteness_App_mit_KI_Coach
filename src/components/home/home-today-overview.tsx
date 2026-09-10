@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import Link from "next/link";
+import { Droplets, Flame, Footprints } from "lucide-react";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import {
   getMacroDisplay,
@@ -13,6 +14,8 @@ import { cn } from "@/lib/utils";
 type Props = {
   nutrition: NutritionDashboardPayload;
   loading?: boolean;
+  steps?: number;
+  stepGoal?: number;
 };
 
 const MACROS = [
@@ -21,23 +24,30 @@ const MACROS = [
   { key: "fat", label: "Fett", field: "fatG" as const, tint: "text-sky-400" },
 ];
 
-/** Dominant home today overview — calories + macros first. */
+/** Dominant home today overview — calories + macros first, activity compact. */
 export const HomeTodayOverview = memo(function HomeTodayOverview({
   nutrition,
   loading = false,
+  steps = 0,
+  stepGoal = 10_000,
 }: Props) {
   const state = resolveNutritionDisplayState(nutrition, { loading });
 
   if (state.kind === "loading") {
     return (
-      <PremiumCard glow padding="md" className="animate-pulse space-y-4">
-        <div className="h-3 w-16 rounded bg-white/5" />
-        <div className="h-12 w-40 rounded bg-white/5" />
-        <div className="h-4 w-56 rounded bg-white/5" />
+      <PremiumCard padding="md" className="space-y-4 min-h-[17.5rem]">
+        <div className="h-3 w-16 rounded bg-white/5 animate-pulse" />
+        <div className="h-12 w-36 rounded bg-white/5 animate-pulse" />
+        <div className="h-4 w-24 rounded bg-white/5 animate-pulse" />
         <div className="grid grid-cols-3 gap-2">
-          <div className="h-16 rounded-2xl bg-white/5" />
-          <div className="h-16 rounded-2xl bg-white/5" />
-          <div className="h-16 rounded-2xl bg-white/5" />
+          <div className="h-16 rounded-2xl bg-white/5 animate-pulse" />
+          <div className="h-16 rounded-2xl bg-white/5 animate-pulse" />
+          <div className="h-16 rounded-2xl bg-white/5 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="h-12 rounded-xl bg-white/5 animate-pulse" />
+          <div className="h-12 rounded-xl bg-white/5 animate-pulse" />
+          <div className="h-12 rounded-xl bg-white/5 animate-pulse" />
         </div>
       </PremiumCard>
     );
@@ -45,7 +55,7 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
 
   if (state.kind === "missing_target") {
     return (
-      <PremiumCard glow padding="md" className="text-center space-y-3">
+      <PremiumCard padding="md" className="text-center space-y-3 min-h-[17.5rem] flex flex-col justify-center">
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
           Heute
         </p>
@@ -68,15 +78,14 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
   const { cal } = state;
   const consumed = nutrition.consumed ?? { proteinG: 0, carbsG: 0, fatG: 0 };
   const targets = nutrition.targets ?? { proteinG: 0, carbsG: 0, fatG: 0 };
+  const waterMl = nutrition.water?.consumedMl ?? 0;
+  const waterTarget = nutrition.water?.targetMl ?? 2500;
+  const burned = Math.round(nutrition.exerciseBurned?.calories ?? 0);
 
   return (
     <PremiumCard
-      glow
       padding="md"
-      className={cn(
-        "space-y-4",
-        cal.isOver && "ring-1 ring-red-500/25"
-      )}
+      className={cn("space-y-4", cal.isOver && "ring-1 ring-red-500/25")}
     >
       <div>
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
@@ -121,6 +130,45 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
             </div>
           );
         })}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-xl border border-white/[0.05] px-2 py-2 min-h-11">
+          <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <Footprints className="h-3 w-3" aria-hidden />
+            Schritte
+          </p>
+          <p className="mt-0.5 text-[13px] font-bold tabular-nums text-white">
+            {steps.toLocaleString("de-DE")}
+            <span className="text-[10px] font-medium text-zinc-500">
+              {" "}
+              / {stepGoal.toLocaleString("de-DE")}
+            </span>
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/[0.05] px-2 py-2 min-h-11">
+          <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <Flame className="h-3 w-3" aria-hidden />
+            Aktiv
+          </p>
+          <p className="mt-0.5 text-[13px] font-bold tabular-nums text-white">
+            {burned.toLocaleString("de-DE")}
+            <span className="text-[10px] font-medium text-zinc-500"> kcal</span>
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/[0.05] px-2 py-2 min-h-11">
+          <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <Droplets className="h-3 w-3" aria-hidden />
+            Wasser
+          </p>
+          <p className="mt-0.5 text-[13px] font-bold tabular-nums text-white">
+            {waterMl}
+            <span className="text-[10px] font-medium text-zinc-500">
+              {" "}
+              / {waterTarget} ml
+            </span>
+          </p>
+        </div>
       </div>
     </PremiumCard>
   );

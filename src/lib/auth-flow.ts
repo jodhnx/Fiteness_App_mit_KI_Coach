@@ -126,7 +126,7 @@ export async function signInCredentials(
   };
 }
 
-/** Client navigation after login — no full page reload. */
+/** Client navigation after login — no full page reload, no blocking RSC refresh. */
 export function redirectAfterLogin(
   router: AppRouterInstance,
   callbackUrl?: string | null
@@ -134,5 +134,4 @@ export function redirectAfterLogin(
   const target = resolvePostLoginPath(callbackUrl ?? DEFAULT_POST_LOGIN);
   logAuthFlow("redirect_after_login", target);
   router.replace(target);
-  router.refresh();
 }

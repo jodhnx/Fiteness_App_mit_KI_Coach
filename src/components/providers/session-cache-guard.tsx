@@ -8,8 +8,6 @@ import {
   getCacheOwner,
 } from "@/lib/client-cache";
 import { clearAllUserClientState } from "@/lib/clear-user-client-state";
-import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
-import { warmFoodHistoryCache } from "@/lib/food-history-cache";
 
 /**
  * Ensures client caches belong to the authenticated user.
@@ -19,7 +17,6 @@ import { warmFoodHistoryCache } from "@/lib/food-history-cache";
 export function SessionCacheGuard() {
   const { data: session, status } = useSession();
   const lastUserId = useRef<string | null>(null);
-  const warmedFor = useRef<string | null>(null);
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -35,7 +32,6 @@ export function SessionCacheGuard() {
           clearAllUserClientState();
         }
         lastUserId.current = null;
-        warmedFor.current = null;
       }, 800);
       return () => {
         if (clearTimer.current) clearTimeout(clearTimer.current);
@@ -48,6 +44,12 @@ export function SessionCacheGuard() {
     }
 
     const owner = getCacheOwner();
+    if (owner === userId) {
+      hydratePersistentCaches(userId);
+      lastUserId.current = userId;
+      return;
+    }
+
     const switched =
       (lastUserId.current != null && lastUserId.current !== userId) ||
       (owner != null && owner !== userId);
@@ -59,12 +61,6 @@ export function SessionCacheGuard() {
     bindCacheOwner(userId);
     hydratePersistentCaches(userId);
     lastUserId.current = userId;
-
-    if (warmedFor.current !== userId) {
-      warmedFor.current = userId;
-      warmNavDataCaches();
-      warmFoodHistoryCache();
-    }
   }, [session?.user?.id, status]);
 
   return null;

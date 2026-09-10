@@ -251,11 +251,11 @@ export const BottomNav = memo(function BottomNav() {
 
   return (
     <nav
-      className="bottom-nav-ios fixed bottom-0 left-0 right-0 z-50 lg:hidden"
+      className="bottom-nav-ios fixed bottom-0 left-0 right-0 z-50 overflow-visible lg:hidden"
       aria-label="Hauptnavigation"
       data-no-tab-swipe
     >
-      <div className="bottom-nav-ios-inner mx-auto w-full max-w-[430px] px-2 pb-[max(0.2rem,env(safe-area-inset-bottom))]">
+      <div className="bottom-nav-ios-inner mx-auto w-full max-w-[430px] overflow-visible px-2 pt-3 pb-[max(0.2rem,env(safe-area-inset-bottom))]">
         <div
           ref={barRef}
           className="bottom-nav-ios-bar relative flex items-stretch overflow-visible"

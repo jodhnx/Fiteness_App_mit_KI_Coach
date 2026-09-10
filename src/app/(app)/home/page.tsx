@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { startWorkoutAndNavigate } from "@/lib/workout-start";
@@ -12,23 +11,18 @@ import { getCached } from "@/lib/client-cache";
 import { useBootHomeData } from "@/hooks/use-boot-home-data";
 import { useDisplayName } from "@/hooks/use-display-name";
 import { PageShell } from "@/components/layout/page-shell";
-import { AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { HomePhoneStepsHint } from "@/components/home/home-phone-steps-hint";
 import { HomeGreeting } from "@/components/home/home-greeting";
 import { HomeTodayOverview } from "@/components/home/home-today-overview";
-import { HomeDashboardPremium } from "@/components/home/home-dashboard-premium";
 import { HomePlannedTrainingCard } from "@/components/home/home-planned-training-card";
-import { HomeDayFocusCard } from "@/components/home/home-day-focus-card";
 import { HomeCoachBriefing } from "@/components/home/home-coach-briefing";
-import { HomeTodayGlance } from "@/components/home/home-today-glance";
-import { QuickAccessRail } from "@/components/guide/quick-access-rail";
 import { PageIntro } from "@/components/guide/page-intro";
+import { HomeWidgetBoard } from "@/components/home/home-widget-board";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { isSameDay } from "date-fns";
-import { resolveNutritionDisplayState } from "@/lib/nutrition-display";
+import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
 
 const HomeHealthEcosystem = dynamic(
   () =>
@@ -65,16 +59,36 @@ const HomeDaySummary = dynamic(
     })),
   { ssr: false }
 );
-const HomeWidgetBoard = dynamic(
+const HomeDashboardPremium = dynamic(
   () =>
-    import("@/components/home/home-widget-board").then((m) => ({
-      default: m.HomeWidgetBoard,
+    import("@/components/home/home-dashboard-premium").then((m) => ({
+      default: m.HomeDashboardPremium,
+    })),
+  { ssr: false }
+);
+const HomeTodayGlance = dynamic(
+  () =>
+    import("@/components/home/home-today-glance").then((m) => ({
+      default: m.HomeTodayGlance,
+    })),
+  { ssr: false }
+);
+const HomeDayFocusCard = dynamic(
+  () =>
+    import("@/components/home/home-day-focus-card").then((m) => ({
+      default: m.HomeDayFocusCard,
+    })),
+  { ssr: false }
+);
+const QuickAccessRail = dynamic(
+  () =>
+    import("@/components/guide/quick-access-rail").then((m) => ({
+      default: m.QuickAccessRail,
     })),
   { ssr: false }
 );
 
 export default function HomePage() {
-  const { status: sessionStatus } = useSession();
   const router = useRouter();
   const [workoutCleared, setWorkoutCleared] = useState(false);
 
@@ -168,24 +182,11 @@ export default function HomePage() {
 
   const greetingCue = useMemo(() => {
     if (trainingStatus === "active") return "Training läuft — tippe zum Fortsetzen";
-    const calState = resolveNutritionDisplayState(nutrition);
-    if (calState.kind === "ready") {
-      const { cal } = calState;
-      if (!cal.isOver && cal.remaining > 0) {
-        return `${cal.remaining.toLocaleString("de-DE")} kcal übrig`;
-      }
-      if (cal.isOver) {
-        return `${cal.overBy.toLocaleString("de-DE")} kcal über dem Ziel`;
-      }
-      if (cal.remaining === 0 && !cal.isOver) {
-        return "Kalorienziel erreicht";
-      }
-    }
     if (trainingStatus === "planned" && trainingLabel) {
       return `Heute: ${trainingLabel}`;
     }
     return null;
-  }, [trainingStatus, trainingLabel, nutrition]);
+  }, [trainingStatus, trainingLabel]);
 
   const weekPulse = useMemo(() => {
     const target = nutrition.targets?.calories ?? 0;
@@ -200,22 +201,14 @@ export default function HomePage() {
 
   const serverSteps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10_000;
-  const ready = resolveNutritionDisplayState(nutrition).kind === "ready";
-
-  if (sessionStatus === "unauthenticated") {
-    return (
-      <div className="space-y-4 py-12 text-center">
-        <AlertCircle className="h-10 w-10 text-amber-400 mx-auto" />
-        <h1 className="text-lg font-semibold text-white">Sitzung nicht erkannt</h1>
-        <Button type="button" onClick={() => signIn(undefined, { callbackUrl: "/home" })}>
-          Erneut anmelden
-        </Button>
-      </div>
-    );
-  }
+  const caloriesReady = (nutrition.targets?.calories ?? 0) > 0;
+  const bootPending =
+    !caloriesReady &&
+    !data.userName &&
+    getCached(HOME_DATA_CACHE_KEY, { allowStale: true }) == null;
 
   return (
-    <PageShell className="space-y-2">
+    <PageShell className="space-y-3">
       <HomeGreeting
         name={displayName}
         streakDays={nutritionStreakDays}
@@ -225,10 +218,15 @@ export default function HomePage() {
       <HomeWidgetBoard
         pinFirst={activeSessionId ? "training" : null}
         slots={{
-          todayOverview: (
-            <HomeTodayOverview nutrition={nutrition} />
+          todayOverview: () => (
+            <HomeTodayOverview
+              nutrition={nutrition}
+              loading={bootPending}
+              steps={serverSteps}
+              stepGoal={stepGoal}
+            />
           ),
-          quickAccess: (
+          quickAccess: () => (
             <QuickAccessRail
               training={
                 activeSessionId
@@ -244,21 +242,21 @@ export default function HomePage() {
               }
             />
           ),
-          dashboard: (
+          dashboard: () => (
             <HomeDashboardPremium
-                nutrition={nutrition}
-                steps={serverSteps}
-                stepGoal={stepGoal}
-                sleepHours={data.healthToday?.sleepHours ?? null}
-                weightKg={data.weightKg}
-                trainingStatus={trainingStatus}
-                trainingLabel={trainingLabel}
-                activeSessionId={activeSessionId}
-                recoveryScore={data.healthToday?.recoveryScore ?? null}
-                weekPulse={weekPulse}
-              />
+              nutrition={nutrition}
+              steps={serverSteps}
+              stepGoal={stepGoal}
+              sleepHours={data.healthToday?.sleepHours ?? null}
+              weightKg={data.weightKg}
+              trainingStatus={trainingStatus}
+              trainingLabel={trainingLabel}
+              activeSessionId={activeSessionId}
+              recoveryScore={data.healthToday?.recoveryScore ?? null}
+              weekPulse={weekPulse}
+            />
           ),
-          dayGoals: (
+          dayGoals: () => (
             <HomeDayGoals
               caloriesConsumed={nutrition.consumed?.calories ?? 0}
               calorieTarget={nutrition.targets?.calories ?? 0}
@@ -270,7 +268,7 @@ export default function HomePage() {
               trainingDone={trainingStatus === "done" || trainingStatus === "active"}
             />
           ),
-          health: (
+          health: () => (
             <HomeHealthEcosystem
               health={
                 data.healthToday
@@ -286,7 +284,7 @@ export default function HomePage() {
               }
             />
           ),
-          training: (
+          training: () => (
             <HomePlannedTrainingCard
               nextWorkout={data.nextWorkout ?? null}
               activeSessionId={activeSessionId}
@@ -295,15 +293,14 @@ export default function HomePage() {
               highlight={highlight === "training"}
             />
           ),
-          coachBriefing: (
+          coachBriefing: () => (
             <HomeCoachBriefing
-              streakDays={trainingStreakDays}
               intelligence={data.intelligence}
               adaptiveRecommendations={data.adaptiveRecommendations}
               dailyActionPlan={data.dailyActionPlan}
             />
           ),
-          todayGlance: (
+          todayGlance: () => (
             <HomeTodayGlance
               nutrition={nutrition}
               trainingStatus={trainingStatus}
@@ -311,8 +308,8 @@ export default function HomePage() {
               activeSessionId={activeSessionId}
             />
           ),
-          dayFocus: <HomeDayFocusCard items={dayFocusItems} />,
-          progress: (
+          dayFocus: () => <HomeDayFocusCard items={dayFocusItems} />,
+          progress: () => (
             <HomeProgressGrid
               home={data}
               nutrition={nutrition}
@@ -320,9 +317,9 @@ export default function HomePage() {
               streakHighlight={highlight === "streak"}
             />
           ),
-          daySummary: (
+          daySummary: () => (
             <HomeDaySummary
-              caloriesLeft={ready ? nutrition.remaining.calories : null}
+              caloriesLeft={caloriesReady ? nutrition.remaining.calories : null}
               proteinG={nutrition.consumed.proteinG}
               proteinTarget={nutrition.targets.proteinG}
               steps={serverSteps}
@@ -332,7 +329,7 @@ export default function HomePage() {
               trainingLabel={trainingLabel}
             />
           ),
-          achievements: (
+          achievements: () => (
             <HomeRecentAchievements achievements={data.recentAchievements ?? []} />
           ),
         }}

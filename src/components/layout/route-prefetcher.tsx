@@ -35,19 +35,22 @@ export function RoutePrefetcher() {
     for (const href of NAV_ROUTES.slice(0, 5)) {
       router.prefetch(href);
     }
-    warmNavDataCaches();
-    warmTrainingCaches();
-    warmHealthSync();
 
     const idle =
       typeof requestIdleCallback !== "undefined"
         ? requestIdleCallback
-        : (cb: () => void) => setTimeout(cb, 150);
+        : (cb: () => void) => setTimeout(cb, 400);
 
     idle(() => {
+      warmNavDataCaches();
+      warmTrainingCaches();
       for (const href of NAV_ROUTES.slice(5)) {
         router.prefetch(href);
       }
+    });
+
+    idle(() => {
+      warmHealthSync();
     });
   }, [router]);
 

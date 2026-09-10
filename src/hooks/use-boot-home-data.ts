@@ -78,12 +78,18 @@ function resolveBootHome(): HomeDataPayload {
     if (hasClientIntelligenceLayers(merged)) {
       return merged;
     }
+    const emptyShell =
+      (merged.calorieTarget ?? 0) <= 0 && !merged.nextWorkout;
+    if (emptyShell) return merged;
     return mergeHomeWithNutrition(withIdentity, nutrition);
   }
 
   if (hasClientIntelligenceLayers(withIdentity)) {
     return withIdentity;
   }
+  const emptyShell =
+    (withIdentity.calorieTarget ?? 0) <= 0 && !withIdentity.nextWorkout;
+  if (emptyShell) return withIdentity;
   return commitHomeIntelligenceRefresh(withIdentity);
 }
 

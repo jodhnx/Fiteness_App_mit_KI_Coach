@@ -11,6 +11,7 @@ import {
   Medal,
   Bookmark,
   Wand2,
+  LifeBuoy,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -111,6 +112,51 @@ export const PROFILE_MENU_NAV: NavItem[] = [
 export const MORE_NAV: NavItem[] = [
   { href: "/social", label: "Community", icon: Users },
   { href: "/erfolge", label: "Erfolge", icon: Trophy },
+];
+
+/** Quiet grouped hub — More tab. */
+export const MORE_HUB_SECTIONS: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Training",
+    items: [
+      { href: "/workouts/my-plans", label: "Meine Pläne", icon: FolderOpen },
+      { href: "/workouts/records", label: "Rekorde", icon: Medal },
+      { href: "/workouts/generator", label: "KI Plan-Generator", icon: Wand2 },
+    ],
+  },
+  {
+    title: "Ernährung",
+    items: [
+      {
+        href: "/nutrition",
+        label: "Gespeicherte Mahlzeiten",
+        icon: Bookmark,
+      },
+      { href: "/rezepte", label: "Rezepte", icon: CookingPot },
+    ],
+  },
+  {
+    title: "Intelligence",
+    items: [{ href: "/coach", label: "KI Coach", icon: Bot }],
+  },
+  {
+    title: "Fortschritt",
+    items: [
+      { href: "/erfolge", label: "Erfolge", icon: Trophy },
+      { href: "/social", label: "Community", icon: Users },
+    ],
+  },
+  {
+    title: "Gesundheit",
+    items: [{ href: "/geraete", label: "Geräte", icon: Watch }],
+  },
+  {
+    title: "Konto",
+    items: [
+      { href: "/settings", label: "Einstellungen", icon: Settings },
+      { href: "/settings/support", label: "Support", icon: LifeBuoy },
+    ],
+  },
 ];
 
 export const ADMIN_NAV: NavItem = {

@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { hapticTap } from "@/lib/haptic";
 import { cn } from "@/lib/utils";
 
-type SlotMap = Partial<Record<HomeWidgetId, ReactNode>>;
+type SlotRender = ReactNode | (() => ReactNode);
+type SlotMap = Partial<Record<HomeWidgetId, SlotRender>>;
 
 /** Renders home sections in user-defined order with show/hide + reorder. */
 export const HomeWidgetBoard = memo(function HomeWidgetBoard({
@@ -61,9 +62,10 @@ export const HomeWidgetBoard = memo(function HomeWidgetBoard({
       </div>
 
       {displayWidgets.map((w) => {
-        const content = slots[w.id];
-        if (!content) return null;
+        const raw = slots[w.id];
+        if (!raw) return null;
         if (!w.visible && !edit) return null;
+        const content = typeof raw === "function" ? raw() : raw;
 
         return (
           <div

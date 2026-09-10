@@ -185,6 +185,8 @@ function applyBootstrapPayload(payload: BootstrapPayload) {
   bootPerfMark("boot_ready");
 }
 
+let bootstrapInflight: Promise<BootstrapPayload | null> | null = null;
+
 async function fetchBootstrap(): Promise<BootstrapPayload | null> {
   bootPerfMark("bootstrap_start");
   try {
@@ -222,6 +224,19 @@ async function fetchBootstrap(): Promise<BootstrapPayload | null> {
   }
 }
 
+/** One in-flight /api/bootstrap — login warm + initializeApp share it. */
+export function fetchBootstrapShared(): Promise<BootstrapPayload | null> {
+  if (bootstrapInflight) return bootstrapInflight;
+  const pending = fetchBootstrap();
+  bootstrapInflight = pending;
+  void pending.finally(() => {
+    if (bootstrapInflight === pending) bootstrapInflight = null;
+  });
+  return pending;
+}
+
+export { applyBootstrapPayload };
+
 /** Enrich home with extras (gamification, recovery, …) without reloading nutrition. */
 export function enrichHomeInBackground() {
   if (typeof window === "undefined") return;
@@ -254,9 +269,8 @@ export function enrichHomeInBackground() {
 }
 
 /**
- * Central app initialization — MUST complete before Home is shown.
- * Warm path: instant from disk/memory cache.
- * Cold path: single /api/bootstrap round-trip (no post-render Home fetch).
+ * Cache-first boot. Home already paints; this refreshes in the background.
+ * Warm path: disk/memory. Cold path: one shared /api/bootstrap round-trip.
  */
 export async function initializeApp(
   userId: string,
@@ -271,14 +285,14 @@ export async function initializeApp(
   const cached = readBootPayloadFromCache();
   if (cached) {
     applyBootstrapPayload(cached);
-    void fetchBootstrap().then((fresh) => {
+    void fetchBootstrapShared().then((fresh) => {
       if (fresh) applyBootstrapPayload(fresh);
       enrichHomeInBackground();
     });
     return { payload: cached, fromCache: true };
   }
 
-  const fresh = await fetchBootstrap();
+  const fresh = await fetchBootstrapShared();
   if (fresh) {
     applyBootstrapPayload(fresh);
     enrichHomeInBackground();
