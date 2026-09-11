@@ -25,6 +25,8 @@ import { isSameDay } from "date-fns";
 import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
 import { canonicalNutritionForDisplay } from "@/lib/nutrition-to-home";
 import { HomeQuickActions } from "@/components/home/home-quick-actions";
+import { HomeQuickStats } from "@/components/home/home-quick-stats";
+import { resolveNutritionDisplayState } from "@/lib/nutrition-display";
 
 const HomeHealthEcosystem = dynamic(
   () =>
@@ -226,12 +228,42 @@ export default function HomePage() {
         ? `Heute ist ${data.nextWorkout.dayName} geplant.`
         : null;
 
+  const calState = resolveNutritionDisplayState(nutrition, { loading: bootPending });
+  const quickCaloriesLabel =
+    calState.kind === "ready"
+      ? `${calState.cal.primaryValue.toLocaleString("de-DE")} kcal`
+      : calState.kind === "missing_target"
+        ? "Ziel setzen"
+        : "…";
+  const quickTrainingLabel =
+    trainingStatus === "active"
+      ? "Läuft jetzt"
+      : trainingStatus === "done"
+        ? "Erledigt"
+        : data.nextWorkout?.dayName
+          ? data.nextWorkout.dayName
+          : "Heute geplant";
+
   return (
     <PageShell className="space-y-2.5 lg:space-y-3">
       <HomeGreeting
         name={displayName}
         streakDays={nutritionStreakDays}
         cue={greetingCue}
+      />
+
+      <HomeQuickStats
+        trainingLabel={quickTrainingLabel}
+        trainingHref={workoutHref}
+        caloriesLabel={
+          calState.kind === "ready" && !calState.cal.isOver
+            ? `${quickCaloriesLabel} übrig`
+            : quickCaloriesLabel
+        }
+        steps={serverSteps}
+        stepGoal={stepGoal}
+        waterMl={nutrition.water?.consumedMl ?? 0}
+        waterTargetMl={nutrition.water?.targetMl ?? 2500}
       />
 
       <HomeQuickActions

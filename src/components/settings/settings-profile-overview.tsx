@@ -46,9 +46,9 @@ function formatGrams(raw: string | number | null | undefined): string {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 min-h-11 py-2 border-b border-white/[0.05] last:border-0">
+    <div className="flex items-center justify-between gap-3 min-h-11 py-2 border-b border-zinc-100 last:border-0 dark:border-white/[0.05]">
       <dt className="text-sm text-zinc-500 shrink-0">{label}</dt>
-      <dd className="text-sm font-semibold text-white text-right tabular-nums truncate">
+      <dd className="text-sm font-semibold text-zinc-900 text-right tabular-nums truncate dark:text-white">
         {value}
       </dd>
     </div>
@@ -67,7 +67,7 @@ function Section({
       <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 px-0.5">
         {title}
       </h3>
-      <dl className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-3.5">
+      <dl className="rounded-2xl border border-zinc-200/90 bg-white px-3.5 shadow-sm dark:border-white/[0.07] dark:bg-white/[0.02] dark:shadow-none">
         {children}
       </dl>
     </section>
@@ -111,11 +111,11 @@ export function SettingsProfileOverview({
           className="!h-14 !w-14 text-lg shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-semibold text-white tracking-tight truncate">
+          <h2 className="text-lg font-semibold text-zinc-900 tracking-tight truncate dark:text-white">
             {displayName}
           </h2>
           {form.username ? (
-            <p className="text-sm text-zinc-400 truncate">@{form.username}</p>
+            <p className="text-sm text-zinc-500 truncate">@{form.username}</p>
           ) : form.email ? (
             <p className="text-xs text-zinc-500 truncate">{form.email}</p>
           ) : null}

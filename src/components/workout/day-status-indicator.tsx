@@ -56,15 +56,15 @@ export const DayStatusIndicator = memo(function DayStatusIndicator({
 export function dayStatusRowClass(status: DayStatus, selected?: boolean): string {
   if (status === "completed") {
     return cn(
-      "border-[#4CAF50]/40 bg-[#4CAF50]/12",
-      selected && "ring-2 ring-[#4CAF50]/50"
+      "border-emerald-200 bg-emerald-50 dark:border-[#4CAF50]/40 dark:bg-[#4CAF50]/12",
+      selected && "ring-2 ring-emerald-300 dark:ring-[#4CAF50]/50"
     );
   }
   if (status === "rest") {
-    return "border-zinc-800/60 bg-zinc-900/30 opacity-70";
+    return "border-zinc-200 bg-zinc-50 opacity-80 dark:border-zinc-800/60 dark:bg-zinc-900/30 dark:opacity-70";
   }
   return cn(
-    "border-zinc-800 bg-zinc-900/60",
-    selected && "ring-2 ring-zinc-600"
+    "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/60",
+    selected && "ring-2 ring-zinc-300 dark:ring-zinc-600"
   );
 }

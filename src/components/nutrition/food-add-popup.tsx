@@ -527,8 +527,8 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                   }}
                   className={`h-11 flex-1 rounded-xl border text-[11px] font-semibold flex items-center justify-center gap-1 ${
                     view === "favorites"
-                      ? "border-white/20 bg-white/10 text-white"
-                      : "border-white/10 bg-zinc-900/70 text-zinc-300"
+                      ? "border-accent/30 bg-accent/10 text-accent"
+                      : "border-zinc-200 bg-white text-zinc-700 dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-300"
                   }`}
                 >
                   <Star className="h-3.5 w-3.5" />
@@ -537,7 +537,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                 <button
                   type="button"
                   onClick={() => setScannerOpen(true)}
-                  className="h-11 flex-1 rounded-xl border border-white/10 bg-zinc-900/70 text-[11px] font-semibold text-zinc-300 flex items-center justify-center gap-1"
+                  className="h-11 flex-1 rounded-xl border border-zinc-200 bg-white text-[11px] font-semibold text-zinc-700 flex items-center justify-center gap-1 dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-300"
                 >
                   <ScanBarcode className="h-3.5 w-3.5" />
                   Barcode

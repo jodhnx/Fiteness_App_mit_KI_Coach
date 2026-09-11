@@ -62,7 +62,9 @@ export function SettingsPersonalSummary({
   return (
     <div className="card-premium p-4 space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold text-white text-lg">Persönliche Daten</h2>
+        <h2 className="font-semibold text-zinc-900 text-lg dark:text-white">
+          Persönliche Daten
+        </h2>
         <Button type="button" variant="outline" size="sm" onClick={onEdit}>
           <Pencil className="h-4 w-4 mr-1.5" />
           Bearbeiten
@@ -72,7 +74,9 @@ export function SettingsPersonalSummary({
         {rows.map((r) => (
           <div key={r.label}>
             <dt className="text-xs text-zinc-500">{r.label}</dt>
-            <dd className="text-sm font-medium text-white mt-0.5">{r.value}</dd>
+            <dd className="text-sm font-medium text-zinc-900 mt-0.5 dark:text-white">
+              {r.value}
+            </dd>
           </div>
         ))}
       </dl>

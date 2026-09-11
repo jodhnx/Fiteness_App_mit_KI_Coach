@@ -69,29 +69,29 @@ export const ProgressStatsSection = memo(function ProgressStatsSection({
 
   return (
     <div className="card-premium p-4 space-y-4">
-      <h2 className="text-sm font-semibold text-white">📊 Statistiken</h2>
+      <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Statistiken</h2>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-zinc-900/70 p-3">
-          <Clock className="h-4 w-4 text-cyan-400 mb-1" />
-          <p className="text-lg font-bold text-white tabular-nums">{trainingWeeks}</p>
+        <div className="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-900/70">
+          <Clock className="h-4 w-4 text-accent mb-1" />
+          <p className="text-lg font-bold text-zinc-900 dark:text-white tabular-nums">{trainingWeeks}</p>
           <p className="text-[10px] text-zinc-500 uppercase">Trainingswochen</p>
         </div>
-        <div className="rounded-xl bg-zinc-900/70 p-3">
-          <Flame className="h-4 w-4 text-orange-400 mb-1" />
-          <p className="text-lg font-bold text-white tabular-nums">{Math.round(totalMin / 60)}h</p>
+        <div className="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-900/70">
+          <Flame className="h-4 w-4 text-orange-500 mb-1" />
+          <p className="text-lg font-bold text-zinc-900 dark:text-white tabular-nums">{Math.round(totalMin / 60)}h</p>
           <p className="text-[10px] text-zinc-500 uppercase">Gesamtzeit</p>
         </div>
-        <div className="rounded-xl bg-zinc-900/70 p-3">
-          <TrendingUp className="h-4 w-4 text-emerald-400 mb-1" />
-          <p className="text-lg font-bold text-white tabular-nums">
+        <div className="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-900/70">
+          <TrendingUp className="h-4 w-4 text-emerald-500 mb-1" />
+          <p className="text-lg font-bold text-zinc-900 dark:text-white tabular-nums">
             {streaks.training?.currentDays ?? 0}
           </p>
           <p className="text-[10px] text-zinc-500 uppercase">Training-Streak</p>
         </div>
-        <div className="rounded-xl bg-zinc-900/70 p-3">
-          <Trophy className="h-4 w-4 text-violet-400 mb-1" />
-          <p className="text-lg font-bold text-white tabular-nums">{personalRecords.length}</p>
+        <div className="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-900/70">
+          <Trophy className="h-4 w-4 text-violet-500 mb-1" />
+          <p className="text-lg font-bold text-zinc-900 dark:text-white tabular-nums">{personalRecords.length}</p>
           <p className="text-[10px] text-zinc-500 uppercase">Rekorde</p>
         </div>
       </div>
@@ -105,7 +105,7 @@ export const ProgressStatsSection = memo(function ProgressStatsSection({
           <ul className="space-y-1">
             {topExercises.map((e) => (
               <li key={e.name} className="flex justify-between text-sm">
-                <span className="text-zinc-300">{e.name}</span>
+                <span className="text-zinc-700 dark:text-zinc-300">{e.name}</span>
                 <span className="text-zinc-500 tabular-nums">{e.count}×</span>
               </li>
             ))}

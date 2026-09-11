@@ -38,7 +38,7 @@ function Toggle({
       disabled={disabled}
       onClick={onToggle}
       className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-        on ? "bg-accent" : "bg-zinc-700"
+        on ? "bg-accent" : "bg-zinc-300 dark:bg-zinc-700"
       } disabled:opacity-50`}
     >
       <span
@@ -98,17 +98,17 @@ export function SettingsPrivacyPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-white">Datenschutz</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Datenschutz</h2>
         <p className="text-sm text-zinc-500 mt-1">
           Steuere, welche Gesundheitsdaten synchronisiert und in der App genutzt werden
           dürfen.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 divide-y divide-white/[0.06]">
+      <div className="rounded-2xl border border-zinc-200/90 bg-white divide-y divide-zinc-100 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:divide-white/[0.06] dark:shadow-none">
         {LABELS.map(({ key, label }) => (
           <div key={key} className="flex items-center justify-between gap-3 px-4 py-3.5">
-            <Label className="text-sm text-zinc-200">{label}</Label>
+            <Label className="text-sm text-zinc-800 dark:text-zinc-200">{label}</Label>
             <Toggle
               on={prefs ? prefs[key] !== false : true}
               disabled={!prefs || saving}
@@ -125,8 +125,8 @@ export function SettingsPrivacyPanel() {
         Zustimmung werden die jeweiligen Kategorien nicht importiert.
       </p>
 
-      <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 p-4 space-y-2">
-        <p className="text-sm font-medium text-white">Account-Daten</p>
+      <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 space-y-2 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:shadow-none">
+        <p className="text-sm font-medium text-zinc-900 dark:text-white">Account-Daten</p>
         <p className="text-xs text-zinc-500 leading-relaxed">
           Name, Körperdaten und Ziele bearbeiten. Konto löschen findest du weiter unten.
         </p>

@@ -89,7 +89,7 @@ export function TrophyRoom({ achievements }: { achievements: AchievementProgress
           placeholder="Erfolg suchen…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-10 bg-zinc-900/80 border-zinc-700"
+          className="pl-10 bg-white border-zinc-200 dark:bg-zinc-900/80 dark:border-zinc-700"
         />
       </div>
 
@@ -102,8 +102,8 @@ export function TrophyRoom({ achievements }: { achievements: AchievementProgress
             className={cn(
               "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
               tierFilter === t
-                ? "border-cyan-500/50 bg-cyan-500/15 text-cyan-200"
-                : "border-zinc-700 text-zinc-400"
+                ? "border-accent/40 bg-accent/10 text-accent dark:border-cyan-500/50 dark:bg-cyan-500/15 dark:text-cyan-200"
+                : "border-zinc-200 bg-white text-zinc-600 dark:border-zinc-700 dark:bg-transparent dark:text-zinc-400"
             )}
           >
             {t === "all" ? "Alle Stufen" : BADGE_TIER_LABELS[t]}
@@ -143,8 +143,8 @@ export function TrophyRoom({ achievements }: { achievements: AchievementProgress
           className={cn(
             "rounded-full px-3 py-1 text-xs border",
             categoryFilter === "all"
-              ? "border-white/30 text-white"
-              : "border-zinc-700 text-zinc-500"
+              ? "border-accent/40 bg-accent/10 text-accent dark:border-white/30 dark:text-white dark:bg-transparent"
+              : "border-zinc-200 bg-white text-zinc-600 dark:border-zinc-700 dark:bg-transparent dark:text-zinc-500"
           )}
         >
           Alle Kategorien
@@ -157,8 +157,8 @@ export function TrophyRoom({ achievements }: { achievements: AchievementProgress
             className={cn(
               "rounded-full px-3 py-1 text-xs border",
               categoryFilter === c.id
-                ? "border-white/30 text-white"
-                : "border-zinc-700 text-zinc-500"
+                ? "border-accent/40 bg-accent/10 text-accent dark:border-white/30 dark:text-white dark:bg-transparent"
+                : "border-zinc-200 bg-white text-zinc-600 dark:border-zinc-700 dark:bg-transparent dark:text-zinc-500"
             )}
           >
             {c.icon} {c.label}
@@ -172,7 +172,7 @@ export function TrophyRoom({ achievements }: { achievements: AchievementProgress
           onClick={() => setView("tiers")}
           className={cn(
             "text-xs px-3 py-1.5 rounded-lg border",
-            view === "tiers" ? "border-cyan-500/40 text-cyan-200" : "border-zinc-700 text-zinc-500"
+            view === "tiers" ? "border-accent/40 text-accent dark:border-cyan-500/40 dark:text-cyan-200" : "border-zinc-200 text-zinc-600 dark:border-zinc-700 dark:text-zinc-500"
           )}
         >
           Stufen-Ansicht
@@ -182,7 +182,7 @@ export function TrophyRoom({ achievements }: { achievements: AchievementProgress
           onClick={() => setView("list")}
           className={cn(
             "text-xs px-3 py-1.5 rounded-lg border",
-            view === "list" ? "border-cyan-500/40 text-cyan-200" : "border-zinc-700 text-zinc-500"
+            view === "list" ? "border-accent/40 text-accent dark:border-cyan-500/40 dark:text-cyan-200" : "border-zinc-200 text-zinc-600 dark:border-zinc-700 dark:text-zinc-500"
           )}
         >
           Listen-Ansicht
@@ -207,7 +207,7 @@ export function TrophyRoom({ achievements }: { achievements: AchievementProgress
             return (
               <section key={tier} className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-white">
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
                     {TIER_SECTION_LABELS[tier]}
                   </h3>
                   <span className="text-xs text-zinc-500">
@@ -227,7 +227,7 @@ export function TrophyRoom({ achievements }: { achievements: AchievementProgress
                         title={a.earnedAt ? `Freigeschaltet: ${a.earnedAt}` : undefined}
                       >
                         <span className="text-2xl block mb-1">{a.icon}</span>
-                        <p className="text-xs font-semibold text-white line-clamp-2">{a.name}</p>
+                        <p className="text-xs font-semibold text-zinc-900 line-clamp-2 dark:text-white">{a.name}</p>
                         <p className="text-[10px] text-cyan-400/90 mt-1">+{a.xpReward} XP</p>
                         {a.earnedAt && (
                           <p className="text-[9px] text-zinc-500 mt-1">
@@ -244,11 +244,11 @@ export function TrophyRoom({ achievements }: { achievements: AchievementProgress
                       <div
                         key={a.id}
                         title={`${a.name} — ${a.progressPercent}%`}
-                        className="rounded-xl border border-white/5 bg-zinc-900/80 p-2 text-center grayscale opacity-60"
+                        className="rounded-xl border border-zinc-200 bg-zinc-50 p-2 text-center grayscale opacity-60 dark:border-white/5 dark:bg-zinc-900/80"
                       >
                         <span className="text-lg">{a.icon}</span>
                         <p className="text-[9px] text-zinc-500 line-clamp-2 mt-1">{a.name}</p>
-                        <div className="h-1 rounded-full bg-zinc-800 mt-1">
+                        <div className="h-1 rounded-full bg-zinc-200 mt-1 dark:bg-zinc-800">
                           <div
                             className="h-full rounded-full bg-violet-500/60"
                             style={{ width: `${a.progressPercent}%` }}

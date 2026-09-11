@@ -22,7 +22,9 @@ export function AchievementRow({ a }: { a: AchievementProgress }) {
     <div
       className={cn(
         "rounded-xl border p-3 transition-colors",
-        a.earned ? "border-cyan-500/30 bg-cyan-500/5" : "border-white/10 bg-white/[0.03]"
+        a.earned
+          ? "border-accent/30 bg-accent/5 dark:border-cyan-500/30 dark:bg-cyan-500/5"
+          : "border-zinc-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:shadow-none"
       )}
     >
       <div className="flex gap-3">
@@ -43,7 +45,7 @@ export function AchievementRow({ a }: { a: AchievementProgress }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="font-medium text-white text-sm uppercase tracking-wide">
+              <p className="font-medium text-zinc-900 text-sm uppercase tracking-wide dark:text-white">
                 {a.name}
               </p>
               <p className="text-xs text-zinc-500 line-clamp-2 mt-0.5">{a.description}</p>
@@ -59,21 +61,23 @@ export function AchievementRow({ a }: { a: AchievementProgress }) {
               </span>
               <span>{a.progressPercent}%</span>
             </div>
-            <div className="h-1.5 rounded-full bg-zinc-800">
+            <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800">
               <div
-                className="h-full rounded-full bg-cyan-500/80 transition-[width] duration-200"
+                className="h-full rounded-full bg-accent/80 dark:bg-cyan-500/80 transition-[width] duration-200"
                 style={{ width: `${Math.min(100, a.progressPercent)}%` }}
               />
             </div>
           </div>
           {a.earned ? (
-            <p className="text-xs text-cyan-400/90 mt-1.5">
+            <p className="text-xs text-accent mt-1.5 dark:text-cyan-400/90">
               ✓ Freigeschaltet
               {unlockedLabel ? ` · ${unlockedLabel}` : ""}
               {` · +${a.xpReward} XP`}
             </p>
           ) : (
-            <p className="text-[11px] text-zinc-600 mt-1.5">Noch nicht erreicht</p>
+            <p className="text-[11px] text-zinc-500 mt-1.5 dark:text-zinc-600">
+              Noch nicht erreicht
+            </p>
           )}
         </div>
       </div>

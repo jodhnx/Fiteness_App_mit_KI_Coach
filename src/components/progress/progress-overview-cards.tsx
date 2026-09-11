@@ -64,16 +64,16 @@ export const ProgressOverviewCards = memo(function ProgressOverviewCards({
               key={c.key}
               href={c.href}
               prefetch
-              className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 min-h-11 active:bg-white/[0.06]"
+              className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 min-h-11 active:bg-zinc-100 dark:border-white/[0.06] dark:bg-white/[0.03] dark:active:bg-white/[0.06]"
             >
-              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-zinc-400">
+              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-zinc-500">
                 <Icon className={`h-3.5 w-3.5 ${c.tint}`} aria-hidden />
                 {c.label}
               </div>
-              <p className="text-xl font-bold text-white tabular-nums mt-1.5 leading-tight">
+              <p className="text-xl font-bold text-zinc-900 dark:text-white tabular-nums mt-1.5 leading-tight">
                 {c.value}
               </p>
-              <p className="text-[11px] text-zinc-400 mt-0.5 truncate">{c.sub}</p>
+              <p className="text-[11px] text-zinc-500 mt-0.5 truncate">{c.sub}</p>
             </Link>
           );
         })}

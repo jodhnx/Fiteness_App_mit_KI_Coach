@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f6f8;
+  --background: #f4f7fa;
   --foreground: #0f172a;
   --accent: #3b82f6;
   --accent-hover: #2563eb;
@@ -113,7 +113,7 @@ html[data-theme="gray"] {
 html[data-color-mode="light"],
 html.light {
   color-scheme: light;
-  --background: #f4f6f8;
+  --background: #f4f7fa;
   --foreground: #0f172a;
   --card: #ffffff;
   --border: rgba(15, 23, 42, 0.08);
@@ -129,7 +129,7 @@ html.light .gradient-mesh {
   background:
     radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--accent) 12%, transparent), transparent),
     radial-gradient(ellipse 50% 35% at 100% 0%, rgba(59, 130, 246, 0.06), transparent),
-    #f4f6f8;
+    #f4f7fa;
 }
 html[data-color-mode="light"] .glass,
 html.light .glass {
@@ -141,7 +141,8 @@ html[data-color-mode="light"] .card-premium,
 html.light .card-premium {
   background: #ffffff;
   border-color: rgba(15, 23, 42, 0.08);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  border-radius: 1rem;
 }
 
 /* Light mode: lift hard-coded dark surfaces used across the app shell */
@@ -512,7 +513,8 @@ body[data-foodAddPopup] nav[aria-label="Hauptnavigation"] {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: #09090b;
+  background: #f4f7fa;
+  color: #0f172a;
   display: flex;
   flex-direction: column;
   padding-top: env(safe-area-inset-top, 0px);
@@ -534,8 +536,9 @@ body[data-foodAddPopup] nav[aria-label="Hauptnavigation"] {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   flex-shrink: 0;
+  background: #ffffff;
 }
 
 .food-add-popup-input {
@@ -544,19 +547,20 @@ body[data-foodAddPopup] nav[aria-label="Hauptnavigation"] {
   height: 52px;
   padding: 0 1rem;
   font-size: 1rem;
-  color: #fafafa;
-  background: rgba(24, 24, 27, 0.9);
-  border: 1px solid rgba(63, 63, 70, 0.8);
+  color: #0f172a;
+  background: #eef3f7;
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 1rem;
   outline: none;
 }
 
 .food-add-popup-input:focus {
-  border-color: rgba(34, 211, 238, 0.5);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: #ffffff;
 }
 
 .food-add-popup-input::placeholder {
-  color: rgb(113 113 122);
+  color: rgb(100 116 139);
 }
 
 .food-add-popup-icon-btn {
@@ -568,12 +572,40 @@ body[data-foodAddPopup] nav[aria-label="Hauptnavigation"] {
   height: 2.75rem;
   min-height: 2.75rem;
   border-radius: 0.75rem;
-  color: rgb(161 161 170);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgb(71 85 105);
+  background: #eef3f7;
+  border: 1px solid rgba(15, 23, 42, 0.08);
   flex-shrink: 0;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+html.dark .food-add-popup-root,
+html[data-color-mode="dark"] .food-add-popup-root {
+  background: #09090b;
+  color: #fafafa;
+}
+html.dark .food-add-popup-search,
+html[data-color-mode="dark"] .food-add-popup-search {
+  background: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+html.dark .food-add-popup-input,
+html[data-color-mode="dark"] .food-add-popup-input {
+  color: #fafafa;
+  background: rgba(24, 24, 27, 0.9);
+  border-color: rgba(63, 63, 70, 0.8);
+}
+html.dark .food-add-popup-input:focus,
+html[data-color-mode="dark"] .food-add-popup-input:focus {
+  border-color: rgba(34, 211, 238, 0.5);
+  background: rgba(24, 24, 27, 0.9);
+}
+html.dark .food-add-popup-icon-btn,
+html[data-color-mode="dark"] .food-add-popup-icon-btn {
+  color: rgb(161 161 170);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .food-add-popup-scroll {
@@ -680,6 +712,15 @@ body[data-foodAddPopup] nav[aria-label="Hauptnavigation"] {
 }
 
 .card-premium {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+html.dark .card-premium,
+html[data-color-mode="dark"] .card-premium {
   background: rgba(24, 24, 27, 0.72);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -688,7 +729,6 @@ body[data-foodAddPopup] nav[aria-label="Hauptnavigation"] {
   box-shadow:
     0 4px 24px -8px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .glass-panel {
@@ -1241,17 +1281,21 @@ html.light .bottom-nav-v4-tab:not(.bottom-nav-v4-tab--active) {
   line-height: 1.1;
 }
 
+html.light .bottom-nav-ios-tab--active .bottom-nav-ios-label {
+  color: var(--accent);
+}
+
 html[data-color-mode="light"] .bottom-nav-ios-bar,
 html.light .bottom-nav-ios-bar {
-  background: color-mix(in srgb, rgb(248 250 252) 78%, transparent);
+  background: color-mix(in srgb, rgb(255 255 255) 88%, transparent);
   border-color: color-mix(in srgb, rgb(15 23 42) 8%, transparent);
-  box-shadow: 0 4px 24px rgb(15 23 42 / 8%);
+  box-shadow: 0 4px 24px rgb(15 23 42 / 10%);
 }
 
 html[data-color-mode="light"] .bottom-nav-ios-indicator,
 html.light .bottom-nav-ios-indicator {
   box-shadow:
-    0 4px 14px color-mix(in srgb, var(--accent, #22d3ee) 24%, transparent),
+    0 4px 14px color-mix(in srgb, var(--accent, #3b82f6) 24%, transparent),
     0 0 0 1.5px color-mix(in srgb, rgb(248 250 252) 80%, transparent);
 }
 

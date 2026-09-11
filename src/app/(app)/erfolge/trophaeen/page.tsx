@@ -39,14 +39,14 @@ export default function TrophaeenPage() {
     <div className="space-y-6 max-w-2xl mx-auto pb-28">
       <Link
         href="/erfolge"
-        className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white"
+        className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
       >
         <ArrowLeft className="h-4 w-4" />
         Zurück zu Erfolge
       </Link>
 
       <div>
-        <h1 className="text-2xl font-bold text-white">Trophäenraum</h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Trophäenraum</h1>
         <p className="text-sm text-zinc-500 mt-1">
           {data.unlockedCount} von {data.achievements.length} Erfolgen freigeschaltet
         </p>

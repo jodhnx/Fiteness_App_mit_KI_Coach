@@ -177,11 +177,11 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-2xl border border-zinc-800/90 bg-zinc-900/70 overflow-hidden mb-3",
-        isDragging && "opacity-90 shadow-lg ring-1 ring-white/15"
+        "rounded-2xl border border-zinc-200 bg-white overflow-hidden mb-3 shadow-sm dark:border-zinc-800/90 dark:bg-zinc-900/70 dark:shadow-none",
+        isDragging && "opacity-90 shadow-lg ring-1 ring-accent/20 dark:ring-white/15"
       )}
     >
-      <div className="flex items-center gap-2 px-3 py-3 border-b border-zinc-800/80">
+      <div className="flex items-center gap-2 px-3 py-3 border-b border-zinc-100 dark:border-zinc-800/80">
         <button
           type="button"
           className="touch-none text-zinc-500 p-1 -ml-1"
@@ -192,7 +192,9 @@ export const PlanExerciseSetsCard = memo(function PlanExerciseSetsCard({
           <GripVertical className="h-5 w-5" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-base font-semibold text-white truncate">{name}</p>
+          <p className="text-base font-semibold text-zinc-900 truncate dark:text-white">
+            {name}
+          </p>
           <p className="text-xs text-zinc-500">{muscleGroup}</p>
         </div>
         <Button type="button" variant="ghost" size="icon" onClick={onReplace} title="Ersetzen">

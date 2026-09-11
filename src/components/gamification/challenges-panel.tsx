@@ -9,13 +9,13 @@ import { PERIOD_LABELS } from "@/components/gamification/tier-styles";
 import { Trophy } from "lucide-react";
 
 const TIER_STYLE: Record<string, string> = {
-  none: "border-zinc-700",
-  bronze: "border-amber-700/50 bg-amber-950/20",
-  silver: "border-zinc-400/40 bg-zinc-800/40",
-  gold: "border-yellow-500/50 bg-yellow-950/25",
-  platinum: "border-slate-300/40 bg-slate-800/30",
-  diamond: "border-cyan-400/40 bg-cyan-950/20",
-  legendary: "border-violet-400/50 bg-violet-950/25",
+  none: "border-zinc-200 bg-white dark:border-zinc-700 dark:bg-transparent",
+  bronze: "border-amber-300 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-950/20",
+  silver: "border-zinc-300 bg-zinc-50 dark:border-zinc-400/40 dark:bg-zinc-800/40",
+  gold: "border-yellow-300 bg-yellow-50 dark:border-yellow-500/50 dark:bg-yellow-950/25",
+  platinum: "border-slate-300 bg-slate-50 dark:border-slate-300/40 dark:bg-slate-800/30",
+  diamond: "border-sky-300 bg-sky-50 dark:border-cyan-400/40 dark:bg-cyan-950/20",
+  legendary: "border-violet-300 bg-violet-50 dark:border-violet-400/50 dark:bg-violet-950/25",
 };
 
 type Props = {
@@ -29,8 +29,8 @@ export function ChallengesPanel({ challenges, hideHeader }: Props) {
     <div className={hideHeader ? "space-y-2" : "card-premium p-4 space-y-3"}>
       {!hideHeader && (
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-white flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-amber-400" />
+          <p className="text-sm font-semibold text-zinc-900 flex items-center gap-2 dark:text-white">
+            <Trophy className="h-4 w-4 text-amber-500" />
             Challenges
           </p>
           <Link href="/erfolge" className="text-xs text-accent hover:underline">
@@ -49,7 +49,7 @@ export function ChallengesPanel({ challenges, hideHeader }: Props) {
           return (
             <div key={c.id} className={cn("rounded-xl border p-3", TIER_STYLE[c.tier] ?? TIER_STYLE.none)}>
               <div className="flex justify-between gap-2">
-                <p className="text-sm font-medium text-white">{c.title}</p>
+                <p className="text-sm font-medium text-zinc-900 dark:text-white">{c.title}</p>
                 <div className="text-right shrink-0">
                   {tierLabel && (
                     <span className="text-[10px] uppercase text-zinc-400 block">{tierLabel}</span>
@@ -60,7 +60,7 @@ export function ChallengesPanel({ challenges, hideHeader }: Props) {
                 </div>
               </div>
               <p className="text-[11px] text-zinc-500 mt-0.5">{c.description}</p>
-              <div className="h-1.5 rounded-full bg-zinc-800 mt-2 overflow-hidden">
+              <div className="h-1.5 rounded-full bg-zinc-200 mt-2 overflow-hidden dark:bg-zinc-800">
                 <div
                   className="h-full bg-accent rounded-full transition-[width] duration-200"
                   style={{ width: `${pct}%` }}

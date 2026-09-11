@@ -27,15 +27,15 @@ export const WorkoutCard = memo(function WorkoutCard({
   }, [onDelete, session.id, session.name]);
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
+    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 dark:shadow-none">
       <div className="flex items-start gap-2">
         <Calendar className="h-4 w-4 text-zinc-500 shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">
+          <p className="text-sm font-semibold text-zinc-900 dark:text-white">
             {dateLabel} — {session.name}
           </p>
           {session.dayName && (
-            <p className="text-xs text-zinc-400 mt-0.5 flex items-center gap-1">
+            <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1 dark:text-zinc-400">
               <Dumbbell className="h-3 w-3" />
               {session.dayName}
             </p>
@@ -57,7 +57,7 @@ export const WorkoutCard = memo(function WorkoutCard({
         <Button
           type="button"
           variant="ghost"
-          className="h-10 px-3 rounded-xl text-red-400 hover:text-red-300"
+          className="h-10 px-3 rounded-xl text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
           disabled={deleting}
           onClick={handleDelete}
         >

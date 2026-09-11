@@ -86,10 +86,10 @@ export function GamificationUnlockToast() {
       )}
       role="status"
     >
-      <div className="rounded-2xl border border-cyan-500/40 bg-zinc-900/95 backdrop-blur-xl shadow-2xl shadow-cyan-500/10 p-4">
+      <div className="rounded-2xl border border-accent/30 bg-white/95 backdrop-blur-xl shadow-2xl shadow-accent/10 p-4 dark:border-cyan-500/40 dark:bg-zinc-900/95 dark:shadow-cyan-500/10">
         <button
           type="button"
-          className="absolute top-2 right-2 text-zinc-500 hover:text-white"
+          className="absolute top-2 right-2 text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-white"
           onClick={() => setVisible(false)}
           aria-label="Schließen"
         >
@@ -108,12 +108,12 @@ export function GamificationUnlockToast() {
             {current.icon}
           </div>
           <div>
-            <p className="text-xs text-cyan-400 flex items-center gap-1">
+            <p className="text-xs text-accent flex items-center gap-1 dark:text-cyan-400">
               <Sparkles className="h-3 w-3" />
               {current.kind === "level" ? "Levelaufstieg!" : "Neuer Erfolg"}
             </p>
-            <p className="font-bold text-white">{current.name}</p>
-            <p className="text-xs text-zinc-400">
+            <p className="font-bold text-zinc-900 dark:text-white">{current.name}</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {current.kind === "level"
                 ? "Weiter so — neue Belohnungen warten!"
                 : `${BADGE_TIER_LABELS[current.tier as BadgeTier] ?? current.tier} · +${current.xpReward} XP`}

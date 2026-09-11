@@ -26,10 +26,10 @@ export const HomeCoachBriefing = memo(function HomeCoachBriefing({
   const hasPlan = Boolean(dailyActionPlan?.primary);
 
   return (
-    <div className="rounded-[1.25rem] border border-white/[0.07] bg-zinc-900/40 overflow-hidden">
+    <div className="rounded-2xl border border-zinc-200/90 bg-white overflow-hidden shadow-sm dark:border-white/[0.07] dark:bg-zinc-900/40 dark:shadow-none">
       <div className="px-4 pt-4 pb-2 flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-white">Heute wichtig</p>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-white">Heute wichtig</p>
           <p className="text-[11px] text-zinc-500">Nächster Schritt</p>
         </div>
       </div>
@@ -47,7 +47,7 @@ export const HomeCoachBriefing = memo(function HomeCoachBriefing({
 
       <Link
         href="/coach"
-        className="flex min-h-11 items-center justify-between px-4 py-2.5 border-t border-white/[0.05] text-xs font-medium text-zinc-500 hover:text-white transition-colors"
+        className="flex min-h-11 items-center justify-between px-4 py-2.5 border-t border-zinc-100 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:border-white/[0.05] dark:hover:text-white transition-colors"
       >
         <span>KI Coach öffnen</span>
         <ChevronRight className="h-3.5 w-3.5" />

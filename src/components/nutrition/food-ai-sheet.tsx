@@ -74,7 +74,7 @@ function MacroRow({
       <span
         className={cn(
           "text-sm font-semibold tabular-nums",
-          accent ? "text-accent" : "text-white"
+          accent ? "text-accent" : "text-zinc-900 dark:text-white"
         )}
       >
         {value.toLocaleString("de-DE", { maximumFractionDigits: 1 })} {unit}
@@ -228,13 +228,15 @@ function ItemEditor({
   };
 
   const inputCls =
-    "min-h-11 w-full rounded-xl bg-zinc-800 border border-zinc-700 text-sm text-white px-3 py-2 tabular-nums focus:outline-none focus:ring-1 focus:ring-accent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+    "min-h-11 w-full rounded-xl bg-white border border-zinc-200 text-sm text-zinc-900 px-3 py-2 tabular-nums shadow-sm focus:outline-none focus:ring-1 focus:ring-accent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:shadow-none";
 
   return (
-    <div className="py-3 border-b border-zinc-800/70 last:border-0 space-y-2">
+    <div className="py-3 border-b border-zinc-200/80 last:border-0 space-y-2 dark:border-zinc-800/70">
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white truncate">{item.name}</p>
+          <p className="text-sm font-semibold text-zinc-900 truncate dark:text-white">
+            {item.name}
+          </p>
           <p className="text-[11px] text-zinc-500 mt-0.5">
             {item.estimatedGrams} g · {item.calories} kcal · {item.proteinG}g P ·{" "}
             {item.carbsG}g C · {item.fatG}g F
@@ -258,7 +260,7 @@ function ItemEditor({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="min-h-11 min-w-11 rounded-xl text-zinc-400 hover:text-white inline-flex items-center justify-center"
+          className="min-h-11 min-w-11 rounded-xl text-zinc-500 hover:text-zinc-900 inline-flex items-center justify-center dark:text-zinc-400 dark:hover:text-white"
           aria-label="Bearbeiten"
         >
           <Pencil className="h-4 w-4" />
@@ -740,19 +742,21 @@ export const FoodAISheet = memo(function FoodAISheet({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex flex-col bg-zinc-950"
+      className="fixed inset-0 z-[70] flex flex-col bg-[#f4f7fa] dark:bg-zinc-950"
       role="dialog"
       aria-modal="true"
       aria-label="Food AI Fotoanalyse"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
-      <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-zinc-950/95 backdrop-blur border-b border-white/[0.06]">
+      <div className="shrink-0 flex items-center justify-between px-4 py-3 bg-white/95 backdrop-blur border-b border-zinc-200 dark:bg-zinc-950/95 dark:border-white/[0.06]">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-xl bg-cyan-500/15 border border-white/10 flex items-center justify-center">
-            <Camera className="h-4 w-4 text-cyan-400" />
+          <div className="h-8 w-8 rounded-xl bg-accent/12 border border-accent/20 flex items-center justify-center dark:bg-cyan-500/15 dark:border-white/10">
+            <Camera className="h-4 w-4 text-accent dark:text-cyan-400" />
           </div>
           <div>
-            <p className="text-sm font-bold text-white leading-tight">Food AI</p>
+            <p className="text-sm font-bold text-zinc-900 leading-tight dark:text-white">
+              Food AI
+            </p>
             <p className="text-[10px] text-zinc-500 leading-tight">
               Essen analysieren
             </p>
@@ -761,7 +765,7 @@ export const FoodAISheet = memo(function FoodAISheet({
         <button
           type="button"
           onClick={handleClose}
-          className="h-11 w-11 rounded-2xl flex items-center justify-center bg-zinc-800/80 border border-zinc-700/50 text-zinc-300 active:bg-zinc-700 transition-colors"
+          className="h-11 w-11 rounded-2xl flex items-center justify-center bg-zinc-100 border border-zinc-200 text-zinc-600 active:bg-zinc-200 transition-colors dark:bg-zinc-800/80 dark:border-zinc-700/50 dark:text-zinc-300 dark:active:bg-zinc-700"
           aria-label="Schließen"
         >
           <X className="h-5 w-5" />
@@ -789,14 +793,14 @@ export const FoodAISheet = memo(function FoodAISheet({
 
           {phase === "idle" && (
             <div className="flex flex-col items-center gap-5 pt-6">
-              <div className="h-20 w-20 rounded-3xl bg-cyan-500/15 border border-white/10 flex items-center justify-center">
-                <Camera className="h-10 w-10 text-cyan-400" />
+              <div className="h-20 w-20 rounded-3xl bg-accent/12 border border-accent/20 flex items-center justify-center dark:bg-cyan-500/15 dark:border-white/10">
+                <Camera className="h-10 w-10 text-accent dark:text-cyan-400" />
               </div>
               <div className="text-center space-y-1.5">
-                <h2 className="text-xl font-bold text-white">
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
                   Essen fotografieren
                 </h2>
-                <p className="text-sm text-zinc-400 max-w-xs leading-relaxed">
+                <p className="text-sm text-zinc-500 max-w-xs leading-relaxed dark:text-zinc-400">
                   Foto aufnehmen oder aus der Galerie wählen — danach analysieren
                 </p>
               </div>
@@ -804,7 +808,7 @@ export const FoodAISheet = memo(function FoodAISheet({
               <div className="flex flex-col gap-3 w-full">
                 <button
                   type="button"
-                  className="w-full min-h-11 h-12 rounded-2xl bg-accent text-black font-semibold text-base flex items-center justify-center gap-2.5 active:opacity-90 transition-opacity"
+                  className="w-full min-h-11 h-12 rounded-2xl bg-accent text-white font-semibold text-base flex items-center justify-center gap-2.5 active:opacity-90 transition-opacity"
                   onClick={() => cameraRef.current?.click()}
                 >
                   <Camera className="h-5 w-5" />
@@ -812,10 +816,10 @@ export const FoodAISheet = memo(function FoodAISheet({
                 </button>
                 <button
                   type="button"
-                  className="w-full min-h-11 h-12 rounded-2xl bg-zinc-800 border border-zinc-700 text-white font-medium text-base flex items-center justify-center gap-2.5 active:opacity-80 transition-opacity"
+                  className="w-full min-h-11 h-12 rounded-2xl bg-white border border-zinc-200 text-zinc-800 font-medium text-base flex items-center justify-center gap-2.5 shadow-sm active:bg-zinc-50 transition-colors dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:shadow-none dark:active:opacity-80"
                   onClick={() => galleryRef.current?.click()}
                 >
-                  <ImageIcon className="h-5 w-5 text-zinc-400" />
+                  <ImageIcon className="h-5 w-5 text-zinc-500 dark:text-zinc-400" />
                   Aus Galerie / Datei
                 </button>
               </div>
@@ -828,17 +832,17 @@ export const FoodAISheet = memo(function FoodAISheet({
 
           {phase === "preview" && preview && (
             <div className="flex flex-col gap-4">
-              <div className="w-full rounded-2xl overflow-hidden border border-white/10 bg-zinc-900">
+              <div className="w-full rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-100 dark:border-white/10 dark:bg-zinc-900">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={preview}
                   alt="Ausgewähltes Foto"
-                  className="w-full max-h-[42vh] object-contain bg-black"
+                  className="w-full max-h-[42vh] object-contain bg-zinc-900"
                 />
               </div>
               <button
                 type="button"
-                className="w-full min-h-11 h-12 rounded-2xl bg-accent text-black font-semibold text-base flex items-center justify-center gap-2"
+                className="w-full min-h-11 h-12 rounded-2xl bg-accent text-white font-semibold text-base flex items-center justify-center gap-2"
                 onClick={() => void runAnalyze()}
               >
                 Analyse starten
@@ -846,14 +850,14 @@ export const FoodAISheet = memo(function FoodAISheet({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  className="min-h-11 rounded-2xl bg-zinc-800 border border-zinc-700 text-white text-sm font-medium"
+                  className="min-h-11 rounded-2xl bg-white border border-zinc-200 text-zinc-800 text-sm font-medium shadow-sm dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:shadow-none"
                   onClick={() => galleryRef.current?.click()}
                 >
                   Foto ändern
                 </button>
                 <button
                   type="button"
-                  className="min-h-11 rounded-2xl bg-zinc-800 border border-zinc-700 text-zinc-300 text-sm font-medium"
+                  className="min-h-11 rounded-2xl bg-white border border-zinc-200 text-zinc-600 text-sm font-medium shadow-sm dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300 dark:shadow-none"
                   onClick={reset}
                 >
                   Foto entfernen
@@ -876,7 +880,7 @@ export const FoodAISheet = memo(function FoodAISheet({
               )}
               <div className="flex flex-col items-center gap-3 py-4">
                 <Loader2 className="h-10 w-10 text-accent animate-spin" />
-                <p className="text-base font-semibold text-white">
+                <p className="text-base font-semibold text-zinc-900 dark:text-white">
                   {phase === "preparing"
                     ? "Bild wird vorbereitet …"
                     : "Lebensmittel werden analysiert …"}
@@ -903,8 +907,10 @@ export const FoodAISheet = memo(function FoodAISheet({
               <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4 w-full flex gap-3">
                 <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-white">{errorTitle}</p>
-                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                    {errorTitle}
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1 leading-relaxed dark:text-zinc-400">
                     {errorMsg}
                   </p>
                 </div>
@@ -991,7 +997,7 @@ export const FoodAISheet = memo(function FoodAISheet({
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 px-4 py-3">
+              <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:shadow-none">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
                     Erkannte Lebensmittel
@@ -1003,7 +1009,7 @@ export const FoodAISheet = memo(function FoodAISheet({
                       setResult(null);
                       setEditedItems([]);
                     }}
-                    className="min-h-11 px-2 text-[11px] text-zinc-500 hover:text-white inline-flex items-center gap-0.5"
+                    className="min-h-11 px-2 text-[11px] text-zinc-500 hover:text-zinc-900 inline-flex items-center gap-0.5 dark:hover:text-white"
                     disabled={phase === "tracking"}
                   >
                     <RefreshCw className="h-3 w-3" />
@@ -1071,7 +1077,7 @@ export const FoodAISheet = memo(function FoodAISheet({
                         "min-h-11 rounded-xl border py-2.5 text-sm font-medium transition-colors flex items-center justify-center",
                         selectedMeal === opt.value
                           ? "border-accent bg-accent/10 text-accent"
-                          : "border-zinc-700 bg-zinc-900/50 text-zinc-400 active:border-zinc-600"
+                          : "border-zinc-200 bg-white text-zinc-600 shadow-sm active:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-400 dark:shadow-none dark:active:border-zinc-600"
                       )}
                     >
                       {opt.label}

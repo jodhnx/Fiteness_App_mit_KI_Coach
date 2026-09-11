@@ -15,7 +15,7 @@ type Props = {
 };
 
 const BTN =
-  "flex min-h-11 flex-col items-center justify-center gap-1 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-1 py-2 text-[11px] font-semibold text-zinc-300 active:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+  "flex min-h-11 flex-col items-center justify-center gap-1 rounded-2xl border border-zinc-200/90 bg-white px-1 py-2 text-[11px] font-semibold text-zinc-700 shadow-sm active:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 dark:border-white/[0.07] dark:bg-white/[0.03] dark:text-zinc-300 dark:shadow-none dark:active:bg-white/[0.07]";
 
 function IconPlusFood() {
   return (

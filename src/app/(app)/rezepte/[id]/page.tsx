@@ -146,7 +146,7 @@ export default function RezeptDetailPage() {
         <button
           type="button"
           onClick={() => void toggleFavorite()}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900/80"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900/80 dark:shadow-none"
           aria-label="Favorisieren"
         >
           <Heart
@@ -158,7 +158,7 @@ export default function RezeptDetailPage() {
         </button>
       </div>
 
-      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-3xl border border-white/[0.08] bg-zinc-800">
+      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 dark:border-white/[0.08] dark:bg-zinc-800">
         {recipe.imageUrl ? (
           <Image
             src={recipe.imageUrl}
@@ -180,17 +180,17 @@ export default function RezeptDetailPage() {
             </span>
           </div>
         )}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-transparent to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-900/50 via-transparent to-transparent" />
       </div>
 
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
           {MEAL_TYPE_LABELS[recipe.mealSlot]}
         </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-white">
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
           {recipe.name}
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+        <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
           {recipe.description}
         </p>
       </div>
@@ -204,43 +204,49 @@ export default function RezeptDetailPage() {
         ].map((m) => (
           <div
             key={m.l}
-            className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 px-2 py-3 text-center"
+            className="rounded-2xl border border-zinc-200 bg-white px-2 py-3 text-center shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:shadow-none"
           >
             <p className="text-[10px] uppercase tracking-wide text-zinc-500">{m.l}</p>
-            <p className="mt-1 text-sm font-bold tabular-nums text-white">{m.v}</p>
+            <p className="mt-1 text-sm font-bold tabular-nums text-zinc-900 dark:text-white">
+              {m.v}
+            </p>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
-          <Clock className="h-4 w-4 shrink-0 text-cyan-400" />
+        <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 shadow-sm dark:border-white/[0.06] dark:bg-zinc-900/50 dark:shadow-none">
+          <Clock className="h-4 w-4 shrink-0 text-accent" />
           <div>
             <p className="text-[10px] text-zinc-500">Gesamt</p>
-            <p className="text-xs font-semibold text-white">{totalMin} Min</p>
+            <p className="text-xs font-semibold text-zinc-900 dark:text-white">
+              {totalMin} Min
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
-          <Flame className="h-4 w-4 shrink-0 text-cyan-400" />
+        <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 shadow-sm dark:border-white/[0.06] dark:bg-zinc-900/50 dark:shadow-none">
+          <Flame className="h-4 w-4 shrink-0 text-accent" />
           <div>
             <p className="text-[10px] text-zinc-500">Kochen</p>
-            <p className="text-xs font-semibold text-white">
+            <p className="text-xs font-semibold text-zinc-900 dark:text-white">
               {recipe.cookMinutes != null ? `${recipe.cookMinutes} Min` : "—"}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
-          <Users className="h-4 w-4 shrink-0 text-cyan-400" />
+        <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 shadow-sm dark:border-white/[0.06] dark:bg-zinc-900/50 dark:shadow-none">
+          <Users className="h-4 w-4 shrink-0 text-accent" />
           <div>
             <p className="text-[10px] text-zinc-500">Portionen</p>
-            <p className="text-xs font-semibold text-white">{recipe.servings ?? 1}</p>
+            <p className="text-xs font-semibold text-zinc-900 dark:text-white">
+              {recipe.servings ?? 1}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-3 py-2.5">
-          <Gauge className="h-4 w-4 shrink-0 text-cyan-400" />
+        <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2.5 shadow-sm dark:border-white/[0.06] dark:bg-zinc-900/50 dark:shadow-none">
+          <Gauge className="h-4 w-4 shrink-0 text-accent" />
           <div>
             <p className="text-[10px] text-zinc-500">Level</p>
-            <p className="text-xs font-semibold text-white">
+            <p className="text-xs font-semibold text-zinc-900 dark:text-white">
               {DIFFICULTY[recipe.difficulty] ?? "—"}
             </p>
           </div>
@@ -258,12 +264,12 @@ export default function RezeptDetailPage() {
 
       {recipe.spices && recipe.spices.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-white">Gewürze</h2>
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Gewürze</h2>
           <div className="flex flex-wrap gap-1.5">
             {recipe.spices.map((s) => (
               <span
                 key={s}
-                className="rounded-full border border-white/[0.08] bg-zinc-900/80 px-2.5 py-1 text-[11px] font-medium text-zinc-300"
+                className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-medium text-zinc-600 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:text-zinc-300 dark:shadow-none"
               >
                 {s}
               </span>
@@ -273,22 +279,25 @@ export default function RezeptDetailPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-white">Zutaten</h2>
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Zutaten</h2>
         {groups.map((g) => (
-          <div key={g.label} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-zinc-900/80">
+          <div
+            key={g.label}
+            className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:shadow-none"
+          >
             {g.label !== "Zutaten" && (
-              <p className="border-b border-white/[0.06] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-400/90">
+              <p className="border-b border-zinc-100 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-accent dark:border-white/[0.06] dark:text-cyan-400/90">
                 {g.label}
               </p>
             )}
-            <ul className="divide-y divide-white/[0.06]">
+            <ul className="divide-y divide-zinc-100 dark:divide-white/[0.06]">
               {g.items.map((ing) => (
                 <li
                   key={ing.name + ing.amount}
                   className="flex justify-between gap-3 px-4 py-2.5 text-sm"
                 >
-                  <span className="text-zinc-200">{ing.name}</span>
-                  <span className="shrink-0 tabular-nums text-zinc-400">
+                  <span className="text-zinc-800 dark:text-zinc-200">{ing.name}</span>
+                  <span className="shrink-0 tabular-nums text-zinc-500 dark:text-zinc-400">
                     {ing.amount}
                   </span>
                 </li>
@@ -299,17 +308,21 @@ export default function RezeptDetailPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-white">Zubereitung</h2>
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
+          Zubereitung
+        </h2>
         <ol className="space-y-2">
           {(recipe.steps ?? []).map((step, i) => (
             <li
               key={i}
-              className="flex gap-3 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-4 py-3"
+              className="flex gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-white/[0.06] dark:bg-zinc-900/50 dark:shadow-none"
             >
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent">
                 {i + 1}
               </span>
-              <p className="pt-0.5 text-sm leading-relaxed text-zinc-300">{step}</p>
+              <p className="pt-0.5 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                {step}
+              </p>
             </li>
           ))}
         </ol>
@@ -317,15 +330,15 @@ export default function RezeptDetailPage() {
 
       {recipe.tips && recipe.tips.length > 0 && (
         <section className="space-y-2">
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-white">
-            <Lightbulb className="h-4 w-4 text-amber-400" />
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-white">
+            <Lightbulb className="h-4 w-4 text-amber-500" />
             Tipps
           </h2>
           <ul className="space-y-2">
             {recipe.tips.map((tip) => (
               <li
                 key={tip}
-                className="rounded-2xl border border-amber-500/15 bg-amber-500/5 px-4 py-3 text-sm leading-relaxed text-zinc-300"
+                className="rounded-2xl border border-amber-500/20 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-zinc-700 dark:border-amber-500/15 dark:bg-amber-500/5 dark:text-zinc-300"
               >
                 {tip}
               </li>
@@ -336,20 +349,20 @@ export default function RezeptDetailPage() {
 
       {recipe.variations && recipe.variations.length > 0 && (
         <section className="space-y-2">
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-white">
-            <Sparkles className="h-4 w-4 text-violet-400" />
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-white">
+            <Sparkles className="h-4 w-4 text-accent" />
             Variationen
           </h2>
           <div className="space-y-2">
             {recipe.variations.map((v) => (
               <div
                 key={v.title}
-                className="rounded-2xl border border-white/[0.08] bg-zinc-900/70 px-4 py-3"
+                className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/70 dark:shadow-none"
               >
-                <p className="text-xs font-bold uppercase tracking-wide text-violet-300">
+                <p className="text-xs font-bold uppercase tracking-wide text-accent dark:text-violet-300">
                   {v.title}
                 </p>
-                <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                   {v.description}
                 </p>
               </div>
@@ -359,16 +372,20 @@ export default function RezeptDetailPage() {
       )}
 
       {(recipe.storageNote || recipe.mealPrepNote) && (
-        <section className="space-y-2 rounded-2xl border border-white/[0.06] bg-zinc-900/50 px-4 py-3 text-sm text-zinc-400">
+        <section className="space-y-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600 shadow-sm dark:border-white/[0.06] dark:bg-zinc-900/50 dark:text-zinc-400 dark:shadow-none">
           {recipe.storageNote && (
             <p>
-              <span className="font-semibold text-zinc-300">Aufbewahrung: </span>
+              <span className="font-semibold text-zinc-800 dark:text-zinc-300">
+                Aufbewahrung:{" "}
+              </span>
               {recipe.storageNote}
             </p>
           )}
           {recipe.mealPrepNote && (
             <p>
-              <span className="font-semibold text-zinc-300">Meal Prep: </span>
+              <span className="font-semibold text-zinc-800 dark:text-zinc-300">
+                Meal Prep:{" "}
+              </span>
               {recipe.mealPrepNote}
             </p>
           )}
@@ -402,8 +419,10 @@ export default function RezeptDetailPage() {
           </Button>
         </div>
       ) : (
-        <div className="sticky bottom-20 z-10 space-y-2 rounded-2xl border border-accent/30 bg-zinc-900/95 p-4 shadow-xl">
-          <p className="mb-2 text-sm font-medium text-white">Mahlzeit wählen</p>
+        <div className="sticky bottom-20 z-10 space-y-2 rounded-2xl border border-accent/30 bg-white p-4 shadow-xl dark:bg-zinc-900/95">
+          <p className="mb-2 text-sm font-medium text-zinc-900 dark:text-white">
+            Mahlzeit wählen
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {TRACK_MEAL_ORDER.map((m) => (
               <Button

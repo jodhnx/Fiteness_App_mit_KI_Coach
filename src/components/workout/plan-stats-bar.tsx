@@ -66,12 +66,14 @@ function StatTile({
   sub?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-zinc-900/60 px-3 py-3">
+    <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-3 shadow-sm dark:border-white/10 dark:bg-zinc-900/60 dark:shadow-none">
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>
-      <p className="text-lg font-bold text-white tabular-nums mt-1">{value}</p>
+      <p className="text-lg font-bold text-zinc-900 tabular-nums mt-1 dark:text-white">
+        {value}
+      </p>
       {sub && <p className="text-[10px] text-zinc-500 tabular-nums">{sub}</p>}
     </div>
   );

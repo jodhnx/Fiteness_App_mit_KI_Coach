@@ -37,13 +37,15 @@ export function PersonalRecordsPanel() {
       {records.map((r) => (
         <li
           key={r.id}
-          className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-950/15 px-3 py-2.5"
+          className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-500/20 dark:bg-amber-950/15"
         >
           <div className="flex items-center gap-2 min-w-0">
-            <Trophy className="h-4 w-4 text-amber-400 shrink-0" />
-            <span className="text-sm text-white truncate">{r.exercise?.name ?? "Übung"}</span>
+            <Trophy className="h-4 w-4 text-amber-500 shrink-0" />
+            <span className="text-sm text-zinc-900 truncate dark:text-white">
+              {r.exercise?.name ?? "Übung"}
+            </span>
           </div>
-          <span className="text-sm font-bold text-amber-200 tabular-nums shrink-0 ml-2">
+          <span className="text-sm font-bold text-amber-700 tabular-nums shrink-0 ml-2 dark:text-amber-200">
             {r.value} {r.unit}
           </span>
         </li>

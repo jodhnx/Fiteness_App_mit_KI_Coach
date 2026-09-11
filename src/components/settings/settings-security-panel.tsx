@@ -90,8 +90,8 @@ export function SettingsSecurityPanel({
   return (
     <div className="space-y-6">
       {showPassword && (
-      <section className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 p-4 space-y-3">
-        <h3 className="font-semibold text-white">Passwort ändern</h3>
+      <section className="rounded-2xl border border-zinc-200/90 bg-white p-4 space-y-3 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:shadow-none">
+        <h3 className="font-semibold text-zinc-900 dark:text-white">Passwort ändern</h3>
         <div>
           <Label>Aktuelles Passwort</Label>
           <Input
@@ -126,11 +126,12 @@ export function SettingsSecurityPanel({
       )}
 
       {showDelete && (
-      <section className="rounded-2xl border border-red-500/30 bg-red-950/20 p-4 space-y-3">
-        <h3 className="font-semibold text-red-300">Account löschen</h3>
-        <p className="text-xs text-zinc-400 leading-relaxed">
-          Unwiderruflich. Tippe zur Bestätigung <strong className="text-red-200">LÖSCHEN</strong>{" "}
-          und gib dein Passwort ein.
+      <section className="rounded-2xl border border-red-200 bg-red-50 p-4 space-y-3 dark:border-red-500/30 dark:bg-red-950/20">
+        <h3 className="font-semibold text-red-600 dark:text-red-300">Account löschen</h3>
+        <p className="text-xs text-zinc-600 leading-relaxed dark:text-zinc-400">
+          Unwiderruflich. Tippe zur Bestätigung{" "}
+          <strong className="text-red-600 dark:text-red-200">LÖSCHEN</strong> und gib dein
+          Passwort ein.
         </p>
         <div>
           <Label>Passwort</Label>

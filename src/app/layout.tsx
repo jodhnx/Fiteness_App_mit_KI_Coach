@@ -51,7 +51,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  themeColor: "#f4f6f8",
+  themeColor: "#f4f7fa",
 };
 
 /**

@@ -119,15 +119,17 @@ const LiveSetRow = memo(function LiveSetRow({
         className={cn(
           "grid grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1.1fr)_2.75rem] gap-2 items-center rounded-xl px-1.5 py-1 min-h-11",
           set.completed
-            ? "bg-emerald-500/12 border border-emerald-500/25 set-complete-flash"
-            : "bg-zinc-800/40 border border-transparent",
-          set.saveState === "error" && "border-amber-500/40"
+            ? "bg-emerald-50 border border-emerald-200 set-complete-flash dark:bg-emerald-500/12 dark:border-emerald-500/25"
+            : "bg-zinc-50 border border-zinc-200 dark:bg-zinc-800/40 dark:border-transparent",
+          set.saveState === "error" && "border-amber-400 dark:border-amber-500/40"
         )}
       >
         <span
           className={cn(
             "text-sm font-semibold tabular-nums pl-1",
-            set.completed ? "text-emerald-300" : "text-zinc-400"
+            set.completed
+              ? "text-emerald-700 dark:text-emerald-300"
+              : "text-zinc-500 dark:text-zinc-400"
           )}
         >
           {index + 1}
@@ -139,7 +141,7 @@ const LiveSetRow = memo(function LiveSetRow({
             pattern="[0-9]*"
             placeholder=""
             aria-label="Wiederholungen"
-            className="h-11 min-w-0 flex-1 text-lg text-center rounded-xl tabular-nums keyboard-stable-input appearance-none"
+            className="h-11 min-w-0 flex-1 text-lg text-center rounded-xl tabular-nums keyboard-stable-input appearance-none border-zinc-200 bg-white text-zinc-900 focus-visible:ring-accent/50 dark:border-white/10 dark:bg-black/40 dark:text-white"
             value={reps}
             onFocus={keepRowVisible}
             onChange={(e) => {
@@ -160,7 +162,7 @@ const LiveSetRow = memo(function LiveSetRow({
             pattern="[0-9]*[.,]?[0-9]*"
             placeholder=""
             aria-label="Gewicht in Kilogramm"
-            className="h-11 min-w-0 flex-1 text-lg text-center rounded-xl tabular-nums keyboard-stable-input appearance-none"
+            className="h-11 min-w-0 flex-1 text-lg text-center rounded-xl tabular-nums keyboard-stable-input appearance-none border-zinc-200 bg-white text-zinc-900 focus-visible:ring-accent/50 dark:border-white/10 dark:bg-black/40 dark:text-white"
             value={weight}
             onFocus={keepRowVisible}
             onChange={(e) => {
@@ -320,14 +322,14 @@ const LiveRestTimer = memo(function LiveRestTimer({
       className="pointer-events-none fixed inset-x-0 z-50 px-3"
       style={{ bottom: "calc(5.25rem + env(safe-area-inset-bottom, 0px))" }}
     >
-      <div className="pointer-events-auto mx-auto max-w-lg rounded-2xl border border-white/[0.1] bg-zinc-900/95 px-4 py-3 shadow-xl backdrop-blur-md">
+      <div className="pointer-events-auto mx-auto max-w-lg rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-xl backdrop-blur-md dark:border-white/[0.1] dark:bg-zinc-900/95">
         <div className="flex items-center gap-3">
           <Timer className="h-4 w-4 text-zinc-500 shrink-0" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
               {paused ? "Pausiert" : "Rest"}
             </p>
-            <p className="text-2xl font-semibold text-white tabular-nums leading-none mt-0.5">
+            <p className="text-2xl font-semibold text-zinc-900 tabular-nums leading-none mt-0.5 dark:text-white">
               {formatWorkoutClock(left)}
             </p>
           </div>
@@ -808,8 +810,8 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
   if (!session) {
     return (
       <div className="space-y-4 max-w-lg mx-auto">
-        <div className="h-28 rounded-2xl bg-zinc-900/80 border border-white/[0.06]" />
-        <div className="h-40 rounded-2xl bg-zinc-900/80 border border-white/[0.06]" />
+        <div className="h-28 rounded-2xl bg-zinc-100 border border-zinc-200 dark:bg-zinc-900/80 dark:border-white/[0.06]" />
+        <div className="h-40 rounded-2xl bg-zinc-100 border border-zinc-200 dark:bg-zinc-900/80 dark:border-white/[0.06]" />
       </div>
     );
   }
@@ -832,11 +834,11 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         onDiscard={() => void discardWorkout()}
       />
     <div className="space-y-4 pb-[calc(10.5rem+env(safe-area-inset-bottom,0px))] max-w-lg lg:max-w-4xl mx-auto keyboard-stable-page">
-      <div className="sticky top-0 z-20 pt-1 pb-2 bg-zinc-950/95 backdrop-blur-md border-b border-white/[0.06] -mx-1 px-1">
+      <div className="sticky top-0 z-20 pt-1 pb-2 bg-[#f4f7fa]/95 backdrop-blur-md border-b border-zinc-200 -mx-1 px-1 dark:bg-zinc-950/95 dark:border-white/[0.06]">
         <div className="flex items-center gap-2 min-h-12">
           <Button
             variant="ghost"
-            className="h-12 min-w-[5.5rem] rounded-xl shrink-0 -ml-1 px-2 gap-0.5 text-sm font-semibold text-zinc-200"
+            className="h-12 min-w-[5.5rem] rounded-xl shrink-0 -ml-1 px-2 gap-0.5 text-sm font-semibold text-zinc-700 dark:text-zinc-200"
             onClick={() => setDialog("leave")}
             aria-label="Zurück zum Training"
           >
@@ -844,7 +846,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
             Zurück
           </Button>
           <div className="min-w-0 flex-1 text-center">
-            <h1 className="text-base font-semibold text-white truncate leading-tight">
+            <h1 className="text-base font-semibold text-zinc-900 truncate leading-tight dark:text-white">
               {session.name}
             </h1>
             <LiveElapsedClock startedAt={session.startedAt} />
@@ -874,9 +876,11 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       <LiveRestTimer rest={rest} onChange={applyRest} />
 
       {grouped.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-zinc-700 py-12 text-center px-4">
-          <Dumbbell className="h-10 w-10 text-zinc-600 mx-auto mb-3" />
-          <p className="text-zinc-400 text-sm">Noch keine Übungen — füge deine erste hinzu.</p>
+        <div className="rounded-2xl border border-dashed border-zinc-300 py-12 text-center px-4 dark:border-zinc-700">
+          <Dumbbell className="h-10 w-10 text-zinc-400 mx-auto mb-3 dark:text-zinc-600" />
+          <p className="text-zinc-600 text-sm dark:text-zinc-400">
+            Noch keine Übungen — füge deine erste hinzu.
+          </p>
           <Button
             className="mt-4 h-12 rounded-xl"
             onClick={() => setPickerOpen(true)}
@@ -894,19 +898,19 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         const newPr = isNewWeightPr(sets, history);
 
         return (
-          <div key={key} className="rounded-2xl border border-white/[0.08] bg-zinc-900/60 overflow-hidden">
-            <div className="px-4 py-3.5 border-b border-white/[0.06]">
+          <div key={key} className="rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/60 dark:shadow-none">
+            <div className="px-4 py-3.5 border-b border-zinc-100 dark:border-white/[0.06]">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   {exerciseLibraryId ? (
                     <Link
                       href={`/workouts/exercises/${exerciseLibraryId}`}
-                      className="text-lg font-semibold text-white uppercase tracking-wide"
+                      className="text-lg font-semibold text-zinc-900 uppercase tracking-wide dark:text-white"
                     >
                       {name}
                     </Link>
                   ) : (
-                    <h2 className="text-lg font-semibold text-white uppercase tracking-wide">
+                    <h2 className="text-lg font-semibold text-zinc-900 uppercase tracking-wide dark:text-white">
                       {name}
                     </h2>
                   )}
@@ -915,15 +919,19 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
                   )}
                 </div>
                 {newPr && (
-                  <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+                  <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
                     New PR
                   </span>
                 )}
               </div>
               {lastLine ? (
-                <p className="mt-1.5 text-xs text-zinc-300 tabular-nums">Last: {lastLine}</p>
+                <p className="mt-1.5 text-xs text-zinc-600 tabular-nums dark:text-zinc-300">
+                  Last: {lastLine}
+                </p>
               ) : (
-                <p className="mt-1 text-xs text-zinc-600">Noch keine Daten</p>
+                <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-600">
+                  Noch keine Daten
+                </p>
               )}
             </div>
             <div className="p-3 space-y-1">
@@ -958,7 +966,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
               ))}
               <Button
                 variant="outline"
-                className="w-full h-11 mt-1 rounded-xl border-dashed border-zinc-700"
+                className="w-full h-11 mt-1 rounded-xl border-dashed border-zinc-300 dark:border-zinc-700"
                 onClick={() => void addSet(name, exerciseLibraryId)}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -970,7 +978,7 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       })}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] bg-zinc-950/95 backdrop-blur-md safe-area-pb">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-zinc-200 bg-white/95 backdrop-blur-md safe-area-pb dark:border-white/[0.08] dark:bg-zinc-950/95">
         <div className="max-w-lg lg:max-w-4xl mx-auto px-4 pt-3 pb-3 space-y-2">
           <Button
             className="w-full h-14 min-h-14 rounded-2xl text-base font-semibold shadow-lg shadow-accent/20 lg:h-12 lg:min-h-12"
@@ -984,14 +992,14 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
           <div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
-              className="h-11 rounded-2xl border-white/15 text-zinc-300"
+              className="h-11 rounded-2xl border-zinc-200 text-zinc-700 dark:border-white/15 dark:text-zinc-300"
               onClick={() => setDialog("leave")}
             >
               Zurück
             </Button>
             <Button
               variant="outline"
-              className="h-11 rounded-2xl border-dashed border-white/15 text-zinc-300"
+              className="h-11 rounded-2xl border-dashed border-zinc-300 text-zinc-700 dark:border-white/15 dark:text-zinc-300"
               onClick={() => setPickerOpen(true)}
             >
               <Plus className="h-4 w-4 mr-1.5" />

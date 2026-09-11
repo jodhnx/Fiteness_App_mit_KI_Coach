@@ -45,14 +45,14 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
     return (
       <div className="px-1 py-1 space-y-3">
         <div
-          className="mx-auto rounded-full bg-white/5 animate-pulse"
+          className="mx-auto rounded-full bg-zinc-200/80 animate-pulse dark:bg-white/5"
           style={{ width: ringSize, height: ringSize }}
         />
-        <div className="h-3 w-40 mx-auto bg-white/5 rounded animate-pulse" />
+        <div className="h-3 w-40 mx-auto bg-zinc-200/80 rounded animate-pulse dark:bg-white/5" />
         <div className="grid grid-cols-3 gap-2">
-          <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
-          <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
-          <div className="h-10 bg-white/5 rounded-lg animate-pulse" />
+          <div className="h-10 bg-zinc-200/80 rounded-lg animate-pulse dark:bg-white/5" />
+          <div className="h-10 bg-zinc-200/80 rounded-lg animate-pulse dark:bg-white/5" />
+          <div className="h-10 bg-zinc-200/80 rounded-lg animate-pulse dark:bg-white/5" />
         </div>
       </div>
     );
@@ -60,9 +60,11 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
 
   if (state.kind === "missing_target") {
     return (
-      <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/30 px-4 py-5 space-y-3 text-center sm:text-left">
-        <p className="text-base font-semibold text-white">Kalorienziel festlegen</p>
-        <p className="text-sm text-zinc-400 leading-relaxed">
+      <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-5 space-y-3 text-center shadow-sm sm:text-left dark:border-white/[0.08] dark:bg-zinc-900/30 dark:shadow-none">
+        <p className="text-base font-semibold text-zinc-900 dark:text-white">
+          Kalorienziel festlegen
+        </p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
           {state.profileIncomplete
             ? "Bitte Gewicht und Ziel vervollständigen."
             : "Lege dein Kalorienziel fest, um zu sehen, wie viele kcal noch übrig sind."}
@@ -70,7 +72,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
         <Link
           href="/settings"
           prefetch
-          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white text-zinc-950 px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-4 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           Ziel festlegen
         </Link>
@@ -156,7 +158,9 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
               <p
                 className={cn(
                   "text-[13px] font-semibold tabular-nums leading-tight mt-0.5",
-                  macro.isOver ? "text-red-300" : "text-white"
+                  macro.isOver
+                    ? "text-red-500 dark:text-red-300"
+                    : "text-zinc-900 dark:text-white"
                 )}
               >
                 {macro.consumedG}
@@ -165,7 +169,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
                   / {macro.targetG} g
                 </span>
               </p>
-              <div className="mt-1.5 mx-auto h-1 w-full max-w-[4.25rem] rounded-full bg-zinc-800/90 overflow-hidden">
+              <div className="mt-1.5 mx-auto h-1 w-full max-w-[4.25rem] rounded-full bg-zinc-200 overflow-hidden dark:bg-zinc-800/90">
                 <div
                   className={cn(
                     "h-full rounded-full transition-[width] duration-300",

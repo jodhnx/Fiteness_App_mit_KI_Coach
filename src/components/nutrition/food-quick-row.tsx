@@ -58,13 +58,13 @@ export const FoodQuickRow = memo(function FoodQuickRow({
   const chip = portionChip(food, grams);
 
   return (
-    <div className="flex items-stretch gap-2 min-h-[64px] py-2.5 border-b border-zinc-800/60 last:border-0">
+    <div className="flex items-stretch gap-2 min-h-[64px] py-2.5 border-b border-zinc-200/80 last:border-0 dark:border-zinc-800/60">
       <button
         type="button"
         onClick={onOpenDetail}
         className="flex-1 min-w-0 text-left active:opacity-80"
       >
-        <p className="font-semibold text-white text-[15px] leading-snug truncate">
+        <p className="font-semibold text-zinc-900 text-[15px] leading-snug truncate dark:text-white">
           {food.name}
         </p>
         {brand && (
@@ -72,7 +72,7 @@ export const FoodQuickRow = memo(function FoodQuickRow({
             {brand}
           </p>
         )}
-        <p className="text-[12px] text-zinc-400 mt-1 tabular-nums leading-tight">
+        <p className="text-[12px] text-zinc-500 mt-1 tabular-nums leading-tight dark:text-zinc-400">
           {Math.round(per100.calories)} kcal / 100 g
           {" · "}
           {Math.round(per100.proteinG)} P

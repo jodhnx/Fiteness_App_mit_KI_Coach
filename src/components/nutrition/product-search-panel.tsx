@@ -199,7 +199,7 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
             placeholder="Lebensmittel suchen…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="pl-11 h-[52px] text-base rounded-2xl bg-zinc-900/90 border-zinc-700/80 focus:border-cyan-500/50"
+            className="pl-11 h-[52px] text-base rounded-2xl bg-white border-zinc-200 focus:border-accent/50 dark:bg-zinc-900/90 dark:border-zinc-700/80 dark:focus:border-cyan-500/50"
             autoComplete="off"
             enterKeyHint="search"
           />
@@ -208,7 +208,7 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
           type="button"
           variant="outline"
           size="icon"
-          className="h-[52px] w-[52px] shrink-0 rounded-2xl border-zinc-700"
+          className="h-[52px] w-[52px] shrink-0 rounded-2xl border-zinc-200 dark:border-zinc-700"
           title="Barcode"
           onClick={async () => {
             const code = window.prompt("EAN / Barcode:");

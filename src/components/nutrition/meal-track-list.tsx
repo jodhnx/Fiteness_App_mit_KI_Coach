@@ -182,7 +182,7 @@ export const MealTrackList = memo(function MealTrackList({
                         commitEdit();
                       }
                     }}
-                    className="h-11 flex-1 rounded-xl border border-white/10 bg-zinc-950 px-3 text-base text-white tabular-nums"
+                    className="h-11 flex-1 rounded-xl border border-zinc-200 bg-white px-3 text-base text-zinc-900 tabular-nums dark:border-white/10 dark:bg-zinc-950 dark:text-white"
                     aria-label="Menge in Gramm"
                   />
                   <span className="text-xs font-semibold text-zinc-500">g</span>
@@ -192,7 +192,7 @@ export const MealTrackList = memo(function MealTrackList({
                     <button
                       key={g}
                       type="button"
-                      className="h-11 flex-1 rounded-xl border border-white/10 text-xs font-medium text-zinc-300"
+                      className="h-11 flex-1 rounded-xl border border-zinc-200 text-xs font-medium text-zinc-700 dark:border-white/10 dark:text-zinc-300"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
                         setDraft(String(g));

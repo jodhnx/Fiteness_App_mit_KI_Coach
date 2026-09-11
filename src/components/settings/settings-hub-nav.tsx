@@ -35,7 +35,7 @@ function Row({
   danger,
 }: HubRow) {
   const className = cn(
-    "flex w-full min-h-14 items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.04]",
+    "flex w-full min-h-14 items-center gap-3 px-4 py-3.5 text-left active:bg-zinc-50 dark:active:bg-white/[0.04]",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
   );
   const inner = (
@@ -43,7 +43,9 @@ function Row({
       <span
         className={cn(
           "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-          danger ? "bg-red-500/10 text-red-300" : "bg-white/[0.06] text-zinc-200"
+          danger
+            ? "bg-red-500/10 text-red-500"
+            : "bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200"
         )}
       >
         <Icon className="h-5 w-5" aria-hidden />
@@ -52,7 +54,7 @@ function Row({
         <span
           className={cn(
             "block text-[15px] font-semibold leading-tight",
-            danger ? "text-red-300" : "text-white"
+            danger ? "text-red-500" : "text-zinc-900 dark:text-white"
           )}
         >
           {label}
@@ -63,12 +65,12 @@ function Row({
           </span>
         ) : null}
         {value ? (
-          <span className="block text-[13px] text-zinc-300 mt-0.5 tabular-nums truncate">
+          <span className="block text-[13px] text-zinc-600 mt-0.5 tabular-nums truncate dark:text-zinc-300">
             {value}
           </span>
         ) : null}
       </span>
-      <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" aria-hidden />
+      <ChevronRight className="h-4 w-4 text-zinc-400 shrink-0" aria-hidden />
     </>
   );
 
@@ -98,7 +100,7 @@ function Section({
       <h2 className="px-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
         {title}
       </h2>
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden divide-y divide-white/[0.06]">
+      <div className="rounded-2xl border border-zinc-200/90 bg-white overflow-hidden divide-y divide-zinc-100 shadow-sm dark:border-white/[0.07] dark:bg-white/[0.025] dark:divide-white/[0.06] dark:shadow-none">
         {children}
       </div>
     </section>

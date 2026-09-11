@@ -45,17 +45,19 @@ export const PlanDayPickerSheet = memo(function PlanDayPickerSheet({
             disabled={starting}
             onClick={() => onSelectDay(day)}
             className={cn(
-              "flex w-full items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/80 px-4 py-3.5",
+              "flex w-full items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 shadow-sm",
               "text-left transition-colors active:scale-[0.98]",
-              "hover:border-cyan-500/40 hover:bg-zinc-900",
+              "hover:border-accent/40 hover:bg-accent/5 dark:border-zinc-800 dark:bg-zinc-900/80 dark:shadow-none dark:hover:border-cyan-500/40 dark:hover:bg-zinc-900",
               starting && "opacity-60 pointer-events-none"
             )}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/15 ring-1 ring-cyan-500/25">
-              <Dumbbell className="h-5 w-5 text-cyan-400" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 ring-1 ring-accent/20 dark:bg-cyan-500/15 dark:ring-cyan-500/25">
+              <Dumbbell className="h-5 w-5 text-accent dark:text-cyan-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-white truncate">{day.name}</p>
+              <p className="font-semibold text-zinc-900 truncate dark:text-white">
+                {day.name}
+              </p>
               <p className="text-xs text-zinc-500">
                 {day.exerciseCount}{" "}
                 {day.exerciseCount === 1 ? "Übung" : "Übungen"}

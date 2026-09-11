@@ -74,8 +74,9 @@ export const CalorieRing = memo(function CalorieRing({
             cy={size / 2}
             r={r}
             fill="none"
-            stroke="rgba(255,255,255,0.08)"
+            stroke="currentColor"
             strokeWidth={strokeW}
+            className="text-zinc-200 dark:text-white/10"
           />
           {hasTarget && (
             <circle
@@ -97,7 +98,9 @@ export const CalorieRing = memo(function CalorieRing({
             className={cn(
               "font-semibold tabular-nums leading-none tracking-tight",
               numberClass,
-              isOver ? "text-red-400" : "text-white"
+              isOver
+                ? "text-red-500 dark:text-red-400"
+                : "text-zinc-900 dark:text-white"
             )}
           >
             {hasTarget ? centerValue.toLocaleString("de-DE") : "—"}
@@ -105,7 +108,9 @@ export const CalorieRing = memo(function CalorieRing({
           <p
             className={cn(
               "mt-1.5 text-[11px] font-medium leading-none",
-              isOver ? "text-red-400/80" : "text-zinc-500"
+              isOver
+                ? "text-red-500/80 dark:text-red-400/80"
+                : "text-zinc-500"
             )}
           >
             {isOver ? "kcal über Ziel" : "kcal übrig"}

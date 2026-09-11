@@ -136,7 +136,7 @@ export const NutritionExtrasPanel = memo(function NutritionExtrasPanel({
         {onOpenFoodAI ? (
           <button
             type="button"
-            className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 px-3 text-xs text-zinc-200 active:bg-zinc-800"
+            className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs text-zinc-700 shadow-sm active:bg-zinc-50 dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-200 dark:shadow-none dark:active:bg-zinc-800"
             onClick={() => {
               hapticTap();
               onOpenFoodAI();
@@ -146,7 +146,7 @@ export const NutritionExtrasPanel = memo(function NutritionExtrasPanel({
             KI-Foto
           </button>
         ) : (
-          <label className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 px-3 text-xs text-zinc-200 cursor-pointer active:bg-zinc-800">
+          <label className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs text-zinc-700 shadow-sm cursor-pointer active:bg-zinc-50 dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-200 dark:shadow-none dark:active:bg-zinc-800">
             <Camera className="h-3.5 w-3.5 text-accent" />
             KI-Foto
             <input
@@ -161,14 +161,14 @@ export const NutritionExtrasPanel = memo(function NutritionExtrasPanel({
         )}
         <Link
           href="/nutrition/saved-meals/new"
-          className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 px-3 text-xs text-zinc-200"
+          className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs text-zinc-700 shadow-sm dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-200 dark:shadow-none"
         >
           <ChefHat className="h-3.5 w-3.5 text-accent" />
           Mahlzeit
         </Link>
         <button
           type="button"
-          className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 h-9 px-3 text-xs text-zinc-200"
+          className="flex shrink-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white h-9 px-3 text-xs text-zinc-700 shadow-sm dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-200 dark:shadow-none"
           onClick={toggleMealReminder}
         >
           <Bell className={`h-3.5 w-3.5 ${remindersOn ? "text-emerald-400" : "text-accent"}`} />
@@ -176,7 +176,7 @@ export const NutritionExtrasPanel = memo(function NutritionExtrasPanel({
         </button>
         <Link
           href="/nutrition?panel=food"
-          className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-900/80 h-9 px-3 text-xs text-zinc-200"
+          className="flex shrink-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white h-9 px-3 text-xs text-zinc-700 shadow-sm dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-200 dark:shadow-none"
         >
           <Store className="h-3.5 w-3.5 text-accent" />
           Favoriten

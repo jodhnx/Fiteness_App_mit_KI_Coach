@@ -30,21 +30,23 @@ export const ExerciseItem = memo(function ExerciseItem({
   const reps = targetReps?.trim() || "12";
 
   return (
-    <article className="rounded-xl border border-zinc-800 bg-zinc-950/80 overflow-hidden">
-      <div className="h-px bg-zinc-700/80" />
+    <article className="rounded-xl border border-zinc-200 bg-white overflow-hidden shadow-sm dark:border-zinc-800 dark:bg-zinc-950/80 dark:shadow-none">
+      <div className="h-px bg-zinc-100 dark:bg-zinc-700/80" />
       <div className="px-4 py-3.5 space-y-1">
-        <h3 className="text-base font-bold text-white uppercase tracking-wide">{name}</h3>
-        <p className="text-sm text-zinc-400 tabular-nums">
+        <h3 className="text-base font-bold text-zinc-900 uppercase tracking-wide dark:text-white">
+          {name}
+        </h3>
+        <p className="text-sm text-zinc-500 tabular-nums dark:text-zinc-400">
           Sätze: {targetSets}
-          <span className="text-zinc-600"> · </span>
+          <span className="text-zinc-300 dark:text-zinc-600"> · </span>
           Wiederholungen: {reps}
-          <span className="text-zinc-600"> · </span>
+          <span className="text-zinc-300 dark:text-zinc-600"> · </span>
           Gewicht: {weight}
-          <span className="text-zinc-600"> · </span>
+          <span className="text-zinc-300 dark:text-zinc-600"> · </span>
           Pause: {restSeconds}s
         </p>
       </div>
-      <div className="h-px bg-zinc-700/80" />
+      <div className="h-px bg-zinc-100 dark:bg-zinc-700/80" />
     </article>
   );
 });

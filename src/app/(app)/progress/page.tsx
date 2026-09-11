@@ -39,7 +39,7 @@ const ProgressChartsSection = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[220px] rounded-xl bg-zinc-800/50 animate-pulse border border-white/5" />
+      <div className="h-[220px] rounded-xl bg-zinc-200/70 animate-pulse border border-zinc-200 dark:bg-zinc-800/50 dark:border-white/5" />
     ),
   }
 );
@@ -104,6 +104,9 @@ export default function ProgressPage() {
   const logRef = useRef<HTMLDivElement>(null);
   const [period, setPeriod] = useState<WeightPeriod>("30d");
   const [chartsReady, setChartsReady] = useState(false);
+  const [tab, setTab] = useState<"overview" | "weight" | "photos" | "body">(
+    "overview"
+  );
 
   useEffect(() => {
     try {
@@ -300,6 +303,23 @@ export default function ProgressPage() {
   const showSkeleton = loading && !displayData;
   const lastWeight = analytics.currentKg ?? profile?.weightKg;
 
+  const homeStreak =
+    getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true })
+      ?.nutritionStreak?.currentDays ??
+    dashboard?.streaks?.active?.currentDays ??
+    dashboard?.streaks?.training?.currentDays ??
+    0;
+  const latestBody = entries[0];
+  const bodyFat =
+    latestBody?.bodyFatPct != null ? Number(latestBody.bodyFatPct) : null;
+
+  const tabs = [
+    { id: "overview" as const, label: "Übersicht" },
+    { id: "weight" as const, label: "Gewicht" },
+    { id: "photos" as const, label: "Fotos" },
+    { id: "body" as const, label: "Körper" },
+  ];
+
   return (
     <PageShell
       title="Fortschritt"
@@ -310,48 +330,76 @@ export default function ProgressPage() {
     >
       <PageIntro pageId="progress" />
 
-      {/* 1. Übersicht zuerst */}
-      <ProgressOverviewCards
-        currentKg={lastWeight ?? null}
-        targetKg={profile?.targetWeightKg ?? null}
-        trainingSessions={dashboard?.trainingHistory?.length ?? 0}
-        weekChangeKg={analytics.changeWeekKg}
-      />
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={`inline-flex min-h-9 shrink-0 items-center rounded-full border px-3.5 text-sm font-medium transition-colors ${
+              tab === t.id
+                ? "border-accent/30 bg-accent text-white"
+                : "border-zinc-200 bg-white text-zinc-700 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      {showSkeleton && (
-        <div className="space-y-4">
-          <div className="h-36 rounded-2xl bg-white/[0.03] border border-white/[0.06]" />
-          <div className="h-48 rounded-2xl bg-white/[0.03] border border-white/[0.06]" />
-        </div>
-      )}
-
-      {!showSkeleton && (
+      {tab === "overview" ? (
         <>
-          {/* 2. Gewicht schnell eintragen */}
-          <div ref={logRef} className="card-premium p-4 scroll-mt-4">
-            <h2 className="text-sm font-semibold text-white mb-1">Gewicht eintragen</h2>
-            {lastWeight != null && (
-              <p className="text-2xl font-bold text-cyan-400 tabular-nums mb-1">
-                {lastWeight.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg
-                <span className="text-xs font-normal text-zinc-400 ml-2">aktuell</span>
-              </p>
-            )}
-            {analytics.changeWeekKg != null && (
-              <p className="text-sm tabular-nums text-zinc-300 mb-3">
-                {analytics.changeWeekKg > 0 ? "+" : ""}
-                {analytics.changeWeekKg.toFixed(1)} kg in 7 Tagen
-                {profile?.targetWeightKg != null
-                  ? ` · Ziel ${profile.targetWeightKg.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`
-                  : ""}
-              </p>
-            )}
-            <WeightInput initialKg={lastWeight} onSave={saveWeight} />
+          <div className="rounded-2xl border border-zinc-200/90 bg-white px-4 py-3.5 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.02] dark:shadow-none">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+              Aktueller Streak
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900 dark:text-white">
+              🔥 {homeStreak} {homeStreak === 1 ? "Tag" : "Tage"}
+            </p>
           </div>
 
-          {/* 3. Diagramme */}
-          {dashboard && chartsReady && (
+          <ProgressOverviewCards
+            currentKg={lastWeight ?? null}
+            targetKg={profile?.targetWeightKg ?? null}
+            trainingSessions={dashboard?.trainingHistory?.length ?? 0}
+            weekChangeKg={analytics.changeWeekKg}
+          />
+
+          {(bodyFat != null || lastWeight != null) && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-2xl border border-zinc-200/90 bg-white px-3 py-3 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.02]">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                  Körperfett
+                </p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">
+                  {bodyFat != null ? `${bodyFat.toLocaleString("de-DE")} %` : "—"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-zinc-200/90 bg-white px-3 py-3 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.02]">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                  Gewicht
+                </p>
+                <p className="mt-1 text-lg font-bold tabular-nums text-zinc-900 dark:text-white">
+                  {lastWeight != null
+                    ? `${lastWeight.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg`
+                    : "—"}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {showSkeleton && (
+            <div className="space-y-4">
+              <div className="h-36 rounded-2xl bg-zinc-200/70 border border-zinc-200 animate-pulse dark:bg-white/[0.03] dark:border-white/[0.06]" />
+              <div className="h-48 rounded-2xl bg-zinc-200/70 border border-zinc-200 animate-pulse dark:bg-white/[0.03] dark:border-white/[0.06]" />
+            </div>
+          )}
+
+          {!showSkeleton && dashboard && chartsReady && (
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-white px-0.5">Diagramme</h2>
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-white px-0.5">
+                Gewichtsverlauf
+              </h2>
               <ProgressChartsSection
                 nutritionTrend={dashboard.nutritionTrend ?? []}
                 calorieTarget={dashboard.calorieTarget ?? 0}
@@ -364,111 +412,155 @@ export default function ProgressPage() {
               />
             </section>
           )}
-          {dashboard && !chartsReady && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-white px-0.5">Diagramme</h2>
-              <div className="h-[220px] rounded-xl bg-zinc-800/50 animate-pulse border border-white/5" />
-            </section>
+
+          {!showSkeleton && (
+            <ProgressWeeklyIntelligenceCard
+              intelligence={weeklyIntelligence}
+              adaptiveRecommendations={adaptiveRecommendations}
+            />
           )}
 
-          <ProgressWeeklyIntelligenceCard
-            intelligence={weeklyIntelligence}
-            adaptiveRecommendations={adaptiveRecommendations}
-          />
-
-          {/* 4. Weitere Fortschritte */}
-          <section className="space-y-4">
-            <h2 className="text-sm font-semibold text-white px-0.5">Weitere Fortschritte</h2>
-
-            {transformation && <BodyTransformationCard data={transformation} />}
-
-            <BodyMeasurementsCard
-              latest={entries[0] ?? null}
-              onSaved={() => {
-                invalidateCache(PROGRESS_CACHE_KEY);
-                reload();
-              }}
-            />
-
-            <div className="card-premium p-4">
-              <h3 className="text-sm font-semibold text-white mb-2">Vorher / Nachher</h3>
-              <Input type="file" accept="image/*" onChange={uploadPhoto} className="text-sm mb-3" />
-              {photos.length === 0 ? (
-                <p className="text-sm text-zinc-400 py-4 text-center">
-                  Noch keine Progress-Fotos. Lade ein privates Vorher-Bild hoch — nur du siehst es.
-                </p>
-              ) : (
-                <>
-                  {photos.length >= 2 && (
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      <div className="rounded-xl overflow-hidden border border-zinc-700">
-                        <p className="text-[10px] text-zinc-400 px-2 py-1 bg-zinc-900">
-                          Vorher
-                          {photos[photos.length - 1]?.takenAt
-                            ? ` · ${format(new Date(photos[photos.length - 1]!.takenAt!), "dd.MM.")}`
-                            : ""}
-                        </p>
-                        <Image
-                          src={photos[photos.length - 1]!.imageUrl}
-                          alt="Vorher"
-                          width={200}
-                          height={200}
-                          unoptimized
-                          className="w-full h-32 object-cover"
-                        />
-                      </div>
-                      <div className="rounded-xl overflow-hidden border border-cyan-500/30">
-                        <p className="text-[10px] text-cyan-400 px-2 py-1 bg-zinc-900">Nachher</p>
-                        <Image
-                          src={photos[0]!.imageUrl}
-                          alt="Nachher"
-                          width={200}
-                          height={200}
-                          unoptimized
-                          className="w-full h-32 object-cover"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {photos.map((p) => (
-                      <div key={p.id} className="flex gap-3 items-center rounded-lg bg-zinc-900/60 p-2">
-                        <Image
-                          src={p.imageUrl}
-                          alt=""
-                          width={48}
-                          height={48}
-                          unoptimized
-                          className="h-12 w-12 rounded-lg object-cover shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-xs text-zinc-400">
-                            {p.takenAt ? format(new Date(p.takenAt), "dd.MM.yyyy") : "—"}
-                          </p>
-                          {p.aiProgress && (
-                            <p className="text-[11px] text-zinc-300 truncate">{p.aiProgress}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {dashboard && (
-              <>
-                <ProgressStatsSection
-                  trainingHistory={dashboard.trainingHistory ?? []}
-                  streaks={dashboard.streaks ?? { training: null, active: null }}
-                  personalRecords={dashboard.personalRecords ?? []}
-                />
-                <TrainingHistorySection sessions={dashboard.trainingHistory ?? []} />
-              </>
-            )}
-          </section>
+          {!showSkeleton && dashboard && (
+            <>
+              <ProgressStatsSection
+                trainingHistory={dashboard.trainingHistory ?? []}
+                streaks={dashboard.streaks ?? { training: null, active: null }}
+                personalRecords={dashboard.personalRecords ?? []}
+              />
+              <TrainingHistorySection sessions={dashboard.trainingHistory ?? []} />
+            </>
+          )}
         </>
-      )}
+      ) : null}
+
+      {tab === "weight" && !showSkeleton ? (
+        <div ref={logRef} className="card-premium p-4 scroll-mt-4 space-y-3">
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
+            Gewicht eintragen
+          </h2>
+          {lastWeight != null && (
+            <p className="text-2xl font-bold text-accent tabular-nums">
+              {lastWeight.toLocaleString("de-DE", { minimumFractionDigits: 1 })} kg
+              <span className="text-xs font-normal text-zinc-500 ml-2">aktuell</span>
+            </p>
+          )}
+          {analytics.changeWeekKg != null && (
+            <p className="text-sm tabular-nums text-zinc-600 dark:text-zinc-300">
+              {analytics.changeWeekKg > 0 ? "+" : ""}
+              {analytics.changeWeekKg.toFixed(1)} kg in 7 Tagen
+              {profile?.targetWeightKg != null
+                ? ` · Ziel ${profile.targetWeightKg.toLocaleString("de-DE", { maximumFractionDigits: 1 })} kg`
+                : ""}
+            </p>
+          )}
+          <WeightInput initialKg={lastWeight} onSave={saveWeight} />
+          {dashboard && chartsReady ? (
+            <ProgressChartsSection
+              nutritionTrend={dashboard.nutritionTrend ?? []}
+              calorieTarget={dashboard.calorieTarget ?? 0}
+              proteinTargetG={dashboard.proteinTargetG ?? 0}
+              weightChartPoints={analytics.chartPoints}
+              weightPeriod={period}
+              onWeightPeriodChange={setPeriod}
+              trainingVolumeTrend={dashboard.trainingVolumeTrend ?? []}
+              trainingFrequencyTrend={dashboard.trainingFrequencyTrend ?? []}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
+      {tab === "photos" && !showSkeleton ? (
+        <div className="card-premium p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
+            Vorher / Nachher
+          </h3>
+          <Input type="file" accept="image/*" onChange={uploadPhoto} className="text-sm" />
+          {photos.length === 0 ? (
+            <p className="text-sm text-zinc-500 py-4 text-center">
+              Noch keine Progress-Fotos. Lade ein privates Vorher-Bild hoch — nur du siehst es.
+            </p>
+          ) : (
+            <>
+              {photos.length >= 2 && (
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                    <p className="text-[10px] text-zinc-500 px-2 py-1 bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-400">
+                      Vorher
+                      {photos[photos.length - 1]?.takenAt
+                        ? ` · ${format(new Date(photos[photos.length - 1]!.takenAt!), "dd.MM.")}`
+                        : ""}
+                    </p>
+                    <Image
+                      src={photos[photos.length - 1]!.imageUrl}
+                      alt="Vorher"
+                      width={200}
+                      height={200}
+                      unoptimized
+                      className="w-full h-32 object-cover"
+                    />
+                  </div>
+                  <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                    <p className="text-[10px] text-zinc-500 px-2 py-1 bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-400">
+                      Nachher
+                      {photos[0]?.takenAt
+                        ? ` · ${format(new Date(photos[0]!.takenAt!), "dd.MM.")}`
+                        : ""}
+                    </p>
+                    <Image
+                      src={photos[0]!.imageUrl}
+                      alt="Nachher"
+                      width={200}
+                      height={200}
+                      unoptimized
+                      className="w-full h-32 object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2 max-h-56 overflow-y-auto">
+                {photos.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex gap-3 items-center rounded-lg bg-zinc-50 p-2 dark:bg-zinc-900/60"
+                  >
+                    <Image
+                      src={p.imageUrl}
+                      alt=""
+                      width={48}
+                      height={48}
+                      unoptimized
+                      className="h-12 w-12 rounded-lg object-cover shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs text-zinc-500">
+                        {p.takenAt ? format(new Date(p.takenAt), "dd.MM.yyyy") : "—"}
+                      </p>
+                      {p.aiProgress && (
+                        <p className="text-[11px] text-zinc-600 truncate dark:text-zinc-300">
+                          {p.aiProgress}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
+
+      {tab === "body" && !showSkeleton ? (
+        <section className="space-y-4">
+          {transformation && <BodyTransformationCard data={transformation} />}
+          <BodyMeasurementsCard
+            latest={entries[0] ?? null}
+            onSaved={() => {
+              invalidateCache(PROGRESS_CACHE_KEY);
+              reload();
+            }}
+          />
+        </section>
+      ) : null}
     </PageShell>
   );
 }

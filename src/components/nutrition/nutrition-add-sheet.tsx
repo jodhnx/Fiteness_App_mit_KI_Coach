@@ -87,16 +87,18 @@ export const NutritionAddSheet = memo(function NutritionAddSheet({
         }}
       />
       <div className="relative mx-auto w-full max-w-lg px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom-4 duration-200">
-        <div className="rounded-[1.35rem] border border-white/[0.1] bg-zinc-950/95 backdrop-blur-xl overflow-hidden shadow-2xl shadow-black/40">
+        <div className="rounded-[1.35rem] border border-zinc-200 bg-white overflow-hidden shadow-2xl shadow-zinc-900/10 dark:border-white/[0.1] dark:bg-zinc-950/95 dark:shadow-black/40">
           <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-            <p className="text-sm font-semibold text-white">Essen hinzufügen</p>
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+              Essen hinzufügen
+            </p>
             <button
               type="button"
               onClick={() => {
                 resetBodyScroll();
                 onClose();
               }}
-              className="h-11 w-11 inline-flex items-center justify-center rounded-full text-zinc-400 hover:text-white"
+              className="h-11 w-11 inline-flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
               aria-label="Schließen"
             >
               <X className="h-5 w-5" />
@@ -108,13 +110,13 @@ export const NutritionAddSheet = memo(function NutritionAddSheet({
                 <button
                   type="button"
                   onClick={() => onAction(id)}
-                  className="flex w-full min-h-14 items-center gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-white/[0.06] active:bg-white/[0.09] transition-colors"
+                  className="flex w-full min-h-14 items-center gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-zinc-50 active:bg-zinc-100 transition-colors dark:hover:bg-white/[0.06] dark:active:bg-white/[0.09]"
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.07] text-zinc-100">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent dark:bg-white/[0.07] dark:text-zinc-100">
                     <Icon className="h-5 w-5" aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold text-white leading-tight">
+                    <span className="block text-[15px] font-semibold text-zinc-900 leading-tight dark:text-white">
                       {label}
                     </span>
                     <span className="block text-xs text-zinc-500 mt-0.5">{hint}</span>

@@ -47,9 +47,9 @@ function RecoveryRow({
       <div className="flex items-center justify-between gap-2">
         <span
           className={cn(
-            "text-zinc-200 font-medium shrink-0",
-            premium ? "text-sm min-w-[5.5rem]" : "text-sm min-w-[5rem]"
-          )}
+          "text-zinc-800 font-medium shrink-0 dark:text-zinc-200",
+          premium ? "text-sm min-w-[5.5rem]" : "text-sm min-w-[5rem]"
+        )}
         >
           {row.label}
         </span>
@@ -72,7 +72,7 @@ function RecoveryRow({
       </div>
       <div
         className={cn(
-          "rounded-full bg-zinc-800/90 overflow-hidden",
+          "rounded-full bg-zinc-200 overflow-hidden dark:bg-zinc-800/90",
           premium ? "h-2.5" : "h-1.5"
         )}
       >
@@ -125,12 +125,12 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
       <div
         className={cn(
           isSection
-            ? "rounded-3xl border border-zinc-700/50 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 p-5 mt-2"
-            : "rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4"
+            ? "rounded-2xl border border-zinc-200/90 bg-white p-4 mt-1 shadow-sm dark:border-zinc-700/50 dark:bg-gradient-to-b dark:from-zinc-900/90 dark:to-zinc-950/90 dark:shadow-none"
+            : "rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 dark:shadow-none"
         )}
       >
-        <p className="text-sm font-semibold uppercase tracking-wide text-zinc-300 flex items-center gap-1.5">
-          <Activity className="h-4 w-4 text-cyan-400" />
+        <p className="text-sm font-semibold uppercase tracking-wide text-zinc-700 flex items-center gap-1.5 dark:text-zinc-300">
+          <Activity className="h-4 w-4 text-accent" />
           {title}
         </p>
         <p className="text-xs text-zinc-500 mt-2">
@@ -145,25 +145,27 @@ export const MuscleRecoveryPanel = memo(function MuscleRecoveryPanel({
     <div
       className={cn(
         isSection
-          ? "rounded-3xl border border-zinc-700/50 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 p-5 mt-2"
-          : "rounded-2xl border border-zinc-800 bg-zinc-900/60",
+          ? "rounded-2xl border border-zinc-200/90 bg-white p-4 mt-1 shadow-sm dark:border-zinc-700/50 dark:bg-gradient-to-b dark:from-zinc-900/90 dark:to-zinc-950/90 dark:shadow-none dark:p-5"
+          : "rounded-2xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60 dark:shadow-none",
         !isSection && (compact ? "p-3" : "p-4")
       )}
     >
-      <div className="flex items-center justify-between gap-2 mb-4">
+      <div className="flex items-center justify-between gap-2 mb-3">
         <p
           className={cn(
             "font-semibold uppercase tracking-wide flex items-center gap-1.5",
-            isSection ? "text-sm text-zinc-300" : "text-xs text-zinc-400"
+            isSection
+              ? "text-sm text-zinc-700 dark:text-zinc-300"
+              : "text-xs text-zinc-500 dark:text-zinc-400"
           )}
         >
           <Activity
-            className={cn("text-cyan-400", isSection ? "h-4 w-4" : "h-3.5 w-3.5")}
+            className={cn("text-accent", isSection ? "h-4 w-4" : "h-3.5 w-3.5")}
           />
           {title}
         </p>
         {showLink && (
-          <Link href="/workouts/journey" className="text-[10px] text-cyan-400">
+          <Link href="/workouts/journey" className="text-[10px] text-accent">
             Details
           </Link>
         )}

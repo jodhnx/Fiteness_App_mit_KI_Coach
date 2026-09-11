@@ -62,10 +62,10 @@ export type ProfileEditForm = {
 type FieldErrors = Partial<Record<keyof ProfileEditForm, string>>;
 
 const inputCls =
-  "mt-1 h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-sm text-white tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50";
+  "mt-1 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 tabular-nums shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:shadow-none";
 
 const selectCls =
-  "mt-1 h-11 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50";
+  "mt-1 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:shadow-none";
 
 function parseDec(raw: string): number | null {
   const t = raw.trim().replace(/\s/g, "").replace(",", ".");
@@ -241,23 +241,25 @@ export const SettingsProfileEditSheet = memo(function SettingsProfileEditSheet({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex flex-col bg-zinc-950"
+      className="fixed inset-0 z-[80] flex flex-col bg-[#f4f7fa] dark:bg-zinc-950"
       role="dialog"
       aria-modal="true"
       aria-label="Profil bearbeiten"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
-      <header className="shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-white/[0.06]">
+      <header className="shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-zinc-200 bg-white dark:border-white/[0.06] dark:bg-transparent">
         <button
           type="button"
           onClick={close}
           disabled={saving}
-          className="h-11 w-11 inline-flex items-center justify-center rounded-xl text-zinc-400 hover:text-white disabled:opacity-40"
+          className="h-11 w-11 inline-flex items-center justify-center rounded-xl text-zinc-500 hover:text-zinc-900 disabled:opacity-40 dark:text-zinc-400 dark:hover:text-white"
           aria-label="Schließen"
         >
           <X className="h-5 w-5" />
         </button>
-        <h2 className="text-base font-semibold text-white">Profil bearbeiten</h2>
+        <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
+          Profil bearbeiten
+        </h2>
         <Button
           type="button"
           size="sm"
@@ -647,8 +649,8 @@ export const SettingsProfileEditSheet = memo(function SettingsProfileEditSheet({
                     className={cn(
                       "h-11 rounded-xl border text-sm font-semibold",
                       draft.countryCode === opt.code
-                        ? "border-accent/50 bg-accent/15 text-white"
-                        : "border-zinc-700 bg-zinc-900/60 text-zinc-300"
+                        ? "border-accent/50 bg-accent text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300 dark:shadow-none"
                     )}
                   >
                     {opt.label}

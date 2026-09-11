@@ -22,7 +22,7 @@ export function LevelProgressBar({
   return (
     <div className={cn("space-y-1.5", className)}>
       <div className="flex items-center justify-between text-sm">
-        <span className="font-semibold text-white">
+        <span className="font-semibold text-zinc-900 dark:text-white">
           Level {level}
           {!compact && (
             <span className="text-zinc-500 font-normal ml-2">{totalXP.toLocaleString("de-DE")} XP</span>
@@ -34,9 +34,9 @@ export function LevelProgressBar({
           </span>
         )}
       </div>
-      <div className="h-2.5 rounded-full bg-zinc-800 overflow-hidden">
+      <div className="h-2.5 rounded-full bg-zinc-200 overflow-hidden dark:bg-zinc-800">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 transition-[width] duration-200 ease-out"
+          className="h-full rounded-full bg-gradient-to-r from-accent to-sky-500 dark:from-cyan-500 dark:to-violet-500 transition-[width] duration-200 ease-out"
           style={{ width: `${progressPercent}%` }}
         />
       </div>

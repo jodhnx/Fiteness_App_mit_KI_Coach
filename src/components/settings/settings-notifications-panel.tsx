@@ -41,7 +41,7 @@ function Toggle({
       aria-checked={on}
       onClick={onToggle}
       className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-        on ? "bg-accent" : "bg-zinc-700"
+        on ? "bg-accent" : "bg-zinc-300 dark:bg-zinc-700"
       }`}
     >
       <span
@@ -135,17 +135,19 @@ export function SettingsNotificationsPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-white">Benachrichtigungen</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+          Benachrichtigungen
+        </h2>
         <p className="text-sm text-zinc-500 mt-1">
           Wähle, welche Hinweise du erhalten möchtest. System-Push folgt mit der nativen App.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 divide-y divide-white/[0.06]">
+      <div className="rounded-2xl border border-zinc-200/90 bg-white divide-y divide-zinc-100 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:divide-white/[0.06] dark:shadow-none">
         {rows.map((r) => (
           <div key={r.label} className="flex items-start justify-between gap-3 px-4 py-3.5">
             <div className="min-w-0">
-              <Label className="text-sm text-zinc-200">{r.label}</Label>
+              <Label className="text-sm text-zinc-800 dark:text-zinc-200">{r.label}</Label>
               <p className="text-[11px] text-zinc-500 mt-0.5 leading-snug">{r.hint}</p>
             </div>
             <Toggle on={r.on} onToggle={r.toggle} />

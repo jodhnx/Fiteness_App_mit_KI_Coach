@@ -315,7 +315,7 @@ export default function SocialPage() {
               "shrink-0 inline-flex items-center gap-1.5 rounded-2xl border px-3.5 py-2 text-sm font-semibold min-h-[40px] transition-colors",
               tab === id
                 ? "border-accent/40 bg-accent/10 text-accent"
-                : "border-white/[0.07] bg-zinc-900/60 text-zinc-400 hover:text-white"
+                : "border-zinc-200 bg-white text-zinc-500 shadow-sm hover:text-zinc-900 dark:border-white/[0.07] dark:bg-zinc-900/60 dark:text-zinc-400 dark:shadow-none dark:hover:text-white"
             )}
           >
             <Icon className="h-3.5 w-3.5" />
@@ -335,13 +335,13 @@ export default function SocialPage() {
           {loadingFeed && feed.length === 0 && (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 rounded-2xl bg-zinc-900/60 border border-zinc-800/50 animate-pulse" />
+                <div key={i} className="h-20 rounded-2xl bg-zinc-100 border border-zinc-200 animate-pulse dark:bg-zinc-900/60 dark:border-zinc-800/50" />
               ))}
             </div>
           )}
 
           {!loadingFeed && feed.length === 0 && (
-            <div className="rounded-3xl border border-dashed border-zinc-700/60 py-14 text-center space-y-3">
+            <div className="rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700/60 py-14 text-center space-y-3">
               <Activity className="h-10 w-10 text-zinc-600 mx-auto" />
               <div>
                 <p className="text-sm font-medium text-zinc-400">Noch keine Aktivitäten</p>
@@ -366,12 +366,12 @@ export default function SocialPage() {
             return (
               <div
                 key={item.id}
-                className="rounded-2xl border border-white/[0.07] bg-zinc-900/70 px-4 py-3 space-y-2"
+                className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 space-y-2 shadow-sm dark:border-white/[0.07] dark:bg-zinc-900/70 dark:shadow-none"
               >
                 <div className="flex items-center gap-3">
                   <UserAvatar src={item.user.image} name={item.user.name ?? item.user.username} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">
+                    <p className="text-sm font-semibold text-zinc-900 truncate dark:text-white">
                       {displayHandle(item.user)}
                     </p>
                     <p className="text-[11px] text-zinc-400">{timeAgo(item.createdAt)}</p>
@@ -381,9 +381,9 @@ export default function SocialPage() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-zinc-200">{item.title}</p>
+                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{item.title}</p>
                   {item.subtitle && (
-                    <p className="text-base font-bold text-white mt-0.5">{item.subtitle}</p>
+                    <p className="text-base font-bold text-zinc-900 mt-0.5 dark:text-white">{item.subtitle}</p>
                   )}
                   {item.meta && (
                     <p className="text-xs text-zinc-500 mt-0.5">{item.meta}</p>
@@ -414,10 +414,10 @@ export default function SocialPage() {
             </p>
           )}
           {/* Search */}
-          <div className="rounded-2xl border border-white/[0.07] bg-zinc-900/70 p-4 space-y-3">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-3 shadow-sm dark:border-white/[0.07] dark:bg-zinc-900/70 dark:shadow-none">
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-accent shrink-0" />
-              <h2 className="text-sm font-bold text-white">Benutzer suchen</h2>
+              <h2 className="text-sm font-bold text-zinc-900 dark:text-white">Benutzer suchen</h2>
             </div>
             <div className="relative">
               <Input
@@ -438,11 +438,11 @@ export default function SocialPage() {
                 {results.map((u) => (
                   <li
                     key={u.id}
-                    className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2.5"
+                    className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 dark:border-white/[0.06] dark:bg-white/[0.02]"
                   >
                     <UserAvatar src={u.image} name={u.name ?? u.username} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-white truncate">{displayHandle(u)}</p>
+                      <p className="text-sm font-semibold text-zinc-900 truncate dark:text-white">{displayHandle(u)}</p>
                       {u.name && u.username && (
                         <p className="text-[11px] text-zinc-500 truncate">{u.name}</p>
                       )}
@@ -470,8 +470,8 @@ export default function SocialPage() {
 
           {/* Incoming requests */}
           {pendingIncoming.length > 0 && (
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-950/10 p-4 space-y-2.5">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400">
+            <div className="rounded-2xl border border-amber-500/25 bg-amber-50 p-4 space-y-2.5 dark:border-amber-500/20 dark:bg-amber-950/10">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">
                 Anfragen ({pendingIncoming.length})
               </h2>
               {pendingIncoming.map((f) => {
@@ -479,7 +479,7 @@ export default function SocialPage() {
                 return (
                   <div key={f.id} className="flex items-center gap-3 min-h-[44px]">
                     <UserAvatar src={other.image} name={other.name ?? other.username} size="sm" />
-                    <p className="flex-1 text-sm font-medium text-zinc-200 truncate">
+                    <p className="flex-1 text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
                       {displayHandle(other)}
                     </p>
                     <button
@@ -493,7 +493,7 @@ export default function SocialPage() {
                     <button
                       type="button"
                       onClick={() => void patchFriend(f.id, "reject")}
-                      className="h-11 w-11 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300"
+                      className="h-11 w-11 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-600 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300"
                       aria-label="Ablehnen"
                     >
                       <X className="h-4 w-4" />
@@ -506,7 +506,7 @@ export default function SocialPage() {
 
           {/* Outgoing */}
           {pendingOutgoing.length > 0 && (
-            <div className="rounded-2xl border border-white/[0.07] bg-zinc-900/60 p-4 space-y-2">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-2 shadow-sm dark:border-white/[0.07] dark:bg-zinc-900/60 dark:shadow-none">
               <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
                 Ausstehend ({pendingOutgoing.length})
               </h2>
@@ -515,7 +515,7 @@ export default function SocialPage() {
                 return (
                   <div key={f.id} className="flex items-center gap-3">
                     <UserAvatar src={other.image} name={other.name ?? other.username} size="sm" />
-                    <p className="flex-1 text-sm text-zinc-300 truncate">{displayHandle(other)}</p>
+                    <p className="flex-1 text-sm text-zinc-700 truncate dark:text-zinc-300">{displayHandle(other)}</p>
                     <button
                       type="button"
                       onClick={() => void patchFriend(f.id, "cancel")}
@@ -530,14 +530,14 @@ export default function SocialPage() {
           )}
 
           {/* Friends list */}
-          <div className="rounded-2xl border border-white/[0.07] bg-zinc-900/60 p-4 space-y-2.5">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-2.5 shadow-sm dark:border-white/[0.07] dark:bg-zinc-900/60 dark:shadow-none">
             <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
               Freunde ({accepted.length})
             </h2>
             {accepted.length === 0 ? (
               <div className="text-center py-6 space-y-2">
-                <Users className="h-8 w-8 text-zinc-700 mx-auto" />
-                <p className="text-sm text-zinc-400">
+                <Users className="h-8 w-8 text-zinc-300 mx-auto dark:text-zinc-700" />
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
                   Noch keine Freunde — suche oben nach einem Benutzernamen
                 </p>
               </div>
@@ -550,11 +550,11 @@ export default function SocialPage() {
                   return (
                     <li
                       key={f.id}
-                      className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.02] p-2.5"
+                      className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-2.5 dark:border-white/[0.05] dark:bg-white/[0.02]"
                     >
                       <UserAvatar src={other.image} name={other.name ?? other.username} size="sm" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-white truncate">
+                        <p className="text-sm font-semibold text-zinc-900 truncate dark:text-white">
                           {displayHandle(other)}
                         </p>
                         <p className="text-[10px] text-emerald-400 font-medium">Freunde</p>
@@ -584,7 +584,7 @@ export default function SocialPage() {
             </p>
           )}
           {challenges.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-zinc-700/60 py-14 text-center space-y-3">
+            <div className="rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700/60 py-14 text-center space-y-3">
               <Trophy className="h-10 w-10 text-zinc-600 mx-auto" />
               <div>
                 <p className="text-sm font-medium text-zinc-400">Noch keine Challenges</p>
@@ -612,12 +612,12 @@ export default function SocialPage() {
                     "rounded-2xl border p-4 space-y-2.5",
                     done
                       ? "border-emerald-500/20 bg-emerald-950/10"
-                      : "border-white/[0.07] bg-zinc-900/70"
+                      : "border-zinc-200 bg-white shadow-sm dark:border-white/[0.07] dark:bg-zinc-900/70 dark:shadow-none"
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white">{c.title}</p>
+                      <p className="text-sm font-bold text-zinc-900 dark:text-white">{c.title}</p>
                       {c.description && (
                         <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{c.description}</p>
                       )}
@@ -637,9 +637,9 @@ export default function SocialPage() {
                         {progress} / {target}
                         {!done ? ` · noch ${Math.max(0, target - progress)}` : ""}
                       </span>
-                      <span className="font-semibold text-white">{pct}%</span>
+                      <span className="font-semibold text-zinc-900 dark:text-white">{pct}%</span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-zinc-200 overflow-hidden dark:bg-zinc-800">
                       <div
                         className={cn("h-full rounded-full transition-all", done ? "bg-emerald-500" : "bg-cyan-500")}
                         style={{ width: `${pct}%` }}
@@ -680,7 +680,7 @@ export default function SocialPage() {
                   "shrink-0 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors",
                   rankMetric === id
                     ? "border-accent/40 bg-accent/10 text-accent"
-                    : "border-white/[0.07] bg-zinc-900/60 text-zinc-400"
+                    : "border-zinc-200 bg-white text-zinc-500 shadow-sm dark:border-white/[0.07] dark:bg-zinc-900/60 dark:text-zinc-400 dark:shadow-none"
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -690,7 +690,7 @@ export default function SocialPage() {
           </div>
 
           {leaderboard.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-zinc-700/60 py-14 text-center space-y-3">
+            <div className="rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700/60 py-14 text-center space-y-3">
               <Medal className="h-10 w-10 text-zinc-600 mx-auto" />
               <div>
                 <p className="text-sm font-medium text-zinc-400">Noch keine Ranglisten-Daten</p>
@@ -706,7 +706,7 @@ export default function SocialPage() {
                     "flex items-center gap-3 rounded-2xl border px-4 py-3",
                     row.isMe
                       ? "border-accent/30 bg-accent/5"
-                      : "border-white/[0.06] bg-zinc-900/60"
+                      : "border-zinc-200 bg-white shadow-sm dark:border-white/[0.06] dark:bg-zinc-900/60 dark:shadow-none"
                   )}
                 >
                   <span
@@ -722,7 +722,7 @@ export default function SocialPage() {
                   </span>
                   <UserAvatar src={row.user.image} name={row.user.name ?? row.user.username} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white truncate">
+                    <p className="text-sm font-semibold text-zinc-900 truncate dark:text-white">
                       {displayHandle(row.user)}
                       {row.isMe && <span className="text-accent/80 text-[11px] ml-1">(du)</span>}
                     </p>

@@ -21,12 +21,12 @@ export const DesktopNav = memo(function DesktopNav() {
 
   return (
     <aside
-      className="desktop-nav hidden lg:flex lg:flex-col lg:w-56 xl:w-60 lg:shrink-0 lg:sticky lg:top-0 lg:h-[100dvh] lg:border-r lg:border-white/[0.06] lg:bg-zinc-950/80 lg:backdrop-blur-xl"
+      className="desktop-nav hidden lg:flex lg:flex-col lg:w-56 xl:w-60 lg:shrink-0 lg:sticky lg:top-0 lg:h-[100dvh] lg:border-r lg:border-zinc-200/90 lg:bg-white/90 lg:backdrop-blur-xl dark:lg:border-white/[0.06] dark:lg:bg-zinc-950/80"
       aria-label="Desktop Navigation"
     >
       <div className="px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">
         <Link href="/home" className="block" prefetch>
-          <span className="text-xl font-bold text-white tracking-tight">
+          <span className="text-xl font-bold text-zinc-900 tracking-tight dark:text-white">
             NEX<span className="text-accent">FORM</span>
           </span>
           <span className="block text-[11px] text-zinc-500 mt-0.5">
@@ -49,7 +49,7 @@ export const DesktopNav = memo(function DesktopNav() {
                 "desktop-nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 min-h-11 text-sm font-medium transition-colors",
                 active
                   ? "bg-accent/15 text-accent border border-accent/20"
-                  : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-zinc-100"
               )}
               aria-current={active ? "page" : undefined}
             >
@@ -59,8 +59,8 @@ export const DesktopNav = memo(function DesktopNav() {
           );
         })}
 
-        <div className="pt-4 mt-2 border-t border-white/[0.06]">
-          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
+        <div className="pt-4 mt-2 border-t border-zinc-200 dark:border-white/[0.06]">
+          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
             Mehr
           </p>
           {MORE_NAV.map(({ href, label, icon: Icon }) => {
@@ -75,7 +75,7 @@ export const DesktopNav = memo(function DesktopNav() {
                   "desktop-nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 min-h-11 text-sm font-medium transition-colors",
                   active
                     ? "bg-accent/15 text-accent"
-                    : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/[0.04] dark:hover:text-zinc-100"
                 )}
               >
                 <Icon className="h-5 w-5 shrink-0" />
@@ -91,7 +91,7 @@ export const DesktopNav = memo(function DesktopNav() {
                 "desktop-nav-item flex items-center gap-3 rounded-xl px-3 py-2.5 min-h-11 text-sm font-medium mt-1",
                 pathname.startsWith("/admin")
                   ? "bg-accent/15 text-accent"
-                  : "text-zinc-400 hover:bg-white/[0.04]"
+                  : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-white/[0.04]"
               )}
             >
               <ADMIN_NAV.icon className="h-5 w-5 shrink-0" />

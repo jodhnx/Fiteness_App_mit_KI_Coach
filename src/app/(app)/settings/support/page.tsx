@@ -183,11 +183,13 @@ export default function SupportPage() {
               className={cn(
                 "rounded-2xl border px-4 py-3 text-left transition-colors",
                 category === topic.category
-                  ? "border-white/20 bg-white/[0.06]"
-                  : "border-white/[0.08] bg-zinc-900/40"
+                  ? "border-accent/30 bg-accent/10"
+                  : "border-zinc-200 bg-white shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/40 dark:shadow-none"
               )}
             >
-              <p className="font-medium text-white text-sm">{topic.title}</p>
+              <p className="font-medium text-zinc-900 text-sm dark:text-white">
+                {topic.title}
+              </p>
               <p className="text-xs text-zinc-500 mt-0.5">{topic.description}</p>
             </button>
           ))}
@@ -202,12 +204,14 @@ export default function SupportPage() {
           {FAQ.map((item) => (
             <details
               key={item.title}
-              className="rounded-2xl border border-white/[0.08] bg-zinc-900/35 px-4 py-3"
+              className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/35 dark:shadow-none"
             >
-              <summary className="cursor-pointer text-sm font-medium text-white list-none">
+              <summary className="cursor-pointer text-sm font-medium text-zinc-900 list-none dark:text-white">
                 {item.title}
               </summary>
-              <p className="text-sm text-zinc-400 mt-2 leading-relaxed">{item.body}</p>
+              <p className="text-sm text-zinc-500 mt-2 leading-relaxed dark:text-zinc-400">
+                {item.body}
+              </p>
             </details>
           ))}
         </div>
@@ -215,13 +219,15 @@ export default function SupportPage() {
 
       <form
         id="support-form"
-        className="rounded-2xl border border-white/[0.08] bg-zinc-900/35 p-4 space-y-4"
+        className="rounded-2xl border border-zinc-200 bg-white p-4 space-y-4 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/35 dark:shadow-none"
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
         }}
       >
-        <h2 className="font-semibold text-white text-base">Support kontaktieren</h2>
+        <h2 className="font-semibold text-zinc-900 text-base dark:text-white">
+          Support kontaktieren
+        </h2>
 
         <input
           type="text"
@@ -280,7 +286,7 @@ export default function SupportPage() {
             value={category}
             onChange={(e) => setCategory(e.target.value as SupportCategory)}
             required
-            className="mt-1 w-full h-12 rounded-xl border border-zinc-700 bg-zinc-900 px-3 text-base"
+            className="mt-1 w-full h-12 rounded-xl border border-zinc-200 bg-white px-3 text-base text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
           >
             {SUPPORT_CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>
@@ -301,7 +307,7 @@ export default function SupportPage() {
             maxLength={5000}
             rows={5}
             placeholder="Beschreibe dein Anliegen…"
-            className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-3 text-base text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-white/20 resize-none"
+            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-base text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-accent/30 resize-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500 dark:focus:ring-white/20"
           />
           <p className="text-[10px] text-zinc-600 mt-1 text-right">{message.length}/5000</p>
         </div>

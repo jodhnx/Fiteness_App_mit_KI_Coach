@@ -22,7 +22,7 @@ export const WaterTracker = memo(function WaterTracker({
   const canRemove = consumedMl > 0;
   return (
     <section
-      className="flex items-center gap-2.5 min-h-11 px-0.5"
+      className="flex items-center gap-2.5 min-h-11 rounded-2xl border border-zinc-200/90 bg-white px-3 py-2 shadow-sm dark:border-white/[0.08] dark:bg-transparent dark:shadow-none"
       aria-label="Wasser"
     >
       <Droplets
@@ -33,8 +33,8 @@ export const WaterTracker = memo(function WaterTracker({
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 leading-none">
           Wasser
         </p>
-        <p className="text-sm text-zinc-300 tabular-nums mt-0.5">
-          <span className="font-semibold text-white">
+        <p className="text-sm text-zinc-500 tabular-nums mt-0.5 dark:text-zinc-300">
+          <span className="font-semibold text-zinc-900 dark:text-white">
             {formatLiters(consumedMl)}
           </span>
           <span className="text-zinc-500"> / {formatLiters(targetMl)} L</span>
@@ -43,7 +43,7 @@ export const WaterTracker = memo(function WaterTracker({
       <button
         type="button"
         disabled={!canRemove}
-        className="h-11 w-11 inline-flex items-center justify-center rounded-xl border border-white/[0.08] text-zinc-300 disabled:opacity-35 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="h-11 w-11 inline-flex items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 disabled:opacity-35 hover:bg-zinc-50 dark:border-white/[0.08] dark:text-zinc-300 dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         onClick={() => onAdd(-250)}
         aria-label="250 Milliliter Wasser entfernen"
       >

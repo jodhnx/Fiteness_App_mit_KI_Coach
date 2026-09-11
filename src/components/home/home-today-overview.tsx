@@ -47,15 +47,15 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
           Heute
         </p>
-        <p className="text-lg font-semibold text-white">Kalorienziel festlegen</p>
-        <p className="text-sm text-zinc-400">
+        <p className="text-lg font-semibold text-zinc-900 dark:text-white">Kalorienziel festlegen</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
           {state.profileIncomplete
             ? "Vervollständige dein Profil, damit wir dein Tagesziel berechnen können."
             : "Lege dein Kalorienziel fest, um deine verbleibenden kcal zu sehen."}
         </p>
         <Link
           href="/settings"
-          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 text-sm font-semibold text-black"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 text-sm font-semibold text-white"
         >
           Ziel festlegen
         </Link>
@@ -103,14 +103,14 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
         <p
           className={cn(
             "mt-1.5 text-[1.75rem] font-bold leading-none tabular-nums tracking-tight",
-            cal.isOver ? "text-red-400" : "text-white"
+            cal.isOver ? "text-red-500 dark:text-red-400" : "text-zinc-900 dark:text-white"
           )}
         >
           {cal.primaryValue.toLocaleString("de-DE")}
           <span
             className={cn(
               "ml-2 text-sm font-semibold uppercase tracking-wide",
-              cal.isOver ? "text-red-400/90" : "text-zinc-400"
+              cal.isOver ? "text-red-500/90 dark:text-red-400/90" : "text-zinc-500 dark:text-zinc-400"
             )}
           >
             {cal.isOver ? "kcal über Ziel" : "kcal übrig"}
@@ -118,11 +118,11 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
         </p>
         <p className="mt-1 text-xs text-zinc-500 tabular-nums">{cal.secondaryLine}</p>
         {macroBits.length > 0 ? (
-          <p className="mt-1.5 text-[13px] font-medium tabular-nums text-zinc-400">
+          <p className="mt-1.5 text-[13px] font-medium tabular-nums text-zinc-500 dark:text-zinc-400">
             {macroBits.join(" · ")}
             <Link
               href="/nutrition"
-              className="ml-2 text-accent/90 hover:text-accent"
+              className="ml-2 text-accent hover:text-accent-hover"
             >
               Details
             </Link>
@@ -131,12 +131,12 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-xl border border-white/[0.05] px-2 py-2 min-h-11">
+        <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 px-2 py-2 min-h-11 dark:border-white/[0.05] dark:bg-transparent">
           <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
             <Footprints className="h-3 w-3" aria-hidden />
             Schritte
           </p>
-          <p className="mt-0.5 text-[13px] font-bold tabular-nums text-white">
+          <p className="mt-0.5 text-[13px] font-bold tabular-nums text-zinc-900 dark:text-white">
             {steps.toLocaleString("de-DE")}
             <span className="text-[10px] font-medium text-zinc-500">
               {" "}
@@ -144,22 +144,22 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
             </span>
           </p>
         </div>
-        <div className="rounded-xl border border-white/[0.05] px-2 py-2 min-h-11">
+        <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 px-2 py-2 min-h-11 dark:border-white/[0.05] dark:bg-transparent">
           <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
             <Flame className="h-3 w-3" aria-hidden />
             Aktiv
           </p>
-          <p className="mt-0.5 text-[13px] font-bold tabular-nums text-white">
+          <p className="mt-0.5 text-[13px] font-bold tabular-nums text-zinc-900 dark:text-white">
             {burned.toLocaleString("de-DE")}
             <span className="text-[10px] font-medium text-zinc-500"> kcal</span>
           </p>
         </div>
-        <div className="rounded-xl border border-white/[0.05] px-2 py-2 min-h-11">
+        <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 px-2 py-2 min-h-11 dark:border-white/[0.05] dark:bg-transparent">
           <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
             <Droplets className="h-3 w-3" aria-hidden />
             Wasser
           </p>
-          <p className="mt-0.5 text-[13px] font-bold tabular-nums text-white">
+          <p className="mt-0.5 text-[13px] font-bold tabular-nums text-zinc-900 dark:text-white">
             {waterMl}
             <span className="text-[10px] font-medium text-zinc-500">
               {" "}
@@ -170,7 +170,7 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
       </div>
 
       {cue ? (
-        <p className="text-[13px] leading-snug text-zinc-400">{cue}</p>
+        <p className="text-[13px] leading-snug text-zinc-500 dark:text-zinc-400">{cue}</p>
       ) : null}
     </PremiumCard>
   );

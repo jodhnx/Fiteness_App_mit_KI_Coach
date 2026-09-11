@@ -112,10 +112,10 @@ export default function ErfolgePage() {
     return (
       <div className="py-12 max-w-md mx-auto text-center space-y-4 px-4">
         <AlertCircle className="h-10 w-10 text-amber-400 mx-auto" />
-        <h2 className="text-lg font-semibold text-white">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
           Erfolge konnten nicht geladen werden
         </h2>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
           Bitte prüfe deine Verbindung und versuche es erneut.
         </p>
         <Button type="button" onClick={() => reload()} className="gap-2">
@@ -141,21 +141,21 @@ export default function ErfolgePage() {
     <div className="space-y-6 pb-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Erfolge</h1>
+          <h1 className="text-2xl font-bold text-zinc-900 tracking-tight dark:text-white">Erfolge</h1>
           <p className="text-sm text-zinc-500 mt-1">
             Level, Badges, Challenges und Rekorde
           </p>
         </div>
         <Link
           href="/erfolge/trophaeen"
-          className="text-sm text-cyan-400 hover:underline shrink-0 flex items-center gap-1"
+          className="text-sm text-accent hover:underline shrink-0 flex items-center gap-1"
         >
           <Medal className="h-4 w-4" />
           Trophäenraum
         </Link>
       </div>
 
-      <div className="rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-zinc-900/95 to-zinc-950 p-4 space-y-3">
+      <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-4 space-y-3 shadow-sm dark:border-white/[0.08] dark:bg-gradient-to-b dark:from-zinc-900/95 dark:to-zinc-950 dark:shadow-none">
         <LevelProgressBar
           level={display.level.level}
           totalXP={display.totalXP}
@@ -163,19 +163,19 @@ export default function ErfolgePage() {
           xpToNext={display.level.xpToNext}
         />
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="rounded-2xl bg-white/[0.04] py-2.5 border border-white/[0.05]">
+          <div className="rounded-2xl bg-zinc-50 py-2.5 border border-zinc-200 dark:bg-white/[0.04] dark:border-white/[0.05]">
             <p className="text-zinc-500">Freigeschaltet</p>
-            <p className="text-lg font-bold text-white tabular-nums">
+            <p className="text-lg font-bold text-zinc-900 tabular-nums dark:text-white">
               {display.unlockedCount}/{display.totalAchievements}
             </p>
           </div>
-          <div className="rounded-2xl bg-white/[0.04] py-2.5 border border-white/[0.05]">
+          <div className="rounded-2xl bg-zinc-50 py-2.5 border border-zinc-200 dark:bg-white/[0.04] dark:border-white/[0.05]">
             <p className="text-zinc-500">Streak</p>
             <p className="text-lg font-bold text-orange-400 tabular-nums">
               {display.streak?.currentDays ?? 0}d
             </p>
           </div>
-          <div className="rounded-2xl bg-white/[0.04] py-2.5 border border-white/[0.05]">
+          <div className="rounded-2xl bg-zinc-50 py-2.5 border border-zinc-200 dark:bg-white/[0.04] dark:border-white/[0.05]">
             <p className="text-zinc-500">Challenges</p>
             <p className="text-lg font-bold text-cyan-400 tabular-nums">
               {display.challenges.length}
@@ -212,8 +212,8 @@ export default function ErfolgePage() {
             className={cn(
               "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors",
               tab === t.id
-                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                : "bg-white/5 text-zinc-400"
+                ? "bg-accent/10 text-accent border border-accent/30 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/40"
+                : "bg-zinc-100 text-zinc-600 border border-zinc-200 dark:bg-white/5 dark:text-zinc-400 dark:border-transparent"
             )}
           >
             {t.label}
@@ -225,7 +225,7 @@ export default function ErfolgePage() {
         <div className="space-y-4">
           {nextUp.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-zinc-900 mb-2 flex items-center gap-2 dark:text-white">
                 <Target className="h-4 w-4 text-cyan-400" />
                 Nächste erreichbare Erfolge
               </h2>
@@ -238,7 +238,7 @@ export default function ErfolgePage() {
           )}
           {rare.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-zinc-900 mb-2 flex items-center gap-2 dark:text-white">
                 <Sparkles className="h-4 w-4 text-violet-400" />
                 Seltene Erfolge
               </h2>
@@ -251,7 +251,7 @@ export default function ErfolgePage() {
           )}
           {inProgress.length > 0 && nextUp.length === 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-zinc-900 mb-2 flex items-center gap-2 dark:text-white">
                 <Sparkles className="h-4 w-4 text-violet-400" />
                 Fast geschafft
               </h2>
@@ -267,7 +267,7 @@ export default function ErfolgePage() {
           )}
           {earned.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-white mb-2">
+              <h2 className="text-sm font-semibold text-zinc-900 mb-2 dark:text-white">
                 Freigeschaltet
               </h2>
               <div className="space-y-2">
@@ -324,7 +324,7 @@ export default function ErfolgePage() {
 
       {tab === "trophies" && (
         <div className="card-premium p-4">
-          <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-zinc-900 mb-3 flex items-center gap-2 dark:text-white">
             <Medal className="h-4 w-4 text-amber-400" />
             Trophäenraum
           </h2>
@@ -334,7 +334,7 @@ export default function ErfolgePage() {
 
       {tab === "records" && (
         <div className="card-premium p-4">
-          <h2 className="text-sm font-semibold text-white mb-3">Persönliche Rekorde</h2>
+          <h2 className="text-sm font-semibold text-zinc-900 mb-3 dark:text-white">Persönliche Rekorde</h2>
           <PersonalRecordsPanel />
         </div>
       )}
@@ -342,8 +342,8 @@ export default function ErfolgePage() {
       {tab === "challenges" && (
         <div className="space-y-4">
           {display.challenges.length === 0 ? (
-            <div className="rounded-2xl border border-white/[0.06] bg-zinc-900/60 px-4 py-8 text-center space-y-2">
-              <p className="text-sm text-zinc-300">Noch keine Challenges geladen</p>
+            <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-8 text-center space-y-2 shadow-sm dark:border-white/[0.06] dark:bg-zinc-900/60 dark:shadow-none">
+              <p className="text-sm text-zinc-700 dark:text-zinc-300">Noch keine Challenges geladen</p>
               <p className="text-xs text-zinc-500">
                 Tippe auf Aktualisieren — Challenges werden automatisch eingerichtet.
               </p>
@@ -366,7 +366,7 @@ export default function ErfolgePage() {
                 period === "daily" ? "Täglich" : period === "weekly" ? "Wöchentlich" : "Monatlich";
               return (
                 <section key={period}>
-                  <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-zinc-900 mb-2 flex items-center gap-2 dark:text-white">
                     <Target className="h-4 w-4 text-cyan-400" />
                     {label}
                   </h2>
@@ -380,7 +380,7 @@ export default function ErfolgePage() {
 
       {tab === "overview" && display.xpHistory.length > 0 && (
         <section className="card-premium p-4">
-          <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-zinc-900 mb-3 flex items-center gap-2 dark:text-white">
             <Trophy className="h-4 w-4 text-amber-400" />
             Letzte XP
           </h2>

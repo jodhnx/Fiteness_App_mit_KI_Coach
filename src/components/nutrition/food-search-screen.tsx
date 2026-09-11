@@ -105,15 +105,19 @@ function FoodResultRow({
     servingG: food.servingG,
   });
   return (
-    <div className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-900/60 pr-2 hover:border-zinc-600">
+    <div className="flex items-center gap-1 rounded-xl border border-zinc-200 bg-white pr-2 shadow-sm hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:shadow-none dark:hover:border-zinc-600">
       <button
         type="button"
         onClick={onClick}
         className="flex-1 text-left px-4 py-3.5 min-w-0 active:scale-[0.99]"
       >
-        <p className="font-medium text-white text-[15px] leading-snug">{food.name}</p>
-        {food.brand && <p className="text-xs text-zinc-500 mt-0.5">{food.brand}</p>}
-        <p className="text-xs text-zinc-400 mt-1.5 tabular-nums">
+        <p className="font-medium text-zinc-900 text-[15px] leading-snug dark:text-white">
+          {food.name}
+        </p>
+        {food.brand && (
+          <p className="text-xs text-zinc-500 mt-0.5">{food.brand}</p>
+        )}
+        <p className="text-xs text-zinc-500 mt-1.5 tabular-nums dark:text-zinc-400">
           {fmtKcal(per100.calories)} kcal / 100g · {fmtG(per100.proteinG)} g Protein
         </p>
       </button>
@@ -137,9 +141,9 @@ function SavedMealRow({
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3.5 hover:border-accent active:scale-[0.99]"
+      className="w-full text-left rounded-xl border border-zinc-200 bg-white px-4 py-3.5 shadow-sm hover:border-accent active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900/60 dark:shadow-none"
     >
-      <p className="font-medium text-white">{item.name}</p>
+      <p className="font-medium text-zinc-900 dark:text-white">{item.name}</p>
       <p className="text-xs text-zinc-500 mt-1">
         {item.ingredients?.length ?? 0} Zutaten
         {kcal != null && (
@@ -318,14 +322,14 @@ export function FoodSearchScreen({
 
   return (
     <div className="flex flex-col max-w-lg mx-auto w-full pb-8">
-      <div className="sticky top-0 z-10 bg-zinc-950/95 backdrop-blur-md px-4 pt-2 pb-3 border-b border-zinc-800/50">
+      <div className="sticky top-0 z-10 bg-[#f4f7fa]/95 backdrop-blur-md px-4 pt-2 pb-3 border-b border-zinc-200 dark:bg-zinc-950/95 dark:border-zinc-800/50">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -h-5 w-5 -translate-y-1/2 text-zinc-500" />
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
           <Input
             placeholder="Lebensmittel suchen..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="h-12 pl-12 text-base rounded-xl border-zinc-700 bg-zinc-900"
+            className="h-12 pl-12 text-base rounded-xl border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900"
             autoFocus
           />
         </div>
@@ -347,7 +351,7 @@ export function FoodSearchScreen({
                   "shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
                   libraryTab === t.id
                     ? "bg-accent text-[var(--accent-fg)]"
-                    : "bg-zinc-800 text-zinc-400"
+                    : "bg-white text-zinc-600 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-transparent"
                 )}
               >
                 <t.icon

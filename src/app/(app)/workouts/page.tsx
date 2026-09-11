@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useRouter } from "next/navigation";
 import { WORKOUT_ACTIVE_CACHE_KEY, WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
@@ -9,6 +10,7 @@ import { getCached, setCached } from "@/lib/client-cache";
 import { PageShell } from "@/components/layout/page-shell";
 import { NextWorkoutHero } from "@/components/workout/next-workout-hero";
 import { TrainingChoiceCard } from "@/components/workout/training-choice-card";
+import { TrainingWeekStrip } from "@/components/workout/training-week-strip";
 import { MuscleRecoveryPanel } from "@/components/workout/muscle-recovery-panel";
 import { Button } from "@/components/ui/button";
 import { filterDisplayMuscles } from "@/lib/recovery-shared";
@@ -16,12 +18,14 @@ import type { MuscleRecovery } from "@/lib/recovery-shared";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import {
   BookOpen,
+  Calendar,
   Dumbbell,
   Flame,
   FolderOpen,
   History,
   Map,
   Play,
+  Plus,
   Sparkles,
   Trophy,
   Zap,
@@ -133,20 +137,65 @@ export default function WorkoutsHubPage() {
   );
 
   return (
-    <PageShell title="Training" className="space-y-4 pb-24" bottomNav={false}>
+    <PageShell className="space-y-4 pb-24" bottomNav={false}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+            Training
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500 tabular-nums">
+            {weekWorkouts}
+            {weekGoal > 0 ? ` / ${weekGoal}` : ""} Workouts diese Woche
+            {streak > 0 ? ` · 🔥 ${streak} Tage` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-11 rounded-xl border-zinc-200 bg-white p-0 text-zinc-700 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200"
+            aria-label="Kalender"
+            onClick={() => router.push("/workouts/calendar")}
+          >
+            <Calendar className="h-5 w-5" />
+          </Button>
+          <Button
+            type="button"
+            className="h-11 w-11 rounded-xl p-0"
+            aria-label="Plan erstellen"
+            onClick={() => router.push("/workouts/create")}
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
       <PageIntro pageId="workouts" />
 
-      <p className="text-sm text-zinc-400 tabular-nums">
-        {weekWorkouts}
-        {weekGoal > 0 ? ` / ${weekGoal}` : ""} Workouts diese Woche
-      </p>
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
+        {[
+          { href: "/workouts/my-plans", label: "Trainingsplan" },
+          { href: "/workouts/exercises", label: "Übungen" },
+          { href: "/workouts/journey", label: "Statistiken" },
+        ].map((tab) => (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            prefetch
+            scroll={false}
+            className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-3.5 text-sm font-medium text-zinc-700 shadow-sm active:bg-zinc-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200"
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </div>
 
       {activeSession ? (
-        <section className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 px-4 py-4 space-y-3">
+        <section className="rounded-2xl border border-zinc-200/90 bg-white px-4 py-4 space-y-3 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:shadow-none">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
             Heutiges Training
           </p>
-          <h2 className="text-xl font-semibold text-white leading-tight">
+          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white leading-tight">
             {sessionData?.session?.name ?? "Training"}
           </h2>
           <Button
@@ -163,6 +212,8 @@ export default function WorkoutsHubPage() {
           hasPlans={plans.length > 0 || Boolean(home?.nextWorkout?.dayId)}
         />
       )}
+
+      <TrainingWeekStrip />
 
       <MuscleRecoveryPanel
         muscles={recoveryMuscles}

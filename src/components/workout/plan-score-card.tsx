@@ -4,9 +4,9 @@ import type { PlanScores } from "@/lib/plan-science-engine";
 
 export function PlanScoreCard({ scores }: { scores: PlanScores }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
+    <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50 dark:shadow-none">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-zinc-400">Gesamtbewertung</span>
+        <span className="text-sm text-zinc-500 dark:text-zinc-400">Gesamtbewertung</span>
         <span
           className={`text-2xl font-bold ${
             scores.totalScore >= 80
@@ -28,11 +28,11 @@ export function PlanScoreCard({ scores }: { scores: PlanScores }) {
             ["Volumen", scores.volumeScore],
           ] as const
         ).map(([label, val]) => (
-          <div key={label} className="rounded-lg bg-white/5 px-2 py-1.5">
+          <div key={label} className="rounded-lg bg-zinc-50 px-2 py-1.5 dark:bg-white/5">
             <span className="text-zinc-500">{label}</span>
-            <div className="mt-1 h-1.5 rounded-full bg-zinc-800">
+            <div className="mt-1 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800">
               <div
-                className="h-full rounded-full bg-cyan-500"
+                className="h-full rounded-full bg-accent dark:bg-cyan-500"
                 style={{ width: `${val}%` }}
               />
             </div>
