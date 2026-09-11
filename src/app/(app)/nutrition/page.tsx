@@ -27,7 +27,7 @@ import dynamic from "next/dynamic";
 import { MEAL_TYPE_ORDER, mealTypeForHour } from "@/lib/meal-types";
 import type { MealType } from "@prisma/client";
 import { toast } from "sonner";
-import { Flame, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { refreshFoodHistoryCache } from "@/lib/food-history-cache";
 import { resetBodyScroll } from "@/lib/scroll-lock";
@@ -62,6 +62,8 @@ const ConfirmDialog = dynamic(
 
 const VALID_MEALS = new Set<string>(MEAL_TYPE_ORDER);
 
+const PANEL_RETURN_KEY = "nexform:food-panel-return";
+
 export default function NutritionPage() {
   return (
     <Suspense fallback={null}>
@@ -80,8 +82,8 @@ function NutritionPageInner() {
     "hub" | "favorites" | "search" | undefined
   >(undefined);
   const [foodAIOpen, setFoodAIOpen] = useState(false);
-  /** Prevents ?panel=food from re-opening after the user closes the sheet. */
   const panelDeepLinkConsumed = useRef(false);
+  const [panelReturnTo, setPanelReturnTo] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{
     mealId: string;
     label: string;
@@ -111,16 +113,31 @@ function NutritionPageInner() {
   useEffect(() => {
     const add = searchParams.get("add");
     const panel = searchParams.get("panel");
+    const from = searchParams.get("from");
     if (add && VALID_MEALS.has(add)) {
       panelDeepLinkConsumed.current = false;
+      setPanelReturnTo(null);
+      try {
+        sessionStorage.removeItem(PANEL_RETURN_KEY);
+      } catch {
+        /* ignore */
+      }
       setSearchMeal(add as MealType);
       setAddInitialQuery(searchParams.get("q")?.trim() ?? "");
-      setAddInitialView(undefined);
+      setAddInitialView("search");
       return;
     }
     if (panel === "food" || panel === "saved" || panel === "favorites") {
       if (panelDeepLinkConsumed.current) return;
       panelDeepLinkConsumed.current = true;
+      const returnTo = from === "more" ? "/more" : null;
+      setPanelReturnTo(returnTo);
+      try {
+        if (returnTo) sessionStorage.setItem(PANEL_RETURN_KEY, returnTo);
+        else sessionStorage.removeItem(PANEL_RETURN_KEY);
+      } catch {
+        /* ignore */
+      }
       setSearchMeal(mealTypeForHour());
       setAddInitialQuery("");
       setAddInitialView("favorites");
@@ -129,6 +146,17 @@ function NutritionPageInner() {
       return;
     }
   }, [searchParams, router]);
+
+  // Survive remount: restore return path from sessionStorage
+  useEffect(() => {
+    if (panelReturnTo) return;
+    try {
+      const stored = sessionStorage.getItem(PANEL_RETURN_KEY);
+      if (stored === "/more") setPanelReturnTo("/more");
+    } catch {
+      /* ignore */
+    }
+  }, [panelReturnTo]);
 
   const { dashboard, loading, reload, applyDashboard } = useNutritionPageDashboard(120_000);
   const dashboardRef = useRef(dashboard);
@@ -146,34 +174,61 @@ function NutritionPageInner() {
     searchMeal != null
   );
 
-  const closeSearchPopup = useCallback(() => {
-    panelDeepLinkConsumed.current = true;
-    setSearchMeal(null);
-    setAddInitialQuery("");
-    setAddInitialView(undefined);
-    resetBodyScroll();
-    if (
-      searchParams.get("add") ||
-      searchParams.get("q") ||
-      searchParams.get("panel")
-    ) {
-      router.replace("/nutrition", { scroll: false });
-    }
-    // Allow the same deep link to open again after a short cooldown.
-    window.setTimeout(() => {
-      panelDeepLinkConsumed.current = false;
-    }, 400);
-  }, [router, searchParams]);
+  const dismissSearchPanel = useCallback(
+    (opts?: { followReturn?: boolean }) => {
+      const followReturn = opts?.followReturn !== false;
+      panelDeepLinkConsumed.current = true;
+      setSearchMeal(null);
+      setAddInitialQuery("");
+      setAddInitialView(undefined);
+      resetBodyScroll();
+      let returnTo = panelReturnTo;
+      if (!returnTo) {
+        try {
+          const stored = sessionStorage.getItem(PANEL_RETURN_KEY);
+          if (stored === "/more") returnTo = "/more";
+        } catch {
+          /* ignore */
+        }
+      }
+      setPanelReturnTo(null);
+      try {
+        sessionStorage.removeItem(PANEL_RETURN_KEY);
+      } catch {
+        /* ignore */
+      }
+      if (followReturn && returnTo) {
+        router.replace(returnTo, { scroll: false });
+      } else if (
+        searchParams.get("add") ||
+        searchParams.get("q") ||
+        searchParams.get("panel") ||
+        searchParams.get("from")
+      ) {
+        router.replace("/nutrition", { scroll: false });
+      }
+      window.setTimeout(() => {
+        panelDeepLinkConsumed.current = false;
+      }, 400);
+    },
+    [router, searchParams, panelReturnTo]
+  );
 
+  /** X / Zurück: honor More deep-link return target. */
+  const closeSearchPopup = useCallback(() => {
+    dismissSearchPanel({ followReturn: true });
+  }, [dismissSearchPanel]);
+
+  /** Successful add: stay on Nutrition so the logged meal is visible. */
   const onFoodAdded = useCallback(() => {
-    closeSearchPopup();
+    dismissSearchPanel({ followReturn: false });
     setQuickMeal(null);
     refreshFoodHistoryCache();
     toast.success("Lebensmittel hinzugefügt ✓", { duration: 1600 });
     const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
     const days = home?.nutritionStreak?.currentDays;
     if (typeof days === "number") setStreakDays(days);
-  }, [closeSearchPopup]);
+  }, [dismissSearchPanel]);
 
   const { quickAdd, adding: quickAdding } = useFoodQuickAdd({
     dashboard,
@@ -477,22 +532,18 @@ function NutritionPageInner() {
     >
       <header className="flex items-center gap-2 min-h-11">
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold text-white tracking-tight">
+          <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
             Ernährung
           </h1>
           {streakDays > 0 ? (
-            <p className="text-[11px] text-zinc-500 tabular-nums mt-0.5 inline-flex items-center gap-1">
-              <Flame
-                className="h-3 w-3 text-amber-500/80"
-                aria-hidden
-              />
-              <span>{streakDays} Tage Ernährung</span>
+            <p className="text-[11px] text-zinc-500 tabular-nums mt-0.5">
+              🔥 {streakDays} {streakDays === 1 ? "Tag" : "Tage"}
             </p>
           ) : null}
         </div>
         <button
           type="button"
-          className="h-11 w-11 rounded-full text-zinc-400 hover:text-white inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="h-11 w-11 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           aria-label="Aktualisieren"
           onClick={() => reload()}
         >
@@ -500,7 +551,7 @@ function NutritionPageInner() {
         </button>
         <Link
           href="/settings"
-          className="h-11 px-3 rounded-full text-xs font-medium text-zinc-400 hover:text-white inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="h-11 px-3 rounded-full text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           Einstellungen
         </Link>
@@ -557,6 +608,7 @@ function NutritionPageInner() {
           favoriteIds={favoriteIds}
           initialQuery={addInitialQuery}
           initialView={addInitialView}
+          backLabel={panelReturnTo === "/more" ? "Mehr" : undefined}
           onClose={closeSearchPopup}
           onQuickAddFood={quickAdd}
           onToggleFavorite={handleToggleFavorite}

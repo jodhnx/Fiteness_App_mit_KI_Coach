@@ -1,33 +1,48 @@
 @import "tailwindcss";
 
-:root,
-html[data-theme="turquoise"] {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --accent: #22d3ee;
-  --accent-hover: #06b6d4;
-  --accent-soft: rgba(34, 211, 238, 0.15);
-  --accent-fg: #09090b;
-  --accent-ring: rgba(34, 211, 238, 0.4);
-  --card: rgba(255, 255, 255, 0.05);
-  --border: rgba(255, 255, 255, 0.1);
+:root {
+  --background: #f4f6f8;
+  --foreground: #0f172a;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-soft: rgba(59, 130, 246, 0.12);
+  --accent-fg: #ffffff;
+  --accent-ring: rgba(59, 130, 246, 0.35);
+  --card: #ffffff;
+  --border: rgba(15, 23, 42, 0.08);
   --radius-sm: 0.75rem;
   --radius-md: 1rem;
   --radius-lg: 1.25rem;
   --radius-xl: 1.5rem;
   /* Functional nutrition accents — subtle, not neon */
   --nutrition-cal: #f59e0b;
-  --nutrition-cal-soft: rgba(245, 158, 11, 0.18);
-  --nutrition-protein: #818cf8;
-  --nutrition-protein-soft: rgba(129, 140, 248, 0.18);
-  --nutrition-carbs: #fbbf24;
-  --nutrition-carbs-soft: rgba(251, 191, 36, 0.16);
-  --nutrition-fat: #fb7185;
-  --nutrition-fat-soft: rgba(251, 113, 133, 0.16);
-  --nutrition-water: #38bdf8;
-  --nutrition-water-soft: rgba(56, 189, 248, 0.16);
-  --training-accent: #34d399;
-  --progress-accent: #a3e635;
+  --nutrition-cal-soft: rgba(245, 158, 11, 0.14);
+  --nutrition-protein: #6366f1;
+  --nutrition-protein-soft: rgba(99, 102, 241, 0.12);
+  --nutrition-carbs: #ea580c;
+  --nutrition-carbs-soft: rgba(234, 88, 12, 0.12);
+  --nutrition-fat: #e11d48;
+  --nutrition-fat-soft: rgba(225, 29, 72, 0.1);
+  --nutrition-water: #0ea5e9;
+  --nutrition-water-soft: rgba(14, 165, 233, 0.12);
+  --training-accent: #059669;
+  --progress-accent: #65a30d;
+}
+
+html.dark,
+html[data-color-mode="dark"] {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.1);
+  --accent-fg: #09090b;
+}
+
+html[data-theme="turquoise"] {
+  --accent: #06b6d4;
+  --accent-hover: #0891b2;
+  --accent-soft: rgba(6, 182, 212, 0.14);
+  --accent-ring: rgba(6, 182, 212, 0.35);
 }
 
 html[data-theme="blue"] {
@@ -98,10 +113,11 @@ html[data-theme="gray"] {
 html[data-color-mode="light"],
 html.light {
   color-scheme: light;
-  --background: #fafafa;
-  --foreground: #18181b;
-  --card: rgba(0, 0, 0, 0.04);
-  --border: rgba(0, 0, 0, 0.08);
+  --background: #f4f6f8;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --border: rgba(15, 23, 42, 0.08);
+  --accent-fg: #ffffff;
 }
 html[data-color-mode="light"] body,
 html.light body {
@@ -111,19 +127,47 @@ html.light body {
 html[data-color-mode="light"] .gradient-mesh,
 html.light .gradient-mesh {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, var(--accent-soft), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 0%, color-mix(in srgb, var(--accent) 6%, transparent), transparent),
-    #fafafa;
+    radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--accent) 12%, transparent), transparent),
+    radial-gradient(ellipse 50% 35% at 100% 0%, rgba(59, 130, 246, 0.06), transparent),
+    #f4f6f8;
 }
 html[data-color-mode="light"] .glass,
 html.light .glass {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 html[data-color-mode="light"] .card-premium,
 html.light .card-premium {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+/* Light mode: lift hard-coded dark surfaces used across the app shell */
+html.light .mobile-app-header {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--background) 96%, white) 0%,
+    color-mix(in srgb, var(--background) 88%, transparent) 100%
+  );
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+}
+html.light .header-glass-btn {
   background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+html.light .bottom-nav-ios-bar {
+  background: color-mix(in srgb, rgb(255 255 255) 88%, transparent);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 24px rgb(15 23 42 / 10%);
+}
+html.light .bottom-nav-ios-tab--idle .bottom-nav-ios-label {
+  color: rgb(100 116 139);
+}
+html.light .food-add-popup-root,
+html.light .food-add-popup-inner {
+  color: #0f172a;
 }
 
 @theme inline {
@@ -139,7 +183,7 @@ html.light .card-premium {
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {

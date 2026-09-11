@@ -140,7 +140,7 @@ model Profile {
   chestCm            Float?
   waistCm            Float?
   hipsCm             Float?
-  colorMode          String         @default("dark")
+  colorMode          String         @default("light")
   /// ISO country for food DB: AT | DE (default Austria)
   countryCode        String         @default("AT")
   createdAt          DateTime       @default(now())

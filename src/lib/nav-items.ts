@@ -96,7 +96,7 @@ export const MORE_HUB_TRAINING: NavItem[] = [
     description: "Persönliche Bestleistungen",
   },
   {
-    href: "/nutrition?panel=food",
+    href: "/nutrition?panel=food&from=more",
     label: "Gespeicherte Mahlzeiten",
     icon: Bookmark,
     description: "Vorlagen in der Ernährung",
@@ -154,12 +154,12 @@ export const MORE_HUB_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: "Ernährung",
     items: [
-  {
-    href: "/nutrition?panel=food",
-    label: "Gespeicherte Mahlzeiten",
-    icon: Bookmark,
-    description: "Favoriten und Vorlagen",
-  },
+      {
+        href: "/nutrition?panel=food&from=more",
+        label: "Gespeicherte Mahlzeiten",
+        icon: Bookmark,
+        description: "Favoriten und Vorlagen",
+      },
       {
         href: "/rezepte",
         label: "Rezepte",

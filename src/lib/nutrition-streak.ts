@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { safePrisma } from "@/lib/prisma-safe";
-import { differenceInCalendarDays, startOfDay, subDays } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
+import { formatNutritionDayUtc, nutritionDayKey, nutritionDayUtc } from "@/lib/nutrition-day";
 
 export type NutritionStreakSnapshot = {
   currentDays: number;
@@ -8,22 +9,38 @@ export type NutritionStreakSnapshot = {
   lastTrackedAt: Date | null;
 };
 
-/** Streak stays visible until a full untracked calendar day passes. */
+/** Calendar YMD for a meal date stored as UTC midnight of that day. */
+function mealDayYmd(d: Date): string {
+  return formatNutritionDayUtc(d);
+}
+
+function ymdToUtcDate(ymd: string): Date {
+  return nutritionDayUtc(ymd);
+}
+
+function gapBetweenYmd(later: string, earlier: string): number {
+  return differenceInCalendarDays(ymdToUtcDate(later), ymdToUtcDate(earlier));
+}
+
+/**
+ * Streak stays visible until a full untracked calendar day passes.
+ * Uses UTC-midnight meal dates + optional "today" YMD (user-local).
+ */
 export function effectiveNutritionStreakDays(
   row: NutritionStreakSnapshot | null | undefined,
-  now = new Date()
+  now = new Date(),
+  todayYmd = nutritionDayKey(now)
 ): number {
   if (!row) return 0;
   if (!row.lastTrackedAt) return row.currentDays;
-  const today = startOfDay(now);
-  const last = startOfDay(row.lastTrackedAt);
-  const gap = differenceInCalendarDays(today, last);
+  const lastYmd = mealDayYmd(row.lastTrackedAt);
+  const gap = gapBetweenYmd(todayYmd, lastYmd);
   if (gap <= 1) return row.currentDays;
   return 0;
 }
 
 /**
- * Pure streak math from sorted unique day ISO keys (startOfDay().toISOString()).
+ * Pure streak math from sorted unique day ISO keys (yyyy-MM-dd or UTC midnight ISO).
  * Exported for unit tests.
  */
 export function computeStreakFromDayKeys(dayKeys: string[]): {
@@ -31,16 +48,22 @@ export function computeStreakFromDayKeys(dayKeys: string[]): {
   longestDays: number;
   lastTrackedAt: Date | null;
 } {
-  if (!dayKeys.length) {
+  const ymds = [
+    ...new Set(
+      dayKeys
+        .map((k) => (k.length >= 10 ? k.slice(0, 10) : k))
+        .filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k))
+    ),
+  ].sort();
+
+  if (!ymds.length) {
     return { currentDays: 0, longestDays: 0, lastTrackedAt: null };
   }
 
   let longest = 1;
   let run = 1;
-  for (let i = 1; i < dayKeys.length; i++) {
-    const prev = new Date(dayKeys[i - 1]);
-    const next = new Date(dayKeys[i]);
-    if (differenceInCalendarDays(next, prev) === 1) {
+  for (let i = 1; i < ymds.length; i++) {
+    if (gapBetweenYmd(ymds[i], ymds[i - 1]) === 1) {
       run++;
       longest = Math.max(longest, run);
     } else {
@@ -48,12 +71,10 @@ export function computeStreakFromDayKeys(dayKeys: string[]): {
     }
   }
 
-  const lastTrackedAt = startOfDay(new Date(dayKeys[dayKeys.length - 1]));
+  const lastTrackedAt = ymdToUtcDate(ymds[ymds.length - 1]);
   run = 1;
-  for (let i = dayKeys.length - 2; i >= 0; i--) {
-    const prev = new Date(dayKeys[i]);
-    const next = new Date(dayKeys[i + 1]);
-    if (differenceInCalendarDays(next, prev) === 1) {
+  for (let i = ymds.length - 2; i >= 0; i--) {
+    if (gapBetweenYmd(ymds[i + 1], ymds[i]) === 1) {
       run++;
     } else {
       break;
@@ -78,7 +99,8 @@ async function updateNutritionStreakUnsafe(
   userId: string,
   trackedAt: Date
 ): Promise<NutritionStreakSnapshot> {
-  const today = startOfDay(trackedAt);
+  const todayYmd = mealDayYmd(trackedAt);
+  const today = ymdToUtcDate(todayYmd);
   let row = await prisma.nutritionStreak.findUnique({ where: { userId } });
 
   if (!row) {
@@ -93,13 +115,13 @@ async function updateNutritionStreakUnsafe(
     return row;
   }
 
-  const last = row.lastTrackedAt ? startOfDay(row.lastTrackedAt) : null;
-  if (last && last.getTime() === today.getTime()) {
+  const lastYmd = row.lastTrackedAt ? mealDayYmd(row.lastTrackedAt) : null;
+  if (lastYmd && lastYmd === todayYmd) {
     return row;
   }
 
-  if (last) {
-    const gap = differenceInCalendarDays(today, last);
+  if (lastYmd) {
+    const gap = gapBetweenYmd(todayYmd, lastYmd);
     if (gap === 1) {
       const currentDays = row.currentDays + 1;
       return prisma.nutritionStreak.update({
@@ -123,7 +145,7 @@ async function updateNutritionStreakUnsafe(
 }
 
 async function listTrackedDayKeys(userId: string): Promise<string[]> {
-  const since = subDays(startOfDay(new Date()), 400);
+  const since = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000);
   const meals = await prisma.meal.findMany({
     where: {
       userId,
@@ -133,7 +155,7 @@ async function listTrackedDayKeys(userId: string): Promise<string[]> {
     select: { date: true },
     orderBy: { date: "asc" },
   });
-  return [...new Set(meals.map((m) => startOfDay(m.date).toISOString()))].sort();
+  return [...new Set(meals.map((m) => mealDayYmd(m.date)))].sort();
 }
 
 async function backfillNutritionStreakFromMeals(userId: string) {
@@ -213,7 +235,7 @@ export async function updateNutritionStreak(
 
 async function loadNutritionStreakUnsafe(
   userId: string,
-  opts?: { skipBackfill?: boolean }
+  opts?: { skipBackfill?: boolean; todayYmd?: string }
 ): Promise<NutritionStreakSnapshot & { effectiveDays: number }> {
   let row = await prisma.nutritionStreak.findUnique({ where: { userId } });
   if (!row && !opts?.skipBackfill) {
@@ -226,13 +248,17 @@ async function loadNutritionStreakUnsafe(
     currentDays: row.currentDays,
     longestDays: row.longestDays,
     lastTrackedAt: row.lastTrackedAt,
-    effectiveDays: effectiveNutritionStreakDays(row),
+    effectiveDays: effectiveNutritionStreakDays(
+      row,
+      new Date(),
+      opts?.todayYmd
+    ),
   };
 }
 
 export async function loadNutritionStreak(
   userId: string,
-  opts?: { skipBackfill?: boolean }
+  opts?: { skipBackfill?: boolean; todayYmd?: string }
 ): Promise<NutritionStreakSnapshot & { effectiveDays: number }> {
   return safePrisma(
     () => loadNutritionStreakUnsafe(userId, opts),

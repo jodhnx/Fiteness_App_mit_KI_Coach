@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ChevronLeft,
   Clock,
   Heart,
   Plus,
@@ -16,6 +15,7 @@ import {
   Flame,
 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
+import { DetailBackAnchor } from "@/components/layout/detail-back-link";
 import { Button } from "@/components/ui/button";
 import {
   getFitnessRecipe,
@@ -142,14 +142,7 @@ export default function RezeptDetailPage() {
   return (
     <PageShell className="space-y-5 pb-28" maxWidth="2xl">
       <div className="flex items-center justify-between gap-3">
-        <Link
-          href="/rezepte"
-          prefetch
-          className="inline-flex items-center gap-1 text-sm font-medium text-accent"
-        >
-          <ChevronLeft className="h-5 w-5" />
-          Rezepte
-        </Link>
+        <DetailBackAnchor href="/rezepte" label="Rezepte" />
         <button
           type="button"
           onClick={() => void toggleFavorite()}

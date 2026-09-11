@@ -44,9 +44,9 @@ export const UI_DENSITY_OPTIONS: { id: UiDensity; label: string; hint: string }[
   { id: "large", label: "Große Karten", hint: "Größere Touch-Flächen & Zahlen" },
 ];
 
-export const DEFAULT_THEME: AppThemeId = "turquoise";
+export const DEFAULT_THEME: AppThemeId = "blue";
 export const DEFAULT_DENSITY: UiDensity = "standard";
-export const DEFAULT_COLOR_MODE: ColorMode = "dark";
+export const DEFAULT_COLOR_MODE: ColorMode = "light";
 
 const STORAGE_THEME = "app-theme";
 const STORAGE_DENSITY = "app-density";

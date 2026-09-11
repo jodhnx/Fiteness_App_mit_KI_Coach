@@ -96,7 +96,7 @@ export const MealTrackList = memo(function MealTrackList({
         return (
           <section
             key={slot.mealType}
-            className="space-y-1.5 border-b border-white/[0.06] pb-3 last:border-0 lg:border lg:border-white/[0.06] lg:rounded-2xl lg:bg-white/[0.02] lg:p-3 lg:pb-3"
+      className="space-y-1.5 border-b border-zinc-200/80 pb-3 last:border-0 lg:border lg:border-zinc-200/80 lg:rounded-2xl lg:bg-white lg:p-3 lg:pb-3 lg:shadow-sm dark:border-white/[0.06] dark:lg:bg-white/[0.02]"
           >
             <div className="flex items-center gap-2 min-h-11">
               <div className="min-w-0 flex-1">
@@ -104,34 +104,23 @@ export const MealTrackList = memo(function MealTrackList({
                   {mealLabel}
                 </h2>
                 {hasItems ? (
-                  <p className="text-sm font-semibold text-white tabular-nums mt-0.5">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-white tabular-nums mt-0.5">
                     {kcal.toLocaleString("de-DE")} kcal
                   </p>
                 ) : null}
               </div>
-              {hasItems ? (
-                <button
-                  type="button"
-                  onClick={() => onAddClick?.(slot.mealType)}
-                  className="inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-xl px-3 text-sm font-semibold text-accent hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
-                  aria-label={`${mealLabel}: Essen hinzufügen`}
-                >
-                  <Plus className="h-4 w-4" aria-hidden />
-                  <span className="hidden xs:inline sm:inline">Essen</span>
-                </button>
-              ) : null}
-            </div>
-
-            {!hasItems ? (
               <button
                 type="button"
                 onClick={() => onAddClick?.(slot.mealType)}
-                className="flex w-full min-h-11 items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/[0.12] bg-transparent text-sm font-medium text-zinc-400 hover:text-white hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                className="inline-flex h-11 min-w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-accent shadow-sm hover:bg-accent/10 dark:border-white/10 dark:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                 aria-label={`${mealLabel}: Essen hinzufügen`}
               >
-                <Plus className="h-4 w-4" aria-hidden />
-                Essen hinzufügen
+                <Plus className="h-5 w-5" aria-hidden />
               </button>
+            </div>
+
+            {!hasItems ? (
+              <p className="text-[13px] text-zinc-500 px-0.5 py-1">Noch nichts eingetragen</p>
             ) : (
               <ul className="space-y-0">
                 {items.map((item) => (
@@ -150,10 +139,10 @@ export const MealTrackList = memo(function MealTrackList({
                       }
                     >
                       <div className="flex items-baseline justify-between gap-2">
-                        <p className="text-[14px] font-medium text-white truncate leading-tight min-w-0">
+                        <p className="text-[14px] font-medium text-zinc-900 dark:text-white truncate leading-tight min-w-0">
                           {item.food?.name ?? "Lebensmittel"}
                         </p>
-                        <p className="text-[13px] text-zinc-400 tabular-nums shrink-0">
+                        <p className="text-[13px] text-zinc-500 dark:text-zinc-400 tabular-nums shrink-0">
                           {Math.round(item.calories)} kcal
                         </p>
                       </div>
@@ -165,7 +154,7 @@ export const MealTrackList = memo(function MealTrackList({
                     <button
                       type="button"
                       onClick={() => onRemove(item.id)}
-                      className="h-11 w-11 inline-flex items-center justify-center text-zinc-600 hover:text-red-400 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-lg"
+                      className="h-11 w-11 inline-flex items-center justify-center text-zinc-400 hover:text-red-500 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-lg"
                       aria-label="Eintrag löschen"
                     >
                       <Trash2 className="h-3.5 w-3.5" />

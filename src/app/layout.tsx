@@ -51,7 +51,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  themeColor: "#0a0f14",
+  themeColor: "#f4f6f8",
 };
 
 /**
@@ -64,8 +64,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const themeBoot = `(function(){try{var m=localStorage.getItem('app-color-mode')||'light';var t=localStorage.getItem('app-theme')||'blue';var d=localStorage.getItem('app-density')||'standard';var r=document.documentElement;r.dataset.theme=t;r.dataset.density=d;r.dataset.colorMode=m;r.classList.toggle('light',m==='light');r.classList.toggle('dark',m!=='light');}catch(e){}})();`;
+
   return (
-    <html lang="de" className="dark" data-theme="turquoise" data-density="standard">
+    <html lang="de" className="light" data-theme="blue" data-color-mode="light" data-density="standard" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased mobile-app-body overscroll-none`}
       >
@@ -74,7 +79,7 @@ export default function RootLayout({
           <AuthSessionProvider>
             <PreferencesProvider>
               {children}
-              <Toaster theme="dark" position="bottom-center" richColors offset={88} />
+              <Toaster theme="system" position="bottom-center" richColors offset={88} />
             </PreferencesProvider>
           </AuthSessionProvider>
         </RootProvidersBoundary>

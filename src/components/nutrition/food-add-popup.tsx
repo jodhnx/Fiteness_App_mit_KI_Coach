@@ -14,6 +14,7 @@ import {
   ScanBarcode,
   Star,
   X,
+  ChevronLeft,
 } from "lucide-react";
 import type { MealType } from "@prisma/client";
 import {
@@ -60,6 +61,8 @@ type Props = {
   onToggleFavorite: (foodItemId: string) => Promise<void>;
   onLogSavedMeal?: (recipeId: string, meal: MealType) => Promise<void> | void;
   quickAdding?: boolean;
+  /** Shown with back chevron; same action as close (e.g. return to Mehr). */
+  backLabel?: string;
 };
 
 const SEARCH_CACHE_TTL = 300_000;
@@ -145,6 +148,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   onToggleFavorite,
   onLogSavedMeal,
   quickAdding,
+  backLabel,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -452,9 +456,23 @@ export const FoodAddPopup = memo(function FoodAddPopup({
         >
           <div className="food-add-popup-inner">
             <div className="food-add-popup-search gap-2">
+              {backLabel ? (
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleClose();
+                  }}
+                  className="food-add-popup-icon-btn self-end mb-0.5 relative z-20 touch-manipulation"
+                  aria-label={`Zurück zu ${backLabel}`}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              ) : null}
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 mb-1.5 px-0.5">
-                  Lebensmittel hinzufügen
+                  {backLabel ? backLabel : "Lebensmittel hinzufügen"}
                 </p>
                 <input
                   ref={inputRef}

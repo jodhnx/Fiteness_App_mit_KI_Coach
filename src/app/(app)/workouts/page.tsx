@@ -5,7 +5,7 @@ import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useRouter } from "next/navigation";
 import { WORKOUT_ACTIVE_CACHE_KEY, WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
 import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
-import { getCached } from "@/lib/client-cache";
+import { getCached, setCached } from "@/lib/client-cache";
 import { PageShell } from "@/components/layout/page-shell";
 import { NextWorkoutHero } from "@/components/workout/next-workout-hero";
 import { TrainingChoiceCard } from "@/components/workout/training-choice-card";
@@ -44,9 +44,26 @@ type HubPlan = {
 export default function WorkoutsHubPage() {
   const router = useRouter();
   const [activeCleared, setActiveCleared] = useState(false);
-  const [home, setHome] = useState<HomeDataPayload | null>(() =>
-    getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true })
-  );
+  const [home, setHome] = useState<HomeDataPayload | null>(() => {
+    const cached = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
+      allowStale: true,
+    });
+    // Seed recovery cache before first fetch so Training paints from Home bootstrap.
+    if (
+      cached?.recovery?.muscles?.length &&
+      !getCached("workouts-recovery", { allowStale: true })
+    ) {
+      setCached(
+        "workouts-recovery",
+        {
+          recovery: cached.recovery.muscles,
+          highlights: cached.recovery.highlights ?? [],
+        },
+        90_000
+      );
+    }
+    return cached;
+  });
   const fetchOpts = { revalidateOnMount: false, staleRatio: 0.95 } as const;
 
   const { data: sessionData } = useCachedFetch<{

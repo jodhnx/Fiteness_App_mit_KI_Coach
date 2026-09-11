@@ -155,7 +155,7 @@ export default function SupportPage() {
       <div className="flex items-center gap-2">
         <Link
           href="/settings"
-          className="flex h-11 w-11 items-center justify-center rounded-full text-zinc-400 hover:text-white"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
           aria-label="Zurück"
         >
           <ArrowLeft className="h-5 w-5" />

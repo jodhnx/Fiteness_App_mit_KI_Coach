@@ -66,7 +66,11 @@ export default function NewSavedMealPage() {
   }
 
   return (
-    <FullscreenPage title="Eigene Mahlzeit" subtitle="Für 1-Klick-Tracking">
+    <FullscreenPage
+      title="Eigene Mahlzeit"
+      subtitle="Für 1-Klick-Tracking"
+      onBack={() => router.push("/more")}
+    >
       <div className="max-w-lg mx-auto px-4 py-4 space-y-4">
         <div>
           <Label>Name</Label>

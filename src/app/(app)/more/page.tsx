@@ -18,7 +18,7 @@ function Section({ title, items }: { title: string; items: NavItem[] }) {
       <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500 mb-2 px-0.5">
         {title}
       </h2>
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden divide-y divide-white/[0.06]">
+      <div className="rounded-2xl border border-zinc-200/90 bg-white overflow-hidden divide-y divide-zinc-100 shadow-sm dark:border-white/[0.06] dark:bg-white/[0.02] dark:divide-white/[0.06]">
         {items.map((item) => (
           <Link
             key={item.href}
@@ -26,18 +26,18 @@ function Section({ title, items }: { title: string; items: NavItem[] }) {
             prefetch
             scroll={false}
             onClick={() => hapticTap()}
-            className="flex w-full items-center gap-3 px-4 min-h-11 py-3 text-left active:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
+            className="flex w-full items-center gap-3 px-4 min-h-12 py-3 text-left active:bg-zinc-50 dark:active:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40"
           >
-            <item.icon className="h-5 w-5 text-zinc-400 shrink-0" />
+            <item.icon className="h-5 w-5 text-zinc-500 dark:text-zinc-400 shrink-0" />
             <span className="flex-1 min-w-0">
-              <span className="block text-sm font-medium text-zinc-100">{item.label}</span>
+              <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">{item.label}</span>
               {item.description ? (
                 <span className="block text-[12px] text-zinc-500 mt-0.5 leading-snug">
                   {item.description}
                 </span>
               ) : null}
             </span>
-            <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" aria-hidden />
+            <ChevronRight className="h-4 w-4 text-zinc-400 dark:text-zinc-600 shrink-0" aria-hidden />
           </Link>
         ))}
       </div>
