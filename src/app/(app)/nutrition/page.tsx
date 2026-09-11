@@ -14,6 +14,7 @@ import {
   optimisticAddMealItem,
   optimisticAddSavedMeal,
   HOME_DATA_CACHE_KEY,
+  HOME_DATA_EVENT,
 } from "@/lib/nutrition-sync";
 import { getCached } from "@/lib/client-cache";
 import type { HomeDataPayload } from "@/lib/home-defaults";
@@ -26,15 +27,13 @@ import dynamic from "next/dynamic";
 import { MEAL_TYPE_ORDER, mealTypeForHour } from "@/lib/meal-types";
 import type { MealType } from "@prisma/client";
 import { toast } from "sonner";
-import { Camera, RefreshCw, AlertCircle } from "lucide-react";
+import { Flame, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { refreshFoodHistoryCache } from "@/lib/food-history-cache";
 import { resetBodyScroll } from "@/lib/scroll-lock";
-import type { FoodAIItem } from "@/app/api/nutrition/food-ai/route";
-import {
-  NutritionAddSheet,
-  type NutritionAddAction,
-} from "@/components/nutrition/nutrition-add-sheet";
+import type { FoodAIItem } from "@/lib/food/food-ai-schema";
+import { nutritionDayKey } from "@/lib/nutrition-day";
+import { NutritionQuickActions } from "@/components/nutrition/nutrition-quick-actions";
 
 const FoodAddPopup = dynamic(
   () =>
@@ -74,7 +73,6 @@ export default function NutritionPage() {
 function NutritionPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [addSheetMeal, setAddSheetMeal] = useState<MealType | null>(null);
   const [searchMeal, setSearchMeal] = useState<MealType | null>(null);
   const [quickMeal, setQuickMeal] = useState<MealType | null>(null);
   const [addInitialQuery, setAddInitialQuery] = useState("");
@@ -91,9 +89,19 @@ function NutritionPageInner() {
   const [streakDays, setStreakDays] = useState(0);
 
   useEffect(() => {
-    const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
-    const days = home?.nutritionStreak?.currentDays ?? 0;
-    if (typeof days === "number") setStreakDays(days);
+    const syncStreak = (home?: HomeDataPayload | null) => {
+      const days =
+        home?.nutritionStreak?.currentDays ??
+        getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true })
+          ?.nutritionStreak?.currentDays;
+      if (typeof days === "number") setStreakDays(days);
+    };
+    syncStreak();
+    const onHome = (e: Event) => {
+      syncStreak((e as CustomEvent<HomeDataPayload>).detail);
+    };
+    window.addEventListener(HOME_DATA_EVENT, onHome);
+    return () => window.removeEventListener(HOME_DATA_EVENT, onHome);
   }, []);
 
   useEffect(() => {
@@ -159,7 +167,6 @@ function NutritionPageInner() {
 
   const onFoodAdded = useCallback(() => {
     closeSearchPopup();
-    setAddSheetMeal(null);
     setQuickMeal(null);
     refreshFoodHistoryCache();
     toast.success("Lebensmittel hinzugefügt ✓", { duration: 1600 });
@@ -174,29 +181,15 @@ function NutritionPageInner() {
     onSuccess: onFoodAdded,
   });
 
-  const handleAddAction = useCallback(
-    (action: NutritionAddAction) => {
-      const meal = addSheetMeal ?? mealTypeForHour();
-      setAddSheetMeal(null);
-      resetBodyScroll();
-      if (action === "search") {
-        setSearchMeal(meal);
-        return;
-      }
-      if (action === "photo") {
-        setFoodAIOpen(true);
-        return;
-      }
-      if (action === "quick") {
-        setQuickMeal(meal);
-        return;
-      }
-      if (action === "recipes") {
-        router.push("/rezepte");
-      }
-    },
-    [addSheetMeal, router]
-  );
+  const openFoodSearch = useCallback((meal?: MealType) => {
+    setSearchMeal(meal ?? mealTypeForHour());
+    setAddInitialQuery("");
+    setAddInitialView("search");
+  }, []);
+
+  const openQuickEntry = useCallback((meal?: MealType) => {
+    setQuickMeal(meal ?? mealTypeForHour());
+  }, []);
 
   const removeItem = useCallback(
     async (itemId: string) => {
@@ -392,8 +385,18 @@ function NutritionPageInner() {
     [applyOptimistic, closeSearchPopup, reload]
   );
 
+  const foodAiSaveLockRef = useRef(false);
+
   const handleFoodAITrack = useCallback(
     async (items: FoodAIItem[], mealType: MealType) => {
+      if (foodAiSaveLockRef.current) {
+        throw new Error("save in flight");
+      }
+      if (!items.length) {
+        throw new Error("no items");
+      }
+      foodAiSaveLockRef.current = true;
+      const previousDash = dashboardRef.current;
       let nextDash = dashboardRef.current;
       for (const item of items) {
         const product = {
@@ -417,41 +420,46 @@ function NutritionPageInner() {
         }
       }
       try {
-        for (const item of items) {
-          const res = await fetch("/api/nutrition/log", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "same-origin",
-            body: JSON.stringify({
-              mealType,
-              foodItemId: null,
+        const day = nutritionDayKey();
+        const res = await fetch("/api/nutrition/log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            mealType,
+            source: "food-ai",
+            date: day,
+            items: items.map((item) => ({
               name: item.name,
               quantityG: item.estimatedGrams,
               calories: item.calories,
               proteinG: item.proteinG,
               carbsG: item.carbsG,
               fatG: item.fatG,
-              source: "food-ai",
-            }),
-          });
-          if (res.ok) {
-            const updated = await applyNutritionMutationResponse(res);
-            if (updated) {
-              nextDash = updated;
-              dashboardRef.current = updated;
-              applyDashboard(updated);
-            }
-          } else {
-            reload();
-            toast.error("Mahlzeit konnte nicht gespeichert werden — Eintrag wurde zurückgesetzt");
-            throw new Error("log failed");
-          }
+            })),
+          }),
+        });
+        if (!res.ok) {
+          if (previousDash) applyDashboard(previousDash);
+          else reload();
+          toast.error("Mahlzeit konnte nicht gespeichert werden");
+          throw new Error("log failed");
+        }
+        const updated = await applyNutritionMutationResponse(res);
+        if (updated) {
+          dashboardRef.current = updated;
+          applyDashboard(updated);
+        } else {
+          reload();
         }
       } catch (err) {
+        foodAiSaveLockRef.current = false;
         if (err instanceof Error && err.message === "log failed") throw err;
-        reload();
+        if (previousDash) applyDashboard(previousDash);
+        else reload();
         throw err;
       }
+      foodAiSaveLockRef.current = false;
       refreshFoodHistoryCache();
       const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY);
       const days = home?.nutritionStreak?.currentDays;
@@ -463,94 +471,84 @@ function NutritionPageInner() {
 
   return (
     <PageShell
-      className="nutrition-mobile-page keyboard-stable-page pb-28 space-y-3"
+      className="nutrition-mobile-page keyboard-stable-page pb-28 space-y-2.5"
       bottomNav={false}
       maxWidth="full"
     >
       <header className="flex items-center gap-2 min-h-11">
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold text-white tracking-tight">Ernährung</h1>
+          <h1 className="text-lg font-semibold text-white tracking-tight">
+            Ernährung
+          </h1>
           {streakDays > 0 ? (
-            <p className="text-[11px] text-zinc-500 tabular-nums mt-0.5">
-              {streakDays} Tage Ernährung
+            <p className="text-[11px] text-zinc-500 tabular-nums mt-0.5 inline-flex items-center gap-1">
+              <Flame
+                className="h-3 w-3 text-amber-500/80"
+                aria-hidden
+              />
+              <span>{streakDays} Tage Ernährung</span>
             </p>
           ) : null}
         </div>
         <button
           type="button"
-          className="h-11 w-11 rounded-full text-zinc-400 hover:text-white inline-flex items-center justify-center"
+          className="h-11 w-11 rounded-full text-zinc-400 hover:text-white inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           aria-label="Aktualisieren"
           onClick={() => reload()}
         >
           <RefreshCw className="h-4 w-4" />
         </button>
-        <span className="sr-only" aria-hidden>
-          <AlertCircle className="h-0 w-0" />
-        </span>
-        <button
-          type="button"
-          className="h-11 px-3 rounded-full border border-white/[0.08] text-zinc-300 hover:text-white inline-flex items-center justify-center gap-1.5 text-xs font-medium"
-          aria-label="Foto aufnehmen"
-          onClick={() => setFoodAIOpen(true)}
-        >
-          <Camera className="h-4 w-4" />
-          <span className="hidden xs:inline sm:inline">Foto</span>
-        </button>
         <Link
           href="/settings"
-          className="h-11 px-3 rounded-full text-xs font-medium text-zinc-400 hover:text-white inline-flex items-center justify-center"
+          className="h-11 px-3 rounded-full text-xs font-medium text-zinc-400 hover:text-white inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           Einstellungen
         </Link>
       </header>
 
-      {!dashboard?.profileComplete && (dashboard?.targets?.calories ?? 0) <= 0 && (
-        <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/40 px-4 py-3 text-sm text-zinc-300">
-          Ziele fehlen —{" "}
-          <Link href="/settings" className="underline font-medium text-white">
-            Einstellungen öffnen
-          </Link>
+      <div
+        data-nutrition-layout="single-v2"
+        className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:gap-x-8 lg:gap-y-5 lg:items-start"
+      >
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+          <NutritionOrbitOverview
+            dashboard={dashboard}
+            loading={loading}
+          />
         </div>
-      )}
 
-      <NutritionOrbitOverview dashboard={dashboard} loading={loading && !dashboard} />
+        <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-4 space-y-2">
+          <p className="hidden lg:block text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 px-0.5">
+            Schnellaktionen
+          </p>
+          <NutritionQuickActions
+            layout="responsive"
+            onAddFood={() => openFoodSearch()}
+            onQuickEntry={() => openQuickEntry()}
+            onPhoto={() => setFoodAIOpen(true)}
+            onRecipes={() => router.push("/rezepte")}
+          />
+        </div>
 
-      <MealTrackList
-        meals={dashboard?.mealsByType ?? []}
-        mealTypes={["BREAKFAST", "LUNCH"]}
-        onRemove={removeItem}
-        onEdit={editItemQuantity}
-        onDeleteMeal={requestDeleteMeal}
-        onAddClick={(mealType) => setAddSheetMeal(mealType)}
-        className="lg:grid-cols-2"
-      />
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2">
+          <MealTrackList
+            meals={dashboard?.mealsByType ?? []}
+            mealTypes={["BREAKFAST", "LUNCH", "DINNER", "SNACK"]}
+            onRemove={removeItem}
+            onEdit={editItemQuantity}
+            onDeleteMeal={requestDeleteMeal}
+            onAddClick={(mealType) => openFoodSearch(mealType)}
+          />
+        </div>
 
-      <WaterTracker
-        consumedMl={dashboard?.water?.consumedMl ?? 0}
-        targetMl={dashboard?.water?.targetMl ?? 2500}
-        onAdd={addWater}
-      />
-
-      <MealTrackList
-        meals={dashboard?.mealsByType ?? []}
-        mealTypes={["DINNER", "SNACK"]}
-        onRemove={removeItem}
-        onEdit={editItemQuantity}
-        onDeleteMeal={requestDeleteMeal}
-        onAddClick={(mealType) => setAddSheetMeal(mealType)}
-        className="lg:grid-cols-2"
-      />
-
-      {addSheetMeal && (
-        <NutritionAddSheet
-          open
-          onClose={() => {
-            setAddSheetMeal(null);
-            resetBodyScroll();
-          }}
-          onAction={handleAddAction}
-        />
-      )}
+        <div className="min-w-0 pt-1 lg:pt-0 lg:col-start-2 lg:row-start-2 lg:sticky lg:top-4">
+          <WaterTracker
+            consumedMl={dashboard?.water?.consumedMl ?? 0}
+            targetMl={dashboard?.water?.targetMl ?? 2500}
+            onAdd={addWater}
+          />
+        </div>
+      </div>
 
       {searchMeal && (
         <FoodAddPopup
@@ -563,16 +561,7 @@ function NutritionPageInner() {
           onQuickAddFood={quickAdd}
           onToggleFavorite={handleToggleFavorite}
           onLogSavedMeal={handleLogSavedMeal}
-          onQuickEntry={() => {
-            const meal = searchMeal;
-            closeSearchPopup();
-            setQuickMeal(meal);
-          }}
           quickAdding={quickAdding}
-          onOpenCamera={() => {
-            closeSearchPopup();
-            setFoodAIOpen(true);
-          }}
         />
       )}
 
@@ -600,6 +589,10 @@ function NutritionPageInner() {
           open={foodAIOpen}
           onClose={() => setFoodAIOpen(false)}
           onTrack={handleFoodAITrack}
+          onManualAdd={() => {
+            setFoodAIOpen(false);
+            openFoodSearch();
+          }}
         />
       )}
 

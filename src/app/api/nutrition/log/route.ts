@@ -1,29 +1,67 @@
 /**
  * POST /api/nutrition/log
- * Log a food item (custom or from Food AI) directly, without requiring a foodItemId.
+ * Log one food item, or an atomic batch (`items[]`) for Food AI.
  */
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
-import { getOrCreateMeal, loadNutritionDashboard, recordFoodRecent } from "@/lib/nutrition-service";
-import { updateNutritionStreak } from "@/lib/nutrition-streak";
+import { loadNutritionDashboard } from "@/lib/nutrition-service";
+import {
+  loadNutritionStreak,
+  updateNutritionStreak,
+} from "@/lib/nutrition-streak";
 import { resolveNutritionDay } from "@/lib/nutrition-day";
 import type { MealType } from "@prisma/client";
 
-const VALID_MEAL_TYPES = new Set<string>(["BREAKFAST", "LUNCH", "DINNER", "SNACK"]);
+const VALID_MEAL_TYPES = new Set<string>([
+  "BREAKFAST",
+  "LUNCH",
+  "DINNER",
+  "SNACK",
+]);
 
-function makeSlug(name: string): string {
-  return `ai-${name}-${Date.now()}`
+const MEAL_LABELS: Record<string, string> = {
+  BREAKFAST: "Frühstück",
+  LUNCH: "Mittagessen",
+  DINNER: "Abendessen",
+  SNACK: "Snack",
+};
+
+function makeSlug(name: string, salt: string): string {
+  return `ai-${name}-${salt}`
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .slice(0, 100);
+}
+
+type LogItemInput = {
+  name?: string;
+  quantityG?: number;
+  calories?: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+};
+
+function normalizeItem(raw: LogItemInput) {
+  const name = raw.name?.trim();
+  if (!name) return null;
+  return {
+    name,
+    quantityG: Math.min(5000, Math.max(1, Number(raw.quantityG) || 100)),
+    calories: Math.min(10_000, Math.max(0, Number(raw.calories) || 0)),
+    proteinG: Math.min(1000, Math.max(0, Number(raw.proteinG) || 0)),
+    carbsG: Math.min(1000, Math.max(0, Number(raw.carbsG) || 0)),
+    fatG: Math.min(1000, Math.max(0, Number(raw.fatG) || 0)),
+  };
 }
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
+    const userId = session.user.id;
 
     const body = (await req.json()) as {
       mealType?: string;
@@ -35,63 +73,109 @@ export async function POST(req: NextRequest) {
       fatG?: number;
       source?: string;
       date?: string;
+      items?: LogItemInput[];
     };
 
     const mealType = body.mealType;
     if (!mealType || !VALID_MEAL_TYPES.has(mealType)) {
       return jsonError("Ungültiger mealType");
     }
-    const name = body.name?.trim();
-    if (!name) return jsonError("Name fehlt");
 
-    const quantityG = Math.min(5000, Math.max(1, Number(body.quantityG) || 100));
-    const calories = Math.min(10_000, Math.max(0, Number(body.calories) || 0));
-    const proteinG = Math.min(1000, Math.max(0, Number(body.proteinG) || 0));
-    const carbsG = Math.min(1000, Math.max(0, Number(body.carbsG) || 0));
-    const fatG = Math.min(1000, Math.max(0, Number(body.fatG) || 0));
     const source = typeof body.source === "string" ? body.source : "";
     const isFoodAI = source === "food-ai";
     const isQuickEntry = source === "quick-entry";
 
+    const batchRaw = Array.isArray(body.items) ? body.items : null;
+    const items = batchRaw
+      ? batchRaw.map(normalizeItem).filter((x): x is NonNullable<typeof x> => x != null)
+      : (() => {
+          const one = normalizeItem(body);
+          return one ? [one] : [];
+        })();
+
+    if (!items.length) return jsonError("Name fehlt");
+    if (items.length > 20) return jsonError("Zu viele Positionen");
+
     const resolved = resolveNutritionDay({ date: body.date ?? null });
     const date = resolved.date;
+    const stamp = `${Date.now()}`;
 
-    // Normalise to per-100g for the FoodItem catalog entry
-    const factor = 100 / quantityG;
-    const foodItem = await prisma.foodItem.create({
-      data: {
-        slug: makeSlug(name),
-        name: isQuickEntry ? "Schnelleintrag" : name,
-        brand: isFoodAI ? "Food AI" : isQuickEntry ? "Schnelleintrag" : null,
-        calories: Math.round(calories * factor),
-        proteinG: Number((proteinG * factor).toFixed(2)),
-        carbsG: Number((carbsG * factor).toFixed(2)),
-        fatG: Number((fatG * factor).toFixed(2)),
-        servingG: 100,
-        dataSource: isFoodAI ? "food-ai" : isQuickEntry ? "quick-entry" : "local",
-        userId: session.user.id,
-      },
+    await prisma.$transaction(async (tx) => {
+      const meal = await tx.meal.upsert({
+        where: {
+          userId_date_mealType: {
+            userId,
+            date,
+            mealType: mealType as MealType,
+          },
+        },
+        create: {
+          userId,
+          date,
+          mealType: mealType as MealType,
+          name: MEAL_LABELS[mealType] ?? mealType,
+        },
+        update: {},
+      });
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const factor = 100 / item.quantityG;
+        const foodItem = await tx.foodItem.create({
+          data: {
+            slug: makeSlug(item.name, `${stamp}-${i}`),
+            name: isQuickEntry ? "Schnelleintrag" : item.name,
+            brand: isFoodAI
+              ? "Food AI"
+              : isQuickEntry
+                ? "Schnelleintrag"
+                : null,
+            calories: Math.round(item.calories * factor),
+            proteinG: Number((item.proteinG * factor).toFixed(2)),
+            carbsG: Number((item.carbsG * factor).toFixed(2)),
+            fatG: Number((item.fatG * factor).toFixed(2)),
+            servingG: 100,
+            dataSource: isFoodAI
+              ? "food-ai"
+              : isQuickEntry
+                ? "quick-entry"
+                : "local",
+            userId,
+          },
+        });
+
+        await tx.mealItem.create({
+          data: {
+            mealId: meal.id,
+            foodItemId: foodItem.id,
+            quantityG: item.quantityG,
+          },
+        });
+
+        try {
+          await tx.foodRecent.upsert({
+            where: {
+              userId_foodItemId: { userId, foodItemId: foodItem.id },
+            },
+            create: { userId, foodItemId: foodItem.id, useCount: 1 },
+            update: {
+              useCount: { increment: 1 },
+              lastUsedAt: new Date(),
+            },
+          });
+        } catch {
+          /* recent is non-critical */
+        }
+      }
     });
 
-    const meal = await getOrCreateMeal(session.user.id, date, mealType as MealType);
-    await prisma.mealItem.create({
-      data: {
-        mealId: meal.id,
-        foodItemId: foodItem.id,
-        quantityG,
-      },
-    });
+    await updateNutritionStreak(userId, date);
 
-    await recordFoodRecent(session.user.id, foodItem.id).catch(() => undefined);
-
-    await updateNutritionStreak(session.user.id, date);
-
-    const dashboard = await loadNutritionDashboard(session.user.id, date);
-    const { loadNutritionStreak } = await import("@/lib/nutrition-streak");
-    const streak = await loadNutritionStreak(session.user.id);
+    const dashboard = await loadNutritionDashboard(userId, date);
+    const streak = await loadNutritionStreak(userId);
     try {
       const { revalidateTag } = await import("next/cache");
-      revalidateTag(`home-${session.user.id}`);
+      revalidateTag(`home-${userId}`);
     } catch {
       /* ignore */
     }

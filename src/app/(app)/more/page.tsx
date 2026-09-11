@@ -55,6 +55,9 @@ export default function MorePage() {
     } catch {
       /* ignore */
     }
+    void import("@/lib/nav-cache-warmer").then((m) =>
+      m.warmSecondarySocialCaches()
+    );
   }, []);
 
   return (

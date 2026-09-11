@@ -13,11 +13,16 @@ import {
   type FoodSearchResponse,
 } from "@/lib/food/food-product-types";
 import type { MealType } from "@prisma/client";
-import { getCached, setCached, isCacheStale } from "@/lib/client-cache";
+import { getCached, setCached, isCacheStale, fetchCached } from "@/lib/client-cache";
 import { ProductSearchRow } from "@/components/nutrition/product-search-row";
 import { QuickFoodStrip } from "@/components/nutrition/quick-food-strip";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
 import { cn } from "@/lib/utils";
+import {
+  FOOD_HISTORY_CACHE_KEY,
+  getCachedFoodHistory,
+  type FoodHistoryPayload,
+} from "@/lib/food-history-cache";
 
 const DISH_CHIPS: string[] = [];
 
@@ -62,25 +67,42 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
     favorites: FoodProduct[];
     recents: FoodProduct[];
     frequent: FoodProduct[];
-  }>({ favorites: [], recents: [], frequent: [] });
+  }>(() => {
+    const cached = getCachedFoodHistory();
+    return cached ?? { favorites: [], recents: [], frequent: [] };
+  });
   const abortRef = useRef<AbortController | null>(null);
   const requestGen = useRef(0);
+  const inflightQueryRef = useRef<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/food/history")
-      .then((r) => r.json())
-      .then((d) => {
-        setRecentSearches(d.recentSearches ?? []);
+    const cached = getCachedFoodHistory();
+    if (cached) {
+      setHistoryFoods(cached);
+      if (!isCacheStale(FOOD_HISTORY_CACHE_KEY, 0.7)) return;
+    }
+    void fetchCached(
+      FOOD_HISTORY_CACHE_KEY,
+      async () => {
+        const res = await fetch("/api/food/history", { credentials: "include" });
+        if (!res.ok) throw new Error("history failed");
+        const d = await res.json();
+        setRecentSearches(
+          Array.isArray(d.recentSearches) ? (d.recentSearches as string[]) : []
+        );
         const favs = (d.favorites ?? []) as FoodProduct[];
         const rec = (d.recents ?? []) as FoodProduct[];
-        const pinned = favs.filter((f: FoodProduct & { pinned?: boolean }) => f.pinned);
-        const unpinned = favs.filter((f: FoodProduct & { pinned?: boolean }) => !f.pinned);
-        const frequent = (d.frequent ?? rec) as FoodProduct[];
-        setHistoryFoods({
-          favorites: [...pinned, ...unpinned],
+        const frequent = ((d.frequent ?? rec) as FoodProduct[]).slice(0, 10);
+        return {
+          favorites: favs,
           recents: rec,
-          frequent: frequent.slice(0, 10),
-        });
+          frequent,
+        } satisfies FoodHistoryPayload;
+      },
+      7 * 24 * 60 * 60_000
+    )
+      .then((next) => {
+        setHistoryFoods(next);
       })
       .catch(() => {});
   }, []);
@@ -92,12 +114,15 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
       setLoading(false);
       setLoadingOff(false);
       setError(null);
+      inflightQueryRef.current = null;
+      abortRef.current?.abort();
       return;
     }
 
     const key = cacheKey(trimmed);
     const cached = getCached<FoodSearchResponse>(key, { allowStale: true });
-    if (cached) {
+    const cacheHasHits = Boolean(cached?.products?.length);
+    if (cacheHasHits && cached) {
       setResult(cached);
       setError(cached.offError ?? null);
       setLoading(false);
@@ -107,37 +132,27 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
       setLoading(true);
     }
 
+    if (inflightQueryRef.current === trimmed) return;
+
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
+    inflightQueryRef.current = trimmed;
     const gen = ++requestGen.current;
-    const cacheHasHits = Boolean(cached?.products?.length);
-    setLoadingOff(true);
+    const phase: "enrich" | "full" = cacheHasHits ? "enrich" : "full";
+    setLoadingOff(phase === "enrich");
 
     try {
-      let current = cached;
-      if (!cacheHasHits) {
-        const fastRes = await fetch(foodSearchUrl(trimmed, "fast"), {
-          signal: ac.signal,
-          credentials: "include",
-        });
-        const fastData = (await fastRes.json()) as FoodSearchResponse;
-        if (ac.signal.aborted || gen !== requestGen.current) return;
-        current = fastData;
-        setCached(key, fastData, SEARCH_CACHE_TTL);
-        setResult(fastData);
-        setLoading(false);
-      }
-
-      const enrichRes = await fetch(foodSearchUrl(trimmed, "enrich"), {
+      const res = await fetch(foodSearchUrl(trimmed, phase), {
         signal: ac.signal,
         credentials: "include",
       });
-      const enrichData = (await enrichRes.json()) as FoodSearchResponse;
+      const data = (await res.json()) as FoodSearchResponse;
       if (ac.signal.aborted || gen !== requestGen.current) return;
-      const merged = current
-        ? mergeFoodSearchResponses(current, enrichData)
-        : enrichData;
+      const merged =
+        phase === "enrich" && cached
+          ? mergeFoodSearchResponses(cached, data)
+          : data;
       setCached(key, merged, SEARCH_CACHE_TTL);
       setResult(merged);
       setError(
@@ -151,6 +166,7 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
         setError(e instanceof Error ? e.message : "Suche fehlgeschlagen");
       }
     } finally {
+      if (inflightQueryRef.current === trimmed) inflightQueryRef.current = null;
       if (!ac.signal.aborted && gen === requestGen.current) {
         setLoading(false);
         setLoadingOff(false);

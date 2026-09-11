@@ -11,10 +11,16 @@ import {
   type FoodProduct,
   type FoodSearchResponse,
 } from "@/lib/food/food-product-types";
-import { getCached, setCached, isCacheStale } from "@/lib/client-cache";
+import { getCached, setCached, isCacheStale, fetchCached } from "@/lib/client-cache";
 import { macrosPer100g } from "@/lib/food-per-100g";
 import { fmtG, fmtKcal } from "@/lib/format-macros";
 import { cn } from "@/lib/utils";
+import {
+  FOOD_HISTORY_CACHE_KEY,
+  getCachedFoodHistory,
+  type FoodHistoryPayload,
+} from "@/lib/food-history-cache";
+import { fetchSavedMealTemplates, getCachedSavedMeals } from "@/lib/saved-meals-cache";
 
 type SavedItem = {
   id: string;
@@ -173,30 +179,66 @@ export function FoodSearchScreen({
     recents: FoodProduct[];
     frequent: FoodProduct[];
     favorites: FoodProduct[];
-  }>({ recents: [], frequent: [], favorites: [] });
+  }>(() => getCachedFoodHistory() ?? { recents: [], frequent: [], favorites: [] });
   const [savedMeals, setSavedMeals] = useState<SavedItem[]>([]);
   const [recipes, setRecipes] = useState<SavedItem[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const inflightQueryRef = useRef<string | null>(null);
 
   const isSearching = debouncedQ.trim().length >= 2;
 
   useEffect(() => {
-    fetch("/api/food/history")
-      .then((r) => r.json())
-      .then((d) => {
-        setHistory({
-          recents: (d.recents ?? []) as FoodProduct[],
-          frequent: ((d.frequent ?? d.recents) as FoodProduct[]).slice(0, 10),
-          favorites: (d.favorites ?? []) as FoodProduct[],
-        });
-      })
-      .catch(() => {});
-    fetch("/api/nutrition/recipes")
+    const cached = getCachedFoodHistory();
+    if (cached) {
+      setHistory(cached);
+      if (isCacheStale(FOOD_HISTORY_CACHE_KEY, 0.7)) {
+        void fetchCached(
+          FOOD_HISTORY_CACHE_KEY,
+          async () => {
+            const r = await fetch("/api/food/history", { credentials: "include" });
+            if (!r.ok) throw new Error("history");
+            const d = await r.json();
+            return {
+              recents: (d.recents ?? []) as FoodProduct[],
+              frequent: ((d.frequent ?? d.recents) as FoodProduct[]).slice(0, 10),
+              favorites: (d.favorites ?? []) as FoodProduct[],
+            } satisfies FoodHistoryPayload;
+          },
+          7 * 24 * 60 * 60_000
+        ).then(setHistory).catch(() => {});
+      }
+    } else {
+      void fetchCached(
+        FOOD_HISTORY_CACHE_KEY,
+        async () => {
+          const r = await fetch("/api/food/history", { credentials: "include" });
+          if (!r.ok) throw new Error("history");
+          const d = await r.json();
+          return {
+            recents: (d.recents ?? []) as FoodProduct[],
+            frequent: ((d.frequent ?? d.recents) as FoodProduct[]).slice(0, 10),
+            favorites: (d.favorites ?? []) as FoodProduct[],
+          } satisfies FoodHistoryPayload;
+        },
+        7 * 24 * 60 * 60_000
+      ).then(setHistory).catch(() => {});
+    }
+
+    const cachedMeals = getCachedSavedMeals();
+    if (cachedMeals?.length) {
+      setSavedMeals(cachedMeals);
+    }
+    void fetchSavedMealTemplates().then((meals) => {
+      setSavedMeals(meals);
+    });
+    // Recipes (non-templates) still come from recipes endpoint when needed
+    void fetch("/api/nutrition/recipes", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
         const all = (d.recipes ?? []) as SavedItem[];
-        setSavedMeals(all.filter((r: SavedItem & { isMealTemplate?: boolean }) => r.isMealTemplate));
-        setRecipes(all.filter((r: SavedItem & { isMealTemplate?: boolean }) => !r.isMealTemplate));
+        setRecipes(
+          all.filter((r: SavedItem & { isMealTemplate?: boolean }) => !r.isMealTemplate)
+        );
       })
       .catch(() => {});
   }, []);
@@ -226,6 +268,8 @@ export function FoodSearchScreen({
     if (trimmed.length < 2) {
       setResult(null);
       setLoading(false);
+      inflightQueryRef.current = null;
+      abortRef.current?.abort();
       return;
     }
     const cacheKey = `food-search:${trimmed.toLowerCase()}`;
@@ -238,37 +282,29 @@ export function FoodSearchScreen({
     } else {
       setLoading(true);
     }
+    if (inflightQueryRef.current === trimmed) return;
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
+    inflightQueryRef.current = trimmed;
+    const phase: "enrich" | "full" = cacheHasHits ? "enrich" : "full";
     try {
-      let current = cached;
-      if (!cacheHasHits) {
-        const fastRes = await fetch(foodSearchUrl(trimmed, "fast"), {
-          signal: ac.signal,
-          credentials: "include",
-        });
-        const fastData = (await fastRes.json()) as FoodSearchResponse;
-        if (ac.signal.aborted) return;
-        current = fastData;
-        setResult(fastData);
-        setCached(cacheKey, fastData, SEARCH_TTL);
-        setLoading(false);
-      }
-      const enrichRes = await fetch(foodSearchUrl(trimmed, "enrich"), {
+      const res = await fetch(foodSearchUrl(trimmed, phase), {
         signal: ac.signal,
         credentials: "include",
       });
-      const enrichData = (await enrichRes.json()) as FoodSearchResponse;
+      const data = (await res.json()) as FoodSearchResponse;
       if (ac.signal.aborted) return;
-      const merged = current
-        ? mergeFoodSearchResponses(current, enrichData)
-        : enrichData;
+      const merged =
+        phase === "enrich" && cached
+          ? mergeFoodSearchResponses(cached, data)
+          : data;
       setResult(merged);
       setCached(cacheKey, merged, SEARCH_TTL);
     } catch {
       /* aborted */
     } finally {
+      if (inflightQueryRef.current === trimmed) inflightQueryRef.current = null;
       if (!ac.signal.aborted) setLoading(false);
     }
   }, []);

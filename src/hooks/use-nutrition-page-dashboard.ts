@@ -9,15 +9,18 @@ import {
 } from "@/lib/nutrition-sync";
 import { getCached } from "@/lib/client-cache";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
+import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 import { nutritionDayQueryString } from "@/lib/nutrition-day";
+import { sanitizeCalorieTarget } from "@/lib/daily-kcal";
 
 function isPaintReadyDashboard(data: unknown): data is NutritionDashboardPayload {
   if (!data || typeof data !== "object") return false;
   const d = data as NutritionDashboardPayload;
+  const target = sanitizeCalorieTarget(d.targets?.calories) ?? 0;
   return (
     Array.isArray(d.mealsByType) &&
     d.mealsByType.length > 0 &&
-    typeof d.targets?.calories === "number" &&
+    target > 0 &&
     typeof d.consumed?.calories === "number"
   );
 }
@@ -27,10 +30,19 @@ function isPaintReadyDashboard(data: unknown): data is NutritionDashboardPayload
  */
 export function useNutritionPageDashboard(ttlMs = 120_000) {
   const { dashboard, applyDashboard } = useCentralNutrition();
+  const cached = getCached<NutritionDashboardPayload>(
+    NUTRITION_DASHBOARD_CACHE_KEY,
+    { allowStale: true }
+  );
   const usable = isPaintReadyDashboard(dashboard);
-  const cacheHit =
-    getCached(NUTRITION_DASHBOARD_CACHE_KEY, { allowStale: true }) != null;
-  const paintReady = usable || cacheHit;
+  const cachedReady = isPaintReadyDashboard(cached);
+  // Prefer central store; fall back to cache so boot hydrate never flashes missing_target.
+  const displayDashboard: NutritionDashboardPayload = usable
+    ? dashboard
+    : cachedReady
+      ? cached!
+      : dashboard;
+  const paintReady = usable || cachedReady;
 
   const {
     data: fetched,
@@ -38,14 +50,14 @@ export function useNutritionPageDashboard(ttlMs = 120_000) {
     error,
     timedOut,
     reload: refetch,
-  } = useCachedFetch(
+  } = useCachedFetch<NutritionDashboardPayload>(
     NUTRITION_DASHBOARD_CACHE_KEY,
     `/api/nutrition/dashboard?${nutritionDayQueryString()}`,
     ttlMs,
     8_000,
     {
-      revalidateOnMount: true,
-      staleRatio: paintReady ? 0 : 0.5,
+      revalidateOnMount: false,
+      staleRatio: paintReady ? 0.85 : 0.5,
     }
   );
 
@@ -60,9 +72,16 @@ export function useNutritionPageDashboard(ttlMs = 120_000) {
     refetch();
   }, [refetch]);
 
+  const settledWithoutTarget =
+    !loading &&
+    !paintReady &&
+    fetched != null &&
+    !hasNutritionTargets(fetched);
+
   return {
-    dashboard,
-    loading: loading && !paintReady,
+    dashboard: displayDashboard,
+    // Keep skeleton while boot/cache catch up — never flash "Kalorienziel festlegen".
+    loading: (loading && !paintReady) || (!paintReady && !settledWithoutTarget && !error && !timedOut),
     error: paintReady ? null : error,
     timedOut: paintReady ? false : timedOut,
     reload,

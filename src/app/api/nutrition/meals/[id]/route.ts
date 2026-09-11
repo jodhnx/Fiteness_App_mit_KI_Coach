@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { loadNutritionDashboard } from "@/lib/nutrition-service";
+import { recomputeNutritionStreak } from "@/lib/nutrition-streak";
 import { startOfDay } from "date-fns";
 
 export async function DELETE(
@@ -19,11 +20,27 @@ export async function DELETE(
     if (!meal) return jsonError("Mahlzeit nicht gefunden", 404);
 
     await prisma.meal.delete({ where: { id } });
+    const remainingOnDay = await prisma.mealItem.count({
+      where: {
+        meal: {
+          userId: session.user.id,
+          date: meal.date,
+        },
+      },
+    });
+    const streak =
+      remainingOnDay === 0
+        ? await recomputeNutritionStreak(session.user.id)
+        : null;
     const dashboard = await loadNutritionDashboard(
       session.user.id,
       startOfDay(meal.date)
     );
-    return jsonOk({ ok: true, dashboard });
+    return jsonOk({
+      ok: true,
+      dashboard,
+      ...(streak ? { nutritionStreak: streak.effectiveDays } : {}),
+    });
   } catch (e) {
     return handleApiError(e);
   }

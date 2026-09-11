@@ -66,7 +66,7 @@ export async function loadHomeCriticalData(
       prisma.trainingStreak
         .findUnique({ where: { userId }, select: { currentDays: true } })
         .catch(() => null),
-      loadNutritionStreak(userId).catch(() => ({
+      loadNutritionStreak(userId, { skipBackfill: true }).catch(() => ({
         currentDays: 0,
         longestDays: 0,
         lastTrackedAt: null,

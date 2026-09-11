@@ -19,7 +19,7 @@ export const CalorieRing = memo(function CalorieRing({
   target,
   remaining,
   exerciseBurned,
-  size = 168,
+  size = 176,
   className,
 }: Props) {
   const autoId = useId();
@@ -36,17 +36,19 @@ export const CalorieRing = memo(function CalorieRing({
   const pct = hasTarget
     ? Math.min(100, Math.round((kcalConsumed / safeTarget) * 100))
     : 0;
-  const strokeW = Math.max(8, Math.round(size * 0.048));
-  const r = (size - strokeW * 1.5) / 2;
+  const strokeW = Math.max(9, Math.round(size * 0.052));
+  const r = (size - strokeW * 1.55) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (pct / 100) * c;
   const digits = String(centerValue).length;
   const numberClass =
     digits >= 5
-      ? "text-2xl"
+      ? "text-[1.65rem] sm:text-2xl"
       : digits >= 4
-        ? "text-[1.85rem]"
-        : "text-[2.15rem]";
+        ? "text-[1.95rem] sm:text-[2.1rem]"
+        : size >= 200
+          ? "text-[2.45rem]"
+          : "text-[2.25rem]";
 
   return (
     <div className={cn("flex flex-col items-center", className)}>

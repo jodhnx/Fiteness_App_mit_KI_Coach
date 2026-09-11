@@ -1,23 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { previewTargetsFromForm } from "@/lib/calorie-target";
 import { fetchJson } from "@/lib/fetch-json";
 import type { HomeDataPayload } from "@/lib/home-defaults";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/layout/page-header";
 import { toast } from "sonner";
-import {
-  ONBOARDING_ACTIVITY_OPTIONS,
-  ONBOARDING_NUTRITION_GOAL_OPTIONS,
-  ONBOARDING_MAIN_GOAL_UI,
-  ONBOARDING_TRAINING_DAYS,
-  ONBOARDING_EXPERIENCE_OPTIONS,
-} from "@/lib/onboarding-options";
-import { NUTRITION_GOAL_LABELS } from "@/lib/nutrition";
 import type { ActivityLevel, NutritionGoal, PlanLevel, TrainingGoal } from "@prisma/client";
 import {
   PROFILE_CACHE_KEY,
@@ -36,9 +25,13 @@ import {
 } from "@/lib/nutrition-defaults";
 import { logoutAndClear } from "@/lib/auth-logout";
 import { usePreferences } from "@/components/providers/preferences-provider";
-import { APP_THEMES, UI_DENSITY_OPTIONS, COLOR_MODE_OPTIONS } from "@/lib/themes";
+import { APP_THEMES, COLOR_MODE_OPTIONS } from "@/lib/themes";
 import { SettingsHubNav } from "@/components/settings/settings-hub-nav";
-import { SettingsProfileHero } from "@/components/settings/settings-profile-hero";
+import { SettingsProfileOverview } from "@/components/settings/settings-profile-overview";
+import {
+  SettingsProfileEditSheet,
+  type ProfileEditForm,
+} from "@/components/settings/settings-profile-edit-sheet";
 import { SettingsPrivacyPanel } from "@/components/settings/settings-privacy-panel";
 import { SettingsNotificationsPanel } from "@/components/settings/settings-notifications-panel";
 import { SettingsAboutPanel } from "@/components/settings/settings-about-panel";
@@ -48,17 +41,19 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { formatNumField } from "@/lib/mobile-input-scroll";
-import {
-  GENDER_LABELS,
-  TRAINING_LOCATION_LABELS,
-} from "@/lib/profile-labels";
-import { ACTIVITY_LABELS } from "@/lib/profile-calculations";
 import { getCached, setCached } from "@/lib/client-cache";
 import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh";
 import { fetchBootstrapShared, applyBootstrapPayload } from "@/lib/app-init";
 import { computeNutritionRemaining } from "@/lib/nutrition-display";
 import { nutritionDayKey, nutritionDayQueryString } from "@/lib/nutrition-day";
 import { parseManualCalorieTargetInput } from "@/lib/daily-kcal";
+
+function parseDecInput(raw: string | undefined): number | undefined {
+  if (!raw?.trim()) return undefined;
+  const n = Number(raw.trim().replace(/\s/g, "").replace(",", "."));
+  if (!Number.isFinite(n)) return undefined;
+  return n;
+}
 
 type CalcPreview = {
   bmi: number;
@@ -130,7 +125,7 @@ function SettingsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const view = searchParams.get("view");
-  const { theme, uiDensity, colorMode, setTheme, setUiDensity, setColorMode } =
+  const { theme, colorMode, setTheme, setColorMode } =
     usePreferences();
   const [editingPersonal, setEditingPersonal] = useState(view === "konto");
   const [saving, setSaving] = useState(false);
@@ -169,34 +164,39 @@ function SettingsPageInner() {
     () => getCached<ProfileApiResponse>(PROFILE_CACHE_KEY)?.profile != null
   );
   const [loggingOut, setLoggingOut] = useState(false);
-  const [smartGoalHint, setSmartGoalHint] = useState<string | null>(null);
   const formBaselineRef = useRef<string>("");
 
-  const isDirty = useMemo(() => {
-    if (!formBaselineRef.current) return false;
-    return JSON.stringify(form) !== formBaselineRef.current;
-  }, [form]);
+  const cachedProfile = getCached<ProfileApiResponse>(PROFILE_CACHE_KEY, {
+    allowStale: true,
+  });
+  const profileNeedsFullFetch = !(
+    cachedProfile?.profile?.age != null &&
+    cachedProfile?.profile?.heightCm != null &&
+    cachedProfile?.user?.email
+  );
 
   const { data: profileData, loading } = useCachedFetch<ProfileApiResponse>(
     PROFILE_CACHE_KEY,
     "/api/profile",
     180_000,
     8_000,
-    { revalidateOnMount: false, staleRatio: 0.95 }
+    {
+      // Boot stub must not block a full profile fetch when fields are missing.
+      revalidateOnMount: profileNeedsFullFetch,
+      staleRatio: 0.95,
+    }
   );
 
   useEffect(() => {
     if (!profileData) return;
+    if (editingPersonal) return;
     const next = applyProfileToForm(profileData);
     setForm(next);
     formBaselineRef.current = JSON.stringify(next);
     setProfileLoaded(true);
     if (profileData.calculations) setPreview(profileData.calculations);
-    if (profileData.smartGoal?.weightProjection) {
-      setSmartGoalHint(profileData.smartGoal.weightProjection);
-    }
     setUserImage(profileData.user?.image ?? null);
-  }, [profileData]);
+  }, [profileData, editingPersonal]);
 
   const livePreview = useMemo(() => previewTargetsFromForm(form), [form]);
 
@@ -212,24 +212,25 @@ function SettingsPageInner() {
     });
   }, [livePreview]);
 
-  async function save() {
-    if (saving || !profileLoaded || !isDirty) return;
+  async function save(sourceForm: ProfileEditForm = form): Promise<boolean> {
+    if (saving || !profileLoaded) return false;
 
     const manualMacros = Boolean(
-      (form.calorieTarget ?? "").trim() ||
-        (form.proteinTargetG ?? "").trim() ||
-        (form.carbsTargetG ?? "").trim() ||
-        (form.fatTargetG ?? "").trim()
+      (sourceForm.calorieTarget ?? "").trim() ||
+        (sourceForm.proteinTargetG ?? "").trim() ||
+        (sourceForm.carbsTargetG ?? "").trim() ||
+        (sourceForm.fatTargetG ?? "").trim()
     );
 
-    if (livePreview) {
+    const sourcePreview = previewTargetsFromForm(sourceForm);
+    if (sourcePreview) {
       setPreview({
-        bmi: livePreview.bmi,
-        calorieTarget: livePreview.calorieTarget,
-        proteinTargetG: livePreview.proteinTargetG,
-        carbsTargetG: livePreview.carbsTargetG,
-        fatTargetG: livePreview.fatTargetG,
-        recommendedTrainingDays: livePreview.recommendedTrainingDays,
+        bmi: sourcePreview.bmi,
+        calorieTarget: sourcePreview.calorieTarget,
+        proteinTargetG: sourcePreview.proteinTargetG,
+        carbsTargetG: sourcePreview.carbsTargetG,
+        fatTargetG: sourcePreview.fatTargetG,
+        recommendedTrainingDays: sourcePreview.recommendedTrainingDays,
       });
     }
 
@@ -240,39 +241,50 @@ function SettingsPageInner() {
 
     try {
       const payload = {
-        name: form.name || undefined,
-        age: form.age ? Number(form.age) : undefined,
-        weightKg: form.weightKg ? Number(form.weightKg) : undefined,
-        heightCm: form.heightCm ? Number(form.heightCm) : undefined,
-        gender: form.gender,
-        activityLevel: form.activityLevel,
-        trainingGoal: form.trainingGoal,
-        nutritionGoal: form.nutritionGoal,
-        experienceLevel: form.experienceLevel,
-        workoutDaysPerWeek: form.workoutDaysPerWeek
-          ? Number(form.workoutDaysPerWeek)
+        name: sourceForm.name || undefined,
+        age: sourceForm.age ? Number(sourceForm.age.replace(/[^\d]/g, "")) : undefined,
+        weightKg: parseDecInput(sourceForm.weightKg),
+        heightCm: sourceForm.heightCm
+          ? Number(sourceForm.heightCm.replace(/[^\d]/g, ""))
+          : undefined,
+        gender: sourceForm.gender,
+        activityLevel: sourceForm.activityLevel,
+        trainingGoal: sourceForm.trainingGoal,
+        nutritionGoal: sourceForm.nutritionGoal,
+        experienceLevel: sourceForm.experienceLevel,
+        workoutDaysPerWeek: sourceForm.workoutDaysPerWeek
+          ? Number(sourceForm.workoutDaysPerWeek)
           : undefined,
         manualCalorieTarget: manualMacros ? true : undefined,
         calorieTarget:
-          manualMacros && form.calorieTarget
-            ? parseManualCalorieTargetInput(form.calorieTarget) ?? undefined
+          manualMacros && sourceForm.calorieTarget
+            ? parseManualCalorieTargetInput(sourceForm.calorieTarget) ?? undefined
             : undefined,
         proteinTargetG:
-          manualMacros && form.proteinTargetG ? Number(form.proteinTargetG) : undefined,
+          manualMacros && sourceForm.proteinTargetG
+            ? parseDecInput(sourceForm.proteinTargetG)
+            : undefined,
         carbsTargetG:
-          manualMacros && form.carbsTargetG ? Number(form.carbsTargetG) : undefined,
-        fatTargetG: manualMacros && form.fatTargetG ? Number(form.fatTargetG) : undefined,
-        waterTargetMl: form.waterTargetMl ? Number(form.waterTargetMl) : undefined,
-        targetWeightKg: form.targetWeightKg ? Number(form.targetWeightKg) : undefined,
-        targetWeightDate: form.targetWeightDate || undefined,
-        trainingLocation: form.trainingLocation || undefined,
-        countryCode: form.countryCode === "DE" ? "DE" : "AT",
-        bodyFatPct: form.bodyFatPct ? Number(form.bodyFatPct) : undefined,
-        muscleMassKg: form.muscleMassKg ? Number(form.muscleMassKg) : undefined,
-        neckCm: form.neckCm ? Number(form.neckCm) : undefined,
-        chestCm: form.chestCm ? Number(form.chestCm) : undefined,
-        waistCm: form.waistCm ? Number(form.waistCm) : undefined,
-        hipsCm: form.hipsCm ? Number(form.hipsCm) : undefined,
+          manualMacros && sourceForm.carbsTargetG
+            ? parseDecInput(sourceForm.carbsTargetG)
+            : undefined,
+        fatTargetG:
+          manualMacros && sourceForm.fatTargetG
+            ? parseDecInput(sourceForm.fatTargetG)
+            : undefined,
+        waterTargetMl: sourceForm.waterTargetMl
+          ? Number(sourceForm.waterTargetMl.replace(/[^\d]/g, ""))
+          : undefined,
+        targetWeightKg: parseDecInput(sourceForm.targetWeightKg),
+        targetWeightDate: sourceForm.targetWeightDate || undefined,
+        trainingLocation: sourceForm.trainingLocation || undefined,
+        countryCode: sourceForm.countryCode === "DE" ? "DE" : "AT",
+        bodyFatPct: parseDecInput(sourceForm.bodyFatPct),
+        muscleMassKg: parseDecInput(sourceForm.muscleMassKg),
+        neckCm: parseDecInput(sourceForm.neckCm),
+        chestCm: parseDecInput(sourceForm.chestCm),
+        waistCm: parseDecInput(sourceForm.waistCm),
+        hipsCm: parseDecInput(sourceForm.hipsCm),
       };
 
       const { res, data } = await fetchJson<{
@@ -299,19 +311,19 @@ function SettingsPageInner() {
             ? "Bitte zuerst das Onboarding abschließen."
             : data.error ?? `Speichern fehlgeschlagen (${res.status})`;
         toast.error(msg);
-        return;
+        return false;
       }
 
-      if (form.username.trim()) {
+      if (sourceForm.username.trim()) {
         const uRes = await fetch("/api/username", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: form.username.trim().toLowerCase() }),
+          body: JSON.stringify({ username: sourceForm.username.trim().toLowerCase() }),
         });
         const uData = await uRes.json().catch(() => ({}));
         if (!uRes.ok) {
           toast.error(uData.error ?? "Benutzername konnte nicht gespeichert werden");
-          return;
+          return false;
         }
         if (uData.username) {
           setForm((f) => ({ ...f, username: uData.username }));
@@ -319,8 +331,6 @@ function SettingsPageInner() {
       }
 
       if (data.calculations) setPreview(data.calculations);
-      if (data.smartGoal?.weightProjection) setSmartGoalHint(data.smartGoal.weightProjection);
-      else setSmartGoalHint(null);
 
       if (data.profile) {
         const nextForm = applyProfileToForm({
@@ -344,7 +354,6 @@ function SettingsPageInner() {
       };
       setCached(PROFILE_CACHE_KEY, nextProfile, 120_000);
 
-      // Capture dash BEFORE invalidate so we can patch targets immediately
       const prevDash = getCached<NutritionDashboardPayload>(
         NUTRITION_DASHBOARD_CACHE_KEY,
         { allowStale: true }
@@ -364,7 +373,10 @@ function SettingsPageInner() {
           carbsG: data.calculations.carbsTargetG,
           fatG: data.calculations.fatTargetG,
           fiberG: base.targets.fiberG,
-          waterTargetMl: base.targets.waterTargetMl,
+          waterTargetMl:
+            typeof data.profile?.waterTargetMl === "number"
+              ? Number(data.profile.waterTargetMl)
+              : base.targets.waterTargetMl,
           nutritionGoal:
             (data.profile?.nutritionGoal as typeof base.targets.nutritionGoal) ??
             base.targets.nutritionGoal,
@@ -409,7 +421,6 @@ function SettingsPageInner() {
         window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: nextHome }));
       }
 
-      // Fresh nutrition targets in background (publishNutritionDashboard also patches home macros)
       void fetch(`/api/nutrition/dashboard?${nutritionDayQueryString()}`, {
         credentials: "same-origin",
       })
@@ -433,11 +444,16 @@ function SettingsPageInner() {
 
       toast.success("Änderungen gespeichert");
       setEditingPersonal(false);
+      if (view === "konto") {
+        router.replace("/settings", { scroll: false });
+      }
+      return true;
     } catch (e) {
       const msg =
-        e instanceof Error ? e.message : "Speichern fehlgeschlagen — unbekannter Fehler";
+        e instanceof Error ? e.message : "Speichern fehlgeschlagen â€” unbekannter Fehler";
       console.error("[settings] save failed", e);
       toast.error(msg);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -457,54 +473,21 @@ function SettingsPageInner() {
   }
 
   if (!view) {
-    const hubSummary = {
-      personalLine: [
-        form.name?.trim() || null,
-        form.age ? `${form.age} J.` : null,
-        form.gender ? GENDER_LABELS[form.gender] : null,
-      ]
-        .filter(Boolean)
-        .join(" · ") || "—",
-      bodyLine: [
-        form.heightCm ? `${form.heightCm} cm` : null,
-        form.weightKg ? `${form.weightKg} kg` : null,
-        form.targetWeightKg ? `Ziel ${form.targetWeightKg} kg` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ") || "—",
-      goalLine: NUTRITION_GOAL_LABELS[form.nutritionGoal] ?? "—",
-      activityLine: ACTIVITY_LABELS[form.activityLevel] ?? "—",
-      experienceLine:
-        ONBOARDING_EXPERIENCE_OPTIONS.find((o) => o.value === form.experienceLevel)
-          ?.label ?? "—",
-      nutritionLine: preview?.calorieTarget
-        ? `${preview.calorieTarget.toLocaleString("de-DE")} kcal`
-        : form.calorieTarget
-          ? `${form.calorieTarget} kcal`
-          : "—",
-      trainingLine: form.workoutDaysPerWeek
-        ? `${form.workoutDaysPerWeek}× / Woche`
-        : "—",
-    };
-
     return (
-      <div className="space-y-5 max-w-2xl pb-24 mx-auto w-full">
+      <div className="space-y-5 max-w-xl lg:max-w-2xl pb-24 mx-auto w-full">
         <PageHeader
           title="Einstellungen"
-          subtitle="Profil, Präferenzen und Konto"
+          subtitle="Profil, Ziele und App"
         />
         {(profileLoaded || form.name || form.email) && (
-          <SettingsProfileHero
+          <SettingsProfileOverview
             form={form}
             userImage={userImage}
             calorieTarget={preview?.calorieTarget ?? null}
-            editing={false}
-            onEdit={() => router.push("/settings?view=konto")}
-            onImageUpdated={(url) => setUserImage(url)}
+            onEdit={() => setEditingPersonal(true)}
           />
         )}
         <SettingsHubNav
-          summary={hubSummary}
           loggingOut={loggingOut}
           onLogout={async () => {
             setLoggingOut(true);
@@ -514,6 +497,15 @@ function SettingsPageInner() {
               setLoggingOut(false);
             }
           }}
+        />
+        <SettingsProfileEditSheet
+          open={editingPersonal}
+          initial={form}
+          userImage={userImage}
+          saving={saving}
+          onClose={() => setEditingPersonal(false)}
+          onSave={(draft) => save(draft)}
+          onImageUpdated={(url) => setUserImage(url)}
         />
       </div>
     );
@@ -558,687 +550,80 @@ function SettingsPageInner() {
     );
   }
 
-  // view === "konto" (default for any other view string)
+
+  // view === "konto" — overview + edit sheet + security / appearance
   return (
-    <div className="space-y-6 max-w-2xl pb-[calc(9rem+env(safe-area-inset-bottom,0px))]">
+    <div className="space-y-5 max-w-xl lg:max-w-2xl pb-24 mx-auto w-full">
       {backLink}
       <PageHeader
-        title="Konto bearbeiten"
-        subtitle="Persönliche Daten, Ziele & Sicherheit"
+        title="Konto"
+        subtitle="Profil, Ziele und Sicherheit"
       />
 
-      {preview && (
-        <div className="rounded-2xl border border-accent bg-accent-soft p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-          <div>
-            <p className="text-xs text-zinc-500">BMI</p>
-            <p className="text-lg font-bold text-white">{preview.bmi}</p>
-          </div>
-          <div>
-            <p className="text-xs text-zinc-500">Kalorien</p>
-            <p className="text-lg font-bold text-white">{preview.calorieTarget}</p>
-          </div>
-          <div>
-            <p className="text-xs text-zinc-500">Protein</p>
-            <p className="text-lg font-bold text-white">{preview.proteinTargetG} g</p>
-          </div>
-          <div>
-            <p className="text-xs text-zinc-500">Training</p>
-            <p className="text-lg font-bold text-white">{preview.recommendedTrainingDays}×/Wo</p>
-          </div>
-        </div>
-      )}
-
-      <section id="settings-profil" className="settings-section">
-      <SettingsProfileHero
+      <SettingsProfileOverview
         form={form}
         userImage={userImage}
         calorieTarget={preview?.calorieTarget ?? null}
-        editing={editingPersonal}
         onEdit={() => setEditingPersonal(true)}
-        onImageUpdated={(url) => setUserImage(url)}
       />
-      </section>
 
-      {editingPersonal && (
-        <>
-          <section className="card-premium p-4 space-y-4 settings-section">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-white text-lg">Persönliche Daten bearbeiten</h2>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  if (profileData) setForm(applyProfileToForm(profileData));
-                  setEditingPersonal(false);
-                }}
-              >
-                Abbrechen
-              </Button>
-            </div>
-            <div>
-              <Label>Name</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label>Benutzername</Label>
-              <p className="text-[11px] text-zinc-500 mt-0.5 mb-1">
-                Für Freunde & Community — eindeutig
-              </p>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">@</span>
-                <Input
-                  value={form.username}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      username: e.target.value
-                        .toLowerCase()
-                        .replace(/[^a-z0-9_]/g, "")
-                        .slice(0, 24),
-                    })
-                  }
-                  className="mt-1 pl-7"
-                  placeholder="dein_name"
-                  autoComplete="username"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>E-Mail</Label>
-              <Input
-                value={form.email}
-                readOnly
-                className="mt-1 opacity-80"
-                autoComplete="email"
-              />
-              <p className="text-[11px] text-zinc-500 mt-1">
-                Login-E-Mail — Änderung nur über Support möglich
-              </p>
-            </div>
-            <div>
-              <Label>Land (Lebensmittel)</Label>
-              <p className="text-[11px] text-zinc-500 mt-0.5 mb-1">
-                Beeinflusst Suche, Händler und regionale Begriffe (z. B. Topfen / Quark)
-              </p>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                {(
-                  [
-                    { code: "AT", label: "🇦🇹 Österreich" },
-                    { code: "DE", label: "🇩🇪 Deutschland" },
-                  ] as const
-                ).map((opt) => (
-                  <button
-                    key={opt.code}
-                    type="button"
-                    onClick={() => setForm({ ...form, countryCode: opt.code })}
-                    className={
-                      form.countryCode === opt.code
-                        ? "h-11 rounded-xl border border-accent/50 bg-accent/15 text-sm font-semibold text-white"
-                        : "h-11 rounded-xl border border-zinc-700 bg-zinc-900/60 text-sm text-zinc-300"
-                    }
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Alter</Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="18"
-                  value={form.age}
-                  onChange={(e) => setForm({ ...form, age: e.target.value.replace(/[^\d]/g, "") })}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Geschlecht</Label>
-                <select
-                  className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-                  value={form.gender}
-                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
-                >
-                  <option value="MALE">Männlich</option>
-                  <option value="FEMALE">Weiblich</option>
-                </select>
-              </div>
-            </div>
-          </section>
-        </>
-      )}
-
-      <section id="settings-ziele" className="card-premium p-4 space-y-4 settings-section">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-semibold text-white text-lg">Ziele</h2>
-          {!editingPersonal && (
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditingPersonal(true)}>
-              Bearbeiten
-            </Button>
-          )}
-        </div>
-        <p className="text-xs text-zinc-500">
-          Kalorien, Protein & Makros werden automatisch neu berechnet.
-        </p>
-        {editingPersonal ? (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Gewicht (kg)</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="70 kg"
-                  value={form.weightKg}
-                  onChange={(e) => setForm({ ...form, weightKg: e.target.value.replace(/[^\d,.]/g, "") })}
-                  className="mt-1 keyboard-stable-input"
-                />
-              </div>
-              <div>
-                <Label>Größe (cm)</Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="180 cm"
-                  value={form.heightCm}
-                  onChange={(e) => setForm({ ...form, heightCm: e.target.value.replace(/[^\d]/g, "") })}
-                  className="mt-1 keyboard-stable-input"
-                />
-              </div>
-            </div>
-            <div className="rounded-xl border border-zinc-700/80 bg-zinc-900/40 p-3 space-y-3">
-              <p className="text-xs font-semibold text-zinc-400 uppercase">Smart Goals</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Zielgewicht (kg)</Label>
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="75 kg"
-                    value={form.targetWeightKg}
-                    onChange={(e) => setForm({ ...form, targetWeightKg: e.target.value.replace(/[^\d,.]/g, "") })}
-                    className="mt-1 keyboard-stable-input"
-                  />
-                </div>
-                <div>
-                  <Label>Wunschdatum</Label>
-                  <Input
-                    type="date"
-                    value={form.targetWeightDate}
-                    onChange={(e) => setForm({ ...form, targetWeightDate: e.target.value })}
-                    className="mt-1 keyboard-stable-input"
-                  />
-                </div>
-              </div>
-              {smartGoalHint && (
-                <p className="text-xs text-accent">Erwartung: {smartGoalHint}</p>
-              )}
-            </div>
-            <div>
-              <Label>Aktivitätslevel</Label>
-              <select
-                className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-                value={form.activityLevel}
-                onChange={(e) =>
-                  setForm({ ...form, activityLevel: e.target.value as ActivityLevel })
-                }
-              >
-                {ONBOARDING_ACTIVITY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Hauptziel (Training)</Label>
-              <select
-                className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-                value={form.trainingGoal}
-                onChange={(e) =>
-                  setForm({ ...form, trainingGoal: e.target.value as TrainingGoal })
-                }
-              >
-                {ONBOARDING_MAIN_GOAL_UI.map((o) => (
-                  <option key={o.key} value={o.trainingGoal}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Ernährungsziel</Label>
-              <select
-                className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-                value={form.nutritionGoal}
-                onChange={(e) =>
-                  setForm({ ...form, nutritionGoal: e.target.value as NutritionGoal })
-                }
-              >
-                {ONBOARDING_NUTRITION_GOAL_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {NUTRITION_GOAL_LABELS[o.value]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Button
-              type="button"
-              onClick={() => void save()}
-              disabled={saving || !isDirty}
-              className="w-full disabled:opacity-40"
-            >
-              {saving ? "Speichern…" : "SPEICHERN & NEU BERECHNEN"}
-            </Button>
-          </>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-xs text-zinc-500">Gewicht</p>
-              <p className="text-white font-medium">{form.weightKg || "—"} kg</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500">Größe</p>
-              <p className="text-white font-medium">{form.heightCm || "—"} cm</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500">Zielgewicht</p>
-              <p className="text-white font-medium">{form.targetWeightKg || "—"} kg</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500">Ernährungsziel</p>
-              <p className="text-white font-medium">
-                {NUTRITION_GOAL_LABELS[form.nutritionGoal] ?? form.nutritionGoal}
-              </p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section id="settings-vitaldaten" className="card-premium p-4 space-y-4 settings-section">
-        <h2 className="font-semibold text-white text-lg">Vitaldaten</h2>
-        <p className="text-xs text-zinc-500">Optional — für Fortschritt & KI-Analyse</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Körperfett %</Label>
-            <Input
-              type="number"
-              step="0.1"
-              placeholder="optional"
-              value={form.bodyFatPct}
-              onChange={(e) => setForm({ ...form, bodyFatPct: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>Muskelmasse (kg)</Label>
-            <Input
-              type="number"
-              step="0.1"
-              placeholder="optional"
-              value={form.muscleMassKg}
-              onChange={(e) => setForm({ ...form, muscleMassKg: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>Hals (cm)</Label>
-            <Input
-              type="number"
-              value={form.neckCm}
-              onChange={(e) => setForm({ ...form, neckCm: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>Brust (cm)</Label>
-            <Input
-              type="number"
-              value={form.chestCm}
-              onChange={(e) => setForm({ ...form, chestCm: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>Taille (cm)</Label>
-            <Input
-              type="number"
-              value={form.waistCm}
-              onChange={(e) => setForm({ ...form, waistCm: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>Hüfte (cm)</Label>
-            <Input
-              type="number"
-              value={form.hipsCm}
-              onChange={(e) => setForm({ ...form, hipsCm: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section id="settings-training" className="card-premium p-4 space-y-4 settings-section">
-        <h2 className="font-semibold text-white text-lg">Training</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Erfahrung</Label>
-            <select
-              className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-              value={form.experienceLevel}
-              onChange={(e) =>
-                setForm({ ...form, experienceLevel: e.target.value as PlanLevel })
-              }
-            >
-              {ONBOARDING_EXPERIENCE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label>Trainingstage/Woche</Label>
-            <select
-              className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-              value={form.workoutDaysPerWeek}
-              onChange={(e) =>
-                setForm({ ...form, workoutDaysPerWeek: e.target.value })
-              }
-            >
-              {ONBOARDING_TRAINING_DAYS.map((d) => (
-                <option key={d} value={d}>
-                  {d} Tage
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="col-span-2">
-            <Label>Trainingsort</Label>
-            <select
-              className="mt-1 w-full h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm"
-              value={form.trainingLocation}
-              onChange={(e) => setForm({ ...form, trainingLocation: e.target.value })}
-            >
-              <option value="GYM">Gym</option>
-              <option value="HOME">Zuhause</option>
-              <option value="BOTH">Gym & Zuhause</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <section id="settings-ernaehrung" className="card-premium p-4 space-y-3 settings-section">
-        <h2 className="font-semibold text-white text-lg">Ernährung</h2>
-        <p className="text-xs text-zinc-500">
-          Leer = automatisch ({preview?.calorieTarget ?? "—"} kcal aus deinen Zielen)
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Kalorien (manuell)</Label>
-            <Input
-              type="text"
-              inputMode="numeric"
-              placeholder="z. B. 2200"
-              value={form.calorieTarget}
-              onChange={(e) => {
-                const raw = e.target.value;
-                if (raw.trim() === "") {
-                  setForm({ ...form, calorieTarget: "" });
-                  return;
-                }
-                const parsed = parseManualCalorieTargetInput(raw);
-                setForm({
-                  ...form,
-                  calorieTarget: parsed != null ? String(parsed) : raw.replace(/[^\d.,]/g, ""),
-                });
-              }}
-              onBlur={() => {
-                const parsed = parseManualCalorieTargetInput(form.calorieTarget);
-                if (parsed != null) setForm({ ...form, calorieTarget: String(parsed) });
-                else if (form.calorieTarget.trim()) setForm({ ...form, calorieTarget: "" });
-              }}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>Protein (g)</Label>
-            <Input
-              type="number"
-              value={form.proteinTargetG}
-              onChange={(e) => setForm({ ...form, proteinTargetG: e.target.value })}
-              placeholder="Auto"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>KH (g)</Label>
-            <Input
-              type="number"
-              value={form.carbsTargetG}
-              onChange={(e) => setForm({ ...form, carbsTargetG: e.target.value })}
-              placeholder="Auto"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>Fett (g)</Label>
-            <Input
-              type="number"
-              value={form.fatTargetG}
-              onChange={(e) => setForm({ ...form, fatTargetG: e.target.value })}
-              placeholder="Auto"
-              className="mt-1"
-            />
-          </div>
-        </div>
-        <div>
-          <Label>Wasser (ml/Tag)</Label>
-          <Input
-            type="number"
-            value={form.waterTargetMl}
-            onChange={(e) => setForm({ ...form, waterTargetMl: e.target.value })}
-            className="mt-1"
-          />
-        </div>
-      </section>
-
-      <section id="settings-design" className="card-premium p-4 space-y-4 settings-section scroll-mt-4">
-        <h2 className="font-semibold text-white text-lg">Darstellung</h2>
-        <p className="text-xs text-zinc-500">Theme, Accent und Ansichtsdichte — Live-Vorschau</p>
-        <div className="grid grid-cols-2 gap-2">
-          {COLOR_MODE_OPTIONS.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => setColorMode(m.id)}
-              className={cn(
-                "rounded-xl border px-3 py-2 text-sm font-medium",
-                colorMode === m.id
-                  ? "border-accent bg-accent-soft text-white"
-                  : "border-zinc-700 text-zinc-400"
-              )}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        <div className="rounded-xl border border-zinc-700 p-4 flex items-center gap-3">
-          <div
-            className="h-12 w-12 rounded-xl shrink-0"
-            style={{ background: APP_THEMES.find((t) => t.id === theme)?.preview }}
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-white font-medium">
-              {APP_THEMES.find((t) => t.id === theme)?.label}
-            </p>
-            <button type="button" className="mt-2 btn-accent text-sm px-4 py-2 rounded-lg">
-              Beispiel-Button
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-          {APP_THEMES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTheme(t.id)}
-              className={cn(
-                "rounded-xl border-2 p-2 transition-all",
-                theme === t.id ? "border-white scale-105" : "border-transparent"
-              )}
-              title={t.label}
-            >
-              <div className="h-8 w-full rounded-lg" style={{ background: t.preview }} />
-              <p className="text-[9px] text-zinc-500 mt-1 truncate">{t.label.split(" ")[0]}</p>
-            </button>
-          ))}
-        </div>
-        <div>
-          <Label className="mb-2 block">Ansicht</Label>
-          <div className="grid gap-2">
-            {UI_DENSITY_OPTIONS.map((d) => (
+      <section id="settings-design" className="space-y-3 scroll-mt-4">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 px-0.5">
+          Darstellung
+        </h2>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-3.5 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            {COLOR_MODE_OPTIONS.map((m) => (
               <button
-                key={d.id}
+                key={m.id}
                 type="button"
-                onClick={() => setUiDensity(d.id)}
+                onClick={() => setColorMode(m.id)}
                 className={cn(
-                  "rounded-xl border px-3 py-2.5 text-left text-sm",
-                  uiDensity === d.id
+                  "min-h-11 rounded-xl border px-3 py-2 text-sm font-medium",
+                  colorMode === m.id
                     ? "border-accent bg-accent-soft text-white"
                     : "border-zinc-700 text-zinc-400"
                 )}
               >
-                <span className="font-medium">{d.label}</span>
-                <span className="text-xs text-zinc-500 block">{d.hint}</span>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            {APP_THEMES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTheme(t.id)}
+                className={cn(
+                  "rounded-xl border-2 p-2 transition-all min-h-11",
+                  theme === t.id ? "border-white scale-105" : "border-transparent"
+                )}
+                title={t.label}
+              >
+                <div className="h-8 w-full rounded-lg" style={{ background: t.preview }} />
               </button>
             ))}
           </div>
         </div>
       </section>
 
-      <SettingsSecurityPanel mode="password" />
-
-      <section id="settings-konto" className="card-premium p-4 space-y-4 settings-section scroll-mt-4">
-        <h2 className="font-semibold text-white text-lg">Konto-Übersicht</h2>
-        <p className="text-xs text-zinc-500">Persönliche Daten, Körperdaten & Ziele</p>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Name</dt>
-            <dd className="font-medium text-white mt-0.5">{form.name || "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Benutzername</dt>
-            <dd className="font-medium text-accent mt-0.5">
-              {form.username ? `@${form.username}` : "—"}
-            </dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">E-Mail</dt>
-            <dd className="font-medium text-white mt-0.5 break-all">{form.email || "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Alter</dt>
-            <dd className="font-medium text-white mt-0.5">{form.age ? `${form.age} Jahre` : "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Geschlecht</dt>
-            <dd className="font-medium text-white mt-0.5">{GENDER_LABELS[form.gender] ?? "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Größe</dt>
-            <dd className="font-medium text-white mt-0.5">{form.heightCm ? `${form.heightCm} cm` : "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Gewicht</dt>
-            <dd className="font-medium text-white mt-0.5">{form.weightKg ? `${form.weightKg} kg` : "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Zielgewicht</dt>
-            <dd className="font-medium text-white mt-0.5">{form.targetWeightKg ? `${form.targetWeightKg} kg` : "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Ziel</dt>
-            <dd className="font-medium text-white mt-0.5">{NUTRITION_GOAL_LABELS[form.nutritionGoal] ?? "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Aktivitätslevel</dt>
-            <dd className="font-medium text-white mt-0.5">{ACTIVITY_LABELS[form.activityLevel] ?? "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Trainingsort</dt>
-            <dd className="font-medium text-white mt-0.5">{TRAINING_LOCATION_LABELS[form.trainingLocation] ?? "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Land</dt>
-            <dd className="font-medium text-white mt-0.5">
-              {form.countryCode === "DE" ? "🇩🇪 Deutschland" : "🇦🇹 Österreich"}
-            </dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Trainingserfahrung</dt>
-            <dd className="font-medium text-white mt-0.5">
-              {ONBOARDING_EXPERIENCE_OPTIONS.find((o) => o.value === form.experienceLevel)?.label ?? "—"}
-            </dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Training / Woche</dt>
-            <dd className="font-medium text-white mt-0.5">{form.workoutDaysPerWeek ? `${form.workoutDaysPerWeek}×` : "—"}</dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Kalorienziel</dt>
-            <dd className="font-medium text-cyan-400 mt-0.5 tabular-nums">
-              {preview?.calorieTarget ? `${preview.calorieTarget} kcal` : "—"}
-            </dd>
-          </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800 p-3 sm:col-span-2">
-            <dt className="text-[10px] uppercase tracking-wide text-zinc-500">Makros</dt>
-            <dd className="font-medium text-white mt-0.5 tabular-nums">
-              P {preview?.proteinTargetG ?? "—"}g · KH {preview?.carbsTargetG ?? "—"}g · F {preview?.fatTargetG ?? "—"}g
-            </dd>
-          </div>
-        </dl>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full border-red-500/40 text-red-300 hover:bg-red-500/10"
-          disabled={loggingOut}
-          onClick={async () => {
-            setLoggingOut(true);
-            try {
-              await logoutAndClear("/login");
-            } finally {
-              setLoggingOut(false);
-            }
-          }}
-        >
-          {loggingOut ? "Abmelden…" : "Abmelden"}
-        </Button>
-      </section>
-
-      <div
-        className="fixed inset-x-0 z-40 border-t border-white/[0.08] bg-zinc-950/95 backdrop-blur-md px-4 pt-3 pb-3 bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 lg:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
-      >
-        <div className="max-w-2xl mx-auto">
-          <Button
-            type="button"
-            className="w-full h-12 text-base font-semibold tracking-wide rounded-2xl disabled:opacity-40 disabled:bg-zinc-700 disabled:text-zinc-400 disabled:pointer-events-none"
-            onClick={() => void save()}
-            disabled={saving || !profileLoaded || !isDirty}
-          >
-            {saving ? "Speichern…" : "SPEICHERN & NEU BERECHNEN"}
-          </Button>
-        </div>
+      <div id="settings-konto" className="scroll-mt-24">
+        <SettingsSecurityPanel mode="password" />
       </div>
+
+      <SettingsProfileEditSheet
+        open={editingPersonal}
+        initial={form}
+        userImage={userImage}
+        saving={saving}
+        onClose={() => {
+          setEditingPersonal(false);
+          router.replace("/settings", { scroll: false });
+        }}
+        onSave={(draft) => save(draft)}
+        onImageUpdated={(url) => setUserImage(url)}
+      />
     </div>
   );
 }

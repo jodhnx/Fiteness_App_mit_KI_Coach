@@ -48,10 +48,11 @@ export type FoodSearchResponse = {
 
 export function foodSearchUrl(
   query: string,
-  phase: "fast" | "enrich"
+  phase: "fast" | "enrich" | "full"
 ): string {
-  const extra = phase === "enrich" ? "enrich=1" : "fast=1";
-  // Country hint skips Profile lookup on the hot fast path.
+  const extra =
+    phase === "enrich" ? "enrich=1" : phase === "fast" ? "fast=1" : "full=1";
+  // Country hint skips Profile lookup on the hot path.
   return `/api/food/search?q=${encodeURIComponent(query)}&${extra}&country=AT`;
 }
 

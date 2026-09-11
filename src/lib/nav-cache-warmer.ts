@@ -2,6 +2,7 @@ import { fetchCached, isCacheStale } from "@/lib/client-cache";
 import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
 import { warmFoodHistoryCache } from "@/lib/food-history-cache";
+import { WORKOUT_ACTIVE_CACHE_KEY } from "@/lib/workout-cache-sync";
 
 let warmed = false;
 
@@ -29,7 +30,11 @@ export function warmProgressCache() {
     .catch(() => {});
 }
 
-/** Background prefetch for instant tab switches — skips work when cache is fresh. */
+/**
+ * Background prefetch for instant primary-tab switches.
+ * Keep lean: only Training-critical caches here. Social/gamification warm later
+ * on demand or much later idle — they are not needed for first navigation.
+ */
 export function warmNavDataCaches() {
   if (typeof window === "undefined") return;
   if (warmed) return;
@@ -40,12 +45,12 @@ export function warmNavDataCaches() {
       ? requestIdleCallback
       : (cb: () => void) => setTimeout(cb, 800);
 
-  // Bootstrap already seeded home/nutrition/profile — don't refetch them here
+  // Primary tabs: Training needs active session + plans
   window.setTimeout(() => {
     idle(() => {
-      if (isCacheStale("workouts-active", 0.9)) {
+      if (isCacheStale(WORKOUT_ACTIVE_CACHE_KEY, 0.9)) {
         void fetchCached(
-          "workouts-active",
+          WORKOUT_ACTIVE_CACHE_KEY,
           () => fetchJson("/api/workouts/sessions?active=1"),
           90_000
         ).catch(() => {});
@@ -57,6 +62,12 @@ export function warmNavDataCaches() {
           120_000
         ).catch(() => {});
       }
+    });
+  }, 1800);
+
+  // Secondary: recovery only (workouts tab depth) — much later
+  window.setTimeout(() => {
+    idle(() => {
       if (isCacheStale("workouts-recovery", 0.9)) {
         void fetchCached(
           "workouts-recovery",
@@ -64,29 +75,34 @@ export function warmNavDataCaches() {
           90_000
         ).catch(() => {});
       }
-      if (isCacheStale("gamification-full", 0.9)) {
-        void fetchCached(
-          "gamification-full",
-          () => fetchJson("/api/gamification"),
-          120_000
-        ).catch(() => {});
-      }
-      if (isCacheStale("social-feed", 0.9)) {
-        void fetchCached(
-          "social-feed",
-          () =>
-            fetchJson<{ feed?: unknown[] }>("/api/social/feed").then(
-              (d) => d.feed ?? []
-            ),
-          90_000
-        ).catch(() => {});
-      }
     });
-  }, 2000);
+  }, 6000);
 }
 
 /** Warm food search + history when user opens nutrition (instant + button). */
 export function warmNutritionSearchCaches() {
   if (typeof window === "undefined") return;
   warmFoodHistoryCache();
+}
+
+/** Low-priority social/gamification — only when More/Social likely. */
+export function warmSecondarySocialCaches() {
+  if (typeof window === "undefined") return;
+  if (isCacheStale("gamification-full", 0.9)) {
+    void fetchCached(
+      "gamification-full",
+      () => fetchJson("/api/gamification"),
+      120_000
+    ).catch(() => {});
+  }
+  if (isCacheStale("social-feed", 0.9)) {
+    void fetchCached(
+      "social-feed",
+      () =>
+        fetchJson<{ feed?: unknown[] }>("/api/social/feed").then(
+          (d) => d.feed ?? []
+        ),
+      90_000
+    ).catch(() => {});
+  }
 }

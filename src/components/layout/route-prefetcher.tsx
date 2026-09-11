@@ -42,16 +42,23 @@ export function RoutePrefetcher() {
         : (cb: () => void) => setTimeout(cb, 400);
 
     idle(() => {
+      // warmNavDataCaches is also scheduled post-boot — flag makes this a no-op if already run
       warmNavDataCaches();
-      warmTrainingCaches();
-      for (const href of NAV_ROUTES.slice(5)) {
+      for (const href of NAV_ROUTES.slice(5, 8)) {
         router.prefetch(href);
       }
     });
 
-    idle(() => {
-      warmHealthSync();
-    });
+    // Deeper routes + journey/health later — don't compete with first paint / first tabs
+    window.setTimeout(() => {
+      idle(() => {
+        warmTrainingCaches();
+        for (const href of NAV_ROUTES.slice(8)) {
+          router.prefetch(href);
+        }
+        warmHealthSync();
+      });
+    }, 4000);
   }, [router]);
 
   return null;

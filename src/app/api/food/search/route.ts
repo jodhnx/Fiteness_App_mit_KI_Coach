@@ -14,16 +14,19 @@ export async function GET(req: NextRequest) {
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
 
     const enrich = req.nextUrl.searchParams.get("enrich") === "1";
-    const localOnly = !enrich;
+    const fast = req.nextUrl.searchParams.get("fast") === "1";
+    // full=1 or bare query → one combined local+OFF search (cold path).
+    const full =
+      req.nextUrl.searchParams.get("full") === "1" || (!enrich && !fast);
     const countryParam = req.nextUrl.searchParams.get("country");
     const countryCode =
       countryParam === "AT" || countryParam === "DE" ? countryParam : undefined;
 
     const result = await searchFoodProducts(session.user.id, q.trim(), {
       suggestions: false,
-      recordHistory: q.trim().length >= 3 && enrich,
-      localOnly,
-      enrich,
+      recordHistory: q.trim().length >= 3 && (enrich || full),
+      localOnly: fast && !enrich && !full,
+      enrich: enrich && !full,
       countryCode,
     });
 
@@ -31,7 +34,7 @@ export async function GET(req: NextRequest) {
       console.log("[api/food/search] OK", {
         ms: Date.now() - started,
         products: result.products.length,
-        phase: enrich ? "enrich" : "fast",
+        phase: full ? "full" : enrich ? "enrich" : "fast",
         offSource: result.offSource,
       });
     }

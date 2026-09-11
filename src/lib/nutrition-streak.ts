@@ -23,8 +23,51 @@ export function effectiveNutritionStreakDays(
 }
 
 /**
- * Increment at most once per calendar day when the user tracks a meal.
+ * Pure streak math from sorted unique day ISO keys (startOfDay().toISOString()).
+ * Exported for unit tests.
  */
+export function computeStreakFromDayKeys(dayKeys: string[]): {
+  currentDays: number;
+  longestDays: number;
+  lastTrackedAt: Date | null;
+} {
+  if (!dayKeys.length) {
+    return { currentDays: 0, longestDays: 0, lastTrackedAt: null };
+  }
+
+  let longest = 1;
+  let run = 1;
+  for (let i = 1; i < dayKeys.length; i++) {
+    const prev = new Date(dayKeys[i - 1]);
+    const next = new Date(dayKeys[i]);
+    if (differenceInCalendarDays(next, prev) === 1) {
+      run++;
+      longest = Math.max(longest, run);
+    } else {
+      run = 1;
+    }
+  }
+
+  const lastTrackedAt = startOfDay(new Date(dayKeys[dayKeys.length - 1]));
+  run = 1;
+  for (let i = dayKeys.length - 2; i >= 0; i--) {
+    const prev = new Date(dayKeys[i]);
+    const next = new Date(dayKeys[i + 1]);
+    if (differenceInCalendarDays(next, prev) === 1) {
+      run++;
+    } else {
+      break;
+    }
+  }
+
+  return {
+    currentDays: run,
+    longestDays: longest,
+    lastTrackedAt,
+  };
+}
+
+/** Increment at most once per calendar day when the user tracks a meal. */
 const EMPTY_STREAK: NutritionStreakSnapshot = {
   currentDays: 0,
   longestDays: 0,
@@ -79,56 +122,78 @@ async function updateNutritionStreakUnsafe(
   });
 }
 
-async function backfillNutritionStreakFromMeals(userId: string) {
+async function listTrackedDayKeys(userId: string): Promise<string[]> {
   const since = subDays(startOfDay(new Date()), 400);
   const meals = await prisma.meal.findMany({
-    where: { userId, date: { gte: since } },
+    where: {
+      userId,
+      date: { gte: since },
+      items: { some: {} },
+    },
     select: { date: true },
     orderBy: { date: "asc" },
   });
+  return [...new Set(meals.map((m) => startOfDay(m.date).toISOString()))].sort();
+}
 
-  const dayKeys = [...new Set(meals.map((m) => startOfDay(m.date).toISOString()))].sort();
-  if (!dayKeys.length) {
-    return prisma.nutritionStreak.create({
-      data: { userId, currentDays: 0, longestDays: 0, lastTrackedAt: null },
-    });
-  }
-
-  let longest = 1;
-  let run = 1;
-  for (let i = 1; i < dayKeys.length; i++) {
-    const prev = new Date(dayKeys[i - 1]);
-    const next = new Date(dayKeys[i]);
-    if (differenceInCalendarDays(next, prev) === 1) {
-      run++;
-      longest = Math.max(longest, run);
-    } else {
-      run = 1;
-    }
-  }
-
-  const lastTrackedAt = startOfDay(new Date(dayKeys[dayKeys.length - 1]));
-  let currentDays = 1;
-  run = 1;
-  for (let i = dayKeys.length - 2; i >= 0; i--) {
-    const prev = new Date(dayKeys[i]);
-    const next = new Date(dayKeys[i + 1]);
-    if (differenceInCalendarDays(next, prev) === 1) {
-      run++;
-    } else {
-      break;
-    }
-  }
-  currentDays = run;
-
+async function backfillNutritionStreakFromMeals(userId: string) {
+  const dayKeys = await listTrackedDayKeys(userId);
+  const computed = computeStreakFromDayKeys(dayKeys);
   return prisma.nutritionStreak.create({
     data: {
       userId,
-      currentDays,
-      longestDays: longest,
-      lastTrackedAt,
+      currentDays: computed.currentDays,
+      longestDays: computed.longestDays,
+      lastTrackedAt: computed.lastTrackedAt,
     },
   });
+}
+
+async function recomputeNutritionStreakUnsafe(
+  userId: string
+): Promise<NutritionStreakSnapshot> {
+  const dayKeys = await listTrackedDayKeys(userId);
+  const computed = computeStreakFromDayKeys(dayKeys);
+  const existing = await prisma.nutritionStreak.findUnique({ where: { userId } });
+  const longestDays = Math.max(existing?.longestDays ?? 0, computed.longestDays);
+
+  if (!existing) {
+    return prisma.nutritionStreak.create({
+      data: {
+        userId,
+        currentDays: computed.currentDays,
+        longestDays,
+        lastTrackedAt: computed.lastTrackedAt,
+      },
+    });
+  }
+
+  return prisma.nutritionStreak.update({
+    where: { userId },
+    data: {
+      currentDays: computed.currentDays,
+      longestDays,
+      lastTrackedAt: computed.lastTrackedAt,
+    },
+  });
+}
+
+/**
+ * Recompute streak after deletes so an emptied calendar day does not keep
+ * inflating effectiveDays. Server remains source of truth.
+ */
+export async function recomputeNutritionStreak(
+  userId: string
+): Promise<NutritionStreakSnapshot & { effectiveDays: number }> {
+  const row = await safePrisma(
+    () => recomputeNutritionStreakUnsafe(userId),
+    EMPTY_STREAK,
+    { logLabel: "recomputeNutritionStreak" }
+  );
+  return {
+    ...row,
+    effectiveDays: effectiveNutritionStreakDays(row),
+  };
 }
 
 /**
@@ -147,10 +212,11 @@ export async function updateNutritionStreak(
 }
 
 async function loadNutritionStreakUnsafe(
-  userId: string
+  userId: string,
+  opts?: { skipBackfill?: boolean }
 ): Promise<NutritionStreakSnapshot & { effectiveDays: number }> {
   let row = await prisma.nutritionStreak.findUnique({ where: { userId } });
-  if (!row) {
+  if (!row && !opts?.skipBackfill) {
     row = await backfillNutritionStreakFromMeals(userId).catch(() => null);
   }
   if (!row) {
@@ -165,10 +231,11 @@ async function loadNutritionStreakUnsafe(
 }
 
 export async function loadNutritionStreak(
-  userId: string
+  userId: string,
+  opts?: { skipBackfill?: boolean }
 ): Promise<NutritionStreakSnapshot & { effectiveDays: number }> {
   return safePrisma(
-    () => loadNutritionStreakUnsafe(userId),
+    () => loadNutritionStreakUnsafe(userId, opts),
     { ...EMPTY_STREAK, effectiveDays: 0 },
     { logLabel: "loadNutritionStreak" }
   );

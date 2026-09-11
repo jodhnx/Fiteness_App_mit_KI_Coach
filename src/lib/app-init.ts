@@ -150,6 +150,49 @@ export function isAppBootReady(): boolean {
   return readBootPayloadFromCache() != null;
 }
 
+function isRichProfileCache(
+  cached: ProfileServerPrefetch | null | undefined
+): boolean {
+  const p = cached?.profile as Record<string, unknown> | null | undefined;
+  if (!p) return false;
+  return Boolean(
+    p.age != null ||
+      p.heightCm != null ||
+      p.calorieTarget != null ||
+      p.activityLevel != null
+  );
+}
+
+/** Merge boot stub into PROFILE cache without wiping a fuller /api/profile payload. */
+function mergeProfileCacheFromBoot(incoming: ProfileServerPrefetch) {
+  const existing = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, {
+    allowStale: true,
+  });
+  if (!existing || !isRichProfileCache(existing)) {
+    setCached(PROFILE_CACHE_KEY, incoming, 7 * 24 * 60 * 60_000);
+    return;
+  }
+
+  const existingProfile = (existing.profile ?? {}) as Record<string, unknown>;
+  const incomingProfile = (incoming.profile ?? {}) as Record<string, unknown>;
+  const mergedProfile: Record<string, unknown> = { ...existingProfile };
+  for (const [k, v] of Object.entries(incomingProfile)) {
+    if (v != null && v !== "") mergedProfile[k] = v;
+  }
+
+  setCached(
+    PROFILE_CACHE_KEY,
+    {
+      ...existing,
+      ...incoming,
+      user: { ...(existing.user ?? {}), ...(incoming.user ?? {}) },
+      profile: mergedProfile,
+      calculations: existing.calculations ?? incoming.calculations ?? null,
+    },
+    7 * 24 * 60 * 60_000
+  );
+}
+
 function applyBootstrapPayload(payload: BootstrapPayload) {
   bootPerfMark("home_apply_start");
   const nutrition = preferCanonicalNutritionDashboard(payload.nutrition, null);
@@ -170,12 +213,12 @@ function applyBootstrapPayload(payload: BootstrapPayload) {
   publishNutritionDashboard(nutrition);
 
   if (payload.profile?.user || payload.profile?.profile) {
-    setCached(PROFILE_CACHE_KEY, payload.profile, 7 * 24 * 60 * 60_000);
+    mergeProfileCacheFromBoot(payload.profile);
     bootPerfMark("profile_apply_end");
   } else {
     const stub = profileStubFromBoot(home, nutrition);
     if (stub.user?.name || stub.user?.image || stub.profile) {
-      setCached(PROFILE_CACHE_KEY, stub, 7 * 24 * 60 * 60_000);
+      mergeProfileCacheFromBoot(stub);
       bootPerfMark("profile_apply_end");
     }
   }
@@ -257,6 +300,8 @@ export function fetchBootstrapShared(opts?: {
 export { applyBootstrapPayload };
 
 /** Enrich home with extras (gamification, recovery, …) without reloading nutrition. */
+let enrichInflight: Promise<void> | null = null;
+
 export function enrichHomeInBackground() {
   if (typeof window === "undefined") return;
 
@@ -271,7 +316,9 @@ export function enrichHomeInBackground() {
     return;
   }
 
-  void fetch("/api/home?enrich=1", { credentials: "same-origin" })
+  if (enrichInflight) return;
+
+  enrichInflight = fetch("/api/home?enrich=1", { credentials: "same-origin" })
     .then((r) => (r.ok ? r.json() : null))
     .then((extras: Record<string, unknown> | null) => {
       if (!extras || typeof extras !== "object") return;
@@ -284,7 +331,10 @@ export function enrichHomeInBackground() {
       setCached(HOME_DATA_CACHE_KEY, next, 900_000);
       window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: next }));
     })
-    .catch(() => {});
+    .catch(() => {})
+    .finally(() => {
+      enrichInflight = null;
+    });
 }
 
 /**

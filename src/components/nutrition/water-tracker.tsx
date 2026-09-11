@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { Droplets } from "lucide-react";
+import { Droplets, Minus, Plus } from "lucide-react";
 
 type Props = {
   consumedMl: number;
@@ -13,7 +13,7 @@ function formatLiters(ml: number) {
   return (ml / 1000).toFixed(1).replace(".", ",");
 }
 
-/** Compact water row — not a large card. */
+/** Compact water row — never dominates the Nutrition viewport. */
 export const WaterTracker = memo(function WaterTracker({
   consumedMl,
   targetMl,
@@ -21,31 +21,41 @@ export const WaterTracker = memo(function WaterTracker({
 }: Props) {
   const canRemove = consumedMl > 0;
   return (
-    <section className="flex items-center gap-2 px-0.5 py-1.5 min-h-12">
+    <section
+      className="flex items-center gap-2.5 min-h-11 px-0.5"
+      aria-label="Wasser"
+    >
       <Droplets
         className="h-4 w-4 shrink-0 text-[var(--nutrition-water)]"
         aria-hidden
       />
-      <p className="text-sm text-zinc-300 flex-1 min-w-0 tabular-nums">
-        <span className="font-semibold text-white">{formatLiters(consumedMl)}</span>
-        <span className="text-zinc-500"> / {formatLiters(targetMl)} L</span>
-      </p>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500 leading-none">
+          Wasser
+        </p>
+        <p className="text-sm text-zinc-300 tabular-nums mt-0.5">
+          <span className="font-semibold text-white">
+            {formatLiters(consumedMl)}
+          </span>
+          <span className="text-zinc-500"> / {formatLiters(targetMl)} L</span>
+        </p>
+      </div>
       <button
         type="button"
         disabled={!canRemove}
-        className="h-11 min-w-[5.5rem] rounded-xl border border-white/[0.08] text-xs font-semibold text-zinc-300 disabled:opacity-35 hover:text-white"
+        className="h-11 w-11 inline-flex items-center justify-center rounded-xl border border-white/[0.08] text-zinc-300 disabled:opacity-35 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         onClick={() => onAdd(-250)}
         aria-label="250 Milliliter Wasser entfernen"
       >
-        −250 ml
+        <Minus className="h-4 w-4" aria-hidden />
       </button>
       <button
         type="button"
-        className="h-11 min-w-[5.5rem] rounded-xl bg-[var(--nutrition-water-soft)] text-xs font-semibold text-[var(--nutrition-water)] hover:brightness-110"
+        className="h-11 w-11 inline-flex items-center justify-center rounded-xl bg-[var(--nutrition-water-soft)] text-[var(--nutrition-water)] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         onClick={() => onAdd(250)}
         aria-label="250 Milliliter Wasser hinzufügen"
       >
-        +250 ml
+        <Plus className="h-4 w-4" aria-hidden />
       </button>
     </section>
   );

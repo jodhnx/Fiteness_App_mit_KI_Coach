@@ -22,6 +22,7 @@ function readHeaderFromCaches(): { name: string | null; image: string | null } {
 
 /**
  * Avatar/name from home + profile cache — no visible header flash on boot.
+ * Avoids a full /api/profile round-trip when Home/bootstrap already have identity.
  */
 export function useProfileHeader() {
   const { data: session, status } = useSession();
@@ -40,16 +41,25 @@ export function useProfileHeader() {
 
     const fromCache = readHeaderFromCaches();
     if (fromCache.name) setName(fromCache.name);
-    if (fromCache.image) setImage(fromCache.image);
+    if (fromCache.image != null) setImage(fromCache.image);
 
     if (prefetched?.user?.name) setName(prefetched.user.name);
-    if (prefetched?.user?.image) setImage(prefetched.user.image);
+    if (prefetched?.user?.image !== undefined) {
+      setImage(prefetched.user.image ?? null);
+    }
 
     const cached = getCached<ProfileCache>(PROFILE_CACHE_KEY);
     if (cached?.user) {
       if (cached.user.name) setName(cached.user.name);
-      setImage(cached.user.image ?? null);
+      if (cached.user.image !== undefined) setImage(cached.user.image ?? null);
     }
+
+    // Identity already known from boot/home — skip expensive full profile GET.
+    const hasName =
+      Boolean(fromCache.name) ||
+      Boolean(prefetched?.user?.name) ||
+      Boolean(cached?.user?.name);
+    if (hasName) return;
 
     if (!isCacheStale(PROFILE_CACHE_KEY, 0.92)) return;
 

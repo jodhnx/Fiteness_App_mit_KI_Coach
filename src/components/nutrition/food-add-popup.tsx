@@ -14,10 +14,6 @@ import {
   ScanBarcode,
   Star,
   X,
-  ChefHat,
-  Camera,
-  Zap,
-  ChevronRight,
 } from "lucide-react";
 import type { MealType } from "@prisma/client";
 import {
@@ -27,7 +23,7 @@ import {
   type FoodSearchResponse,
 } from "@/lib/food/food-product-types";
 import { useDebounce } from "@/hooks/use-debounce";
-import { getCached, setCached, isCacheStale } from "@/lib/client-cache";
+import { getCached, setCached, isCacheStale, fetchCached } from "@/lib/client-cache";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
 import { FoodQuickRow } from "@/components/nutrition/food-quick-row";
 import { SavedMealRow } from "@/components/nutrition/saved-meal-row";
@@ -37,7 +33,6 @@ import { resetBodyScroll } from "@/lib/scroll-lock";
 import {
   FOOD_HISTORY_CACHE_KEY,
   getCachedFoodHistory,
-  warmFoodHistoryCache,
   type FoodHistoryPayload,
 } from "@/lib/food-history-cache";
 import {
@@ -46,7 +41,6 @@ import {
   getCachedSavedMeals,
   type SavedMealSummary,
 } from "@/lib/saved-meals-cache";
-import Link from "next/link";
 
 type ViewMode = "hub" | "favorites" | "search";
 
@@ -65,10 +59,7 @@ type Props = {
   ) => void;
   onToggleFavorite: (foodItemId: string) => Promise<void>;
   onLogSavedMeal?: (recipeId: string, meal: MealType) => Promise<void> | void;
-  /** Opens Schnelleintrag (kcal/macros only) for this meal. */
-  onQuickEntry?: () => void;
   quickAdding?: boolean;
-  onOpenCamera?: () => void;
 };
 
 const SEARCH_CACHE_TTL = 300_000;
@@ -116,7 +107,7 @@ function cacheKey(q: string) {
 function fetchFoodSearch(
   trimmed: string,
   signal: AbortSignal,
-  phase: "fast" | "enrich"
+  phase: "fast" | "enrich" | "full"
 ): Promise<FoodSearchResponse> {
   return fetch(foodSearchUrl(trimmed, phase), {
     credentials: "include",
@@ -153,9 +144,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   onQuickAddFood,
   onToggleFavorite,
   onLogSavedMeal,
-  onQuickEntry,
   quickAdding,
-  onOpenCamera,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -225,19 +214,24 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const refreshHistory = useCallback(() => {
     const cached = getCachedFoodHistory();
     if (cached) applyHistoryPayload(cached, setHistoryFoods);
-    else warmFoodHistoryCache(true);
 
-    return fetch("/api/food/history", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!d) return;
+    // Deduped with warmFoodHistoryCache / other openers via fetchCached.
+    return fetchCached(
+      FOOD_HISTORY_CACHE_KEY,
+      async () => {
+        const res = await fetch("/api/food/history", { credentials: "include" });
+        if (!res.ok) throw new Error("history failed");
+        const d = await res.json();
         const rec = (d.recents ?? []) as FoodProduct[];
-        const next: FoodHistoryPayload = {
+        return {
           frequent: ((d.frequent ?? rec) as FoodProduct[]).slice(0, 12),
           recents: rec.slice(0, 12),
           favorites: ((d.favorites ?? []) as FoodProduct[]).slice(0, 40),
-        };
-        setCached(FOOD_HISTORY_CACHE_KEY, next, 7 * 24 * 60 * 60_000);
+        } satisfies FoodHistoryPayload;
+      },
+      7 * 24 * 60 * 60_000
+    )
+      .then((next) => {
         applyHistoryPayload(next, setHistoryFoods);
       })
       .catch(() => {
@@ -290,6 +284,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     if (cacheHasHits && cached) {
       setResult(cached);
       setLoading(false);
+      // Fresh cache → 0 network requests
       if (!isCacheStale(key, 0.75)) {
         abortRef.current?.abort();
         inflightQueryRef.current = null;
@@ -307,26 +302,17 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     abortRef.current = ac;
     inflightQueryRef.current = trimmed;
     const gen = ++requestGen.current;
-    const skipFast = cacheHasHits;
-    setEnriching(skipFast);
+    // Stale → 1 enrich merge; cold → 1 full (local+OFF). Never fast+enrich waterfall.
+    const phase: "enrich" | "full" = cacheHasHits ? "enrich" : "full";
+    setEnriching(phase === "enrich");
 
     try {
-      let current = cached;
-      if (!skipFast) {
-        const fastData = await fetchFoodSearch(trimmed, ac.signal, "fast");
-        if (ac.signal.aborted || gen !== requestGen.current) return;
-        current = fastData;
-        setCached(key, fastData, SEARCH_CACHE_TTL);
-        setResult(fastData);
-        setLoading(false);
-      }
-
-      setEnriching(true);
-      const enrichData = await fetchFoodSearch(trimmed, ac.signal, "enrich");
+      const data = await fetchFoodSearch(trimmed, ac.signal, phase);
       if (ac.signal.aborted || gen !== requestGen.current) return;
-      const merged = current
-        ? mergeFoodSearchResponses(current, enrichData)
-        : enrichData;
+      const merged =
+        phase === "enrich" && cached
+          ? mergeFoodSearchResponses(cached, data)
+          : data;
       setCached(key, merged, SEARCH_CACHE_TTL);
       setResult(merged);
     } catch (e) {
@@ -481,7 +467,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                   onFocus={() => {
                     if (view !== "search") setView("search");
                   }}
-                  placeholder="Lebensmittel suchen"
+                  placeholder="Lebensmittel suchen…"
                   className="food-add-popup-input w-full"
                   autoComplete="off"
                   enterKeyHint="search"
@@ -544,70 +530,6 @@ export const FoodAddPopup = memo(function FoodAddPopup({
             <div className="food-add-popup-scroll">
               {view === "hub" && (
                 <div className="space-y-3 px-1 pb-4">
-                  <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden divide-y divide-white/[0.06]">
-                    {onQuickEntry ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleClose();
-                          onQuickEntry();
-                        }}
-                        className="flex w-full min-h-14 items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.05]"
-                      >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--nutrition-cal-soft)] text-[var(--nutrition-cal)]">
-                          <Zap className="h-5 w-5" aria-hidden />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[15px] font-semibold text-white">
-                            Schnelleintrag
-                          </span>
-                          <span className="block text-xs text-zinc-500 mt-0.5">
-                            Nur kcal &amp; Makros — ohne Lebensmittel
-                          </span>
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" aria-hidden />
-                      </button>
-                    ) : null}
-                    {onOpenCamera ? (
-                      <button
-                        type="button"
-                        onClick={onOpenCamera}
-                        className="flex w-full min-h-14 items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.05]"
-                      >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.07] text-zinc-100">
-                          <Camera className="h-5 w-5" aria-hidden />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[15px] font-semibold text-white">
-                            Foto aufnehmen
-                          </span>
-                          <span className="block text-xs text-zinc-500 mt-0.5">
-                            KI analysiert — du bestätigst
-                          </span>
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" aria-hidden />
-                      </button>
-                    ) : null}
-                    <Link
-                      href="/rezepte"
-                      onClick={handleClose}
-                      className="flex w-full min-h-14 items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.05]"
-                    >
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/[0.07] text-zinc-100">
-                        <ChefHat className="h-5 w-5" aria-hidden />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[15px] font-semibold text-white">
-                          Rezepte
-                        </span>
-                        <span className="block text-xs text-zinc-500 mt-0.5">
-                          Bibliothek öffnen &amp; loggen
-                        </span>
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-zinc-600 shrink-0" aria-hidden />
-                    </Link>
-                  </div>
-
                   <FoodSection title="Zuletzt verwendet">
                     {historyFoods.recents.length === 0 ? (
                       <p className="text-sm text-zinc-400 py-3 text-center px-2">
@@ -620,6 +542,11 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                   {historyFoods.frequent.length > 0 && (
                     <FoodSection title="Häufig verwendet">
                       {historyFoods.frequent.slice(0, 8).map((food) => renderRow(food))}
+                    </FoodSection>
+                  )}
+                  {favoriteOnly.length > 0 && (
+                    <FoodSection title="Favoriten">
+                      {favoriteOnly.slice(0, 8).map((food) => renderRow(food))}
                     </FoodSection>
                   )}
                   {renderSavedSection(savedMeals.slice(0, 8))}

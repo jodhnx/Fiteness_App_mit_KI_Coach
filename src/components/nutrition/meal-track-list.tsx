@@ -44,7 +44,9 @@ export const MealTrackList = memo(function MealTrackList({
   className,
 }: Props) {
   const slots = mealTypes.map((mealType) => {
-    const found = (Array.isArray(meals) ? meals : []).find((m) => m.mealType === mealType);
+    const found = (Array.isArray(meals) ? meals : []).find(
+      (m) => m.mealType === mealType
+    );
     return (
       found ?? {
         mealType,
@@ -54,7 +56,9 @@ export const MealTrackList = memo(function MealTrackList({
       }
     );
   });
-  const [editing, setEditing] = useState<{ id: string; qty: number } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; qty: number } | null>(
+    null
+  );
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -78,7 +82,7 @@ export const MealTrackList = memo(function MealTrackList({
   return (
     <div
       className={cn(
-        "flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-5",
+        "flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-x-5 lg:gap-y-3",
         className
       )}
     >
@@ -92,62 +96,76 @@ export const MealTrackList = memo(function MealTrackList({
         return (
           <section
             key={slot.mealType}
-            className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3 space-y-2"
+            className="space-y-1.5 border-b border-white/[0.06] pb-3 last:border-0 lg:border lg:border-white/[0.06] lg:rounded-2xl lg:bg-white/[0.02] lg:p-3 lg:pb-3"
           >
             <div className="flex items-center gap-2 min-h-11">
               <div className="min-w-0 flex-1">
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
                   {mealLabel}
                 </h2>
                 {hasItems ? (
                   <p className="text-sm font-semibold text-white tabular-nums mt-0.5">
                     {kcal.toLocaleString("de-DE")} kcal
                   </p>
-                ) : (
-                  <p className="text-xs text-zinc-600 mt-0.5">Noch nichts eingetragen</p>
-                )}
+                ) : null}
               </div>
+              {hasItems ? (
+                <button
+                  type="button"
+                  onClick={() => onAddClick?.(slot.mealType)}
+                  className="inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-xl px-3 text-sm font-semibold text-accent hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                  aria-label={`${mealLabel}: Essen hinzufügen`}
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                  <span className="hidden xs:inline sm:inline">Essen</span>
+                </button>
+              ) : null}
+            </div>
+
+            {!hasItems ? (
               <button
                 type="button"
                 onClick={() => onAddClick?.(slot.mealType)}
-                className="inline-flex h-11 min-w-[7.5rem] items-center justify-center gap-1.5 rounded-xl bg-accent/15 px-3 text-sm font-semibold text-accent active:scale-[0.98] transition-transform"
+                className="flex w-full min-h-11 items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/[0.12] bg-transparent text-sm font-medium text-zinc-400 hover:text-white hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                 aria-label={`${mealLabel}: Essen hinzufügen`}
               >
                 <Plus className="h-4 w-4" aria-hidden />
-                Essen
+                Essen hinzufügen
               </button>
-            </div>
-
-            {hasItems ? (
-              <ul className="space-y-0.5">
+            ) : (
+              <ul className="space-y-0">
                 {items.map((item) => (
                   <li
                     key={item.id}
                     className={cn(
-                      "flex items-center gap-2 min-h-11 rounded-xl px-1",
+                      "flex items-center gap-2 min-h-11 rounded-lg px-0.5",
                       item.id.startsWith("opt-") && "opacity-70"
                     )}
                   >
                     <button
                       type="button"
-                      className="min-w-0 flex-1 text-left py-1.5"
-                      onClick={() => onEdit && setEditing({ id: item.id, qty: item.quantityG })}
+                      className="min-w-0 flex-1 text-left py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-lg"
+                      onClick={() =>
+                        onEdit && setEditing({ id: item.id, qty: item.quantityG })
+                      }
                     >
-                      <p className="text-[15px] font-medium text-white truncate leading-tight">
-                        {item.food?.name ?? "Lebensmittel"}
-                      </p>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-[14px] font-medium text-white truncate leading-tight min-w-0">
+                          {item.food?.name ?? "Lebensmittel"}
+                        </p>
+                        <p className="text-[13px] text-zinc-400 tabular-nums shrink-0">
+                          {Math.round(item.calories)} kcal
+                        </p>
+                      </div>
                       <p className="text-[11px] text-zinc-500 truncate leading-tight mt-0.5">
-                        {item.food?.brand ? `${item.food.brand} · ` : ""}
                         {item.quantityG} g
+                        {item.food?.brand ? ` · ${item.food.brand}` : ""}
                       </p>
                     </button>
-                    <p className="text-xs text-zinc-400 tabular-nums shrink-0">
-                      {Math.round(item.calories)} kcal
-                    </p>
                     <button
                       type="button"
                       onClick={() => onRemove(item.id)}
-                      className="h-11 w-11 inline-flex items-center justify-center text-zinc-600 hover:text-red-400 shrink-0"
+                      className="h-11 w-11 inline-flex items-center justify-center text-zinc-600 hover:text-red-400 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-lg"
                       aria-label="Eintrag löschen"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -155,17 +173,19 @@ export const MealTrackList = memo(function MealTrackList({
                   </li>
                 ))}
               </ul>
-            ) : null}
+            )}
 
             {editing && items.some((i) => i.id === editing.id) && (
-              <div className="px-1 pb-1 space-y-2">
+              <div className="px-0.5 pb-1 space-y-2">
                 <div className="flex items-center gap-2">
                   <input
                     ref={inputRef}
                     type="text"
                     inputMode="decimal"
                     value={draft}
-                    onChange={(e) => setDraft(e.target.value.replace(/[^0-9.,]/g, ""))}
+                    onChange={(e) =>
+                      setDraft(e.target.value.replace(/[^0-9.,]/g, ""))
+                    }
                     onBlur={commitEdit}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -199,10 +219,10 @@ export const MealTrackList = memo(function MealTrackList({
             )}
 
             {hasItems && slot.mealId && onDeleteMeal ? (
-              <div className="flex justify-end pt-1">
+              <div className="flex justify-end">
                 <button
                   type="button"
-                  className="inline-flex h-10 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-zinc-500 hover:text-red-400"
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl px-2 text-xs font-medium text-zinc-600 hover:text-red-400"
                   aria-label={`${mealLabel} komplett löschen`}
                   onClick={() => onDeleteMeal(slot.mealId!, mealLabel)}
                 >

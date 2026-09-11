@@ -320,7 +320,7 @@ export async function loadWeeklyNutrition(userId: string) {
   const start = subDays(end, 6);
   const meals = await prisma.meal.findMany({
     where: { userId, date: { gte: start, lte: end } },
-    include: { items: { include: { foodItem: true } } },
+    include: { items: { include: { foodItem: { select: foodSelectMinimal } } } },
   });
 
   const byDay = new Map<string, MacroTotals>();
@@ -375,10 +375,11 @@ export async function loadNutritionInsights(userId: string) {
   const [meals, entries, profile] = await Promise.all([
     prisma.meal.findMany({
       where: { userId, date: { gte: start, lte: end } },
-      include: { items: { include: { foodItem: true } } },
+      include: { items: { include: { foodItem: { select: foodSelectMinimal } } } },
     }),
     prisma.progressEntry.findMany({
       where: { userId, date: { gte: start, lte: end }, weightKg: { not: null } },
+      select: { date: true, weightKg: true },
       orderBy: { date: "asc" },
     }),
     prisma.profile.findUnique({ where: { userId } }),

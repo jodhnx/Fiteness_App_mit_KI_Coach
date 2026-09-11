@@ -15,7 +15,6 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
-import { runBootSecondaryPrefetch } from "@/lib/boot-prefetch";
 import {
   initializeApp,
   readBootPayloadFromCache,
@@ -32,11 +31,11 @@ import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
 /** After first paint — never blocks Home (no artificial delay). */
 function schedulePostBootWarm() {
   if (typeof window === "undefined") return;
-  // Food history ASAP so Nutrition "+" is instant
+  // Food history ASAP so Nutrition "+" is instant (single warm path)
   void import("@/lib/food-history-cache").then((m) => m.warmFoodHistoryCache());
   const run = () => {
     warmNavDataCaches();
-    runBootSecondaryPrefetch();
+    // Active session warm is owned by warmNavDataCaches — avoid double fetch
   };
   const ric = window.requestIdleCallback;
   if (typeof ric === "function") {
