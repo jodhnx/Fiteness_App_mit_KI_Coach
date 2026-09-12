@@ -20,7 +20,7 @@ import {
   createEmptyNutritionDashboard,
   isValidDashboardPayload,
 } from "@/lib/nutrition-defaults";
-import { resolveNutritionDashboardForBoot } from "@/lib/nutrition-day-rollover";
+import { resolveNutritionDashboardForBoot, nutritionShellFromProfile } from "@/lib/nutrition-day-rollover";
 import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh";
 
@@ -55,8 +55,10 @@ function resolveBootHome(): HomeDataPayload {
     (cached?.nutrition && isValidDashboardPayload(cached.nutrition)
       ? cached.nutrition
       : null);
-  const nutrition = resolveNutritionDashboardForBoot(nutritionRaw);
   const profile = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, { allowStale: true });
+  const nutrition =
+    resolveNutritionDashboardForBoot(nutritionRaw) ??
+    nutritionShellFromProfile(profile);
 
   const base = normalizeHomeData(cached ?? createEmptyHomeData());
   const withIdentity = normalizeHomeData({

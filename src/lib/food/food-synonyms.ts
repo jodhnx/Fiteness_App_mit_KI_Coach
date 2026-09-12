@@ -40,7 +40,7 @@ const AT_DE_PAIRS: [string, string][] = [
 const EXTRA_ALIASES: Record<string, string[]> = {
   cheeseburger: ["cheese burger", "käseburger", "kaeseburger"],
   hamburger: ["rindfleischburger"],
-  "hackfleisch": ["faschiertes", "gehacktes"],
+  hackfleisch: ["faschiertes", "gehacktes"],
   faschiertes: ["hackfleisch", "gehacktes"],
   quark: ["topfen", "magertopfen", "magerquark"],
   topfen: ["quark", "magerquark", "magertopfen"],
@@ -48,6 +48,16 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   erdäpfel: ["kartoffeln", "kartoffel"],
   sahne: ["obers", "schlagobers"],
   obers: ["sahne", "schlagsahne"],
+  huhn: ["hähnchen", "hühnerfleisch", "hähnchenfleisch", "chicken", "hühnerbrust", "hähnchenbrust"],
+  hähnchen: ["huhn", "hühnerfleisch", "chicken", "hähnchenbrust", "hühnerbrust"],
+  hühnerfleisch: ["huhn", "hähnchen", "chicken", "hühnerbrust", "hähnchenfleisch"],
+  chicken: ["huhn", "hähnchen", "hühnerfleisch", "chicken breast", "hühnerbrust"],
+  "chicken breast": ["hühnerbrust", "hähnchenbrust", "chicken"],
+  hühnerbrust: ["hähnchenbrust", "chicken breast", "huhn"],
+  reis: ["rice", "basmati", "jasminreis", "langkornreis", "vollkornreis"],
+  rice: ["reis", "basmati", "jasmine rice"],
+  haferflocken: ["oats", "hafer"],
+  oats: ["haferflocken", "hafer"],
 };
 
 function unique(list: string[]): string[] {

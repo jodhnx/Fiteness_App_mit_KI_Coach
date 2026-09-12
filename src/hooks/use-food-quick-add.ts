@@ -10,6 +10,7 @@ import {
 } from "@/lib/nutrition-sync";
 import { ensureFoodItemId } from "@/lib/ensure-food-id";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
+import { confirmedMacrosForQuantity } from "@/lib/food/confirmed-macros";
 import { toast } from "sonner";
 
 type Options = {
@@ -35,11 +36,22 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
   const syncQuickAdd = useCallback(
     async (
       snapshot: NutritionDashboardPayload,
-      foodItemId: string,
+      foodItemId: string | undefined,
       product: FoodProduct,
       grams: number,
       targetMeal: MealType
     ) => {
+      const confirmed = confirmedMacrosForQuantity(
+        {
+          calories: product.calories,
+          proteinG: product.proteinG,
+          carbsG: product.carbsG,
+          fatG: product.fatG,
+          servingG: product.servingG || 100,
+        },
+        grams
+      );
+
       const res = await fetch("/api/nutrition/quick-add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -48,6 +60,11 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
           offCode: product.offCode,
           quantityG: grams,
           mealType: targetMeal,
+          confirmed: {
+            ...confirmed,
+            name: product.name,
+            brand: product.brand ?? null,
+          },
         }),
       });
 
@@ -94,13 +111,15 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
             await syncQuickAdd(snapshot, product.id, product, grams, targetMeal);
             return;
           }
+          // Still try to resolve an id for recent/history, but confirmed macros win on save.
           const resolved = await ensureFoodItemId(product);
-          if ("error" in resolved) {
-            applyDashboard(snapshot);
-            toast.error(`${resolved.error} — Eintrag wurde zurückgesetzt`);
+          const id = "error" in resolved ? undefined : resolved.id;
+          if ("error" in resolved && !product.offCode) {
+            // Confirmed path can still save without catalog id
+            await syncQuickAdd(snapshot, undefined, product, grams, targetMeal);
             return;
           }
-          await syncQuickAdd(snapshot, resolved.id, product, grams, targetMeal);
+          await syncQuickAdd(snapshot, id, product, grams, targetMeal);
         } finally {
           endAdd();
         }
@@ -141,7 +160,9 @@ export function useFoodQuickAdd({ dashboard, applyDashboard, onSuccess }: Option
       if (optimistic) applyDashboard(optimistic);
       onSuccess?.();
       beginAdd();
-      void syncQuickAdd(snapshot, foodItemId, product, quantityG, targetMeal).finally(endAdd);
+      void syncQuickAdd(snapshot, foodItemId, product, quantityG, targetMeal).finally(
+        endAdd
+      );
     },
     [dashboard, applyDashboard, onSuccess, syncQuickAdd, beginAdd, endAdd]
   );

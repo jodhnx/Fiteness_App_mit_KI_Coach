@@ -197,9 +197,20 @@ export const quickAddFoodSchema = z
       "POST_WORKOUT",
     ]),
     date: z.string().optional(),
+    /** Exact macros the user confirmed in the UI (for quantityG). */
+    confirmed: z
+      .object({
+        calories: z.coerce.number().min(0).max(10_000),
+        proteinG: z.coerce.number().min(0).max(1000),
+        carbsG: z.coerce.number().min(0).max(1000),
+        fatG: z.coerce.number().min(0).max(1000),
+        name: z.string().min(1).max(200).optional(),
+        brand: z.string().max(120).nullable().optional(),
+      })
+      .optional(),
   })
-  .refine((d) => d.foodItemId || d.offCode, {
-    message: "foodItemId oder offCode erforderlich",
+  .refine((d) => d.foodItemId || d.offCode || d.confirmed, {
+    message: "foodItemId, offCode oder confirmed erforderlich",
   });
 
 export const nutritionGoalSchema = z.object({

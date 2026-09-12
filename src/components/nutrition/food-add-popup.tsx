@@ -20,9 +20,11 @@ import type { MealType } from "@prisma/client";
 import {
   foodSearchUrl,
   mergeFoodSearchResponses,
+  shouldApplySearchResult,
   type FoodProduct,
   type FoodSearchResponse,
 } from "@/lib/food/food-product-types";
+import { rankFoodSearchResults } from "@/lib/food/food-search-rank";
 import { useDebounce } from "@/hooks/use-debounce";
 import { getCached, setCached, isCacheStale, fetchCached } from "@/lib/client-cache";
 import { getDefaultQuickAddGrams } from "@/lib/food/portion-presets";
@@ -312,18 +314,23 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
     try {
       const data = await fetchFoodSearch(trimmed, ac.signal, phase);
-      if (ac.signal.aborted || gen !== requestGen.current) return;
+      if (!shouldApplySearchResult(gen, requestGen.current, ac.signal.aborted)) {
+        return;
+      }
       const merged =
         phase === "enrich" && cached
           ? mergeFoodSearchResponses(cached, data)
-          : data;
+          : {
+              ...data,
+              products: rankFoodSearchResults(data.products ?? [], trimmed),
+            };
       setCached(key, merged, SEARCH_CACHE_TTL);
       setResult(merged);
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
     } finally {
       if (inflightQueryRef.current === trimmed) inflightQueryRef.current = null;
-      if (!ac.signal.aborted && gen === requestGen.current) {
+      if (shouldApplySearchResult(gen, requestGen.current, ac.signal.aborted)) {
         setLoading(false);
         setEnriching(false);
       }

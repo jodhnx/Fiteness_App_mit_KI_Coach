@@ -120,7 +120,8 @@ export async function POST(req: NextRequest) {
 
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        const factor = 100 / item.quantityG;
+        // Store servingG = quantity with exact confirmed totals so dashboard
+        // macrosForQuantity(food, quantityG) returns the same preview numbers.
         const foodItem = await tx.foodItem.create({
           data: {
             slug: makeSlug(item.name, `${stamp}-${i}`),
@@ -130,11 +131,11 @@ export async function POST(req: NextRequest) {
               : isQuickEntry
                 ? "Schnelleintrag"
                 : null,
-            calories: Math.round(item.calories * factor),
-            proteinG: Number((item.proteinG * factor).toFixed(2)),
-            carbsG: Number((item.carbsG * factor).toFixed(2)),
-            fatG: Number((item.fatG * factor).toFixed(2)),
-            servingG: 100,
+            calories: Math.round(item.calories),
+            proteinG: Math.round(item.proteinG * 10) / 10,
+            carbsG: Math.round(item.carbsG * 10) / 10,
+            fatG: Math.round(item.fatG * 10) / 10,
+            servingG: item.quantityG,
             dataSource: isFoodAI
               ? "food-ai"
               : isQuickEntry

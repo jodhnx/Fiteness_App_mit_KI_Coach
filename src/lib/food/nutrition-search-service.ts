@@ -19,6 +19,7 @@ import {
 } from "@/lib/food/food-region";
 import { expandFoodSearchTerms } from "@/lib/food/food-synonyms";
 import { prisma } from "@/lib/prisma";
+import { scoreFoodSearchMatch } from "@/lib/food/food-search-rank";
 
 const searchCache = new Map<string, { at: number; data: FoodSearchResponse }>();
 const SEARCH_CACHE_MS = 120_000;
@@ -49,31 +50,18 @@ function dedupeProducts(products: FoodProduct[]): FoodProduct[] {
   return out;
 }
 
-function nameMatchBonus(p: FoodProduct, q: string): number {
-  if (!q) return 0;
-  const n = `${p.name} ${p.brand ?? ""}`.toLowerCase();
-  if (n === q) return 40;
-  if (n.startsWith(q)) return 28;
-  if (n.includes(q)) return 14;
-  return 0;
-}
-
 function scoreProduct(
   p: FoodProduct,
   query: string,
   country: FoodCountryCode
 ): number {
-  const q = query.toLowerCase();
-  let score = nameMatchBonus(p, q);
-  if (p.source === "local") score += 45;
-  if (p.brand === "Standardgericht" || p.brand === "Standardlebensmittel") {
-    score += 55;
-  }
+  let score = scoreFoodSearchMatch(p, query);
 
+  // Regional retail / OFF quality — secondary to staple-vs-dish ranking
   const preferred = RETAILERS_BY_COUNTRY[country];
   const brandL = (p.brand ?? "").toLowerCase();
   if (preferred.some((r) => brandL.includes(r.toLowerCase()))) {
-    score += 70;
+    score += 25;
   } else if (
     [
       "mcdonald's",
@@ -86,11 +74,15 @@ function scoreProduct(
       "selbstgemacht",
     ].some((b) => brandL.includes(b))
   ) {
-    score += 50;
+    score += 8;
   }
 
+  if (p.brand === "Standardlebensmittel") score += 35;
+  if (p.brand === "Standardgericht") score += 5;
+  if (p.source === "local") score += 10;
+
   const offScore = p.austriaScore ?? 0;
-  score += country === "AT" ? offScore : Math.round(offScore * 0.85);
+  score += country === "AT" ? Math.round(offScore * 0.35) : Math.round(offScore * 0.25);
   return score;
 }
 

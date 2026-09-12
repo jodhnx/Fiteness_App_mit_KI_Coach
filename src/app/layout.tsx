@@ -64,7 +64,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const themeBoot = `(function(){try{var m=localStorage.getItem('app-color-mode')||'light';var t=localStorage.getItem('app-theme')||'clean-light';var d=localStorage.getItem('app-density')||'standard';var legacy={turquoise:'ocean',blue:'clean-light',green:'forest',red:'rose',orange:'sand',yellow:'sand',gold:'sand',pink:'rose',white:'pure-white',gray:'graphite'};if(legacy[t])t=legacy[t];var r=document.documentElement;r.dataset.theme=t;r.dataset.appearance=t;r.dataset.density=d;r.dataset.colorMode=m;r.classList.toggle('light',m==='light');r.classList.toggle('dark',m!=='light');}catch(e){}})();`;
+  const themeBoot = `(function(){try{var legacy={turquoise:'ocean',blue:'clean-light',green:'forest',red:'rose',orange:'sand',yellow:'sand',gold:'sand',pink:'rose',white:'pure-white',gray:'graphite'};var t=localStorage.getItem('app-theme')||'clean-light';if(legacy[t])t=legacy[t];var darkPacks={dark:1,midnight:1};var m=localStorage.getItem('app-color-mode');if(m!=='light'&&m!=='dark')m=darkPacks[t]?'dark':'light';var d=localStorage.getItem('app-density')||'standard';var r=document.documentElement;r.dataset.theme=t;r.dataset.appearance=t;r.dataset.density=d;r.dataset.colorMode=m;r.classList.toggle('light',m==='light');r.classList.toggle('dark',m!=='light');}catch(e){}})();`;
 
   return (
     <html lang="de" className="light" data-theme="clean-light" data-appearance="clean-light" data-color-mode="light" data-density="standard" suppressHydrationWarning>

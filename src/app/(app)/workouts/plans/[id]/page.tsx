@@ -84,7 +84,7 @@ export default function PlanEditorPage() {
     plan: { id: string; name: string; description: string | null; days: PlanDay[] };
     dayStats?: Record<string, DayStats>;
   }>(cacheKey, `/api/workouts/plans/${planId}`, 120_000, 8000, {
-    revalidateOnMount: true,
+    revalidateOnMount: false,
     staleRatio: 0.85,
   });
 

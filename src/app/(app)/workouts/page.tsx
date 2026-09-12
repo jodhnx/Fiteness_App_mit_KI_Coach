@@ -138,7 +138,10 @@ export default function WorkoutsHubPage() {
       : "Erstelle deinen ersten Plan";
 
   const streak =
-    home?.trainingStreak?.currentDays ?? home?.streak?.currentDays ?? 0;
+    home?.nutritionStreak?.currentDays ??
+    home?.trainingStreak?.currentDays ??
+    home?.streak?.currentDays ??
+    0;
   const weekWorkouts = home?.weeklyReport?.workouts ?? home?.activityWeek?.count ?? 0;
   const activePlan = plans.find((p) => p.isActive) ?? plans[0];
   const weekGoal = activePlan?.days?.length ?? 0;
@@ -242,7 +245,7 @@ export default function WorkoutsHubPage() {
           title="Plan-Bibliothek"
           description="Push/Pull · Ganzkörper · Muskelaufbau"
           icon={BookOpen}
-          iconClassName="bg-white/[0.06] text-zinc-300"
+          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
         />
       </section>
 
@@ -255,7 +258,7 @@ export default function WorkoutsHubPage() {
           title="Meine Pläne"
           description="Eigene Pläne · Schnell starten"
           icon={FolderOpen}
-          iconClassName="bg-white/[0.06] text-zinc-200"
+          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200"
           meta={lastPlanLabel}
         />
         <TrainingChoiceCard
@@ -263,7 +266,7 @@ export default function WorkoutsHubPage() {
           title="Quick Workout"
           description="Übungen wählen · Sofort starten"
           icon={Zap}
-          iconClassName="bg-white/[0.06] text-zinc-200"
+          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200"
         />
       </section>
 
@@ -276,14 +279,14 @@ export default function WorkoutsHubPage() {
           title="History"
           description="Kraft & Cardio im Überblick"
           icon={History}
-          iconClassName="bg-white/[0.06] text-zinc-300"
+          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
         />
         <TrainingChoiceCard
           href="/workouts/records"
           title="Records"
           description="Persönliche Bestleistungen"
           icon={Trophy}
-          iconClassName="bg-white/[0.06] text-zinc-300"
+          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
         />
       </section>
 
@@ -296,14 +299,14 @@ export default function WorkoutsHubPage() {
           title="KI Plan-Generator"
           description="Ziel, Tage, Equipment → persönlicher Plan"
           icon={Sparkles}
-          iconClassName="bg-white/[0.06] text-zinc-300"
+          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
         />
         <TrainingChoiceCard
           href="/workouts/cardio"
           title="Cardio"
           description="Laufen, Rad, HIIT & mehr"
           icon={Flame}
-          iconClassName="bg-white/[0.06] text-zinc-300"
+          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
           meta="Kalorien tracken"
         />
         <TrainingChoiceCard
@@ -311,14 +314,14 @@ export default function WorkoutsHubPage() {
           title="Übungen"
           description="Suche · Muskelgruppen · Favoriten"
           icon={Dumbbell}
-          iconClassName="bg-white/[0.06] text-zinc-300"
+          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
         />
         <TrainingChoiceCard
           href="/workouts/journey"
           title="Historie & Journey"
           description="Kalender · Streak · Volumen"
           icon={Map}
-          iconClassName="bg-white/[0.06] text-zinc-300"
+          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
           meta={
             streak > 0
               ? `${streak} Tage Streak${weekWorkouts > 0 ? ` · ${weekWorkouts} diese Woche` : ""}`

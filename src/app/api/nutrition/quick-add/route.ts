@@ -15,12 +15,14 @@ import {
   findAccessibleFoodItemId,
 } from "@/lib/food/food-access";
 import { updateNutritionStreak, loadNutritionStreak } from "@/lib/nutrition-streak";
+import { foodSnapshotFromConfirmed } from "@/lib/food/confirmed-macros";
+import { roundMacros } from "@/lib/food-macros";
 
 async function resolveFoodItemId(
   foodItemId: string | undefined,
   offCode: string | undefined,
   userId: string
-): Promise<{ id: string } | { error: string }> {
+): Promise<{ id: string } | { error: string } | null> {
   if (foodItemId) {
     const accessibleId = await findAccessibleFoodItemId(foodItemId, userId);
     if (accessibleId) return { id: accessibleId };
@@ -32,7 +34,7 @@ async function resolveFoodItemId(
     return { error: imported.error ?? "Produkt konnte nicht importiert werden" };
   }
   if (foodItemId) return { error: "Lebensmittel nicht gefunden" };
-  return { error: "foodItemId oder offCode erforderlich" };
+  return null;
 }
 
 export async function POST(req: NextRequest) {
@@ -43,22 +45,6 @@ export async function POST(req: NextRequest) {
     const parsed = quickAddFoodSchema.safeParse(body);
     if (!parsed.success) return jsonError("Ungültige Eingabe");
 
-    const foodResolved = await resolveFoodItemId(
-      parsed.data.foodItemId,
-      parsed.data.offCode,
-      session.user.id
-    );
-    if ("error" in foodResolved) return jsonError(foodResolved.error, 404);
-
-    const food = await prisma.foodItem.findFirst({
-      where: {
-        id: foodResolved.id,
-        ...accessibleFoodItemFilter(session.user.id),
-      },
-      select: { id: true },
-    });
-    if (!food) return jsonError("Lebensmittel nicht gefunden", 404);
-
     const day = resolveNutritionDay({ date: parsed.data.date ?? null });
     const date = day.date;
     const meal = await getOrCreateMeal(
@@ -67,14 +53,82 @@ export async function POST(req: NextRequest) {
       parsed.data.mealType
     );
 
+    let foodId: string | null = null;
+
+    // Prefer the exact macros the user confirmed — never silently swap OFF values.
+    if (parsed.data.confirmed) {
+      const confirmed = roundMacros(parsed.data.confirmed);
+      let baseName = parsed.data.confirmed.name?.trim() || "Lebensmittel";
+      let baseBrand = parsed.data.confirmed.brand ?? null;
+
+      if (parsed.data.foodItemId) {
+        const existing = await prisma.foodItem.findFirst({
+          where: {
+            id: parsed.data.foodItemId,
+            ...accessibleFoodItemFilter(session.user.id),
+          },
+          select: { name: true, brand: true },
+        });
+        if (existing) {
+          baseName = existing.name;
+          baseBrand = existing.brand;
+        }
+      }
+
+      const snap = foodSnapshotFromConfirmed(
+        baseName,
+        confirmed,
+        parsed.data.quantityG,
+        { brand: baseBrand }
+      );
+      const slug = `log-${session.user.id}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+      const created = await prisma.foodItem.create({
+        data: {
+          slug,
+          name: snap.name,
+          brand: snap.brand,
+          calories: snap.calories,
+          proteinG: snap.proteinG,
+          carbsG: snap.carbsG,
+          fatG: snap.fatG,
+          fiberG: snap.fiberG,
+          servingG: snap.servingG,
+          dataSource: "user_log_snapshot",
+          userId: session.user.id,
+        },
+        select: { id: true },
+      });
+      foodId = created.id;
+    } else {
+      const foodResolved = await resolveFoodItemId(
+        parsed.data.foodItemId,
+        parsed.data.offCode,
+        session.user.id
+      );
+      if (!foodResolved) return jsonError("foodItemId oder offCode erforderlich");
+      if ("error" in foodResolved) return jsonError(foodResolved.error, 404);
+
+      const food = await prisma.foodItem.findFirst({
+        where: {
+          id: foodResolved.id,
+          ...accessibleFoodItemFilter(session.user.id),
+        },
+        select: { id: true },
+      });
+      if (!food) return jsonError("Lebensmittel nicht gefunden", 404);
+      foodId = food.id;
+    }
+
     await prisma.mealItem.create({
       data: {
         mealId: meal.id,
-        foodItemId: food.id,
+        foodItemId: foodId,
         quantityG: parsed.data.quantityG,
       },
     });
-    await recordFoodRecent(session.user.id, food.id);
+    await recordFoodRecent(session.user.id, foodId);
 
     await updateNutritionStreak(session.user.id, date);
 

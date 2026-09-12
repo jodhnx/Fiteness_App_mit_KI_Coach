@@ -1,3 +1,5 @@
+import { rankFoodSearchResults } from "@/lib/food/food-search-rank";
+
 export type FoodProductSource = "local" | "openfoodfacts";
 
 export type ExtendedNutrientsPer100g = {
@@ -56,6 +58,15 @@ export function foodSearchUrl(
   return `/api/food/search?q=${encodeURIComponent(query)}&${extra}&country=AT`;
 }
 
+/** Latest search request wins — ignore aborted / outdated responses. */
+export function shouldApplySearchResult(
+  requestGen: number,
+  latestGen: number,
+  aborted: boolean
+): boolean {
+  return !aborted && requestGen === latestGen;
+}
+
 export function mergeFoodSearchResponses(
   base: FoodSearchResponse,
   extra: FoodSearchResponse
@@ -68,11 +79,14 @@ export function mergeFoodSearchResponses(
     seen.add(key);
     products.push(p);
   }
+  const query = (base.query || extra.query || "").trim();
+  // Re-rank after merge so OFF dishes cannot stick above staples from cache order.
+  const ranked = query ? rankFoodSearchResults(products, query) : products;
   const offCount = extra.offCount ?? extra.products?.length ?? 0;
   return {
     ...base,
     ...extra,
-    products: products.slice(0, 45),
+    products: ranked.slice(0, 45),
     query: base.query || extra.query,
     source: offCount > 0 && (base.products?.length ?? 0) > 0 ? "merged" : extra.source ?? base.source,
     offAvailable: Boolean(base.offAvailable || extra.offAvailable),

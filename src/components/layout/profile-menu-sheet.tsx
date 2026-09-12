@@ -78,11 +78,11 @@ export const ProfileMenuSheet = memo(function ProfileMenuSheet({
       bodyClassName="profile-menu-body"
     >
       <div className="profile-menu-hero glass-panel mb-4 flex items-center gap-4 p-4">
-        <span className="rounded-full ring-2 ring-accent/40 ring-offset-2 ring-offset-zinc-950 shadow-lg shadow-cyan-500/15">
+        <span className="rounded-full ring-2 ring-accent/40 ring-offset-2 ring-offset-[var(--background)] shadow-lg shadow-cyan-500/15">
           <UserAvatar src={userImage} name={userName} size="xl" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-lg font-bold text-white truncate">
+          <p className="text-lg font-bold text-[var(--foreground)] truncate">
             {userName?.trim() || "Willkommen"}
           </p>
           <button

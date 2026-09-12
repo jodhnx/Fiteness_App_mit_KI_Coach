@@ -22,7 +22,7 @@ import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { isSameDay } from "date-fns";
-import { HOME_DATA_CACHE_KEY, PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
+import { PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
 import { canonicalNutritionForDisplay } from "@/lib/nutrition-to-home";
 import { HomeQuickActions } from "@/components/home/home-quick-actions";
 import { HomeQuickStats } from "@/components/home/home-quick-stats";
@@ -209,7 +209,10 @@ export default function HomePage() {
 
   const serverSteps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10_000;
-  const caloriesReady = (nutrition.targets?.calories ?? 0) > 0;
+  // Prefer known targets from any cache source — never treat "still booting" as missing.
+  const homeHasTarget =
+    (data.calorieTarget ?? 0) > 0 ||
+    (data.nutrition?.targets?.calories ?? 0) > 0;
   const profileCached = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, {
     allowStale: true,
   });
@@ -217,13 +220,14 @@ export default function HomePage() {
     (profileCached?.calculations?.calorieTarget ?? 0) > 0 ||
     (typeof profileCached?.profile?.calorieTarget === "number" &&
       (profileCached.profile.calorieTarget as number) > 0);
-  // Zero targets while boot still running = loading, NEVER "Kalorienziel festlegen".
+  // Only paint-ready when Home/Nutrition actually have a target to show.
+  const caloriesReady =
+    (nutrition.targets?.calories ?? 0) > 0 || homeHasTarget;
+  // Zero targets while boot running OR profile already has a target not yet applied
+  // = loading — NEVER "Kalorienziel festlegen".
   const bootPending =
     !caloriesReady &&
-    !isBootSettled() &&
-    (getCached(HOME_DATA_CACHE_KEY, { allowStale: true }) == null ||
-      !profileHasTarget ||
-      !data.userName);
+    (!isBootSettled() || profileHasTarget);
 
   const workoutHref = activeSessionId
     ? `/workouts/live/${activeSessionId}`
@@ -332,6 +336,7 @@ export default function HomePage() {
               waterMl={nutrition.water?.consumedMl ?? 0}
               waterTargetMl={nutrition.water?.targetMl ?? 2500}
               trainingDone={trainingStatus === "done" || trainingStatus === "active"}
+              loading={bootPending}
             />
           ),
           health: () => (
@@ -372,6 +377,7 @@ export default function HomePage() {
               trainingStatus={trainingStatus}
               trainingLabel={trainingLabel}
               activeSessionId={activeSessionId}
+              loading={bootPending}
             />
           ),
           dayFocus: () => <HomeDayFocusCard items={dayFocusItems} />,

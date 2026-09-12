@@ -113,22 +113,22 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
               : "text-zinc-900 dark:text-white"
           )}
         >
-          {Math.round(cal.consumed).toLocaleString("de-DE")}
-          <span className="ml-1.5 text-base font-semibold text-zinc-400 dark:text-zinc-500">
-            / {Math.round(cal.target).toLocaleString("de-DE")} kcal
+          {cal.primaryValue.toLocaleString("de-DE")}
+          <span
+            className={cn(
+              "ml-2 text-base font-semibold",
+              cal.isOver
+                ? "text-red-500/90 dark:text-red-400/90"
+                : "text-zinc-500 dark:text-zinc-400"
+            )}
+          >
+            {cal.isOver ? "kcal über Ziel" : "kcal übrig"}
           </span>
         </p>
-        <p
-          className={cn(
-            "mt-2 text-sm font-semibold tabular-nums",
-            cal.isOver
-              ? "text-red-500 dark:text-red-400"
-              : "text-zinc-600 dark:text-zinc-300"
-          )}
-        >
-          {cal.isOver
-            ? `Über Ziel: ${cal.overBy.toLocaleString("de-DE")} kcal`
-            : `Remaining: ${cal.remaining.toLocaleString("de-DE")} kcal`}
+        <p className="mt-2 text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
+          {Math.round(cal.consumed).toLocaleString("de-DE")}
+          {" / "}
+          {Math.round(cal.target).toLocaleString("de-DE")} kcal gegessen
         </p>
       </div>
 

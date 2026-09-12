@@ -27,6 +27,8 @@ type Props = {
   waterMl: number;
   waterTargetMl: number;
   trainingDone: boolean;
+  /** Boot still resolving — never show "Kalorienziel festlegen" yet. */
+  loading?: boolean;
 };
 
 export const HomeDayGoals = memo(function HomeDayGoals({
@@ -38,10 +40,11 @@ export const HomeDayGoals = memo(function HomeDayGoals({
   waterMl,
   waterTargetMl,
   trainingDone,
+  loading = false,
 }: Props) {
   const steps = useLivePhoneSteps(serverSteps);
   const cal =
-    calorieTarget > 0
+    !loading && calorieTarget > 0
       ? getCalorieDisplay(caloriesConsumed, calorieTarget, caloriesRemaining)
       : null;
 
@@ -59,6 +62,19 @@ export const HomeDayGoals = memo(function HomeDayGoals({
             detail: cal.secondaryLine,
           } satisfies Goal,
         ]
+      : loading
+        ? [
+            {
+              id: "kcal",
+              label: "Kalorien",
+              current: 0,
+              target: 1,
+              unit: "",
+              color: "bg-zinc-300 dark:bg-zinc-600",
+              Icon: Flame,
+              detail: "…",
+            } satisfies Goal,
+          ]
       : calorieTarget <= 0
         ? [
             {
@@ -125,6 +141,8 @@ export const HomeDayGoals = memo(function HomeDayGoals({
                     ? trainingDone
                       ? "Erledigt"
                       : "Offen"
+                    : id === "kcal" && loading
+                      ? "…"
                     : id === "kcal" && !cal
                       ? "Ziel fehlt"
                       : id === "kcal" && cal

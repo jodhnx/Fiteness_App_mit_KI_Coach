@@ -12,6 +12,7 @@ type Props = {
   trainingStatus: "active" | "done" | "planned" | "open";
   trainingLabel?: string;
   activeSessionId?: string | null;
+  loading?: boolean;
 };
 
 function GlanceCell({
@@ -60,8 +61,9 @@ export const HomeTodayGlance = memo(function HomeTodayGlance({
   trainingStatus,
   trainingLabel,
   activeSessionId,
+  loading = false,
 }: Props) {
-  const calState = resolveNutritionDisplayState(nutrition);
+  const calState = resolveNutritionDisplayState(nutrition, { loading });
   const cal = calState.kind === "ready" ? calState.cal : null;
   const protein =
     calState.kind === "ready" && (nutrition.targets?.proteinG ?? 0) > 0

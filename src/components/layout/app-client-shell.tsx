@@ -15,12 +15,12 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { warmNavDataCaches } from "@/lib/nav-cache-warmer";
+import { getCacheOwner, hydratePersistentCaches, bindCacheOwner } from "@/lib/client-cache";
 import {
   initializeApp,
   readBootPayloadFromCache,
   type BootstrapPayload,
 } from "@/lib/app-init";
-import { getCacheOwner, hydratePersistentCaches } from "@/lib/client-cache";
 import {
   HOME_DATA_EVENT,
   NUTRITION_DASHBOARD_EVENT,
@@ -62,9 +62,10 @@ export function AppClientShell({ children }: { children: ReactNode }) {
     hydrateBootFromDisk()
   );
 
-  // Keep cache warm while session resolves (no UI block)
+  // Keep shell ready while session resolves — only paint disk cache for known owner.
   useEffect(() => {
     if (status !== "loading") return;
+    if (!getCacheOwner()) return;
     const cached = hydrateBootFromDisk();
     if (cached) setBootPayload(cached);
   }, [status]);
@@ -83,8 +84,13 @@ export function AppClientShell({ children }: { children: ReactNode }) {
 
     let cancelled = false;
 
-    // Show cached Home immediately if available
-    const cached = hydrateBootFromDisk();
+    // Bind owner BEFORE any hydrate so User A never paints for User B.
+    const wiped = bindCacheOwner(userId);
+    if (wiped) {
+      setBootPayload(null);
+    }
+    hydratePersistentCaches(userId);
+    const cached = readBootPayloadFromCache();
     if (cached && !cancelled) setBootPayload(cached);
 
     void initializeApp(userId).then((result) => {

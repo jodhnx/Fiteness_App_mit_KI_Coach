@@ -208,12 +208,21 @@ export function readPersistentCache(
       usedKey !== primary &&
       DATED_LOGICAL_KEYS.has(key);
 
-    // Promote usable overnight hit into today's primary + latest for next paint.
-    if (primary && (usedKey !== primary || fromOtherDay)) {
+    // Promote same-day / latest hits into today's primary.
+    // Never copy a previous calendar day's raw payload into today's key —
+    // readers that skip date checks would briefly show yesterday's intake.
+    if (primary && usedKey !== primary && !fromOtherDay) {
       try {
         ls.setItem(primary, raw);
         const latest = latestStorageKey(key);
         if (latest) ls.setItem(latest, raw);
+      } catch {
+        /* ignore */
+      }
+    } else if (fromOtherDay) {
+      try {
+        const latest = latestStorageKey(key);
+        if (latest && usedKey !== latest) ls.setItem(latest, raw);
       } catch {
         /* ignore */
       }

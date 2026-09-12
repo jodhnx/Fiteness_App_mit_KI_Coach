@@ -93,6 +93,21 @@ export function NutritionDataProvider({
       ) {
         return prev;
       }
+      // Also keep prev when it has meal rows and incoming is an empty shell.
+      const prevItems =
+        prev.mealsByType?.reduce((n, m) => n + (m.items?.length ?? 0), 0) ?? 0;
+      const nextItems =
+        resolved.mealsByType?.reduce((n, m) => n + (m.items?.length ?? 0), 0) ??
+        0;
+      if (
+        prev.date === resolved.date &&
+        prev.targets.calories > 0 &&
+        prevItems > 0 &&
+        nextItems === 0 &&
+        resolved.consumed.calories === 0
+      ) {
+        return prev;
+      }
       if (
         prev.date === resolved.date &&
         prev.consumed.calories === resolved.consumed.calories &&

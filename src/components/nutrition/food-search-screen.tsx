@@ -8,9 +8,11 @@ import { FavoriteStar } from "@/components/nutrition/favorite-star";
 import {
   foodSearchUrl,
   mergeFoodSearchResponses,
+  shouldApplySearchResult,
   type FoodProduct,
   type FoodSearchResponse,
 } from "@/lib/food/food-product-types";
+import { rankFoodSearchResults } from "@/lib/food/food-search-rank";
 import { getCached, setCached, isCacheStale, fetchCached } from "@/lib/client-cache";
 import { macrosPer100g } from "@/lib/food-per-100g";
 import { fmtG, fmtKcal } from "@/lib/format-macros";
@@ -188,6 +190,7 @@ export function FoodSearchScreen({
   const [recipes, setRecipes] = useState<SavedItem[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const inflightQueryRef = useRef<string | null>(null);
+  const requestGen = useRef(0);
 
   const isSearching = debouncedQ.trim().length >= 2;
 
@@ -235,16 +238,24 @@ export function FoodSearchScreen({
     void fetchSavedMealTemplates().then((meals) => {
       setSavedMeals(meals);
     });
-    // Recipes (non-templates) still come from recipes endpoint when needed
-    void fetch("/api/nutrition/recipes", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => {
-        const all = (d.recipes ?? []) as SavedItem[];
-        setRecipes(
-          all.filter((r: SavedItem & { isMealTemplate?: boolean }) => !r.isMealTemplate)
-        );
-      })
-      .catch(() => {});
+    // Recipes are secondary — defer so search first paint stays snappy
+    const loadRecipes = () => {
+      void fetch("/api/nutrition/recipes", { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => {
+          const all = (d.recipes ?? []) as SavedItem[];
+          setRecipes(
+            all.filter((r: SavedItem & { isMealTemplate?: boolean }) => !r.isMealTemplate)
+          );
+        })
+        .catch(() => {});
+    };
+    if (typeof requestIdleCallback !== "undefined") {
+      const idleId = requestIdleCallback(loadRecipes, { timeout: 2500 });
+      return () => cancelIdleCallback(idleId);
+    }
+    const t = window.setTimeout(loadRecipes, 1200);
+    return () => window.clearTimeout(t);
   }, []);
 
   const useCountByFoodId = useMemo(() => {
@@ -282,7 +293,11 @@ export function FoodSearchScreen({
     if (cached && cacheHasHits) {
       setResult(cached);
       setLoading(false);
-      if (!isCacheStale(cacheKey, 0.75)) return;
+      if (!isCacheStale(cacheKey, 0.75)) {
+        abortRef.current?.abort();
+        inflightQueryRef.current = null;
+        return;
+      }
     } else {
       setLoading(true);
     }
@@ -291,6 +306,7 @@ export function FoodSearchScreen({
     const ac = new AbortController();
     abortRef.current = ac;
     inflightQueryRef.current = trimmed;
+    const gen = ++requestGen.current;
     const phase: "enrich" | "full" = cacheHasHits ? "enrich" : "full";
     try {
       const res = await fetch(foodSearchUrl(trimmed, phase), {
@@ -298,18 +314,25 @@ export function FoodSearchScreen({
         credentials: "include",
       });
       const data = (await res.json()) as FoodSearchResponse;
-      if (ac.signal.aborted) return;
+      if (!shouldApplySearchResult(gen, requestGen.current, ac.signal.aborted)) {
+        return;
+      }
       const merged =
         phase === "enrich" && cached
           ? mergeFoodSearchResponses(cached, data)
-          : data;
+          : {
+              ...data,
+              products: rankFoodSearchResults(data.products ?? [], trimmed),
+            };
       setResult(merged);
       setCached(cacheKey, merged, SEARCH_TTL);
     } catch {
       /* aborted */
     } finally {
       if (inflightQueryRef.current === trimmed) inflightQueryRef.current = null;
-      if (!ac.signal.aborted) setLoading(false);
+      if (shouldApplySearchResult(gen, requestGen.current, ac.signal.aborted)) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -322,7 +345,7 @@ export function FoodSearchScreen({
 
   return (
     <div className="flex flex-col max-w-lg mx-auto w-full pb-8">
-      <div className="sticky top-0 z-10 bg-[#f4f7fa]/95 backdrop-blur-md px-4 pt-2 pb-3 border-b border-zinc-200 dark:bg-zinc-950/95 dark:border-zinc-800/50">
+      <div className="sticky top-0 z-10 bg-[var(--background)]/95 backdrop-blur-md px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800/50">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
           <Input

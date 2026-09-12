@@ -9,9 +9,11 @@ import { toast } from "sonner";
 import {
   foodSearchUrl,
   mergeFoodSearchResponses,
+  shouldApplySearchResult,
   type FoodProduct,
   type FoodSearchResponse,
 } from "@/lib/food/food-product-types";
+import { rankFoodSearchResults } from "@/lib/food/food-search-rank";
 import type { MealType } from "@prisma/client";
 import { getCached, setCached, isCacheStale, fetchCached } from "@/lib/client-cache";
 import { ProductSearchRow } from "@/components/nutrition/product-search-row";
@@ -127,7 +129,11 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
       setError(cached.offError ?? null);
       setLoading(false);
       setLoadingOff(false);
-      if (!isCacheStale(key, 0.75)) return;
+      if (!isCacheStale(key, 0.75)) {
+        abortRef.current?.abort();
+        inflightQueryRef.current = null;
+        return;
+      }
     } else {
       setLoading(true);
     }
@@ -148,11 +154,16 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
         credentials: "include",
       });
       const data = (await res.json()) as FoodSearchResponse;
-      if (ac.signal.aborted || gen !== requestGen.current) return;
+      if (!shouldApplySearchResult(gen, requestGen.current, ac.signal.aborted)) {
+        return;
+      }
       const merged =
         phase === "enrich" && cached
           ? mergeFoodSearchResponses(cached, data)
-          : data;
+          : {
+              ...data,
+              products: rankFoodSearchResults(data.products ?? [], trimmed),
+            };
       setCached(key, merged, SEARCH_CACHE_TTL);
       setResult(merged);
       setError(
@@ -162,12 +173,12 @@ export const ProductSearchPanel = memo(function ProductSearchPanel({
       );
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
-      if (!cached && gen === requestGen.current) {
+      if (!cached && shouldApplySearchResult(gen, requestGen.current, false)) {
         setError(e instanceof Error ? e.message : "Suche fehlgeschlagen");
       }
     } finally {
       if (inflightQueryRef.current === trimmed) inflightQueryRef.current = null;
-      if (!ac.signal.aborted && gen === requestGen.current) {
+      if (shouldApplySearchResult(gen, requestGen.current, ac.signal.aborted)) {
         setLoading(false);
         setLoadingOff(false);
       }
