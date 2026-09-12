@@ -7,6 +7,7 @@ type Props = {
   consumedMl: number;
   targetMl: number;
   onAdd: (ml: number) => void;
+  readOnly?: boolean;
 };
 
 function formatLiters(ml: number) {
@@ -18,8 +19,9 @@ export const WaterTracker = memo(function WaterTracker({
   consumedMl,
   targetMl,
   onAdd,
+  readOnly = false,
 }: Props) {
-  const canRemove = consumedMl > 0;
+  const canRemove = !readOnly && consumedMl > 0;
   return (
     <section
       className="flex items-center gap-2.5 min-h-11 rounded-2xl border border-zinc-200/90 bg-white px-3 py-2 shadow-sm dark:border-white/[0.08] dark:bg-transparent dark:shadow-none"
@@ -40,6 +42,8 @@ export const WaterTracker = memo(function WaterTracker({
           <span className="text-zinc-500"> / {formatLiters(targetMl)} L</span>
         </p>
       </div>
+      {!readOnly ? (
+        <>
       <button
         type="button"
         disabled={!canRemove}
@@ -57,6 +61,8 @@ export const WaterTracker = memo(function WaterTracker({
       >
         <Plus className="h-4 w-4" aria-hidden />
       </button>
+        </>
+      ) : null}
     </section>
   );
 });

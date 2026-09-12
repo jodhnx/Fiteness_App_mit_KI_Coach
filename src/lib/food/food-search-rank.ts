@@ -46,6 +46,21 @@ const COMPOSITE_MARKERS = [
   "nudelgericht",
   "reisgericht",
   "chicken sandwich",
+  "schnitzel",
+  "gulasch",
+  "knodel",
+  "knödel",
+  "strudel",
+  "schmarrn",
+  "gröstl",
+  "groestl",
+  "spatzle",
+  "spätzle",
+  "leberkase",
+  "leberkäse",
+  "backhendl",
+  "rostbraten",
+  "tafelspitz",
 ];
 
 /** Extra composite phrases that should not win over staples. */
@@ -106,6 +121,17 @@ const STAPLE_HINTS = [
   "thunfisch",
   "lachs",
   "tofu",
+  "semmel",
+  "kornspitz",
+  "putenbrust",
+  "hühnerfilet",
+  "hahnenfilet",
+  "skyr",
+  "huttenkase",
+  "erdapfel",
+  "erdapfel",
+  "suesskartoffel",
+  "olivenol",
 ];
 
 export function normalizeSearchText(input: string): string {
@@ -123,6 +149,14 @@ export function normalizeSearchText(input: string): string {
 }
 
 export function isLikelyCompositeFood(name: string, brand?: string | null): boolean {
+  const brandL = (brand ?? "").toLowerCase();
+  if (
+    brandL.includes("gericht") ||
+    brandL.includes("restaurant") ||
+    brandL.includes("standardgericht")
+  ) {
+    return true;
+  }
   const n = normalizeSearchText(`${name} ${brand ?? ""}`);
   if (COMPOSITE_PHRASES.some((p) => n.includes(normalizeSearchText(p)))) {
     return true;

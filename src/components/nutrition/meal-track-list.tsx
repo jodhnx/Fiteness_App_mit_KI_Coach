@@ -23,7 +23,7 @@ type MealSlotData = {
 
 type Props = {
   meals: MealSlotData[];
-  onRemove: (itemId: string) => void;
+  onRemove?: (itemId: string) => void;
   onEdit?: (itemId: string, quantityG: number) => void;
   onDeleteMeal?: (mealId: string, mealLabel: string) => void;
   onAddClick?: (mealType: MealType) => void;
@@ -151,6 +151,7 @@ export const MealTrackList = memo(function MealTrackList({
                         {item.food?.brand ? ` · ${item.food.brand}` : ""}
                       </p>
                     </button>
+                    {onRemove ? (
                     <button
                       type="button"
                       onClick={() => onRemove(item.id)}
@@ -159,6 +160,7 @@ export const MealTrackList = memo(function MealTrackList({
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
+                    ) : null}
                   </li>
                 ))}
               </ul>

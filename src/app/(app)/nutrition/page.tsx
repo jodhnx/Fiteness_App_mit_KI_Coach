@@ -27,13 +27,15 @@ import dynamic from "next/dynamic";
 import { MEAL_TYPE_ORDER, mealTypeForHour } from "@/lib/meal-types";
 import type { MealType } from "@prisma/client";
 import { toast } from "sonner";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Calendar } from "lucide-react";
 import Link from "next/link";
 import { refreshFoodHistoryCache } from "@/lib/food-history-cache";
 import { resetBodyScroll } from "@/lib/scroll-lock";
 import type { FoodAIItem } from "@/lib/food/food-ai-schema";
 import { nutritionDayKey } from "@/lib/nutrition-day";
 import { NutritionQuickActions } from "@/components/nutrition/nutrition-quick-actions";
+import { NutritionDayCalendar } from "@/components/nutrition/nutrition-day-calendar";
+import { MONTH_LABELS_DE } from "@/lib/nutrition-calendar";
 
 const FoodAddPopup = dynamic(
   () =>
@@ -89,6 +91,8 @@ function NutritionPageInner() {
     label: string;
   } | null>(null);
   const [streakDays, setStreakDays] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(() => nutritionDayKey());
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   useEffect(() => {
     const syncStreak = (home?: HomeDataPayload | null) => {
@@ -170,16 +174,18 @@ function NutritionPageInner() {
     }
   }, [panelReturnTo]);
 
-  const { dashboard, loading, reload, applyDashboard } = useNutritionPageDashboard(120_000);
+  const { dashboard, loading, reload, applyDashboard, viewingToday } =
+    useNutritionPageDashboard(selectedDay, 120_000);
   const dashboardRef = useRef(dashboard);
   dashboardRef.current = dashboard;
 
   const applyOptimistic = useCallback(
     (next: NonNullable<ReturnType<typeof optimisticRemoveMealItem>>) => {
+      // Historical days: update local ref only — do not overwrite today's central store.
       dashboardRef.current = next;
-      applyDashboard(next);
+      if (viewingToday) applyDashboard(next);
     },
-    [applyDashboard]
+    [applyDashboard, viewingToday]
   );
 
   const { favoriteIds, favoriteFoods, toggleFavorite } = useFoodFavorites(
@@ -547,12 +553,29 @@ function NutritionPageInner() {
           <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
             Ernährung
           </h1>
-          {streakDays > 0 ? (
-            <p className="text-[11px] text-zinc-500 tabular-nums mt-0.5">
-              🔥 {streakDays} {streakDays === 1 ? "Tag" : "Tage"}
-            </p>
-          ) : null}
+          <p className="text-[11px] text-zinc-500 tabular-nums mt-0.5">
+            {viewingToday ? (
+              streakDays > 0 ? (
+                <>🔥 {streakDays} {streakDays === 1 ? "Tag" : "Tage"}</>
+              ) : (
+                "Heute"
+              )
+            ) : (
+              (() => {
+                const [y, m, d] = selectedDay.split("-").map(Number);
+                return `${d}. ${MONTH_LABELS_DE[m - 1]} ${y}`;
+              })()
+            )}
+          </p>
         </div>
+        <button
+          type="button"
+          className="h-11 w-11 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          aria-label="Kalender"
+          onClick={() => setCalendarOpen(true)}
+        >
+          <Calendar className="h-4 w-4" />
+        </button>
         <button
           type="button"
           className="h-11 w-11 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
@@ -569,6 +592,28 @@ function NutritionPageInner() {
         </Link>
       </header>
 
+      <NutritionDayCalendar
+        open={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        selectedDay={selectedDay}
+        onSelectDay={setSelectedDay}
+      />
+
+      {!viewingToday ? (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+            Historischer Tag — Anzeige der gespeicherten Mahlzeiten
+          </p>
+          <button
+            type="button"
+            className="h-9 shrink-0 rounded-lg px-3 text-xs font-semibold text-accent"
+            onClick={() => setSelectedDay(nutritionDayKey())}
+          >
+            Heute
+          </button>
+        </div>
+      ) : null}
+
       <div
         data-nutrition-layout="single-v2"
         className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:gap-x-8 lg:gap-y-5 lg:items-start"
@@ -581,26 +626,36 @@ function NutritionPageInner() {
         </div>
 
         <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-4 space-y-2">
-          <p className="hidden lg:block text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 px-0.5">
-            Schnellaktionen
-          </p>
-          <NutritionQuickActions
-            layout="responsive"
-            onAddFood={() => openFoodSearch()}
-            onQuickEntry={() => openQuickEntry()}
-            onPhoto={() => setFoodAIOpen(true)}
-            onRecipes={() => router.push("/rezepte")}
-          />
+          {viewingToday ? (
+            <>
+              <p className="hidden lg:block text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 px-0.5">
+                Schnellaktionen
+              </p>
+              <NutritionQuickActions
+                layout="responsive"
+                onAddFood={() => openFoodSearch()}
+                onQuickEntry={() => openQuickEntry()}
+                onPhoto={() => setFoodAIOpen(true)}
+                onRecipes={() => router.push("/rezepte")}
+              />
+            </>
+          ) : (
+            <p className="text-xs text-zinc-500 px-0.5">
+              Mahlzeiten dieses Tages (nur Anzeige)
+            </p>
+          )}
         </div>
 
         <div className="min-w-0 lg:col-start-1 lg:row-start-2">
           <MealTrackList
             meals={dashboard?.mealsByType ?? []}
             mealTypes={["BREAKFAST", "LUNCH", "DINNER", "SNACK"]}
-            onRemove={removeItem}
-            onEdit={editItemQuantity}
-            onDeleteMeal={requestDeleteMeal}
-            onAddClick={(mealType) => openFoodSearch(mealType)}
+            onRemove={viewingToday ? removeItem : undefined}
+            onEdit={viewingToday ? editItemQuantity : undefined}
+            onDeleteMeal={viewingToday ? requestDeleteMeal : undefined}
+            onAddClick={
+              viewingToday ? (mealType) => openFoodSearch(mealType) : undefined
+            }
           />
         </div>
 
@@ -609,6 +664,7 @@ function NutritionPageInner() {
             consumedMl={dashboard?.water?.consumedMl ?? 0}
             targetMl={dashboard?.water?.targetMl ?? 2500}
             onAdd={addWater}
+            readOnly={!viewingToday}
           />
         </div>
       </div>

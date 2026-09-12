@@ -9,6 +9,7 @@ import { DINNER_RECIPES } from "./dinner";
 import { SNACK_RECIPES } from "./snacks";
 import { EXTRA_RECIPES } from "./extra";
 import { MEGA_RECIPES } from "./mega";
+import { AUSTRIA_RECIPES } from "./austria";
 import { resolveRecipeImageUrl } from "./images";
 import { recipeTotalMinutes } from "./types";
 
@@ -29,6 +30,7 @@ export const FITNESS_RECIPES: FitnessRecipe[] = withImages([
   ...SNACK_RECIPES,
   ...EXTRA_RECIPES,
   ...MEGA_RECIPES,
+  ...AUSTRIA_RECIPES,
 ]);
 
 const byId = new Map(FITNESS_RECIPES.map((r) => [r.id, r]));
@@ -55,6 +57,10 @@ export function searchFitnessRecipes(
       }
       if (f === "under-500") return r.calories < 500;
       if (f === "under-30") return recipeTotalMinutes(r) < 30;
+      if (f === "high-calorie") return r.calories >= 600 || r.tags.includes("high-calorie");
+      if (f === "high-carb") return r.carbsG >= 50 || r.tags.includes("high-carb");
+      if (f === "low-carb") return r.carbsG <= 25 || r.tags.includes("low-carb");
+      if (f === "low-fat") return r.fatG <= 10 || r.tags.includes("low-fat");
       return r.tags.includes(f as FitnessRecipe["tags"][number]);
     });
   });

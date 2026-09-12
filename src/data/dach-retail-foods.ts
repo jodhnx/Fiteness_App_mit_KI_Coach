@@ -50,6 +50,20 @@ const STAPLES: Staple[] = [
   { name: "Eier", brand: "SPAR", calories: 155, proteinG: 13, carbsG: 1.1, fatG: 11, servingG: 60, servingLabel: "1 Ei (≈ 60 g)" },
   { name: "Eier", brand: "HOFER", calories: 155, proteinG: 13, carbsG: 1.1, fatG: 11, servingG: 60, servingLabel: "1 Ei (≈ 60 g)" },
 
+  { name: "Vollmilch 3,5 %", brand: "MPREIS", calories: 64, proteinG: 3.3, carbsG: 4.7, fatG: 3.5, servingG: 100, servingLabel: "100 g" },
+  { name: "Milch 1,5 %", brand: "MPREIS", calories: 47, proteinG: 3.4, carbsG: 4.9, fatG: 1.5, servingG: 100, servingLabel: "100 g" },
+  { name: "Milch 1,5 %", brand: "ADEG", calories: 47, proteinG: 3.4, carbsG: 4.9, fatG: 1.5, servingG: 100, servingLabel: "100 g" },
+  { name: "Milch 1,5 %", brand: "BILLA PLUS", calories: 47, proteinG: 3.4, carbsG: 4.9, fatG: 1.5, servingG: 100, servingLabel: "100 g" },
+  { name: "Milch 1,5 %", brand: "INTERSPAR", calories: 47, proteinG: 3.4, carbsG: 4.9, fatG: 1.5, servingG: 100, servingLabel: "100 g" },
+  { name: "Magertopfen", brand: "MPREIS", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
+  { name: "Magertopfen", brand: "ADEG", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
+  { name: "Skyr natur", brand: "BILLA PLUS", calories: 63, proteinG: 11, carbsG: 4, fatG: 0.2, servingG: 150, servingLabel: "1 Becher (150 g)" },
+  { name: "Skyr natur", brand: "INTERSPAR", calories: 63, proteinG: 11, carbsG: 4, fatG: 0.2, servingG: 150, servingLabel: "1 Becher (150 g)" },
+  { name: "Haferflocken", brand: "MPREIS", calories: 379, proteinG: 13, carbsG: 67, fatG: 7, servingG: 40, servingLabel: "1 Portion (40 g)" },
+  { name: "Haferflocken", brand: "ADEG", calories: 379, proteinG: 13, carbsG: 67, fatG: 7, servingG: 40, servingLabel: "1 Portion (40 g)" },
+  { name: "Eier", brand: "MPREIS", calories: 155, proteinG: 13, carbsG: 1.1, fatG: 11, servingG: 60, servingLabel: "1 Ei (≈ 60 g)" },
+  { name: "Eier", brand: "ADEG", calories: 155, proteinG: 13, carbsG: 1.1, fatG: 11, servingG: 60, servingLabel: "1 Ei (≈ 60 g)" },
+
   // DE Handel (gleiche Staple-Werte)
   { name: "Milch 1,5 %", brand: "REWE", calories: 47, proteinG: 3.4, carbsG: 4.9, fatG: 1.5, servingG: 100, servingLabel: "100 g" },
   { name: "Milch 1,5 %", brand: "EDEKA", calories: 47, proteinG: 3.4, carbsG: 4.9, fatG: 1.5, servingG: 100, servingLabel: "100 g" },
@@ -96,10 +110,14 @@ export function searchDachRetailFoods(
   const tokens = q.split(/\s+/).filter(Boolean);
   const atBrands = new Set([
     "billa",
+    "billa plus",
     "spar",
+    "interspar",
     "hofer",
     "lidl",
     "penny",
+    "mpreis",
+    "adeg",
   ]);
   const deBrands = new Set(["rewe", "edeka", "lidl", "aldi", "penny"]);
 

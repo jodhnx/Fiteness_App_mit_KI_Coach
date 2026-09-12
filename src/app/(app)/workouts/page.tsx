@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useCachedFetch } from "@/hooks/use-cached-fetch";
 import { useRouter } from "next/navigation";
 import { WORKOUT_ACTIVE_CACHE_KEY, WORKOUT_ACTIVE_EVENT } from "@/lib/workout-cache-sync";
@@ -151,8 +150,11 @@ export default function WorkoutsHubPage() {
       : (home?.recovery?.muscles ?? [])) as MuscleRecovery[]
   );
 
+  const iconTone =
+    "bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300";
+
   return (
-    <PageShell className="space-y-4 pb-24" bottomNav={false}>
+    <PageShell className="space-y-4 pb-24 max-w-2xl mx-auto" bottomNav={false}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
@@ -187,48 +189,33 @@ export default function WorkoutsHubPage() {
 
       <PageIntro pageId="workouts" />
 
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
-        {[
-          { href: "/workouts/my-plans", label: "Trainingsplan" },
-          { href: "/workouts/exercises", label: "Übungen" },
-          { href: "/workouts/journey", label: "Statistiken" },
-        ].map((tab) => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            prefetch
-            scroll={false}
-            className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-3.5 text-sm font-medium text-zinc-700 shadow-sm active:bg-zinc-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200"
-          >
-            {tab.label}
-          </Link>
-        ))}
-      </div>
-
-      {activeSession ? (
-        <section className="rounded-2xl border border-zinc-200/90 bg-white px-4 py-4 space-y-3 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:shadow-none">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-            Heutiges Training
-          </p>
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white leading-tight">
-            {sessionData?.session?.name ?? "Training"}
-          </h2>
-          <Button
-            className="h-14 w-full rounded-2xl text-base font-semibold"
-            onClick={() => router.push(`/workouts/live/${activeSession.id}`)}
-          >
-            <Play className="mr-2 h-5 w-5 fill-current" />
-            Fortsetzen
-          </Button>
-        </section>
-      ) : (
-        <NextWorkoutHero
-          home={home}
-          hasPlans={plans.length > 0 || Boolean(home?.nextWorkout?.dayId)}
-        />
-      )}
-
-      <TrainingWeekStrip />
+      <section className="space-y-2" aria-label="Heute">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+          Heute
+        </h2>
+        {activeSession ? (
+          <div className="rounded-2xl border border-zinc-200/90 bg-white px-4 py-4 space-y-3 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:shadow-none">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Aktive Session
+            </p>
+            <h3 className="text-xl font-semibold text-zinc-900 dark:text-white leading-tight">
+              {sessionData?.session?.name ?? "Training"}
+            </h3>
+            <Button
+              className="h-14 w-full rounded-2xl text-base font-semibold"
+              onClick={() => router.push(`/workouts/live/${activeSession.id}`)}
+            >
+              <Play className="mr-2 h-5 w-5 fill-current" />
+              Fortsetzen
+            </Button>
+          </div>
+        ) : (
+          <NextWorkoutHero
+            home={home}
+            hasPlans={plans.length > 0 || Boolean(home?.nextWorkout?.dayId)}
+          />
+        )}
+      </section>
 
       <MuscleRecoveryPanel
         muscles={recoveryMuscles}
@@ -236,57 +223,60 @@ export default function WorkoutsHubPage() {
         title="Regeneration"
       />
 
+      <TrainingWeekStrip />
+
       <section className="space-y-2.5">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
-          Vorgefertigte Pläne
+          Primär
         </h2>
         <TrainingChoiceCard
-          href="/workouts/catalog"
-          title="Plan-Bibliothek"
-          description="Push/Pull · Ganzkörper · Muskelaufbau"
-          icon={BookOpen}
-          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
+          href="/workouts/my-plans"
+          title="Trainingsplan"
+          description="Aktive Pläne · Tage · Starten"
+          icon={FolderOpen}
+          iconClassName={iconTone}
+          meta={lastPlanLabel}
+        />
+        <TrainingChoiceCard
+          href="/workouts/exercises"
+          title="Übungen"
+          description="Suche · Muskelgruppen · Favoriten"
+          icon={Dumbbell}
+          iconClassName={iconTone}
+        />
+        <TrainingChoiceCard
+          href="/workouts/journey"
+          title="Statistiken"
+          description="Kalender · Streak · Volumen"
+          icon={Map}
+          iconClassName={iconTone}
+          meta={
+            streak > 0
+              ? `${streak} Tage Streak${weekWorkouts > 0 ? ` · ${weekWorkouts} diese Woche` : ""}`
+              : weekWorkouts > 0
+                ? `${weekWorkouts} Trainings diese Woche`
+                : undefined
+          }
         />
       </section>
 
       <section className="space-y-2.5">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
-          Start
+          Start & Bibliothek
         </h2>
-        <TrainingChoiceCard
-          href="/workouts/my-plans"
-          title="Meine Pläne"
-          description="Eigene Pläne · Schnell starten"
-          icon={FolderOpen}
-          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200"
-          meta={lastPlanLabel}
-        />
         <TrainingChoiceCard
           href="/workouts/quick"
           title="Quick Workout"
           description="Übungen wählen · Sofort starten"
           icon={Zap}
-          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200"
-        />
-      </section>
-
-      <section className="space-y-2.5">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
-          Überblick
-        </h2>
-        <TrainingChoiceCard
-          href="/workouts/history"
-          title="History"
-          description="Kraft & Cardio im Überblick"
-          icon={History}
-          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
+          iconClassName={iconTone}
         />
         <TrainingChoiceCard
-          href="/workouts/records"
-          title="Records"
-          description="Persönliche Bestleistungen"
-          icon={Trophy}
-          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
+          href="/workouts/catalog"
+          title="Plan-Bibliothek"
+          description="Push/Pull · Ganzkörper · Muskelaufbau"
+          icon={BookOpen}
+          iconClassName={iconTone}
         />
       </section>
 
@@ -294,42 +284,36 @@ export default function WorkoutsHubPage() {
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
           Mehr
         </h2>
-        <TrainingChoiceCard
-          href="/workouts/generator"
-          title="KI Plan-Generator"
-          description="Ziel, Tage, Equipment → persönlicher Plan"
-          icon={Sparkles}
-          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
-        />
-        <TrainingChoiceCard
-          href="/workouts/cardio"
-          title="Cardio"
-          description="Laufen, Rad, HIIT & mehr"
-          icon={Flame}
-          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
-          meta="Kalorien tracken"
-        />
-        <TrainingChoiceCard
-          href="/workouts/exercises"
-          title="Übungen"
-          description="Suche · Muskelgruppen · Favoriten"
-          icon={Dumbbell}
-          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
-        />
-        <TrainingChoiceCard
-          href="/workouts/journey"
-          title="Historie & Journey"
-          description="Kalender · Streak · Volumen"
-          icon={Map}
-          iconClassName="bg-zinc-100 text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-300"
-          meta={
-            streak > 0
-              ? `${streak} Tage Streak${weekWorkouts > 0 ? ` · ${weekWorkouts} diese Woche` : ""}`
-              : weekWorkouts > 0
-                ? `${weekWorkouts} Trainings diese Woche`
-                : "Noch keine Sessions"
-          }
-        />
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <TrainingChoiceCard
+            href="/workouts/history"
+            title="History"
+            description="Kraft & Cardio"
+            icon={History}
+            iconClassName={iconTone}
+          />
+          <TrainingChoiceCard
+            href="/workouts/records"
+            title="Records"
+            description="Persönliche Bests"
+            icon={Trophy}
+            iconClassName={iconTone}
+          />
+          <TrainingChoiceCard
+            href="/workouts/cardio"
+            title="Cardio"
+            description="Laufen, Rad, HIIT"
+            icon={Flame}
+            iconClassName={iconTone}
+          />
+          <TrainingChoiceCard
+            href="/workouts/generator"
+            title="KI Plan"
+            description="Ziel → persönlicher Plan"
+            icon={Sparkles}
+            iconClassName={iconTone}
+          />
+        </div>
       </section>
     </PageShell>
   );

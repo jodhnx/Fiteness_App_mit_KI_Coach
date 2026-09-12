@@ -67,6 +67,10 @@ function matchesFilters(r: FitnessRecipe, filters: string[]): boolean {
     }
     if (f === "under-500") return r.calories < 500;
     if (f === "under-30") return recipeTotalMinutes(r) < 30;
+    if (f === "high-calorie") return r.calories >= 600 || r.tags.includes("high-calorie");
+    if (f === "high-carb") return r.carbsG >= 50 || r.tags.includes("high-carb");
+    if (f === "low-carb") return r.carbsG <= 25 || r.tags.includes("low-carb");
+    if (f === "low-fat") return r.fatG <= 10 || r.tags.includes("low-fat");
     return r.tags.includes(f as RecipeTag);
   });
 }

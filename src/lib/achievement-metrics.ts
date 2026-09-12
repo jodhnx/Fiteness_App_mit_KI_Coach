@@ -32,6 +32,8 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
     waterLogs,
     mealItems30,
     totalXP,
+    progressPhotos,
+    userRecipes,
   ] = await Promise.all([
     prisma.workoutSession.count({ where: { userId, status: "COMPLETED" } }),
     prisma.trainingStreak.findUnique({ where: { userId }, select: { currentDays: true } }),
@@ -105,6 +107,8 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
       },
     }),
     getUserTotalXP(userId),
+    prisma.progressPhoto.count({ where: { userId } }).catch(() => 0),
+    prisma.recipe.count({ where: { userId } }).catch(() => 0),
   ]);
 
   const proteinTarget = profile?.proteinTargetG ?? 150;
@@ -177,6 +181,9 @@ export async function loadAchievementMetrics(userId: string): Promise<Achievemen
     meals_logged_days_streak: mealsLoggedDaysStreak,
     protein_single_day_g: proteinSingleDayMax,
     user_level: getLevelFromXP(totalXP).level,
+    progress_photos: progressPhotos,
+    recipes_created: userRecipes,
+    profile_complete: calorieTarget > 0 && (profile?.weightKg ?? 0) > 0 ? 1 : 0,
   };
 }
 

@@ -12,6 +12,7 @@ import { searchStandardDishes } from "@/data/standard-dishes";
 import { searchFoodCatalog } from "@/data/food-catalog";
 import { searchBrandRestaurantFoods } from "@/data/brand-restaurant-foods";
 import { searchDachRetailFoods } from "@/data/dach-retail-foods";
+import { searchAustriaStapleFoods } from "@/data/austria-staple-foods";
 import {
   normalizeFoodCountry,
   type FoodCountryCode,
@@ -78,7 +79,9 @@ function scoreProduct(
   }
 
   if (p.brand === "Standardlebensmittel") score += 35;
+  if (p.brand === "Grundnahrungsmittel" || p.brand === "Österreich") score += 38;
   if (p.brand === "Standardgericht") score += 5;
+  if (p.brand === "Österreichisches Gericht") score += 4;
   if (p.source === "local") score += 10;
 
   const offScore = p.austriaScore ?? 0;
@@ -92,6 +95,7 @@ function mergeAndRank(
   catalog: FoodProduct[],
   brands: FoodProduct[],
   retail: FoodProduct[],
+  austria: FoodProduct[],
   off: FoodProduct[],
   query: string,
   country: FoodCountryCode
@@ -101,6 +105,7 @@ function mergeAndRank(
     off.filter((o) => !o.offCode || !offCodes.has(o.offCode))
   );
   const merged = dedupeProducts([
+    ...austria,
     ...brands,
     ...retail,
     ...standard,
@@ -151,7 +156,10 @@ function searchStaticLayers(query: string, country: FoodCountryCode) {
   const retail = dedupeProducts(
     terms.flatMap((t) => searchDachRetailFoods(t, 16, country))
   ).slice(0, 24);
-  return { standard, catalog, brands, retail };
+  const austria = dedupeProducts(
+    terms.flatMap((t) => searchAustriaStapleFoods(t, 20))
+  ).slice(0, 28);
+  return { standard, catalog, brands, retail, austria };
 }
 
 export async function searchFoodProductsLocalOnly(
@@ -192,6 +200,7 @@ export async function searchFoodProductsLocalOnly(
     layers.catalog,
     layers.brands,
     layers.retail,
+    layers.austria,
     [],
     q,
     countryCode
@@ -248,6 +257,7 @@ export async function searchFoodProductsEnrich(
   ]);
 
   const products = mergeAndRank(
+    [],
     [],
     [],
     [],
@@ -368,6 +378,7 @@ export async function searchFoodProducts(
     layers.catalog,
     layers.brands,
     layers.retail,
+    layers.austria,
     offResult.products,
     q,
     countryCode

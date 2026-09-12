@@ -5,10 +5,22 @@ export type RecipeMealSlot = "BREAKFAST" | "LUNCH" | "DINNER" | "SNACK";
 export type RecipeTag =
   | "high-protein"
   | "low-calorie"
+  | "high-calorie"
   | "muscle-gain"
   | "fat-loss"
   | "quick"
-  | "vegetarian";
+  | "vegetarian"
+  | "vegan"
+  | "meal-prep"
+  | "dessert"
+  | "austrian"
+  | "high-carb"
+  | "low-carb"
+  | "low-fat"
+  | "bulking"
+  | "cutting"
+  | "post-workout"
+  | "pre-workout";
 
 export type RecipeDifficulty = "easy" | "medium" | "hard";
 
@@ -71,10 +83,22 @@ export const RECIPE_FILTERS: { id: string; label: string }[] = [
   { id: "SNACK", label: "Snacks" },
   { id: "high-protein", label: "High Protein" },
   { id: "low-calorie", label: "Low Calorie" },
+  { id: "high-calorie", label: "High Calorie" },
+  { id: "low-fat", label: "Low Fat" },
+  { id: "low-carb", label: "Low Carb" },
+  { id: "high-carb", label: "High Carb" },
+  { id: "vegetarian", label: "Vegetarisch" },
+  { id: "vegan", label: "Vegan" },
+  { id: "quick", label: "Schnell" },
+  { id: "meal-prep", label: "Meal Prep" },
+  { id: "bulking", label: "Bulking" },
+  { id: "cutting", label: "Cutting" },
   { id: "muscle-gain", label: "Muskelaufbau" },
   { id: "fat-loss", label: "Abnehmen" },
-  { id: "quick", label: "Schnell" },
-  { id: "vegetarian", label: "Vegetarisch" },
+  { id: "dessert", label: "Dessert" },
+  { id: "austrian", label: "Österreichisch" },
+  { id: "post-workout", label: "Post Workout" },
+  { id: "pre-workout", label: "Pre Workout" },
   { id: "under-500", label: "Unter 500 kcal" },
   { id: "under-30", label: "Unter 30 Min" },
 ];
@@ -137,8 +161,20 @@ export function R(draft: Draft): FitnessRecipe {
   if (draft.calories <= 350 && !tags.includes("low-calorie")) {
     tags.push("low-calorie");
   }
+  if (draft.calories >= 600 && !tags.includes("high-calorie")) {
+    tags.push("high-calorie");
+  }
   if (draft.proteinG >= 35 && !tags.includes("high-protein")) {
     tags.push("high-protein");
+  }
+  if (draft.carbsG >= 50 && !tags.includes("high-carb")) {
+    tags.push("high-carb");
+  }
+  if (draft.carbsG <= 25 && !tags.includes("low-carb")) {
+    tags.push("low-carb");
+  }
+  if (draft.fatG <= 10 && !tags.includes("low-fat")) {
+    tags.push("low-fat");
   }
   const { tags: _t, servings, difficulty, ...rest } = draft;
   void _t;
