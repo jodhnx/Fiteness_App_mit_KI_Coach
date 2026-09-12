@@ -20,7 +20,9 @@ import {
   ensureNutritionCacheIsToday,
 } from "@/lib/nutrition-sync";
 import { getCached } from "@/lib/client-cache";
-import { preferCanonicalNutritionDashboard } from "@/lib/nutrition-day-rollover";
+import { preferCanonicalNutritionDashboard, nutritionShellFromProfile } from "@/lib/nutrition-day-rollover";
+import { PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
+import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 
 export type NutritionContextValue = {
   dashboard: NutritionDashboardPayload;
@@ -50,7 +52,11 @@ function readDiskDashboard(): NutritionDashboardPayload | null {
   const cached = getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
     allowStale: true,
   });
-  return cached && isValidDashboardPayload(cached) ? cached : null;
+  if (cached && isValidDashboardPayload(cached)) return cached;
+  const profile = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, {
+    allowStale: true,
+  });
+  return nutritionShellFromProfile(profile);
 }
 
 function resolveInitialDashboard(

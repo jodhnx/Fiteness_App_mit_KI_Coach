@@ -22,11 +22,13 @@ import { filterDisplayMuscles } from "@/lib/recovery-shared";
 import type { MuscleRecovery } from "@/lib/recovery-shared";
 import { computeHomeHighlight, buildDayFocusItems } from "@/lib/home-smart-layout";
 import { isSameDay } from "date-fns";
-import { HOME_DATA_CACHE_KEY } from "@/lib/nutrition-sync";
+import { HOME_DATA_CACHE_KEY, PROFILE_CACHE_KEY } from "@/lib/nutrition-sync";
 import { canonicalNutritionForDisplay } from "@/lib/nutrition-to-home";
 import { HomeQuickActions } from "@/components/home/home-quick-actions";
 import { HomeQuickStats } from "@/components/home/home-quick-stats";
 import { resolveNutritionDisplayState } from "@/lib/nutrition-display";
+import { isBootSettled } from "@/lib/app-init";
+import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 
 const HomeHealthEcosystem = dynamic(
   () =>
@@ -210,10 +212,20 @@ export default function HomePage() {
   const serverSteps = data.healthToday?.steps ?? 0;
   const stepGoal = data.healthToday?.stepGoal ?? 10_000;
   const caloriesReady = (nutrition.targets?.calories ?? 0) > 0;
+  const profileCached = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, {
+    allowStale: true,
+  });
+  const profileHasTarget =
+    (profileCached?.calculations?.calorieTarget ?? 0) > 0 ||
+    (typeof profileCached?.profile?.calorieTarget === "number" &&
+      (profileCached.profile.calorieTarget as number) > 0);
+  // Zero targets while boot still running = loading, NEVER "Kalorienziel festlegen".
   const bootPending =
     !caloriesReady &&
-    !data.userName &&
-    getCached(HOME_DATA_CACHE_KEY, { allowStale: true }) == null;
+    !isBootSettled() &&
+    (getCached(HOME_DATA_CACHE_KEY, { allowStale: true }) == null ||
+      !profileHasTarget ||
+      !data.userName);
 
   const workoutHref = activeSessionId
     ? `/workouts/live/${activeSessionId}`
@@ -304,6 +316,7 @@ export default function HomePage() {
           dashboard: () => (
             <HomeDashboardPremium
               nutrition={nutrition}
+              loading={bootPending}
               steps={serverSteps}
               stepGoal={stepGoal}
               sleepHours={data.healthToday?.sleepHours ?? null}

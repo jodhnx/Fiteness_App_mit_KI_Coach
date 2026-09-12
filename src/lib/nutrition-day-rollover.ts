@@ -5,6 +5,7 @@ import {
   normalizeNutritionDashboard,
   type NutritionDashboardPayload,
 } from "@/lib/nutrition-defaults";
+import type { ProfileServerPrefetch } from "@/lib/profile-prefetch";
 
 /**
  * Preserve targets/profile metadata from a prior day but reset today's intake.
@@ -23,6 +24,46 @@ export function rolloverNutritionDashboardToToday(
     favorites: prev.favorites ?? [],
     recents: prev.recents ?? [],
     empty: false,
+  });
+}
+
+function profileTargetCalories(
+  profile: ProfileServerPrefetch | null | undefined
+): number {
+  const fromCalc = profile?.calculations?.calorieTarget ?? 0;
+  if (fromCalc > 0) return fromCalc;
+  const p = profile?.profile as { calorieTarget?: number } | null | undefined;
+  return typeof p?.calorieTarget === "number" && p.calorieTarget > 0
+    ? p.calorieTarget
+    : 0;
+}
+
+/** Seed paint-ready nutrition from profile when day cache is empty (overnight). */
+export function nutritionShellFromProfile(
+  profile: ProfileServerPrefetch | null | undefined,
+  today = new Date()
+): NutritionDashboardPayload | null {
+  const calories = profileTargetCalories(profile);
+  if (calories <= 0) return null;
+  const calc = profile?.calculations;
+  const p = (profile?.profile ?? {}) as Record<string, unknown>;
+  const shell = createEmptyNutritionDashboard(today, true);
+  return normalizeNutritionDashboard({
+    ...shell,
+    profileComplete: true,
+    empty: false,
+    targets: {
+      ...shell.targets,
+      calories,
+      proteinG:
+        calc?.proteinTargetG ??
+        (typeof p.proteinTargetG === "number" ? p.proteinTargetG : 0),
+      carbsG:
+        calc?.carbsTargetG ??
+        (typeof p.carbsTargetG === "number" ? p.carbsTargetG : 0),
+      fatG:
+        calc?.fatTargetG ?? (typeof p.fatTargetG === "number" ? p.fatTargetG : 0),
+    },
   });
 }
 

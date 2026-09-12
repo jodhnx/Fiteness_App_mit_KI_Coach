@@ -12,6 +12,7 @@ import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 import { nutritionDayQueryString } from "@/lib/nutrition-day";
 import { sanitizeCalorieTarget } from "@/lib/daily-kcal";
+import { isBootSettled } from "@/lib/app-init";
 
 function isPaintReadyDashboard(data: unknown): data is NutritionDashboardPayload {
   if (!data || typeof data !== "object") return false;
@@ -75,13 +76,17 @@ export function useNutritionPageDashboard(ttlMs = 120_000) {
   const settledWithoutTarget =
     !loading &&
     !paintReady &&
+    isBootSettled() &&
     fetched != null &&
     !hasNutritionTargets(fetched);
 
   return {
     dashboard: displayDashboard,
     // Keep skeleton while boot/cache catch up — never flash "Kalorienziel festlegen".
-    loading: (loading && !paintReady) || (!paintReady && !settledWithoutTarget && !error && !timedOut),
+    loading:
+      (loading && !paintReady) ||
+      (!paintReady && !settledWithoutTarget && !error && !timedOut) ||
+      (!paintReady && !isBootSettled()),
     error: paintReady ? null : error,
     timedOut: paintReady ? false : timedOut,
     reload,

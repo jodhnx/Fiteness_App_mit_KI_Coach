@@ -18,6 +18,9 @@ export const CACHE_OWNER_STORAGE_KEY = "nexform:cache-owner";
  */
 export const PERSISTENT_STALE_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** How many previous calendar days to probe when today's dated key is missing. */
+export const PERSISTENT_DAY_LOOKBACK = 7;
+
 /** Daily snapshots — keyed by local calendar day so yesterday never paints as today. */
 const DATED_LOGICAL_KEYS = new Set(["home-data", "nutrition-dashboard"]);
 
@@ -30,7 +33,7 @@ type StoredEntry = {
 
 const PREFIX = "nexform:cache:";
 
-function localYmd(now = new Date()): string {
+export function localYmd(now = new Date()): string {
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
@@ -70,17 +73,57 @@ export function persistentCacheStorageKey(
   return owner ? `${PREFIX}${owner}:${dated}` : `${PREFIX}${dated}`;
 }
 
+/** Cross-day alias so overnight reopen finds last known home/nutrition instantly. */
+export function persistentLatestStorageKey(
+  logical: string,
+  owner: string | null
+): string | null {
+  if (!owner || !DATED_LOGICAL_KEYS.has(logical)) return null;
+  return `${PREFIX}${owner}:${logical}:latest`;
+}
+
 function primaryStorageKey(logical: string): string | null {
   const owner = readOwner();
   if (!owner) return null;
   return persistentCacheStorageKey(logical, owner);
 }
 
-function legacyStorageKeys(logical: string): string[] {
-  const owner = readOwner();
-  const keys = [`${PREFIX}${logical}`];
-  if (owner) keys.unshift(`${PREFIX}${owner}:${logical}`);
-  return keys;
+function latestStorageKey(logical: string): string | null {
+  return persistentLatestStorageKey(logical, readOwner());
+}
+
+function previousYmds(days = PERSISTENT_DAY_LOOKBACK, from = new Date()): string[] {
+  const out: string[] = [];
+  for (let i = 1; i <= days; i++) {
+    const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() - i);
+    out.push(localYmd(d));
+  }
+  return out;
+}
+
+/** Candidate keys for a logical resource, newest-first. */
+export function persistentReadCandidateKeys(
+  logical: string,
+  owner: string | null,
+  today = localYmd()
+): string[] {
+  const keys: string[] = [];
+  if (owner) {
+    keys.push(persistentCacheStorageKey(logical, owner, today));
+    const latest = persistentLatestStorageKey(logical, owner);
+    if (latest) keys.push(latest);
+    if (DATED_LOGICAL_KEYS.has(logical)) {
+      for (const ymd of previousYmds(
+        PERSISTENT_DAY_LOOKBACK,
+        new Date(`${today}T12:00:00`)
+      )) {
+        keys.push(persistentCacheStorageKey(logical, owner, ymd));
+      }
+    }
+    keys.push(`${PREFIX}${owner}:${logical}`);
+  }
+  keys.push(`${PREFIX}${logical}`);
+  return keys.filter((k, i, arr) => arr.indexOf(k) === i);
 }
 
 export function writePersistentCache(key: string, data: unknown, ttlMs: number) {
@@ -96,7 +139,12 @@ export function writePersistentCache(key: string, data: unknown, ttlMs: number) 
       expires,
       staleUntil: expires + PERSISTENT_STALE_GRACE_MS,
     };
-    ls.setItem(storageKey, JSON.stringify(entry));
+    const raw = JSON.stringify(entry);
+    ls.setItem(storageKey, raw);
+    const latest = latestStorageKey(key);
+    if (latest) {
+      ls.setItem(latest, raw);
+    }
   } catch {
     /* quota exceeded — ignore */
   }
@@ -114,8 +162,9 @@ function parseEntry(raw: string | null): StoredEntry | null {
 /**
  * Read disk cache.
  * - Fresh: Date.now() <= expires
- * - Stale-usable: expires < now <= staleUntil (returned with expired=true)
+ * - Stale-usable: expires < now <= staleUntil (returned with isStale=true)
  * - Dead: past staleUntil → deleted
+ * - Overnight: today's dated miss → latest alias / previous days (still allowStale)
  */
 export function readPersistentCache(
   key: string,
@@ -124,11 +173,9 @@ export function readPersistentCache(
   const ls = browserLocalStorage();
   if (!ls) return null;
   try {
+    const owner = readOwner();
     const primary = primaryStorageKey(key);
-    const candidates = [
-      primary,
-      ...legacyStorageKeys(key),
-    ].filter((k, i, arr): k is string => Boolean(k) && arr.indexOf(k) === i);
+    const candidates = persistentReadCandidateKeys(key, owner);
 
     let raw: string | null = null;
     let usedKey: string | null = null;
@@ -156,16 +203,23 @@ export function readPersistentCache(
       return null;
     }
 
-    if (primary && usedKey !== primary) {
+    const fromOtherDay =
+      Boolean(primary) &&
+      usedKey !== primary &&
+      DATED_LOGICAL_KEYS.has(key);
+
+    // Promote usable overnight hit into today's primary + latest for next paint.
+    if (primary && (usedKey !== primary || fromOtherDay)) {
       try {
         ls.setItem(primary, raw);
-        ls.removeItem(usedKey);
+        const latest = latestStorageKey(key);
+        if (latest) ls.setItem(latest, raw);
       } catch {
         /* ignore */
       }
     }
 
-    if (now <= entry.expires) {
+    if (now <= entry.expires && !fromOtherDay) {
       return { ...entry, isStale: false };
     }
 
@@ -182,11 +236,12 @@ export function readPersistentCache(
 function removeLogical(logical: string) {
   const ls = browserLocalStorage();
   if (!ls) return;
-  const primary = primaryStorageKey(logical);
-  if (primary) ls.removeItem(primary);
-  for (const k of legacyStorageKeys(logical)) {
+  const owner = readOwner();
+  for (const k of persistentReadCandidateKeys(logical, owner)) {
     ls.removeItem(k);
   }
+  const latest = latestStorageKey(logical);
+  if (latest) ls.removeItem(latest);
 }
 
 export function clearPersistentCache(key?: string) {

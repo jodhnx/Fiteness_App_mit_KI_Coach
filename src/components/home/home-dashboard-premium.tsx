@@ -14,10 +14,9 @@ import {
   Plus,
 } from "lucide-react";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
-import { hasNutritionTargets } from "@/lib/nutrition-defaults";
 import { PremiumCard } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
-import { getCalorieDisplay } from "@/lib/nutrition-display";
+import { resolveNutritionDisplayState } from "@/lib/nutrition-display";
 import { useLivePhoneSteps } from "@/hooks/use-live-phone-steps";
 import { hapticTap } from "@/lib/haptic";
 import { getCached, setCached } from "@/lib/client-cache";
@@ -41,6 +40,7 @@ type WeekPulse = {
 
 type Props = {
   nutrition: NutritionDashboardPayload;
+  loading?: boolean;
   steps: number;
   stepGoal: number;
   sleepHours: number | null;
@@ -66,6 +66,7 @@ function trainingHref(
 /** Premium Home Dashboard — today-first, personal fitness hierarchy. */
 export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   nutrition,
+  loading = false,
   steps: serverSteps,
   stepGoal,
   sleepHours,
@@ -77,20 +78,14 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
   weekPulse,
 }: Props) {
   const steps = useLivePhoneSteps(serverSteps);
-  const ready = hasNutritionTargets(nutrition);
-  const remainingCal = nutrition.remaining?.calories ?? 0;
+  const displayState = resolveNutritionDisplayState(nutrition, { loading });
+  const ready = displayState.kind === "ready";
+  const pendingTargets = displayState.kind === "loading";
   const consumedCal = nutrition.consumed?.calories ?? 0;
   const targetCal = nutrition.targets?.calories ?? 0;
   const waterConsumed = nutrition.water?.consumedMl ?? 0;
   const waterTarget = nutrition.water?.targetMl ?? 2500;
-  const cal = ready
-    ? getCalorieDisplay(
-        consumedCal,
-        targetCal,
-        remainingCal,
-        nutrition.exerciseBurned?.calories ?? 0
-      )
-    : null;
+  const cal = ready ? displayState.cal : null;
   const intakePct =
     targetCal > 0 ? Math.min(100, Math.round((consumedCal / targetCal) * 100)) : 0;
   const stepPct = stepGoal > 0 ? Math.min(100, Math.round((steps / stepGoal) * 100)) : 0;
@@ -150,6 +145,8 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
               {cal.isOver ? "über Ziel" : "übrig"}
             </span>
           </p>
+        ) : pendingTargets ? (
+          <div className="mt-2 h-9 w-36 rounded-lg bg-zinc-200/80 animate-pulse dark:bg-white/5" />
         ) : (
           <Link
             href="/settings"

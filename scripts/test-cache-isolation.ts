@@ -78,5 +78,29 @@ console.log("Cache isolation tests\n");
   assert("clear wipes account cache", readPersistentCache("home-data") == null);
 }
 
+{
+  mem.clear();
+  localStorageMock.setItem(CACHE_OWNER_STORAGE_KEY, "user-a");
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const yesterday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const yKey = persistentCacheStorageKey("home-data", "user-a", yesterday);
+  const expires = Date.now() + 86_400_000;
+  mem.set(
+    yKey,
+    JSON.stringify({
+      data: { calorieTarget: 2100 },
+      expires,
+      staleUntil: expires + 7 * 86_400_000,
+    })
+  );
+  const overnight = readPersistentCache("home-data", { allowStale: true });
+  assert(
+    "overnight previous-day restore",
+    overnight != null &&
+      (overnight.data as { calorieTarget: number }).calorieTarget === 2100
+  );
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

@@ -23,6 +23,7 @@ import { isNutritionDashboardToday, nutritionDayQueryString } from "@/lib/nutrit
 import {
   preferCanonicalNutritionDashboard,
   resolveNutritionDashboardForBoot,
+  nutritionShellFromProfile,
 } from "@/lib/nutrition-day-rollover";
 import {
   mergeHomeEnrichment,
@@ -49,6 +50,17 @@ export type AppInitResult = {
   payload: BootstrapPayload | null;
   fromCache: boolean;
 };
+
+/** Until true, UI must treat zero targets as loading — never as "Kalorienziel festlegen". */
+let bootSettled = false;
+
+export function isBootSettled(): boolean {
+  return bootSettled;
+}
+
+export function markBootSettled(value = true) {
+  bootSettled = value;
+}
 
 /** Lightweight profile from boot home — no extra DB round-trip. */
 export function profileStubFromBoot(
@@ -108,6 +120,7 @@ function isNutritionBootReady(
 
 export function readBootPayloadFromCache(): BootstrapPayload | null {
   const home = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, { allowStale: true });
+  const profile = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, { allowStale: true });
   const nutritionRaw =
     getCached<NutritionDashboardPayload>(NUTRITION_DASHBOARD_CACHE_KEY, {
       allowStale: true,
@@ -115,24 +128,61 @@ export function readBootPayloadFromCache(): BootstrapPayload | null {
     (home?.nutrition && isValidDashboardPayload(home.nutrition)
       ? home.nutrition
       : null);
-  const nutrition = resolveNutritionDashboardForBoot(nutritionRaw);
-  const profile = getCached<ProfileServerPrefetch>(PROFILE_CACHE_KEY, { allowStale: true });
+  let nutrition = resolveNutritionDashboardForBoot(nutritionRaw);
+  if (!nutrition) {
+    nutrition = nutritionShellFromProfile(profile);
+  }
   const progress = getCached(PROGRESS_CACHE_KEY, { allowStale: true });
 
-  if (!isHomeBootReady(home) || !nutrition || !isNutritionBootReady(nutrition, { allowStaleDate: true })) {
+  if (!nutrition || !isNutritionBootReady(nutrition, { allowStaleDate: true })) {
+    return null;
+  }
+
+  // Overnight: home day-key miss is OK if we still have targets (+ optional identity).
+  const cachedHome = home;
+  const baseHome =
+    cachedHome && isHomeBootReady(cachedHome)
+      ? cachedHome
+      : normalizeHomeData({
+          ...(cachedHome && typeof cachedHome === "object" ? cachedHome : {}),
+          ...nutritionDashboardToHomeMacros(nutrition),
+          nutrition,
+          userName:
+            (cachedHome && "userName" in cachedHome
+              ? (cachedHome as HomeDataPayload).userName
+              : null) ??
+            profile?.user?.name ??
+            null,
+          userImage:
+            (cachedHome && "userImage" in cachedHome
+              ? (cachedHome as HomeDataPayload).userImage
+              : null) ??
+            profile?.user?.image ??
+            null,
+          weightKg:
+            (cachedHome && "weightKg" in cachedHome
+              ? (cachedHome as HomeDataPayload).weightKg
+              : null) ??
+            (typeof profile?.profile?.weightKg === "number"
+              ? profile.profile.weightKg
+              : null),
+        });
+
+  if (!isHomeBootReady(baseHome) && (nutrition.targets?.calories ?? 0) <= 0) {
     return null;
   }
 
   const mergedHome = normalizeHomeData({
-    ...home,
+    ...baseHome,
     ...nutritionDashboardToHomeMacros(nutrition),
     nutrition,
-    userName: home.userName ?? profile?.user?.name ?? null,
-    userImage: home.userImage ?? profile?.user?.image ?? null,
+    userName: baseHome.userName ?? profile?.user?.name ?? null,
+    userImage: baseHome.userImage ?? profile?.user?.image ?? null,
     weightKg:
-      home.weightKg ??
-      profile?.profile?.weightKg ??
-      null,
+      baseHome.weightKg ??
+      (typeof profile?.profile?.weightKg === "number"
+        ? profile.profile.weightKg
+        : null),
   });
 
   const resolvedProfile =
@@ -346,27 +396,35 @@ export async function initializeApp(
   _onProgress?: (p: number) => void
 ): Promise<AppInitResult> {
   bootPerfReset();
+  bootSettled = false;
   bootPerfMark("cache_hydrate_start");
   bindCacheOwner(userId);
   hydratePersistentCaches(userId);
   bootPerfMark("cache_hydrate_end");
 
-  const cached = readBootPayloadFromCache();
-  if (cached) {
-    applyBootstrapPayload(cached);
-    void fetchBootstrapShared().then((fresh) => {
-      if (fresh) applyBootstrapPayload(fresh);
+  try {
+    const cached = readBootPayloadFromCache();
+    if (cached) {
+      applyBootstrapPayload(cached);
+      // Cached paint is ready — UI may show targets; background refresh continues.
+      bootSettled = true;
+      void fetchBootstrapShared().then((fresh) => {
+        if (fresh) applyBootstrapPayload(fresh);
+        enrichHomeInBackground();
+        bootSettled = true;
+      });
+      return { payload: cached, fromCache: true };
+    }
+
+    const fresh = await fetchBootstrapShared();
+    if (fresh) {
+      applyBootstrapPayload(fresh);
       enrichHomeInBackground();
-    });
-    return { payload: cached, fromCache: true };
-  }
+      return { payload: fresh, fromCache: false };
+    }
 
-  const fresh = await fetchBootstrapShared();
-  if (fresh) {
-    applyBootstrapPayload(fresh);
-    enrichHomeInBackground();
-    return { payload: fresh, fromCache: false };
+    return { payload: null, fromCache: false };
+  } finally {
+    bootSettled = true;
   }
-
-  return { payload: null, fromCache: false };
 }
