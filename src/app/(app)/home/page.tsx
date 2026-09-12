@@ -239,12 +239,6 @@ export default function HomePage() {
         : null;
 
   const calState = resolveNutritionDisplayState(nutrition, { loading: bootPending });
-  const quickCaloriesLabel =
-    calState.kind === "ready"
-      ? `${calState.cal.primaryValue.toLocaleString("de-DE")} kcal`
-      : calState.kind === "missing_target"
-        ? "Ziel setzen"
-        : "…";
   const quickTrainingLabel =
     trainingStatus === "active"
       ? "Läuft jetzt"
@@ -253,6 +247,14 @@ export default function HomePage() {
         : data.nextWorkout?.dayName
           ? data.nextWorkout.dayName
           : "Heute geplant";
+  const nutritionOverviewLabel =
+    calState.kind === "ready"
+      ? calState.cal.isOver
+        ? `${calState.cal.overBy.toLocaleString("de-DE")} über Ziel`
+        : "Heute tracken"
+      : calState.kind === "missing_target"
+        ? "Ziel setzen"
+        : "…";
 
   return (
     <PageShell className="space-y-2.5 lg:space-y-3">
@@ -278,11 +280,7 @@ export default function HomePage() {
       <HomeQuickStats
         trainingLabel={quickTrainingLabel}
         trainingHref={workoutHref}
-        caloriesLabel={
-          calState.kind === "ready" && !calState.cal.isOver
-            ? `${quickCaloriesLabel} übrig`
-            : quickCaloriesLabel
-        }
+        nutritionLabel={nutritionOverviewLabel}
         steps={serverSteps}
         stepGoal={stepGoal}
         waterMl={nutrition.water?.consumedMl ?? 0}

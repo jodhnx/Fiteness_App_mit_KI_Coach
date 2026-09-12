@@ -204,6 +204,32 @@ console.log("Instant restore / overnight cache tests\n");
 }
 
 {
+  // First-setup readiness: targets present ⇒ not an empty-state flash
+  const withTargets = normalizeNutritionDashboard({
+    ...createEmptyNutritionDashboard(),
+    profileComplete: true,
+    targets: {
+      calories: 2200,
+      proteinG: 160,
+      carbsG: 200,
+      fatG: 70,
+      fiberG: 0,
+      waterTargetMl: 2500,
+      nutritionGoal: null,
+    },
+  });
+  assert(
+    "first-setup ready state is ready not missing_target",
+    resolveNutritionDisplayState(withTargets).kind === "ready"
+  );
+  assert(
+    "loading flag blocks missing_target during setup",
+    resolveNutritionDisplayState(withTargets, { loading: true }).kind ===
+      "loading"
+  );
+}
+
+{
   clearPersistentCache();
   assert("clear works", true);
 }

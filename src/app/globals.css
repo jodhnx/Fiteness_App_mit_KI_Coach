@@ -421,8 +421,8 @@ html[data-color-mode="light"] .gradient-mesh,
 html.light .gradient-mesh {
   background:
     radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--accent) 12%, transparent), transparent),
-    radial-gradient(ellipse 50% 35% at 100% 0%, rgba(59, 130, 246, 0.06), transparent),
-    #f4f7fa;
+    radial-gradient(ellipse 50% 35% at 100% 0%, color-mix(in srgb, var(--accent) 6%, transparent), transparent),
+    var(--background);
 }
 html[data-color-mode="light"] .glass,
 html.light .glass {

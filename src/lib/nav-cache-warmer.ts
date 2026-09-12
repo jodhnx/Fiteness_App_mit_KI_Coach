@@ -85,24 +85,30 @@ export function warmNutritionSearchCaches() {
   warmFoodHistoryCache();
 }
 
-/** Low-priority social/gamification — only when More/Social likely. */
+/** Low-priority social/gamification — only when More/Social likely; idle so More paints first. */
 export function warmSecondarySocialCaches() {
   if (typeof window === "undefined") return;
-  if (isCacheStale("gamification-full", 0.9)) {
-    void fetchCached(
-      "gamification-full",
-      () => fetchJson("/api/gamification"),
-      120_000
-    ).catch(() => {});
-  }
-  if (isCacheStale("social-feed", 0.9)) {
-    void fetchCached(
-      "social-feed",
-      () =>
-        fetchJson<{ feed?: unknown[] }>("/api/social/feed").then(
-          (d) => d.feed ?? []
-        ),
-      90_000
-    ).catch(() => {});
-  }
+  const idle =
+    typeof requestIdleCallback !== "undefined"
+      ? requestIdleCallback
+      : (cb: () => void) => setTimeout(cb, 1200);
+  idle(() => {
+    if (isCacheStale("gamification-full", 0.9)) {
+      void fetchCached(
+        "gamification-full",
+        () => fetchJson("/api/gamification"),
+        120_000
+      ).catch(() => {});
+    }
+    if (isCacheStale("social-feed", 0.9)) {
+      void fetchCached(
+        "social-feed",
+        () =>
+          fetchJson<{ feed?: unknown[] }>("/api/social/feed").then(
+            (d) => d.feed ?? []
+          ),
+        90_000
+      ).catch(() => {});
+    }
+  });
 }

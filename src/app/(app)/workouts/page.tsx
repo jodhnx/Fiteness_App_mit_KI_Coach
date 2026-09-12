@@ -52,19 +52,31 @@ export default function WorkoutsHubPage() {
     const cached = getCached<HomeDataPayload>(HOME_DATA_CACHE_KEY, {
       allowStale: true,
     });
-    // Seed recovery cache before first fetch so Training paints from Home bootstrap.
-    if (
-      cached?.recovery?.muscles?.length &&
-      !getCached("workouts-recovery", { allowStale: true })
-    ) {
-      setCached(
-        "workouts-recovery",
-        {
-          recovery: cached.recovery.muscles,
-          highlights: cached.recovery.highlights ?? [],
-        },
-        90_000
-      );
+    // Seed Training caches from Home bootstrap — paint without waiting on hub fetches.
+    if (cached) {
+      if (
+        cached.recovery?.muscles?.length &&
+        !getCached("workouts-recovery", { allowStale: true })
+      ) {
+        setCached(
+          "workouts-recovery",
+          {
+            recovery: cached.recovery.muscles,
+            highlights: cached.recovery.highlights ?? [],
+          },
+          90_000
+        );
+      }
+      if (
+        cached.activeSession?.id &&
+        !getCached(WORKOUT_ACTIVE_CACHE_KEY, { allowStale: true })
+      ) {
+        setCached(
+          WORKOUT_ACTIVE_CACHE_KEY,
+          { session: cached.activeSession },
+          90_000
+        );
+      }
     }
     return cached;
   });

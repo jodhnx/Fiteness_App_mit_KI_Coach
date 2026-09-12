@@ -24,8 +24,18 @@ export function FirstSetupOverlay({
     } catch {
       return;
     }
+    // Already hydrated from post-login warm — skip / dismiss overlay.
+    if (nutrition != null && hasNutritionTargets(nutrition)) {
+      try {
+        sessionStorage.removeItem(FLAG);
+      } catch {
+        /* ignore */
+      }
+      setVisible(false);
+      return;
+    }
     setVisible(true);
-  }, []);
+  }, [nutrition]);
 
   useEffect(() => {
     if (!visible) return;
