@@ -107,7 +107,7 @@ export default function HomePage() {
   }, []);
 
   const data = useBootHomeData();
-  const { dashboard: nutritionStore, applyDashboard } = useCentralNutrition();
+  const { dashboard: nutritionStore } = useCentralNutrition();
   const nutrition = useMemo(
     () => canonicalNutritionForDisplay(nutritionStore, data),
     [nutritionStore, data]
@@ -132,8 +132,6 @@ export default function HomePage() {
 
   const activeSessionId = workoutCleared ? null : data.activeSession?.id ?? null;
   const nutritionStreakDays = data.nutritionStreak?.currentDays ?? 0;
-  const trainingStreakDays =
-    data.trainingStreak?.currentDays ?? data.streak?.currentDays ?? 0;
 
   const recoveryMuscles: MuscleRecovery[] = useMemo(
     () => filterDisplayMuscles((data.recovery?.muscles ?? []) as MuscleRecovery[]),
@@ -264,6 +262,19 @@ export default function HomePage() {
         cue={greetingCue}
       />
 
+      <HomeTodayOverview
+        nutrition={nutrition}
+        loading={bootPending}
+        steps={serverSteps}
+        stepGoal={stepGoal}
+        trainingHint={trainingHint}
+      />
+
+      <HomeQuickActions
+        workoutHref={workoutHref}
+        workoutLabel={workoutActionLabel}
+      />
+
       <HomeQuickStats
         trainingLabel={quickTrainingLabel}
         trainingHref={workoutHref}
@@ -278,25 +289,10 @@ export default function HomePage() {
         waterTargetMl={nutrition.water?.targetMl ?? 2500}
       />
 
-      <HomeQuickActions
-        nutrition={nutrition}
-        applyDashboard={applyDashboard}
-        workoutHref={workoutHref}
-        workoutLabel={workoutActionLabel}
-      />
-
       <HomeWidgetBoard
         pinFirst={activeSessionId ? "training" : null}
         slots={{
-          todayOverview: () => (
-            <HomeTodayOverview
-              nutrition={nutrition}
-              loading={bootPending}
-              steps={serverSteps}
-              stepGoal={stepGoal}
-              trainingHint={trainingHint}
-            />
-          ),
+          todayOverview: () => null,
           quickAccess: () => (
             <QuickAccessRail
               training={
@@ -385,7 +381,7 @@ export default function HomePage() {
             <HomeProgressGrid
               home={data}
               nutrition={nutrition}
-              streakDays={trainingStreakDays}
+              streakDays={nutritionStreakDays}
               streakHighlight={highlight === "streak"}
             />
           ),
@@ -397,7 +393,7 @@ export default function HomePage() {
               steps={serverSteps}
               stepGoal={stepGoal}
               sleepHours={data.healthToday?.sleepHours ?? null}
-              streakDays={trainingStreakDays}
+              streakDays={nutritionStreakDays}
               trainingLabel={trainingLabel}
             />
           ),

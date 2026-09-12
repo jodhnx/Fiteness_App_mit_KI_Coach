@@ -30,9 +30,11 @@ export const HomeGreeting = memo(function HomeGreeting({
         {first ? first : "Willkommen zurück"}
       </h1>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <p className="text-[13px] font-semibold tabular-nums text-amber-600 dark:text-amber-400/95">
-          🔥 {streakDays} {streakDays === 1 ? "Tag" : "Tage"}
-        </p>
+        {streakDays > 0 ? (
+          <p className="text-[13px] font-semibold tabular-nums text-amber-600 dark:text-amber-400/95">
+            🔥 {streakDays} {streakDays === 1 ? "Tag" : "Tage"}
+          </p>
+        ) : null}
         {streakDays >= 2 ? (
           <p className="text-[13px] font-medium text-zinc-500">Stark! Weiter so!</p>
         ) : null}

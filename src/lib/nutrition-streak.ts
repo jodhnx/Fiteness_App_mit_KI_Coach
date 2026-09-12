@@ -146,16 +146,42 @@ async function updateNutritionStreakUnsafe(
 
 async function listTrackedDayKeys(userId: string): Promise<string[]> {
   const since = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000);
-  const meals = await prisma.meal.findMany({
-    where: {
-      userId,
-      date: { gte: since },
-      items: { some: {} },
-    },
-    select: { date: true },
-    orderBy: { date: "asc" },
-  });
-  return [...new Set(meals.map((m) => mealDayYmd(m.date)))].sort();
+  const [meals, sessions] = await Promise.all([
+    prisma.meal.findMany({
+      where: {
+        userId,
+        date: { gte: since },
+        items: { some: {} },
+      },
+      select: { date: true },
+      orderBy: { date: "asc" },
+    }),
+    prisma.workoutSession.findMany({
+      where: {
+        userId,
+        status: "COMPLETED",
+        completedAt: { gte: since },
+      },
+      select: { completedAt: true },
+      orderBy: { completedAt: "asc" },
+    }),
+  ]);
+
+  const keys = [
+    ...meals.map((m) => mealDayYmd(m.date)),
+    ...sessions
+      .map((s) => (s.completedAt ? mealDayYmd(s.completedAt) : null))
+      .filter((k): k is string => Boolean(k)),
+  ];
+  return [...new Set(keys)].sort();
+}
+
+/**
+ * Pure helper for tests: merge food + training day keys then compute streak.
+ * App open / settings / navigation must NOT contribute days.
+ */
+export function computeActivityStreakFromDayKeys(dayKeys: string[]) {
+  return computeStreakFromDayKeys(dayKeys);
 }
 
 async function backfillNutritionStreakFromMeals(userId: string) {

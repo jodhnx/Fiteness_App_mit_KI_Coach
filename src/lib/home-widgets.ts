@@ -23,7 +23,7 @@ export type HomeWidgetConfig = {
 };
 
 /** Current storage key — new saves always use this. */
-const STORAGE_KEY = "nexform:home-widgets-v9";
+const STORAGE_KEY = "nexform:home-widgets-v10";
 
 function widgetStorageKey(base = STORAGE_KEY): string {
   const owner = getCacheOwner();
@@ -32,6 +32,7 @@ function widgetStorageKey(base = STORAGE_KEY): string {
 
 /** Older keys — read-only fallback for migration (never write back to these). */
 const LEGACY_STORAGE_KEYS = [
+  "nexform:home-widgets-v9",
   "nexform:home-widgets-v8",
   "nexform:home-widgets-v7",
   "nexform:home-widgets-v6",
@@ -40,7 +41,8 @@ const LEGACY_STORAGE_KEYS = [
 ] as const;
 
 export const DEFAULT_HOME_WIDGETS: HomeWidgetConfig[] = [
-  { id: "todayOverview", label: "Heute", visible: true },
+  // todayOverview is rendered as the fixed hero above the board
+  { id: "todayOverview", label: "Heute", visible: false },
   { id: "training", label: "Training heute", visible: true },
   { id: "coachBriefing", label: "Was heute wichtig ist", visible: true },
   { id: "todayGlance", label: "Heute auf einen Blick", visible: false },

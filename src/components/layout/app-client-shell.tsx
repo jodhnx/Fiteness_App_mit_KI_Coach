@@ -27,6 +27,7 @@ import {
 } from "@/lib/nutrition-sync";
 import { nutritionDashboardToHomeMacros } from "@/lib/nutrition-to-home";
 import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
+import { FirstSetupOverlay } from "@/components/layout/first-setup-overlay";
 
 /** After first paint — never blocks Home (no artificial delay). */
 function schedulePostBootWarm() {
@@ -143,6 +144,7 @@ export function AppClientShell({ children }: { children: ReactNode }) {
     <ProfileDataProvider initialProfile={initialProfile}>
       <NutritionDataProvider initialDashboard={initialNutrition}>
         <HomeDataProvider initialHome={initialHome}>
+          <FirstSetupOverlay nutrition={initialNutrition} />
           <AppShell>{children}</AppShell>
         </HomeDataProvider>
       </NutritionDataProvider>

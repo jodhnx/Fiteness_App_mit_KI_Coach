@@ -14,6 +14,8 @@ import {
   type UiDensity,
   applyThemeToDocument,
   readStoredPreferences,
+  normalizeThemeId,
+  themeDefaultColorMode,
   DEFAULT_THEME,
   DEFAULT_DENSITY,
   DEFAULT_COLOR_MODE,
@@ -32,7 +34,6 @@ type PreferencesContextValue = {
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
-  // SSR-safe defaults — hydrate from localStorage only after mount (avoids mismatch crashes)
   const [theme, setThemeState] = useState<AppThemeId>(DEFAULT_THEME);
   const [uiDensity, setUiDensityState] = useState<UiDensity>(DEFAULT_DENSITY);
   const [colorMode, setColorModeState] = useState<ColorMode>(DEFAULT_COLOR_MODE);
@@ -50,12 +51,16 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled || !d?.theme) return;
+        const nextTheme = normalizeThemeId(d.theme);
         const nextDensity = d.uiDensity ?? DEFAULT_DENSITY;
-        const nextMode = d.colorMode === "light" ? "light" : "dark";
-        setThemeState(d.theme);
+        const nextMode =
+          d.colorMode === "light" || d.colorMode === "dark"
+            ? d.colorMode
+            : themeDefaultColorMode(nextTheme);
+        setThemeState(nextTheme);
         setUiDensityState(nextDensity);
         setColorModeState(nextMode);
-        applyThemeToDocument(d.theme, nextDensity, nextMode);
+        applyThemeToDocument(nextTheme, nextDensity, nextMode);
       })
       .catch(() => undefined)
       .finally(() => {
@@ -85,11 +90,14 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
   const setTheme = useCallback(
     (t: AppThemeId) => {
-      setThemeState(t);
-      applyThemeToDocument(t, uiDensity, colorMode);
-      persist({ theme: t });
+      const normalized = normalizeThemeId(t);
+      const nextMode = themeDefaultColorMode(normalized);
+      setThemeState(normalized);
+      setColorModeState(nextMode);
+      applyThemeToDocument(normalized, uiDensity, nextMode);
+      persist({ theme: normalized, colorMode: nextMode });
     },
-    [uiDensity, colorMode, persist]
+    [uiDensity, persist]
   );
 
   const setUiDensity = useCallback(

@@ -1,9 +1,12 @@
 /**
- * Nutrition streak calendar-day semantics.
+ * Nutrition / activity streak calendar-day semantics.
  * Run: npx tsx scripts/test-nutrition-streak.ts
+ *
+ * Activity = meal log OR completed training. App open / settings do NOT count.
  */
 import {
   computeStreakFromDayKeys,
+  computeActivityStreakFromDayKeys,
   effectiveNutritionStreakDays,
 } from "../src/lib/nutrition-streak";
 import { startOfDay } from "date-fns";
@@ -79,6 +82,14 @@ console.log("Nutrition Streak Tests\n");
       .currentDays === 2
   );
   assert(
+    "three consecutive days → streak 3",
+    computeStreakFromDayKeys([
+      d("2026-09-08"),
+      d("2026-09-09"),
+      d("2026-09-10"),
+    ]).currentDays === 3
+  );
+  assert(
     "delete last day leaves prior streak",
     computeStreakFromDayKeys([d("2026-09-08"), d("2026-09-09")])
       .currentDays === 2
@@ -94,6 +105,51 @@ console.log("Nutrition Streak Tests\n");
       ]);
       return r.currentDays === 1 && r.longestDays === 3;
     })()
+  );
+  assert(
+    "1-day gap → new streak 1",
+    computeStreakFromDayKeys([
+      d("2026-09-08"),
+      d("2026-09-09"),
+      d("2026-09-11"),
+    ]).currentDays === 1
+  );
+}
+
+{
+  const d = (ymd: string) => ymd;
+  assert(
+    "food-only days count",
+    computeActivityStreakFromDayKeys([d("2026-09-10"), d("2026-09-11")])
+      .currentDays === 2
+  );
+  assert(
+    "training-only days count",
+    computeActivityStreakFromDayKeys([d("2026-09-10")]).currentDays === 1
+  );
+  assert(
+    "food + training same day merges to one day",
+    computeActivityStreakFromDayKeys([
+      d("2026-09-10"),
+      d("2026-09-10"),
+      d("2026-09-11"),
+    ]).currentDays === 2
+  );
+  assert(
+    "mixed food/training consecutive days",
+    computeActivityStreakFromDayKeys([
+      d("2026-09-08"),
+      d("2026-09-09"),
+      d("2026-09-10"),
+    ]).currentDays === 3
+  );
+  assert(
+    "app-open / settings produce no day keys → streak 0",
+    computeActivityStreakFromDayKeys([]).currentDays === 0
+  );
+  assert(
+    "cache cannot invent extra days — only provided keys count",
+    computeActivityStreakFromDayKeys([d("2026-09-10")]).currentDays === 1
   );
 }
 

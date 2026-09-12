@@ -569,9 +569,9 @@ function SettingsPageInner() {
 
       <section id="settings-design" className="space-y-3 scroll-mt-4">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 px-0.5">
-          Darstellung
+          Design
         </h2>
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-3.5 space-y-3">
+        <div className="rounded-2xl border border-zinc-200/90 bg-white p-3.5 space-y-4 shadow-sm dark:border-white/[0.07] dark:bg-white/[0.02] dark:shadow-none">
           <div className="grid grid-cols-2 gap-2">
             {COLOR_MODE_OPTIONS.map((m) => (
               <button
@@ -579,31 +579,66 @@ function SettingsPageInner() {
                 type="button"
                 onClick={() => setColorMode(m.id)}
                 className={cn(
-                  "min-h-11 rounded-xl border px-3 py-2 text-sm font-medium",
+                  "min-h-11 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
                   colorMode === m.id
-                    ? "border-accent bg-accent-soft text-white"
-                    : "border-zinc-700 text-zinc-400"
+                    ? "border-accent bg-accent text-white"
+                    : "border-zinc-200 text-zinc-600 dark:border-zinc-700 dark:text-zinc-400"
                 )}
               >
                 {m.label}
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-            {APP_THEMES.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTheme(t.id)}
-                className={cn(
-                  "rounded-xl border-2 p-2 transition-all min-h-11",
-                  theme === t.id ? "border-white scale-105" : "border-transparent"
-                )}
-                title={t.label}
-              >
-                <div className="h-8 w-full rounded-lg" style={{ background: t.preview }} />
-              </button>
-            ))}
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              Appearance
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {APP_THEMES.map((t) => {
+                const active = theme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTheme(t.id)}
+                    className={cn(
+                      "flex min-h-14 flex-col gap-2 rounded-xl border p-2.5 text-left transition-all",
+                      active
+                        ? "border-accent bg-accent/5 ring-2 ring-accent/30"
+                        : "border-zinc-200 bg-zinc-50/80 hover:border-zinc-300 dark:border-white/[0.08] dark:bg-white/[0.03]"
+                    )}
+                    title={t.label}
+                    aria-pressed={active}
+                  >
+                    <div
+                      className="flex h-9 w-full overflow-hidden rounded-lg border border-black/5"
+                      aria-hidden
+                    >
+                      <span
+                        className="w-2/5"
+                        style={{ background: t.preview }}
+                      />
+                      <span
+                        className="flex-1"
+                        style={{
+                          background: t.previewSecondary ?? "#ffffff",
+                        }}
+                      />
+                    </div>
+                    <span
+                      className={cn(
+                        "text-[12px] font-semibold leading-tight",
+                        active
+                          ? "text-accent"
+                          : "text-zinc-700 dark:text-zinc-300"
+                      )}
+                    >
+                      {t.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>

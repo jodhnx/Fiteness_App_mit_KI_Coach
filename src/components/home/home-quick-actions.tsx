@@ -1,17 +1,12 @@
 "use client";
 
-import { memo, useCallback, useState } from "react";
+import { memo } from "react";
 import Link from "next/link";
 import { hapticTap } from "@/lib/haptic";
-import { nutritionDayKey } from "@/lib/nutrition-day";
-import { isValidDashboardPayload } from "@/lib/nutrition-defaults";
-import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 
 type Props = {
-  nutrition: NutritionDashboardPayload;
-  applyDashboard: (next: NutritionDashboardPayload) => void;
-  workoutHref: string;
-  workoutLabel: string;
+  workoutHref?: string;
+  workoutLabel?: string;
 };
 
 const BTN =
@@ -19,16 +14,29 @@ const BTN =
 
 function IconPlusFood() {
   return (
-    <svg className="h-4 w-4 text-amber-400" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className="h-4 w-4 text-amber-500" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
-function IconWater() {
+function IconCamera() {
   return (
-    <svg className="h-4 w-4 text-sky-400" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className="h-4 w-4 text-sky-500" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
-        d="M12 3s6 7 6 11a6 6 0 1 1-12 0c0-4 6-11 6-11Z"
+        d="M4 8h3l2-2h6l2 2h3v12H4V8Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+function IconBolt() {
+  return (
+    <svg className="h-4 w-4 text-violet-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinejoin="round"
@@ -36,93 +44,63 @@ function IconWater() {
     </svg>
   );
 }
-function IconScale() {
+function IconBook() {
   return (
-    <svg className="h-4 w-4 text-emerald-400" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M4 8h16M12 8v12M8 20h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-function IconDumbbell() {
-  return (
-    <svg className="h-4 w-4 text-violet-400" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className="h-4 w-4 text-emerald-500" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
-        d="M6 8v8M18 8v8M6 12h12M4 10v4M20 10v4"
+        d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 0-3 3V4Z"
         stroke="currentColor"
         strokeWidth="2"
-        strokeLinecap="round"
+        strokeLinejoin="round"
       />
+      <path d="M5 4v16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
 
-export const HomeQuickActions = memo(function HomeQuickActions({
-  nutrition,
-  applyDashboard,
-  workoutHref,
-  workoutLabel,
-}: Props) {
-  const [waterBusy, setWaterBusy] = useState(false);
-
-  const addWater = useCallback(async () => {
-    if (waterBusy) return;
-    hapticTap();
-    setWaterBusy(true);
-    const nextMl = Math.max(0, (nutrition.water?.consumedMl ?? 0) + 250);
-    applyDashboard({
-      ...nutrition,
-      date: nutritionDayKey(),
-      water: { ...nutrition.water, consumedMl: nextMl },
-    });
-    try {
-      const res = await fetch("/api/nutrition/water", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amountMl: 250, date: nutritionDayKey() }),
-      });
-      const body = await res.json().catch(() => null);
-      if (body?.dashboard && isValidDashboardPayload(body.dashboard)) {
-        applyDashboard(body.dashboard);
-      } else if (!res.ok) {
-        applyDashboard(nutrition);
-      }
-    } catch {
-      applyDashboard(nutrition);
-    } finally {
-      setWaterBusy(false);
-    }
-  }, [applyDashboard, nutrition, waterBusy]);
-
+/** Compact nutrition-first quick actions for Home. */
+export const HomeQuickActions = memo(function HomeQuickActions(_props: Props) {
   return (
-    <div className="grid grid-cols-4 gap-2">
-      <Link href="/nutrition?add=LUNCH" prefetch className={BTN} aria-label="Essen hinzufügen" onClick={() => hapticTap()}>
-        <IconPlusFood />
-        Essen
-      </Link>
-      <button
-        type="button"
-        className={BTN}
-        aria-label="250 ml Wasser hinzufügen"
-        disabled={waterBusy}
-        onClick={() => void addWater()}
-      >
-        <IconWater />
-        Wasser
-      </button>
-      <Link href="/progress?log=1" prefetch className={BTN} aria-label="Gewicht eintragen" onClick={() => hapticTap()}>
-        <IconScale />
-        Gewicht
-      </Link>
+    <div className="grid grid-cols-4 gap-2" aria-label="Schnellaktionen">
       <Link
-        href={workoutHref}
+        href="/nutrition?add=LUNCH"
         prefetch
         className={BTN}
-        aria-label={workoutLabel}
+        aria-label="Essen hinzufügen"
         onClick={() => hapticTap()}
       >
-        <IconDumbbell />
-        {workoutLabel === "Weiter" ? "Weiter" : "Workout"}
+        <IconPlusFood />
+        + Essen
+      </Link>
+      <Link
+        href="/nutrition?photo=1"
+        prefetch
+        className={BTN}
+        aria-label="Foto AI"
+        onClick={() => hapticTap()}
+      >
+        <IconCamera />
+        Foto
+      </Link>
+      <Link
+        href="/nutrition?quick=1"
+        prefetch
+        className={BTN}
+        aria-label="Schnelleintrag"
+        onClick={() => hapticTap()}
+      >
+        <IconBolt />
+        Schnell
+      </Link>
+      <Link
+        href="/rezepte"
+        prefetch
+        className={BTN}
+        aria-label="Rezepte"
+        onClick={() => hapticTap()}
+      >
+        <IconBook />
+        Rezepte
       </Link>
     </div>
   );

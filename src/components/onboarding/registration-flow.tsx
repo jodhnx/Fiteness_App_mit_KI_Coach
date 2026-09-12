@@ -246,6 +246,11 @@ export function RegistrationFlow() {
       }
       toast.success("Profil gespeichert");
       warmPostLoginCaches();
+      try {
+        sessionStorage.setItem("nexform:first-setup", "1");
+      } catch {
+        /* ignore */
+      }
       router.replace("/home");
       setSubmitting(false);
       return;
@@ -260,6 +265,11 @@ export function RegistrationFlow() {
     }
     storageSetJson(ONBOARDING_DRAFT_KEY, null);
     warmPostLoginCaches();
+    try {
+      sessionStorage.setItem("nexform:first-setup", "1");
+    } catch {
+      /* ignore */
+    }
     toast.success("Willkommen bei NEXFORM!");
     router.replace("/home");
   }
@@ -335,6 +345,11 @@ export function RegistrationFlow() {
       storageSetJson(ONBOARDING_DRAFT_KEY, null);
       warmTrainingCaches(true);
       warmPostLoginCaches();
+      try {
+        sessionStorage.setItem("nexform:first-setup", "1");
+      } catch {
+        /* ignore */
+      }
       toast.success("Dein Plan ist bereit!");
       router.replace("/home");
     } finally {

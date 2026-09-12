@@ -114,6 +114,18 @@ function NutritionPageInner() {
     const add = searchParams.get("add");
     const panel = searchParams.get("panel");
     const from = searchParams.get("from");
+    const photo = searchParams.get("photo");
+    const quick = searchParams.get("quick");
+    if (photo === "1") {
+      setFoodAIOpen(true);
+      router.replace("/nutrition", { scroll: false });
+      return;
+    }
+    if (quick === "1") {
+      setQuickMeal(mealTypeForHour());
+      router.replace("/nutrition", { scroll: false });
+      return;
+    }
     if (add && VALID_MEALS.has(add)) {
       panelDeepLinkConsumed.current = false;
       setPanelReturnTo(null);
