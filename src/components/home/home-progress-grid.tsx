@@ -45,11 +45,11 @@ function MiniCard({
       href={href}
       prefetch
       className={cn(
-        "rounded-xl border p-3 min-h-[5.25rem] flex flex-col justify-between",
-        "bg-zinc-900/55 active:scale-[0.98] transition-transform",
+        "rounded-xl border p-3 min-h-[5.25rem] flex flex-col justify-between shadow-sm dark:shadow-none",
+        "bg-white active:scale-[0.98] transition-transform dark:bg-zinc-900/55",
         highlight
           ? "border-orange-500/40 shadow-[0_0_20px_-6px_rgba(249,115,22,0.35)]"
-          : "border-zinc-800/80"
+          : "border-zinc-200/90 dark:border-zinc-800/80"
       )}
     >
       <div className={cn("flex items-center gap-1 text-[9px] uppercase tracking-wider", accent)}>
@@ -57,7 +57,7 @@ function MiniCard({
         {label}
       </div>
       <div>
-        <p className="text-lg font-bold text-white tabular-nums leading-tight">{value}</p>
+        <p className="text-lg font-bold text-zinc-900 tabular-nums leading-tight dark:text-white">{value}</p>
         {sub && <p className="text-[10px] text-zinc-500 mt-0.5 tabular-nums">{sub}</p>}
       </div>
     </Link>

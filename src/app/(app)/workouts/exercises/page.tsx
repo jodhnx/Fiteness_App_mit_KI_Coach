@@ -6,6 +6,15 @@ import { WorkoutBackLink } from "@/components/workout/workout-back-link";
 import { Input } from "@/components/ui/input";
 import { useExerciseLibrarySearch, type LibraryExercise } from "@/hooks/use-exercise-library-search";
 import { cn } from "@/lib/utils";
+import {
+  wCard,
+  wChipOff,
+  wChipOn,
+  wInput,
+  wMuted,
+  wStatMini,
+  wTitle,
+} from "@/lib/workout-ui";
 import { ChevronRight, Dumbbell, Search, Star, Clock } from "lucide-react";
 
 const MUSCLES = [
@@ -145,11 +154,11 @@ export default function ExercisesPage() {
     <div className="space-y-4 max-w-lg mx-auto pb-28">
       <WorkoutBackLink />
       <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+        <h1 className={cn("text-2xl font-bold flex items-center gap-2", wTitle)}>
           <Dumbbell className="h-7 w-7 text-rose-400" />
           Übungen
         </h1>
-        <p className="text-sm text-zinc-400 mt-1">Exercise Hub · Bibliothek & Details</p>
+        <p className={cn("text-sm mt-1", wMuted)}>Exercise Hub · Bibliothek & Details</p>
       </div>
 
       <div className="relative">
@@ -158,7 +167,7 @@ export default function ExercisesPage() {
           placeholder="Exercise suchen"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-12 pl-10 rounded-2xl bg-zinc-900 border-zinc-800"
+          className={cn("h-12 pl-10 rounded-2xl", wInput)}
           aria-label="Exercise suchen"
         />
       </div>
@@ -171,9 +180,7 @@ export default function ExercisesPage() {
             onClick={() => setMuscle(m.id)}
             className={cn(
               "rounded-full min-h-11 px-3 text-xs font-medium whitespace-nowrap shrink-0",
-              muscle === m.id
-                ? "bg-white text-zinc-950"
-                : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+              muscle === m.id ? wChipOn : wChipOff
             )}
           >
             {m.label}
@@ -187,9 +194,7 @@ export default function ExercisesPage() {
           onClick={() => setEquipment("")}
           className={cn(
             "rounded-full min-h-11 px-3 text-xs font-medium whitespace-nowrap shrink-0",
-            equipment === ""
-              ? "bg-white text-zinc-950"
-              : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+            equipment === "" ? wChipOn : wChipOff
           )}
         >
           Equipment
@@ -201,9 +206,7 @@ export default function ExercisesPage() {
             onClick={() => setEquipment(id === equipment ? "" : id)}
             className={cn(
               "rounded-full min-h-11 px-3 text-xs font-medium whitespace-nowrap shrink-0",
-              equipment === id
-                ? "bg-white text-zinc-950"
-                : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+              equipment === id ? wChipOn : wChipOff
             )}
           >
             {label}
@@ -220,8 +223,8 @@ export default function ExercisesPage() {
               className={cn(
                 "flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium",
                 tab === t.id
-                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                  : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+                  ? "bg-rose-500/20 text-rose-700 border border-rose-500/30 dark:text-rose-300"
+                  : wChipOff
               )}
             >
               <t.icon className="h-3.5 w-3.5" />
@@ -231,15 +234,15 @@ export default function ExercisesPage() {
         </div>
 
       {selected && (
-        <div className="rounded-2xl border border-white/[0.1] bg-zinc-900/80 p-4 space-y-3">
+        <div className={cn(wCard, "p-4 space-y-3 border-zinc-200 dark:border-white/[0.1]")}>
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-lg font-bold text-white">{selected.name}</p>
-              <p className="text-sm text-zinc-400">{selected.muscleGroup}</p>
+              <p className={cn("text-lg font-bold", wTitle)}>{selected.name}</p>
+              <p className={cn("text-sm", wMuted)}>{selected.muscleGroup}</p>
             </div>
             <button
               type="button"
-              className="text-zinc-500 text-sm"
+              className={cn("text-sm", wMuted)}
               onClick={() => setSelected(null)}
             >
               ✕
@@ -258,14 +261,14 @@ export default function ExercisesPage() {
             <InfoRow label="Genutzt" value={`${selected.popularity}×`} />
           </div>
           <Link href={`/workouts/exercises/${selected.id}`}>
-            <span className="flex items-center justify-center gap-1 w-full h-11 rounded-xl bg-white/10 text-white text-sm font-medium">
+            <span className="flex items-center justify-center gap-1 w-full h-11 rounded-xl bg-zinc-100 text-zinc-900 text-sm font-medium dark:bg-white/10 dark:text-white">
               Ausführung & Statistik
               <ChevronRight className="h-4 w-4" />
             </span>
           </Link>
           <button
             type="button"
-            className="w-full min-h-11 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-medium text-amber-200"
+            className="w-full min-h-11 rounded-xl border border-amber-500/30 bg-amber-500/10 text-sm font-medium text-amber-800 dark:text-amber-200"
             onClick={() => void toggleFavorite(selected)}
           >
             {favorites.some((f) => f.id === selected.id)
@@ -277,10 +280,10 @@ export default function ExercisesPage() {
 
       <div className="space-y-2">
         {loading && list.length === 0 && (
-          <p className="text-sm text-zinc-500 text-center py-8">Lädt…</p>
+          <p className={cn("text-sm text-center py-8", wMuted)}>Lädt…</p>
         )}
         {!loading && list.length === 0 && (
-          <p className="text-sm text-zinc-400 text-center py-8">
+          <p className={cn("text-sm text-center py-8", wMuted)}>
             {tab === "favorites"
               ? "Noch keine Favoriten — öffne eine Übung und merke sie."
               : tab === "recent"
@@ -296,17 +299,17 @@ export default function ExercisesPage() {
             className={cn(
               "w-full flex items-center justify-between rounded-2xl px-4 py-3.5 text-left border transition-colors active:scale-[0.98]",
               selected?.id === ex.id
-                ? "border-white/20 bg-zinc-800/80"
-                : "border-zinc-800 bg-zinc-900/60 hover:border-zinc-700"
+                ? "border-zinc-300 bg-zinc-100 dark:border-white/20 dark:bg-zinc-800/80"
+                : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700"
             )}
           >
             <div className="min-w-0">
-              <p className="font-semibold text-white truncate">{ex.name}</p>
+              <p className={cn("font-semibold truncate", wTitle)}>{ex.name}</p>
               <p className="text-xs text-zinc-500 mt-0.5">
                 {ex.muscleGroup} · {EQUIPMENT_DE[ex.equipment] ?? ex.equipment}
               </p>
             </div>
-            <ChevronRight className="h-5 w-5 text-zinc-600 shrink-0" />
+            <ChevronRight className="h-5 w-5 text-zinc-400 dark:text-zinc-600 shrink-0" />
           </button>
         ))}
       </div>
@@ -316,9 +319,9 @@ export default function ExercisesPage() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-zinc-950/50 px-3 py-2">
+    <div className={wStatMini}>
       <p className="text-[10px] text-zinc-500 uppercase">{label}</p>
-      <p className="text-white font-medium text-sm">{value}</p>
+      <p className={cn("font-medium text-sm", wTitle)}>{value}</p>
     </div>
   );
 }

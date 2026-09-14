@@ -10,6 +10,7 @@ import {
   Shield,
   LogOut,
   ChevronRight,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -121,6 +122,12 @@ export function SettingsHubNav({
   return (
     <div className={cn("space-y-6", className)}>
       <Section title="App">
+        <Row
+          href="/settings?view=konto#settings-design"
+          label="Design"
+          description="Themes & Darstellung"
+          icon={Palette}
+        />
         <Row
           href="/settings?view=notifications"
           label="Benachrichtigungen"

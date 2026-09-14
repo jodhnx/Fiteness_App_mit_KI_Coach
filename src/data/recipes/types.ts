@@ -78,29 +78,60 @@ export type FitnessRecipe = {
 
 export const RECIPE_FILTERS: { id: string; label: string }[] = [
   { id: "BREAKFAST", label: "Frühstück" },
-  { id: "LUNCH", label: "Mittagessen" },
-  { id: "DINNER", label: "Abendessen" },
-  { id: "SNACK", label: "Snacks" },
+  { id: "LUNCH", label: "Mittag" },
+  { id: "DINNER", label: "Abend" },
+  { id: "SNACK", label: "Snack" },
   { id: "high-protein", label: "High Protein" },
   { id: "low-calorie", label: "Low Calorie" },
-  { id: "high-calorie", label: "High Calorie" },
-  { id: "low-fat", label: "Low Fat" },
   { id: "low-carb", label: "Low Carb" },
-  { id: "high-carb", label: "High Carb" },
-  { id: "vegetarian", label: "Vegetarisch" },
-  { id: "vegan", label: "Vegan" },
-  { id: "quick", label: "Schnell" },
+  { id: "low-fat", label: "Low Fat" },
+  { id: "high-calorie", label: "High Calorie" },
   { id: "meal-prep", label: "Meal Prep" },
   { id: "bulking", label: "Bulking" },
   { id: "cutting", label: "Cutting" },
+  { id: "pre-workout", label: "Pre Workout" },
+  { id: "post-workout", label: "Post Workout" },
+  { id: "vegan", label: "Vegan" },
+  { id: "austrian", label: "Österreichisch" },
+  { id: "vegetarian", label: "Vegetarisch" },
+  { id: "quick", label: "Schnell" },
+  { id: "high-carb", label: "High Carb" },
   { id: "muscle-gain", label: "Muskelaufbau" },
   { id: "fat-loss", label: "Abnehmen" },
   { id: "dessert", label: "Dessert" },
-  { id: "austrian", label: "Österreichisch" },
-  { id: "post-workout", label: "Post Workout" },
-  { id: "pre-workout", label: "Pre Workout" },
   { id: "under-500", label: "Unter 500 kcal" },
   { id: "under-30", label: "Unter 30 Min" },
+];
+
+/** Compact primary chips shown first in the recipe browser. */
+export const RECIPE_PRIMARY_FILTERS = RECIPE_FILTERS.filter((f) =>
+  [
+    "BREAKFAST",
+    "LUNCH",
+    "DINNER",
+    "SNACK",
+    "high-protein",
+    "low-calorie",
+    "low-carb",
+    "low-fat",
+    "high-calorie",
+    "meal-prep",
+    "bulking",
+    "cutting",
+    "pre-workout",
+    "post-workout",
+    "vegan",
+    "austrian",
+  ].includes(f.id)
+);
+
+export type RecipeSortId = "protein" | "calories" | "quick" | "popular";
+
+export const RECIPE_SORT_OPTIONS: { id: RecipeSortId; label: string }[] = [
+  { id: "protein", label: "Protein" },
+  { id: "calories", label: "Kalorien" },
+  { id: "quick", label: "Schnell" },
+  { id: "popular", label: "Beliebt" },
 ];
 
 export function recipeTotalMinutes(recipe: FitnessRecipe): number {

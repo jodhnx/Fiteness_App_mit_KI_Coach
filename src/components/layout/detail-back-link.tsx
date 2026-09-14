@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildScrollKeyNormalized, saveScrollPosition } from "@/lib/scroll-restore";
 
 type Props = {
   href?: string;
@@ -23,6 +24,7 @@ export function DetailBackLink({
   onClick,
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <button
@@ -36,6 +38,12 @@ export function DetailBackLink({
       aria-label={label}
       onClick={() => {
         onClick?.();
+        saveScrollPosition(
+          buildScrollKeyNormalized(
+            pathname,
+            typeof window !== "undefined" ? window.location.search : ""
+          )
+        );
         if (preferHistory && typeof window !== "undefined" && window.history.length > 1) {
           router.back();
           return;

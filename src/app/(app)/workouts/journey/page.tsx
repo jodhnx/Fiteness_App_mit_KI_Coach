@@ -6,6 +6,7 @@ import { WorkoutBackLink } from "@/components/workout/workout-back-link";
 import { GymCheckInPanel } from "@/components/workouts/gym-checkin-panel";
 import { WorkoutCard } from "@/components/workout/workout-card";
 import { cn } from "@/lib/utils";
+import { wCardMuted, wMuted, wSkeleton, wTitle } from "@/lib/workout-ui";
 import { Clock, Flame, Layers, Map, TrendingUp } from "lucide-react";
 import type { WorkoutJourney } from "@/lib/workout-journey";
 import { CACHE_KEYS } from "@/lib/cache-manager";
@@ -26,9 +27,9 @@ function StatTile({
   accent?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
+    <div className={cn(wCardMuted, "p-3")}>
       <Icon className={cn("h-4 w-4 mb-1", accent ?? "text-zinc-500")} />
-      <p className="text-lg font-bold text-white tabular-nums">{value}</p>
+      <p className={cn("text-lg font-bold tabular-nums", wTitle)}>{value}</p>
       <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
     </div>
   );
@@ -45,7 +46,7 @@ const SessionList = memo(function SessionList({
 }) {
   if (sessions.length === 0) {
     return (
-      <p className="text-sm text-zinc-500 py-6 text-center">Noch keine abgeschlossenen Workouts</p>
+      <p className={cn("text-sm py-6 text-center", wMuted)}>Noch keine abgeschlossenen Workouts</p>
     );
   }
 
@@ -109,7 +110,7 @@ export default function FitnessJourneyPage() {
     return (
       <div className="max-w-lg mx-auto pb-24">
         <WorkoutBackLink />
-        <p className="text-zinc-500">Daten konnten nicht geladen werden.</p>
+        <p className={wMuted}>Daten konnten nicht geladen werden.</p>
       </div>
     );
   }
@@ -125,17 +126,17 @@ export default function FitnessJourneyPage() {
     <div className="space-y-5 max-w-lg mx-auto pb-24">
       <WorkoutBackLink />
       <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+        <h1 className={cn("text-2xl font-bold flex items-center gap-2", wTitle)}>
           <Map className="h-7 w-7 text-emerald-400" />
           Fitness Journey
         </h1>
-        <p className="text-sm text-zinc-400 mt-1">Abgeschlossene Trainings · neueste zuerst</p>
+        <p className={cn("text-sm mt-1", wMuted)}>Abgeschlossene Trainings · neueste zuerst</p>
       </div>
 
       {showSkeleton ? (
         <ul className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <li key={i} className="h-28 rounded-2xl bg-zinc-900 border border-zinc-800" />
+            <li key={i} className={cn(wSkeleton, "h-28")} />
           ))}
         </ul>
       ) : (
@@ -178,12 +179,12 @@ export default function FitnessJourneyPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-center">
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 py-4">
-              <p className="text-2xl font-bold text-white tabular-nums">{stats30d.sessions}</p>
+            <div className={cn(wCardMuted, "py-4 dark:bg-zinc-900/40")}>
+              <p className={cn("text-2xl font-bold tabular-nums", wTitle)}>{stats30d.sessions}</p>
               <p className="text-xs text-zinc-500 mt-1">Sessions (30T)</p>
             </div>
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 py-4">
-              <p className="text-2xl font-bold text-white tabular-nums">{stats30d.gymVisits}</p>
+            <div className={cn(wCardMuted, "py-4 dark:bg-zinc-900/40")}>
+              <p className={cn("text-2xl font-bold tabular-nums", wTitle)}>{stats30d.gymVisits}</p>
               <p className="text-xs text-zinc-500 mt-1">Gym-Besuche (Monat)</p>
             </div>
           </div>

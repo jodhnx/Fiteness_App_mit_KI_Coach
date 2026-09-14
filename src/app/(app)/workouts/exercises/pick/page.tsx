@@ -7,6 +7,14 @@ import { FullscreenPage } from "@/components/ui/fullscreen-page";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  wChipOff,
+  wChipOn,
+  wInput,
+  wMuted,
+  wStickyBar,
+  wTitle,
+} from "@/lib/workout-ui";
 
 const MUSCLES = [
   { value: "", label: "Alle" },
@@ -63,14 +71,14 @@ export default function ExercisePickPage() {
   return (
     <FullscreenPage title="Übung wählen" subtitle="Suche & Filter">
       <div className="max-w-lg mx-auto w-full pb-8">
-        <div className="sticky top-0 z-10 bg-zinc-950/95 backdrop-blur-md px-4 py-3 border-b border-zinc-800/50">
+        <div className={cn(wStickyBar, "sticky top-0 z-10 px-4 py-3")}>
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -h-5 w-5 -translate-y-1/2 text-zinc-500" />
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
             <Input
               placeholder="Übung suchen..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              className="h-12 pl-12 rounded-xl"
+              className={cn("h-12 pl-12 rounded-xl", wInput)}
               autoFocus
             />
           </div>
@@ -82,7 +90,7 @@ export default function ExercisePickPage() {
                 onClick={() => setMuscle(m.value)}
                 className={cn(
                   "shrink-0 min-h-11 rounded-full px-3.5 text-xs font-medium",
-                  muscle === m.value ? "bg-cyan-500 text-zinc-950" : "bg-zinc-800 text-zinc-400"
+                  muscle === m.value ? wChipOn : wChipOff
                 )}
               >
                 {m.label}
@@ -97,9 +105,7 @@ export default function ExercisePickPage() {
                 onClick={() => setDifficulty(d.value)}
                 className={cn(
                   "shrink-0 min-h-11 rounded-full px-3.5 text-xs font-medium",
-                  difficulty === d.value
-                    ? "bg-violet-500 text-white"
-                    : "bg-zinc-800 text-zinc-400"
+                  difficulty === d.value ? wChipOn : wChipOff
                 )}
               >
                 {d.label}
@@ -110,10 +116,10 @@ export default function ExercisePickPage() {
 
         <div className="px-4 pt-3 space-y-2">
           {loading && (
-            <p className="text-center text-zinc-400 py-8 text-sm animate-pulse">Lädt…</p>
+            <p className={cn("text-center py-8 text-sm animate-pulse", wMuted)}>Lädt…</p>
           )}
           {!loading && exercises.length === 0 && (
-            <p className="text-center text-zinc-400 py-10 text-sm">
+            <p className={cn("text-center py-10 text-sm", wMuted)}>
               Keine Übungen gefunden. Filter zurücksetzen oder anders suchen.
             </p>
           )}
@@ -125,7 +131,7 @@ export default function ExercisePickPage() {
                 onClick={() => router.push(`/workouts/exercises/${ex.id}`)}
                 className="w-full min-h-14 text-left card-premium p-4 active:scale-[0.99] duration-100"
               >
-                <p className="font-semibold text-white">{ex.name}</p>
+                <p className={cn("font-semibold", wTitle)}>{ex.name}</p>
                 <p className="text-xs text-zinc-500 mt-1">
                   {ex.muscleGroup} · {ex.difficulty} · {ex.equipment}
                 </p>

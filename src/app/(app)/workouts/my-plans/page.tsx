@@ -22,6 +22,13 @@ import {
 import { Copy, MoreHorizontal, Pencil, Play, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  wCard,
+  wMenu,
+  wMuted,
+  wSkeleton,
+  wTitle,
+} from "@/lib/workout-ui";
 
 type DayStatusRow = { id: string; name: string; status: DayStatus };
 
@@ -121,12 +128,12 @@ function PlanRow({
 
   return (
     <>
-      <li className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 overflow-hidden">
+      <li className={cn(wCard, "overflow-hidden")}>
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-base font-semibold text-white truncate">{plan.name}</p>
-              <p className="text-sm text-zinc-400 mt-0.5">
+              <p className={cn("text-base font-semibold truncate", wTitle)}>{plan.name}</p>
+              <p className={cn("text-sm mt-0.5", wMuted)}>
                 {trainingDayCount} {trainingDayCount === 1 ? "Tag" : "Tage"}/Woche
               </p>
               <p className="text-xs text-zinc-500 mt-1">
@@ -134,14 +141,14 @@ function PlanRow({
               </p>
             </div>
             <details className="relative shrink-0">
-              <summary className="list-none [&::-webkit-details-marker]:hidden [&::marker]:hidden h-11 w-11 rounded-xl flex items-center justify-center text-zinc-500 cursor-pointer hover:bg-white/5">
+              <summary className="list-none [&::-webkit-details-marker]:hidden [&::marker]:hidden h-11 w-11 rounded-xl flex items-center justify-center text-zinc-500 cursor-pointer hover:bg-zinc-100 dark:hover:bg-white/5">
                 <MoreHorizontal className="h-4 w-4" />
                 <span className="sr-only">Weitere Optionen</span>
               </summary>
-              <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-white/[0.08] bg-zinc-900 p-1 shadow-lg">
+              <div className={cn(wMenu, "absolute right-0 z-20 mt-1 w-44")}>
                 <button
                   type="button"
-                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/5"
+                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/5"
                   onClick={() => onDuplicate(plan.id)}
                 >
                   <Copy className="h-4 w-4" />
@@ -149,14 +156,14 @@ function PlanRow({
                 </button>
                 <button
                   type="button"
-                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/5"
+                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/5"
                   onClick={() => onArchive(plan.id)}
                 >
                   Archivieren
                 </button>
                 <button
                   type="button"
-                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-white/5"
+                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-white/5"
                   onClick={confirmDelete}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -186,7 +193,7 @@ function PlanRow({
         )}
 
         {/* Actions */}
-        <div className="flex gap-0 border-t border-white/[0.05]">
+        <div className="flex gap-0 border-t border-zinc-100 dark:border-white/[0.05]">
           <button
             type="button"
             onClick={onStartClick}
@@ -207,10 +214,10 @@ function PlanRow({
               </>
             )}
           </button>
-          <div className="w-px bg-white/[0.05]" />
+          <div className="w-px bg-zinc-100 dark:bg-white/[0.05]" />
           <Link
             href={`/workouts/plans/${plan.id}`}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
           >
             <Pencil className="h-4 w-4" />
             Edit
@@ -312,7 +319,7 @@ export default function MyPlansPage() {
 
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Meine Pläne</h1>
+          <h1 className={cn("text-2xl font-bold", wTitle)}>Meine Pläne</h1>
           <p className="text-xs text-zinc-500 mt-0.5">
             {plans.length} {plans.length === 1 ? "Plan" : "Pläne"}
           </p>
@@ -328,10 +335,7 @@ export default function MyPlansPage() {
       {showSkeleton && (
         <ul className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <li
-              key={i}
-              className="h-32 rounded-3xl bg-zinc-900/60 border border-zinc-800 animate-pulse"
-            />
+            <li key={i} className={cn(wSkeleton, "h-32")} />
           ))}
         </ul>
       )}
@@ -351,13 +355,15 @@ export default function MyPlansPage() {
       )}
 
       {!loading && plans.length === 0 && (
-        <div className="rounded-3xl border border-dashed border-zinc-700/60 py-16 text-center space-y-4">
-          <div className="mx-auto h-16 w-16 rounded-3xl bg-zinc-800/50 flex items-center justify-center">
+        <div className="rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700/60 py-16 text-center space-y-4">
+          <div className="mx-auto h-16 w-16 rounded-3xl bg-zinc-100 dark:bg-zinc-800/50 flex items-center justify-center">
             <Plus className="h-7 w-7 text-zinc-500" />
           </div>
           <div>
-            <p className="text-sm font-medium text-zinc-400">Noch kein Trainingsplan</p>
-            <p className="text-xs text-zinc-600 mt-0.5">Erstelle einen Plan oder starte direkt</p>
+            <p className={cn("text-sm font-medium", wMuted)}>Noch kein Trainingsplan</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-600 mt-0.5">
+              Erstelle einen Plan oder starte direkt
+            </p>
           </div>
           <div className="flex flex-col items-center gap-2">
             <Link href="/workouts/create">

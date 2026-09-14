@@ -126,21 +126,7 @@ export default function WorkoutsHubPage() {
     ? null
     : sessionData?.session ?? home?.activeSession ?? null;
   const plans = plansData?.plans ?? [];
-  const lastPlan = plans.find((p) => p.lastSessionAt);
-  const lastPlanLabel = lastPlan
-    ? `${lastPlan.name} · ${new Date(lastPlan.lastSessionAt!).toLocaleDateString("de-DE", {
-        day: "2-digit",
-        month: "2-digit",
-      })}`
-    : plans.length > 0
-      ? `${plans.length} ${plans.length === 1 ? "Plan" : "Pläne"}`
-      : "Erstelle deinen ersten Plan";
-
-  const streak =
-    home?.nutritionStreak?.currentDays ??
-    home?.trainingStreak?.currentDays ??
-    home?.streak?.currentDays ??
-    0;
+  const streak = home?.nutritionStreak?.currentDays ?? 0;
   const weekWorkouts = home?.weeklyReport?.workouts ?? home?.activityWeek?.count ?? 0;
   const activePlan = plans.find((p) => p.isActive) ?? plans[0];
   const weekGoal = activePlan?.days?.length ?? 0;
@@ -163,7 +149,9 @@ export default function WorkoutsHubPage() {
           <p className="mt-1 text-sm text-zinc-500 tabular-nums">
             {weekWorkouts}
             {weekGoal > 0 ? ` / ${weekGoal}` : ""} Workouts diese Woche
-            {streak > 0 ? ` · 🔥 ${streak} Tage` : ""}
+            {streak > 0
+              ? ` · 🔥 ${streak} ${streak === 1 ? "Tag" : "Tage"}`
+              : ""}
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -225,39 +213,36 @@ export default function WorkoutsHubPage() {
 
       <TrainingWeekStrip />
 
-      <section className="space-y-2.5">
+      <section className="space-y-2" aria-label="Schnellzugriff">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
-          Primär
+          Quick Access
         </h2>
-        <TrainingChoiceCard
-          href="/workouts/my-plans"
-          title="Trainingsplan"
-          description="Aktive Pläne · Tage · Starten"
-          icon={FolderOpen}
-          iconClassName={iconTone}
-          meta={lastPlanLabel}
-        />
-        <TrainingChoiceCard
-          href="/workouts/exercises"
-          title="Übungen"
-          description="Suche · Muskelgruppen · Favoriten"
-          icon={Dumbbell}
-          iconClassName={iconTone}
-        />
-        <TrainingChoiceCard
-          href="/workouts/journey"
-          title="Statistiken"
-          description="Kalender · Streak · Volumen"
-          icon={Map}
-          iconClassName={iconTone}
-          meta={
-            streak > 0
-              ? `${streak} Tage Streak${weekWorkouts > 0 ? ` · ${weekWorkouts} diese Woche` : ""}`
-              : weekWorkouts > 0
-                ? `${weekWorkouts} Trainings diese Woche`
-                : undefined
-          }
-        />
+        <div className="grid grid-cols-3 gap-2">
+          <TrainingChoiceCard
+            href="/workouts/my-plans"
+            title="Pläne"
+            description="Trainingspläne"
+            icon={FolderOpen}
+            iconClassName={iconTone}
+            compact
+          />
+          <TrainingChoiceCard
+            href="/workouts/exercises"
+            title="Übungen"
+            description="Bibliothek"
+            icon={Dumbbell}
+            iconClassName={iconTone}
+            compact
+          />
+          <TrainingChoiceCard
+            href="/workouts/journey"
+            title="Stats"
+            description="Übersicht"
+            icon={Map}
+            iconClassName={iconTone}
+            compact
+          />
+        </div>
       </section>
 
       <section className="space-y-2.5">
@@ -282,7 +267,7 @@ export default function WorkoutsHubPage() {
 
       <section className="space-y-2.5">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
-          Mehr
+          Weitere Funktionen
         </h2>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <TrainingChoiceCard

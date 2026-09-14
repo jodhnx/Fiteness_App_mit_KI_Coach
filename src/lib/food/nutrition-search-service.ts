@@ -84,6 +84,16 @@ function scoreProduct(
   if (p.brand === "Österreichisches Gericht") score += 4;
   if (p.source === "local") score += 10;
 
+  // Drop empty OFF stubs below real catalog staples (exact-name matches otherwise win)
+  if (
+    Number(p.calories ?? 0) <= 0 &&
+    Number(p.proteinG ?? 0) <= 0 &&
+    Number(p.carbsG ?? 0) <= 0 &&
+    Number(p.fatG ?? 0) <= 0
+  ) {
+    score -= 250;
+  }
+
   const offScore = p.austriaScore ?? 0;
   score += country === "AT" ? Math.round(offScore * 0.35) : Math.round(offScore * 0.25);
   return score;

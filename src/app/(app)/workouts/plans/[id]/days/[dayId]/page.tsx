@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 import { toast } from "sonner";
 import { startWorkoutAndNavigate } from "@/lib/workout-start";
+import { wMuted, wTitle } from "@/lib/workout-ui";
+import { cn } from "@/lib/utils";
 
 type PlanExercise = {
   id: string;
@@ -70,8 +72,8 @@ export default function WorkoutDayPage() {
       <WorkoutBackLink href={`/workouts/plans/${planId}/days`} label="Trainingstage" />
 
       <div>
-        <p className="text-sm text-zinc-500">{plan?.name}</p>
-        <h1 className="text-2xl font-bold text-white mt-0.5">{day?.name ?? "Trainingstag"}</h1>
+        <p className={cn("text-sm", wMuted)}>{plan?.name}</p>
+        <h1 className={cn("text-2xl font-bold mt-0.5", wTitle)}>{day?.name ?? "Trainingstag"}</h1>
       </div>
 
       {exercises.length > 0 ? (
@@ -89,10 +91,10 @@ export default function WorkoutDayPage() {
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-zinc-500 py-6 text-center">Keine Übungen für diesen Tag.</p>
+        <p className={cn("text-sm py-6 text-center", wMuted)}>Keine Übungen für diesen Tag.</p>
       )}
 
-      <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent">
+      <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-[#f4f7fa] via-[#f4f7fa]/95 to-transparent dark:from-zinc-950 dark:via-zinc-950/95 dark:to-transparent">
         <Button
           className="w-full h-14 text-base rounded-2xl"
           onClick={() => void startTraining()}

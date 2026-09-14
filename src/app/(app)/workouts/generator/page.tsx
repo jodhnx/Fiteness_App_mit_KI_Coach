@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
+import { wInput, wMuted, wTitle } from "@/lib/workout-ui";
+import { cn } from "@/lib/utils";
 
 export default function PlanGeneratorPage() {
   const router = useRouter();
@@ -41,7 +43,7 @@ export default function PlanGeneratorPage() {
 
   return (
     <div className="space-y-6 max-w-lg">
-      <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+      <h1 className={cn("text-3xl font-bold flex items-center gap-2", wTitle)}>
         <Sparkles className="text-cyan-400" /> KI Trainingsplan
       </h1>
       <WorkoutNav />
@@ -51,9 +53,9 @@ export default function PlanGeneratorPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm text-zinc-400">Ziel</label>
+            <label className={cn("text-sm", wMuted)}>Ziel</label>
             <select
-              className="w-full mt-1 rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2"
+              className={cn("w-full mt-1 rounded-lg border px-3 py-2", wInput)}
               value={form.goal}
               onChange={(e) => setForm({ ...form, goal: e.target.value })}
             >
@@ -66,7 +68,7 @@ export default function PlanGeneratorPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm text-zinc-400">Gewicht (kg)</label>
+              <label className={cn("text-sm", wMuted)}>Gewicht (kg)</label>
               <Input
                 type="number"
                 value={form.weightKg}
@@ -74,7 +76,7 @@ export default function PlanGeneratorPage() {
               />
             </div>
             <div>
-              <label className="text-sm text-zinc-400">Größe (cm)</label>
+              <label className={cn("text-sm", wMuted)}>Größe (cm)</label>
               <Input
                 type="number"
                 value={form.heightCm}
@@ -83,9 +85,9 @@ export default function PlanGeneratorPage() {
             </div>
           </div>
           <div>
-            <label className="text-sm text-zinc-400">Erfahrung</label>
+            <label className={cn("text-sm", wMuted)}>Erfahrung</label>
             <select
-              className="w-full mt-1 rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2"
+              className={cn("w-full mt-1 rounded-lg border px-3 py-2", wInput)}
               value={form.experience}
               onChange={(e) => setForm({ ...form, experience: e.target.value })}
             >
@@ -97,7 +99,7 @@ export default function PlanGeneratorPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm text-zinc-400">Tage/Woche</label>
+              <label className={cn("text-sm", wMuted)}>Tage/Woche</label>
               <Input
                 type="number"
                 min={2}
@@ -107,7 +109,7 @@ export default function PlanGeneratorPage() {
               />
             </div>
             <div>
-              <label className="text-sm text-zinc-400">Dauer (Min)</label>
+              <label className={cn("text-sm", wMuted)}>Dauer (Min)</label>
               <Input
                 type="number"
                 value={form.durationMinutes}
@@ -116,9 +118,9 @@ export default function PlanGeneratorPage() {
             </div>
           </div>
           <div>
-            <label className="text-sm text-zinc-400">Equipment</label>
+            <label className={cn("text-sm", wMuted)}>Equipment</label>
             <select
-              className="w-full mt-1 rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2"
+              className={cn("w-full mt-1 rounded-lg border px-3 py-2", wInput)}
               value={form.equipment}
               onChange={(e) => setForm({ ...form, equipment: e.target.value })}
             >
@@ -131,7 +133,7 @@ export default function PlanGeneratorPage() {
           <Button className="w-full" onClick={generate} disabled={loading}>
             {loading ? "KI erstellt Plan..." : "Plan generieren & speichern"}
           </Button>
-          <p className="text-xs text-zinc-500 text-center">
+          <p className={cn("text-xs text-center", wMuted)}>
             Danach kannst du den Plan bearbeiten und ein Workout starten.
           </p>
         </CardContent>

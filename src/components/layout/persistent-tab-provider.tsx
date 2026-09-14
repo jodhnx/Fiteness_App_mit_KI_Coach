@@ -12,6 +12,11 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
+import { scrollMainTabToTop } from "@/components/layout/scroll-restore-provider";
+import {
+  buildScrollKeyNormalized,
+  saveScrollPosition,
+} from "@/lib/scroll-restore";
 
 export const MAIN_TABS = [
   "/home",
@@ -64,29 +69,29 @@ export function PersistentTabProvider({ children }: { children: ReactNode }) {
   const navigateMainTab = useCallback(
     (href: MainTab) => {
       if (pathname === href) {
-        // Same tab re-tap → scroll to top
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
+        // Same tab re-tap → intentional top (clears stored position)
+        scrollMainTabToTop(href);
         return;
       }
+      // Persist leaving tab scroll before soft navigation
+      saveScrollPosition(
+        buildScrollKeyNormalized(
+          pathname,
+          typeof window !== "undefined" ? window.location.search : ""
+        )
+      );
       router.prefetch(href);
       router.push(href, { scroll: false });
     },
     [pathname, router]
   );
 
-  // Reset window scroll BEFORE paint when switching main tabs (no jump flash)
+  // Track tab identity only — scroll restore is owned by ScrollRestoreProvider
   useLayoutEffect(() => {
     const tab = matchMainTab(pathname);
     if (!tab) {
       prevMainTab.current = null;
       return;
-    }
-    if (prevMainTab.current !== null && prevMainTab.current !== tab) {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
     }
     prevMainTab.current = tab;
   }, [pathname]);

@@ -647,16 +647,27 @@ function NutritionPageInner() {
         </div>
 
         <div className="min-w-0 lg:col-start-1 lg:row-start-2">
-          <MealTrackList
-            meals={dashboard?.mealsByType ?? []}
-            mealTypes={["BREAKFAST", "LUNCH", "DINNER", "SNACK"]}
-            onRemove={viewingToday ? removeItem : undefined}
-            onEdit={viewingToday ? editItemQuantity : undefined}
-            onDeleteMeal={viewingToday ? requestDeleteMeal : undefined}
-            onAddClick={
-              viewingToday ? (mealType) => openFoodSearch(mealType) : undefined
-            }
-          />
+          {loading && !(dashboard?.mealsByType?.some((m) => (m.items?.length ?? 0) > 0)) ? (
+            <div className="space-y-2" aria-busy aria-label="Mahlzeiten laden">
+              {["Frühstück", "Mittagessen", "Abendessen", "Snacks"].map((label) => (
+                <div
+                  key={label}
+                  className="h-16 rounded-2xl border border-zinc-200/80 bg-zinc-100/80 animate-pulse dark:border-white/[0.06] dark:bg-white/[0.04]"
+                />
+              ))}
+            </div>
+          ) : (
+            <MealTrackList
+              meals={dashboard?.mealsByType ?? []}
+              mealTypes={["BREAKFAST", "LUNCH", "DINNER", "SNACK"]}
+              onRemove={viewingToday ? removeItem : undefined}
+              onEdit={viewingToday ? editItemQuantity : undefined}
+              onDeleteMeal={viewingToday ? requestDeleteMeal : undefined}
+              onAddClick={
+                viewingToday ? (mealType) => openFoodSearch(mealType) : undefined
+              }
+            />
+          )}
         </div>
 
         <div className="min-w-0 pt-1 lg:pt-0 lg:col-start-2 lg:row-start-2 lg:sticky lg:top-4">

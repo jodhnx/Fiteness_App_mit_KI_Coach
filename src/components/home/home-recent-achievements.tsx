@@ -25,13 +25,13 @@ export const HomeRecentAchievements = memo(function HomeRecentAchievements({
   if (!achievements.length) return null;
 
   return (
-    <div className="rounded-[1.25rem] border border-zinc-800/90 bg-zinc-900/45 p-4">
+    <div className="rounded-[1.25rem] border border-zinc-200/90 bg-white p-4 shadow-sm dark:border-zinc-800/90 dark:bg-zinc-900/45 dark:shadow-none">
       <div className="flex items-center justify-between gap-2 mb-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500 flex items-center gap-1.5">
           <Trophy className="h-3.5 w-3.5 text-yellow-500" />
           Erfolge
         </p>
-        <Link href="/erfolge" prefetch className="text-[10px] text-cyan-400 font-medium">
+        <Link href="/erfolge" prefetch className="text-[10px] text-accent font-medium">
           Alle
         </Link>
       </div>
@@ -43,7 +43,7 @@ export const HomeRecentAchievements = memo(function HomeRecentAchievements({
           return (
             <div
               key={`${a.name}-${a.earnedAt}`}
-              className="flex items-center gap-3 rounded-xl bg-zinc-950/60 border border-zinc-800/50 px-3 py-2.5"
+              className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50/90 px-3 py-2.5 dark:bg-zinc-950/60 dark:border-zinc-800/50"
             >
               <span
                 className={cn(
@@ -54,7 +54,7 @@ export const HomeRecentAchievements = memo(function HomeRecentAchievements({
                 {a.icon || "🏆"}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white truncate">{a.name}</p>
+                <p className="text-sm font-semibold text-zinc-900 truncate dark:text-white">{a.name}</p>
                 {dateLabel && (
                   <p className="text-[10px] text-zinc-500 mt-0.5">{dateLabel}</p>
                 )}

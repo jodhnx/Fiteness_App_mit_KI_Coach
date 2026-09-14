@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MobileBottomSheet } from "@/components/ui/mobile-bottom-sheet";
 import { getCached, setCached } from "@/lib/client-cache";
@@ -12,7 +12,10 @@ import {
   yearMonthKey,
   ymdFromParts,
 } from "@/lib/nutrition-calendar";
+import { nutritionDashboardCacheKeyForDay } from "@/lib/nutrition-calendar";
+import { nutritionDayQueryForYmd } from "@/lib/nutrition-calendar";
 import { cn } from "@/lib/utils";
+import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 
 type Props = {
   open: boolean;
@@ -23,8 +26,47 @@ type Props = {
 
 type CalendarMeta = { month: string; trackedDays: string[] };
 
+const MONTH_TTL_MS = 30 * 60_000;
+
 function calendarCacheKey(month: string) {
   return `nutrition-calendar:${month}`;
+}
+
+function shiftYearMonth(year: number, monthIndex0: number, delta: number) {
+  let m = monthIndex0 + delta;
+  let y = year;
+  while (m < 0) {
+    m += 12;
+    y -= 1;
+  }
+  while (m > 11) {
+    m -= 12;
+    y += 1;
+  }
+  return { year: y, monthIndex0: m, month: yearMonthKey(y, m) };
+}
+
+async function fetchMonthMeta(month: string): Promise<CalendarMeta | null> {
+  const res = await fetch(
+    `/api/nutrition/calendar?month=${encodeURIComponent(month)}`,
+    { credentials: "include" }
+  );
+  if (!res.ok) return null;
+  return (await res.json()) as CalendarMeta;
+}
+
+function warmDayDashboard(ymd: string) {
+  const key = nutritionDashboardCacheKeyForDay(ymd);
+  if (getCached<NutritionDashboardPayload>(key, { allowStale: true })) return;
+  void fetch(`/api/nutrition/dashboard?${nutritionDayQueryForYmd(ymd)}`, {
+    credentials: "include",
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((data: NutritionDashboardPayload | null) => {
+      if (!data?.mealsByType) return;
+      setCached(key, data, 10 * 60_000);
+    })
+    .catch(() => {});
 }
 
 export const NutritionDayCalendar = memo(function NutritionDayCalendar({
@@ -42,6 +84,7 @@ export const NutritionDayCalendar = memo(function NutritionDayCalendar({
   const [year, setYear] = useState(initial.year);
   const [monthIndex0, setMonthIndex0] = useState(initial.monthIndex0);
   const [tracked, setTracked] = useState<Set<string>>(() => new Set());
+  const warmedMonths = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!open) return;
@@ -52,6 +95,14 @@ export const NutritionDayCalendar = memo(function NutritionDayCalendar({
 
   const month = yearMonthKey(year, monthIndex0);
 
+  const applyMeta = useCallback((data: CalendarMeta | null) => {
+    if (!data?.trackedDays) return;
+    setCached(calendarCacheKey(data.month), data, MONTH_TTL_MS);
+    if (data.month === yearMonthKey(year, monthIndex0)) {
+      setTracked(new Set(data.trackedDays));
+    }
+  }, [year, monthIndex0]);
+
   useEffect(() => {
     if (!open) return;
     const key = calendarCacheKey(month);
@@ -59,21 +110,52 @@ export const NutritionDayCalendar = memo(function NutritionDayCalendar({
     if (cached?.trackedDays) {
       setTracked(new Set(cached.trackedDays));
     }
+
     let cancelled = false;
-    void fetch(`/api/nutrition/calendar?month=${encodeURIComponent(month)}`, {
-      credentials: "include",
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: CalendarMeta | null) => {
-        if (cancelled || !data?.trackedDays) return;
-        setCached(key, data, 10 * 60_000);
-        setTracked(new Set(data.trackedDays));
-      })
-      .catch(() => {});
+    void fetchMonthMeta(month).then((data) => {
+      if (cancelled || !data) return;
+      applyMeta(data);
+    });
+
+    // Prefetch adjacent months + warm tracked historical days from cache meta
+    for (const delta of [-1, 1]) {
+      const adj = shiftYearMonth(year, monthIndex0, delta);
+      if (warmedMonths.current.has(adj.month)) continue;
+      const adjCached = getCached<CalendarMeta>(calendarCacheKey(adj.month), {
+        allowStale: true,
+      });
+      if (adjCached?.trackedDays) {
+        warmedMonths.current.add(adj.month);
+        // Soft-warm a few recent tracked days for instant day open
+        for (const ymd of adjCached.trackedDays.slice(-5)) {
+          if (ymd !== today) warmDayDashboard(ymd);
+        }
+        continue;
+      }
+      warmedMonths.current.add(adj.month);
+      void fetchMonthMeta(adj.month).then((data) => {
+        if (!data?.trackedDays) return;
+        setCached(calendarCacheKey(data.month), data, MONTH_TTL_MS);
+        for (const ymd of data.trackedDays.slice(-5)) {
+          if (ymd !== today) warmDayDashboard(ymd);
+        }
+      });
+    }
+
+    // Warm tracked days of the visible month
+    const currentCached = getCached<CalendarMeta>(calendarCacheKey(month), {
+      allowStale: true,
+    });
+    if (currentCached?.trackedDays) {
+      for (const ymd of currentCached.trackedDays.slice(-8)) {
+        if (ymd !== today) warmDayDashboard(ymd);
+      }
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [open, month]);
+  }, [open, month, year, monthIndex0, applyMeta]);
 
   const grid = useMemo(
     () => buildMonthGrid(year, monthIndex0),
@@ -82,17 +164,9 @@ export const NutritionDayCalendar = memo(function NutritionDayCalendar({
 
   const shiftMonth = useCallback((delta: number) => {
     setMonthIndex0((m) => {
-      let next = m + delta;
-      let y = year;
-      if (next < 0) {
-        next = 11;
-        y -= 1;
-      } else if (next > 11) {
-        next = 0;
-        y += 1;
-      }
-      setYear(y);
-      return next;
+      const next = shiftYearMonth(year, m, delta);
+      setYear(next.year);
+      return next.monthIndex0;
     });
   }, [year]);
 
@@ -110,7 +184,7 @@ export const NutritionDayCalendar = memo(function NutritionDayCalendar({
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200"
             aria-label="Vorheriger Monat"
             onClick={() => shiftMonth(-1)}
           >
@@ -121,7 +195,7 @@ export const NutritionDayCalendar = memo(function NutritionDayCalendar({
           </p>
           <button
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-700 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-200"
             aria-label="Nächster Monat"
             onClick={() => shiftMonth(1)}
           >
@@ -152,22 +226,24 @@ export const NutritionDayCalendar = memo(function NutritionDayCalendar({
                 key={ymd}
                 type="button"
                 disabled={isFuture}
+                onPointerEnter={() => {
+                  if (!isFuture && ymd !== today) warmDayDashboard(ymd);
+                }}
                 onClick={() => {
                   if (isFuture) return;
+                  if (ymd !== today) warmDayDashboard(ymd);
                   onSelectDay(ymd);
                   onClose();
                 }}
                 className={cn(
-                  "relative flex h-11 flex-col items-center justify-center rounded-xl text-sm font-medium tabular-nums transition-colors",
-                  isFuture && "opacity-30 cursor-not-allowed",
-                  isSelected &&
-                    "bg-accent text-white shadow-sm",
-                  !isSelected && !isFuture &&
+                  "relative flex h-11 flex-col items-center justify-center rounded-xl text-sm font-semibold tabular-nums transition-colors",
+                  isFuture && "cursor-not-allowed text-zinc-300 dark:text-zinc-700",
+                  !isFuture &&
+                    !isSelected &&
                     "text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.06]",
-                  isToday && !isSelected && "ring-1 ring-accent/50"
+                  isToday && !isSelected && "ring-1 ring-accent/40",
+                  isSelected && "bg-accent text-white shadow-sm"
                 )}
-                aria-label={ymd}
-                aria-current={isSelected ? "date" : undefined}
               >
                 {day}
                 {isTracked && !isSelected ? (
@@ -177,36 +253,7 @@ export const NutritionDayCalendar = memo(function NutritionDayCalendar({
             );
           })}
         </div>
-
-        <div className="flex flex-wrap gap-3 text-[11px] text-zinc-500 pt-1">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full ring-1 ring-accent/50" /> Heute
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Getrackt
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-accent" /> Ausgewählt
-          </span>
-        </div>
-
-        {!isNutritionTodaySelected(selectedDay, today) ? (
-          <button
-            type="button"
-            className="w-full h-11 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-800 dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-100"
-            onClick={() => {
-              onSelectDay(today);
-              onClose();
-            }}
-          >
-            Zurück zu heute
-          </button>
-        ) : null}
       </div>
     </MobileBottomSheet>
   );
 });
-
-function isNutritionTodaySelected(selected: string, today: string) {
-  return selected === today;
-}

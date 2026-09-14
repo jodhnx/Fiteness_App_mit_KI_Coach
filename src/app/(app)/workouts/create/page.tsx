@@ -15,6 +15,7 @@ import {
   TRAINING_WEEKDAYS,
   type PlanFocusId,
 } from "@/lib/workout-categories";
+import { wChipOff, wChipOn, wMuted } from "@/lib/workout-ui";
 
 export default function CreatePlanPage() {
   const router = useRouter();
@@ -94,9 +95,7 @@ export default function CreatePlanPage() {
                 onClick={() => setFocus(opt.id)}
                 className={cn(
                   "rounded-2xl border px-4 py-3 text-left transition-colors active:scale-[0.98]",
-                  focus === opt.id
-                    ? "border-cyan-500 bg-cyan-500/15 text-white"
-                    : "border-zinc-800 bg-zinc-900/60 text-zinc-400"
+                  focus === opt.id ? wChipOn : wChipOff
                 )}
               >
                 <span className="font-semibold block">{opt.label}</span>
@@ -115,16 +114,14 @@ export default function CreatePlanPage() {
                 onClick={() => toggleWeekday(day.id)}
                 className={cn(
                   "rounded-xl border py-3 text-center text-sm font-medium transition-colors active:scale-[0.98]",
-                  weekdays.includes(day.id)
-                    ? "border-cyan-500 bg-cyan-500/15 text-white"
-                    : "border-zinc-800 bg-zinc-900/60 text-zinc-400"
+                  weekdays.includes(day.id) ? wChipOn : wChipOff
                 )}
               >
                 {day.short}
               </button>
             ))}
           </div>
-          <p className="text-xs text-zinc-500 mt-2">
+          <p className={cn("text-xs mt-2", wMuted)}>
             Der Plan startet leer — du fügst Übungen selbst hinzu.
           </p>
         </div>

@@ -113,16 +113,18 @@ export const HomeDashboardPremium = memo(function HomeDashboardPremium({
       {trainingStatus === "active" && (
         <Link
           href={liveHref}
-          className="flex min-h-11 items-center gap-3 rounded-2xl border border-white/[0.1] bg-zinc-900/80 px-3 py-2.5 active:scale-[0.99] transition-transform"
+          className={cn(
+            "flex min-h-11 items-center gap-3 rounded-2xl border border-zinc-200/90 bg-white px-3 py-2.5 shadow-sm active:scale-[0.99] transition-transform dark:border-white/[0.1] dark:bg-zinc-900/80 dark:shadow-none"
+          )}
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.06]">
-            <Play className="h-4 w-4 text-zinc-200" />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 dark:bg-white/[0.06]">
+            <Play className="h-4 w-4 text-accent dark:text-zinc-200" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
               Training läuft
             </p>
-            <p className="text-sm font-semibold text-white truncate">
+            <p className="text-sm font-semibold text-zinc-900 truncate dark:text-white">
               Continue Workout
             </p>
           </div>
@@ -410,7 +412,7 @@ function HomeWeightNudge({ weightKg }: { weightKg: number | null }) {
     >
       <button
         type="button"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-zinc-900 text-zinc-200 touch-manipulation active:scale-95 active:bg-zinc-800"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 touch-manipulation active:scale-95 active:bg-zinc-100 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-200 dark:active:bg-zinc-800"
         aria-label="0,1 Kilogramm weniger"
         onClick={() => nudge(-0.1)}
       >
@@ -429,7 +431,7 @@ function HomeWeightNudge({ weightKg }: { weightKg: number | null }) {
       </Link>
       <button
         type="button"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-zinc-900 text-zinc-200 touch-manipulation active:scale-95 active:bg-zinc-800"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 touch-manipulation active:scale-95 active:bg-zinc-100 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-200 dark:active:bg-zinc-800"
         aria-label="0,1 Kilogramm mehr"
         onClick={() => nudge(0.1)}
       >

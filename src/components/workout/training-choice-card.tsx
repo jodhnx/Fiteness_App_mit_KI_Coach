@@ -14,6 +14,8 @@ type Props = {
   meta?: string;
   onClick?: () => void;
   featured?: boolean;
+  /** Compact tile for Quick Access grids */
+  compact?: boolean;
 };
 
 export function TrainingChoiceCard({
@@ -25,7 +27,43 @@ export function TrainingChoiceCard({
   meta,
   onClick,
   featured,
+  compact,
 }: Props) {
+  if (compact) {
+    const compactInner = (
+      <>
+        <div
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-xl",
+            iconClassName ?? "bg-accent/12 text-accent"
+          )}
+        >
+          <Icon className="h-5 w-5" />
+        </div>
+        <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">
+          {title}
+        </p>
+        <p className="text-[10px] leading-tight text-zinc-500 line-clamp-2">
+          {description}
+        </p>
+      </>
+    );
+    const compactClass =
+      "flex min-h-[5.5rem] flex-col items-center justify-center gap-1 rounded-2xl border border-zinc-200/90 bg-white p-2.5 text-center shadow-sm active:scale-[0.99] dark:border-white/[0.08] dark:bg-zinc-900/70 dark:shadow-none";
+    if (onClick) {
+      return (
+        <button type="button" onClick={onClick} className={compactClass}>
+          {compactInner}
+        </button>
+      );
+    }
+    return (
+      <Link href={href} prefetch className={compactClass}>
+        {compactInner}
+      </Link>
+    );
+  }
+
   const inner = (
     <>
       <div

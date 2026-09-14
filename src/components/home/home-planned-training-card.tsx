@@ -71,7 +71,7 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
 
   if (activeSessionId) {
     return (
-      <div className="rounded-2xl border border-white/[0.1] bg-zinc-900/80 p-5">
+      <div className="rounded-2xl border border-zinc-200/90 bg-white p-5 shadow-sm dark:border-white/[0.1] dark:bg-zinc-900/80 dark:shadow-none">
         <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500 mb-3">
           Training läuft
         </p>
@@ -88,20 +88,20 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
     const HeadlineIcon = headline.icon;
 
     return (
-      <div className="rounded-[1.25rem] border border-emerald-500/30 bg-emerald-950/20 p-5">
+      <div className="rounded-[1.25rem] border border-emerald-500/30 bg-emerald-50/80 p-5 dark:bg-emerald-950/20">
         <div className="flex items-center gap-2 mb-4">
-          <HeadlineIcon className="h-5 w-5 text-emerald-400 shrink-0" />
-          <p className="text-sm font-semibold text-emerald-200">{headline.text}</p>
+          <HeadlineIcon className="h-5 w-5 text-emerald-600 shrink-0 dark:text-emerald-400" />
+          <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">{headline.text}</p>
         </div>
 
         {lastCompleted?.name && (
-          <p className="text-base font-bold text-white mb-3 truncate">{lastCompleted.name}</p>
+          <p className="text-base font-bold text-zinc-900 mb-3 truncate dark:text-white">{lastCompleted.name}</p>
         )}
 
         {nextWorkout?.dayName && (
-          <p className="text-xs text-emerald-300/80 mb-4">
+          <p className="text-xs text-emerald-700/80 mb-4 dark:text-emerald-300/80">
             Nächster Trainingstag:{" "}
-            <span className="font-semibold text-emerald-200">
+            <span className="font-semibold text-emerald-800 dark:text-emerald-200">
               {nextWorkout.dayNumber != null ? `Tag ${nextWorkout.dayNumber} · ` : ""}
               {nextWorkout.dayName}
             </span>
@@ -109,24 +109,24 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
         )}
 
         <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800/80 px-2 py-2.5 text-center">
-            <Timer className="h-4 w-4 text-emerald-400 mx-auto mb-1" />
+          <div className="rounded-xl border border-zinc-200/80 bg-white px-2 py-2.5 text-center dark:bg-zinc-900/60 dark:border-zinc-800/80">
+            <Timer className="h-4 w-4 text-emerald-600 mx-auto mb-1 dark:text-emerald-400" />
             <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Dauer</p>
-            <p className="text-sm font-semibold text-white">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">
               {formatDuration(lastCompleted?.durationSec)}
             </p>
           </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800/80 px-2 py-2.5 text-center">
-            <Layers className="h-4 w-4 text-emerald-400 mx-auto mb-1" />
+          <div className="rounded-xl border border-zinc-200/80 bg-white px-2 py-2.5 text-center dark:bg-zinc-900/60 dark:border-zinc-800/80">
+            <Layers className="h-4 w-4 text-emerald-600 mx-auto mb-1 dark:text-emerald-400" />
             <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Übungen</p>
-            <p className="text-sm font-semibold text-white">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">
               {lastCompleted?.exerciseCount ?? "—"}
             </p>
           </div>
-          <div className="rounded-xl bg-zinc-900/60 border border-zinc-800/80 px-2 py-2.5 text-center">
-            <Weight className="h-4 w-4 text-emerald-400 mx-auto mb-1" />
+          <div className="rounded-xl border border-zinc-200/80 bg-white px-2 py-2.5 text-center dark:bg-zinc-900/60 dark:border-zinc-800/80">
+            <Weight className="h-4 w-4 text-emerald-600 mx-auto mb-1 dark:text-emerald-400" />
             <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Volumen</p>
-            <p className="text-sm font-semibold text-white">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">
               {formatVolume(lastCompleted?.volumeKg)}
             </p>
           </div>
@@ -153,10 +153,10 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
   return (
     <div
       className={cn(
-        "rounded-[1.25rem] border p-5",
+        "rounded-[1.25rem] border p-5 shadow-sm dark:shadow-none",
         highlight
-          ? "border-white/[0.12] bg-zinc-900/80"
-          : "border-zinc-800/90 bg-zinc-900/50"
+          ? "border-accent/25 bg-white dark:border-white/[0.12] dark:bg-zinc-900/80"
+          : "border-zinc-200/90 bg-white dark:border-zinc-800/90 dark:bg-zinc-900/50"
       )}
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500 mb-3">
@@ -168,12 +168,12 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
       {nextWorkout?.dayId ? (
         <>
           <div className="flex items-start gap-3 mb-3">
-            <div className="h-11 w-11 rounded-xl bg-white/[0.06] flex items-center justify-center shrink-0 ring-1 ring-white/[0.08]">
-              <Dumbbell className="h-5 w-5 text-zinc-200" />
+            <div className="h-11 w-11 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 ring-1 ring-accent/20 dark:bg-white/[0.06] dark:ring-white/[0.08]">
+              <Dumbbell className="h-5 w-5 text-accent dark:text-zinc-200" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-lg font-bold text-white truncate">{nextWorkout.dayName}</p>
-              <p className="text-sm text-zinc-400 truncate">{nextWorkout.planName}</p>
+              <p className="text-lg font-bold text-zinc-900 truncate dark:text-white">{nextWorkout.dayName}</p>
+              <p className="text-sm text-zinc-500 truncate dark:text-zinc-400">{nextWorkout.planName}</p>
               <div className="flex items-center gap-3 mt-1.5 text-xs text-zinc-500">
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
@@ -191,7 +191,7 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
               {muscles.map((m) => (
                 <span
                   key={m}
-                  className="text-[10px] font-medium px-2 py-1 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/60"
+                  className="text-[10px] font-medium px-2 py-1 rounded-lg bg-zinc-100 text-zinc-700 border border-zinc-200 dark:bg-zinc-800/80 dark:text-zinc-300 dark:border-zinc-700/60"
                 >
                   {m}
                 </span>
@@ -206,7 +206,7 @@ export const HomePlannedTrainingCard = memo(function HomePlannedTrainingCard({
         </>
       ) : (
         <>
-          <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
+          <p className="text-sm text-zinc-500 mb-4 leading-relaxed dark:text-zinc-400">
             Kein Plan für heute — starte ein Quick Workout oder wähle einen Plan.
           </p>
           <Button className="w-full h-12 rounded-2xl" onClick={() => router.push("/workouts/quick")}>

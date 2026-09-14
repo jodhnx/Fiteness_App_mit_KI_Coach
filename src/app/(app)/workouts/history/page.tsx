@@ -8,6 +8,8 @@ import { format, isToday, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { wCard, wCardTight, wMuted, wTitle } from "@/lib/workout-ui";
 
 type SessionRow = {
   id: string;
@@ -103,29 +105,35 @@ export default function TrainingHistoryPage() {
       <div className="flex gap-2">
         <Link
           href="/workouts/cardio"
-          className="flex-1 h-10 rounded-xl border border-white/[0.08] bg-zinc-900/60 text-center text-sm font-medium text-zinc-200 leading-10"
+          className={cn(
+            wCard,
+            "flex-1 h-10 text-center text-sm font-medium text-zinc-700 leading-10 dark:text-zinc-200"
+          )}
         >
           Cardio tracken
         </Link>
         <Link
           href="/workouts/quick"
-          className="flex-1 h-10 rounded-xl border border-white/[0.08] bg-zinc-900/60 text-center text-sm font-medium text-zinc-200 leading-10"
+          className={cn(
+            wCard,
+            "flex-1 h-10 text-center text-sm font-medium text-zinc-700 leading-10 dark:text-zinc-200"
+          )}
         >
           Workout starten
         </Link>
       </div>
 
       {todayCardioKcal > 0 && (
-        <p className="text-sm text-zinc-400 text-center">
+        <p className={cn("text-sm text-center", wMuted)}>
           Heute Cardio:{" "}
-          <span className="font-semibold tabular-nums text-zinc-200">
+          <span className="font-semibold tabular-nums text-zinc-800 dark:text-zinc-200">
             {Math.round(todayCardioKcal)} kcal
           </span>
         </p>
       )}
 
       {items.length === 0 ? (
-        <p className="text-sm text-zinc-500 text-center py-12">
+        <p className={cn("text-sm text-center py-12", wMuted)}>
           Noch keine Workouts
         </p>
       ) : (
@@ -140,13 +148,13 @@ export default function TrainingHistoryPage() {
                 <Link
                   key={`s-${s.id}`}
                   href={`/workouts/summary/${s.id}`}
-                  className="block rounded-2xl border border-white/[0.06] bg-zinc-900/60 px-4 py-3.5"
+                  className={cn(wCardTight, "block")}
                 >
                   <p className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1">
                     Krafttraining
                   </p>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-white truncate">{s.name}</p>
+                    <p className={cn("font-semibold truncate", wTitle)}>{s.name}</p>
                     <p className="text-xs text-zinc-500 mt-0.5">
                       {format(parseISO(item.at), "EEE d.M. · HH:mm", { locale: de })}
                       {setCount != null ? ` · ${setCount} Sätze` : ""}
@@ -164,7 +172,7 @@ export default function TrainingHistoryPage() {
             return (
               <div
                 key={`c-${a.id}`}
-                className="rounded-2xl border border-white/[0.06] bg-zinc-900/60 px-4 py-3.5"
+                className={wCardTight}
               >
                 <p className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1">
                   Cardio
@@ -174,7 +182,7 @@ export default function TrainingHistoryPage() {
                     {cardioEmoji(a.type as never, a.notes)}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-white truncate">
+                    <p className={cn("font-semibold truncate", wTitle)}>
                       {cardioDisplayLabel(a.type as never, a.notes)}
                     </p>
                     <p className="text-xs text-zinc-500 mt-0.5">
@@ -183,11 +191,11 @@ export default function TrainingHistoryPage() {
                     </p>
                   </div>
                   {a.caloriesBurned != null && a.caloriesBurned > 0 ? (
-                    <p className="text-sm font-semibold text-zinc-200 tabular-nums">
+                    <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">
                       {a.caloriesBurned} kcal
                     </p>
                   ) : (
-                    <p className="text-[11px] text-zinc-600 text-right">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-600 text-right">
                       Kalorien nicht gemessen
                     </p>
                   )}

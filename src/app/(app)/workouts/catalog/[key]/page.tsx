@@ -11,6 +11,8 @@ import { ArrowLeft, Clock, Target, TrendingUp } from "lucide-react";
 import { GOAL_LABELS, LEVEL_LABELS, EFFICIENCY_LABELS } from "@/lib/plan-catalog";
 import { PlanScoreCard } from "@/components/workout/plan-score-card";
 import type { PlanScores } from "@/lib/plan-science-engine";
+import { wCardMuted, wMuted, wTitle } from "@/lib/workout-ui";
+import { cn } from "@/lib/utils";
 
 type PreviewPlan = {
   catalogKey: string;
@@ -69,15 +71,18 @@ export default function PlanPreviewPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/workouts" className="text-zinc-400 hover:text-white flex items-center gap-1 text-sm">
+      <Link
+        href="/workouts"
+        className={cn("flex items-center gap-1 text-sm hover:text-zinc-900 dark:hover:text-white", wMuted)}
+      >
         <ArrowLeft className="h-4 w-4" /> Training
       </Link>
       <WorkoutNav />
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">{plan.name}</h1>
-          <p className="text-zinc-400 mt-1">{plan.description}</p>
+          <h1 className={cn("text-3xl font-bold", wTitle)}>{plan.name}</h1>
+          <p className={cn("mt-1", wMuted)}>{plan.description}</p>
         </div>
         <Button size="lg" onClick={adopt} disabled={adopting}>
           {adopting ? "Wird übernommen..." : "In Meine Pläne übernehmen"}
@@ -132,7 +137,7 @@ export default function PlanPreviewPage() {
           <CardHeader>
             <CardTitle>{day.name}</CardTitle>
             {day.description && (
-              <p className="text-sm text-zinc-400">{day.description}</p>
+              <p className={cn("text-sm", wMuted)}>{day.description}</p>
             )}
             <p className="text-sm text-zinc-500">{day.exerciseCount} Übungen</p>
           </CardHeader>
@@ -140,16 +145,21 @@ export default function PlanPreviewPage() {
             {day.exercises.map((ex) => (
               <div
                 key={ex.name}
-                className="flex justify-between items-center rounded-lg bg-white/5 px-3 py-2 text-sm"
+                className={cn(
+                  "flex justify-between items-center px-3 py-2 text-sm",
+                  wCardMuted
+                )}
               >
-                <span className="text-white">{ex.name}</span>
+                <span className={wTitle}>{ex.name}</span>
                 <span className="text-zinc-500 text-xs">
                   {ex.muscleGroup} · {ex.difficulty}
                 </span>
               </div>
             ))}
             {day.exercises.length === 0 && (
-              <p className="text-zinc-600 text-sm">Übungen werden beim Übernehmen aus der DB geladen.</p>
+              <p className="text-zinc-500 text-sm">
+                Übungen werden beim Übernehmen aus der DB geladen.
+              </p>
             )}
           </CardContent>
         </Card>

@@ -12,6 +12,15 @@ import {
   searchCardioCatalog,
   type CardioCategory,
 } from "@/lib/cardio/cardio-types";
+import {
+  wCard,
+  wCardTight,
+  wIconBtn,
+  wInput,
+  wMuted,
+  wTitle,
+} from "@/lib/workout-ui";
+import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Flame, Search } from "lucide-react";
 
 type ActivityRow = {
@@ -62,7 +71,7 @@ export default function CardioHubPage() {
         <button
           type="button"
           onClick={() => router.push("/workouts")}
-          className="h-10 w-10 rounded-2xl border border-zinc-700 bg-zinc-900/80 flex items-center justify-center text-zinc-200 active:scale-95"
+          className={cn(wIconBtn, "h-10 w-10 flex items-center justify-center active:scale-95")}
           aria-label="Zurück zum Training"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -80,15 +89,15 @@ export default function CardioHubPage() {
 
       <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 px-4 py-3 flex items-center justify-between">
         <div>
-          <p className="text-[11px] uppercase tracking-widest text-orange-300/80 font-semibold">
+          <p className="text-[11px] uppercase tracking-widest text-orange-600/80 dark:text-orange-300/80 font-semibold">
             Heute Cardio
           </p>
-          <p className="text-2xl font-bold text-white tabular-nums mt-0.5">
+          <p className={cn("text-2xl font-bold tabular-nums mt-0.5", wTitle)}>
             {Math.round(todayKcal)}{" "}
-            <span className="text-sm font-medium text-zinc-400">kcal</span>
+            <span className={cn("text-sm font-medium", wMuted)}>kcal</span>
           </p>
         </div>
-        <Flame className="h-8 w-8 text-orange-400" />
+        <Flame className="h-8 w-8 text-orange-500 dark:text-orange-400" />
       </div>
 
       <div className="relative">
@@ -98,7 +107,10 @@ export default function CardioHubPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="🔎 Aktivität suchen (z. B. Rad, HIIT…)"
-          className="w-full h-11 rounded-2xl border border-zinc-700 bg-zinc-900/80 pl-10 pr-3 text-sm text-white placeholder:text-zinc-500"
+          className={cn(
+            "w-full h-11 rounded-2xl border pl-10 pr-3 text-sm",
+            wInput
+          )}
         />
       </div>
 
@@ -116,15 +128,18 @@ export default function CardioHubPage() {
                   onClick={() =>
                     router.push(`/workouts/cardio/log?type=${item.id}`)
                   }
-                  className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-zinc-900/70 px-4 py-3.5 text-left active:scale-[0.99] transition-transform"
+                  className={cn(
+                    wCardTight,
+                    "flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
+                  )}
                 >
                   <span className="text-2xl w-10 text-center" aria-hidden>
                     {item.emoji}
                   </span>
-                  <span className="flex-1 font-semibold text-white">
+                  <span className={cn("flex-1 font-semibold", wTitle)}>
                     {item.label}
                   </span>
-                  <ChevronRight className="h-4 w-4 text-zinc-600" />
+                  <ChevronRight className="h-4 w-4 text-zinc-400 dark:text-zinc-600" />
                 </button>
               ))}
             </div>
@@ -142,17 +157,22 @@ export default function CardioHubPage() {
           <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500">
             Heute
           </h2>
-          <div className="divide-y divide-zinc-800/80 rounded-2xl border border-white/[0.06] overflow-hidden">
+          <div
+            className={cn(
+              wCard,
+              "divide-y divide-zinc-100 dark:divide-zinc-800/80 overflow-hidden"
+            )}
+          >
             {todayActs.map((a) => (
               <div
                 key={a.id}
-                className="flex items-center gap-3 bg-zinc-900/50 px-4 py-3"
+                className="flex items-center gap-3 bg-zinc-50/80 dark:bg-zinc-900/50 px-4 py-3"
               >
                 <span className="text-xl">
                   {cardioEmoji(a.type as never, a.notes)}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-white truncate">
+                  <p className={cn("font-medium truncate", wTitle)}>
                     {cardioDisplayLabel(a.type as never, a.notes)}
                   </p>
                   <p className="text-xs text-zinc-500">
@@ -160,15 +180,15 @@ export default function CardioHubPage() {
                     {a.sourceProvider ? ` · ${a.sourceProvider}` : ""}
                   </p>
                 </div>
-                <p className="text-sm font-semibold text-orange-300 tabular-nums">
+                <p className="text-sm font-semibold text-orange-600 dark:text-orange-300 tabular-nums">
                   {a.caloriesBurned ?? 0} kcal
                 </p>
               </div>
             ))}
           </div>
-          <p className="text-center text-sm text-zinc-400">
+          <p className={cn("text-center text-sm", wMuted)}>
             Gesamt heute:{" "}
-            <span className="text-orange-300 font-semibold tabular-nums">
+            <span className="text-orange-600 dark:text-orange-300 font-semibold tabular-nums">
               🔥 {Math.round(todayKcal)} kcal
             </span>
           </p>

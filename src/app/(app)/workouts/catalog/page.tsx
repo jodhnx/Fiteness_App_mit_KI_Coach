@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { PlanConfigurator } from "@/components/workouts/plan-configurator";
 import { CatalogBrowseGrid, type QuickPlanFilter } from "@/components/workouts/catalog-browse-grid";
+import { wMuted, wTitle } from "@/lib/workout-ui";
+import { cn } from "@/lib/utils";
 
 export default function PlanCatalogPage() {
   const [quickFilter, setQuickFilter] = useState<QuickPlanFilter>("ALL");
@@ -21,14 +23,14 @@ export default function PlanCatalogPage() {
       </Link>
 
       <div>
-        <h1 className="text-xl font-bold text-white">Vorgefertigte Pläne</h1>
-        <p className="text-sm text-zinc-500 mt-1">
+        <h1 className={cn("text-xl font-bold", wTitle)}>Vorgefertigte Pläne</h1>
+        <p className={cn("text-sm mt-1", wMuted)}>
           Wähle einen Plan oder konfiguriere deinen eigenen.
         </p>
       </div>
 
       <PlanConfigurator embedded />
-      <div className="border-t border-zinc-800 pt-6">
+      <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6">
         <CatalogBrowseGrid quickFilter={quickFilter} onQuickFilter={setQuickFilter} />
       </div>
     </div>

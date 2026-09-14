@@ -49,6 +49,14 @@ export function bindCacheOwner(userId: string): boolean {
     store.clear();
     inflight.clear();
     clearPersistentCache();
+    // Prevent previous user's theme from painting before prefs hydrate
+    try {
+      localStorage.removeItem("app-theme");
+      localStorage.removeItem("app-color-mode");
+      localStorage.removeItem("app-density");
+    } catch {
+      /* ignore */
+    }
     setCacheOwner(userId);
     return true;
   }

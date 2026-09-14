@@ -10,6 +10,7 @@ import { SNACK_RECIPES } from "./snacks";
 import { EXTRA_RECIPES } from "./extra";
 import { MEGA_RECIPES } from "./mega";
 import { AUSTRIA_RECIPES } from "./austria";
+import { EXPANSION_RECIPES } from "./expansion";
 import { resolveRecipeImageUrl } from "./images";
 import { recipeTotalMinutes } from "./types";
 
@@ -31,6 +32,7 @@ export const FITNESS_RECIPES: FitnessRecipe[] = withImages([
   ...EXTRA_RECIPES,
   ...MEGA_RECIPES,
   ...AUSTRIA_RECIPES,
+  ...EXPANSION_RECIPES,
 ]);
 
 const byId = new Map(FITNESS_RECIPES.map((r) => [r.id, r]));

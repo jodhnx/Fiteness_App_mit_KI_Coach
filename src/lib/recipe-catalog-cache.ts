@@ -18,25 +18,32 @@ export type RecipeCatalogCache = {
   favoriteIds: string[];
   q: string;
   filters: string[];
+  sort?: string;
   fetchedAt: number;
 };
 
 export type RecipeUiState = {
   query: string;
   filters: string[];
+  sort?: string;
   scrollY?: number;
 };
 
-export function recipeListCacheKey(q: string, filters: string[]): string {
+export function recipeListCacheKey(
+  q: string,
+  filters: string[],
+  sort = "popular"
+): string {
   const f = [...filters].sort().join(",");
-  return `${RECIPE_LIST_CACHE_KEY}:${q.trim().toLowerCase()}|${f}`;
+  return `${RECIPE_LIST_CACHE_KEY}:${q.trim().toLowerCase()}|${f}|${sort}`;
 }
 
 export function readRecipeCatalogCache(
   q: string,
-  filters: string[]
+  filters: string[],
+  sort = "popular"
 ): RecipeCatalogCache | null {
-  return getCached<RecipeCatalogCache>(recipeListCacheKey(q, filters), {
+  return getCached<RecipeCatalogCache>(recipeListCacheKey(q, filters, sort), {
     allowStale: true,
   });
 }
@@ -45,18 +52,19 @@ export function writeRecipeCatalogCache(
   data: Omit<RecipeCatalogCache, "fetchedAt">,
   ttlMs = 600_000
 ) {
-  const payload: RecipeCatalogCache = { ...data, fetchedAt: Date.now() };
-  setCached(recipeListCacheKey(data.q, data.filters), payload, ttlMs);
+  const sort = data.sort ?? "popular";
+  const payload: RecipeCatalogCache = { ...data, sort, fetchedAt: Date.now() };
+  setCached(recipeListCacheKey(data.q, data.filters, sort), payload, ttlMs);
   setCached(RECIPE_FAV_CACHE_KEY, data.favoriteIds, 180_000);
   // Default browse key for boot warmer
-  if (!data.q && data.filters.length === 0) {
+  if (!data.q && data.filters.length === 0 && sort === "popular") {
     setCached(RECIPE_LIST_CACHE_KEY, payload, ttlMs);
   }
 }
 
 export function readDefaultRecipeCatalog(): RecipeCatalogCache | null {
   return (
-    getCached<RecipeCatalogCache>(recipeListCacheKey("", []), {
+    getCached<RecipeCatalogCache>(recipeListCacheKey("", [], "popular"), {
       allowStale: true,
     }) ??
     getCached<RecipeCatalogCache>(RECIPE_LIST_CACHE_KEY, { allowStale: true })

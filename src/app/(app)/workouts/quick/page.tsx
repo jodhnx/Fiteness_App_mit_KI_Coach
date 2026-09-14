@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { startWorkoutAndNavigate } from "@/lib/workout-start";
 import { ExercisePickerSheet } from "@/components/workout/exercise-picker-sheet";
 import type { LibraryExercise } from "@/hooks/use-exercise-library-search";
+import { cn } from "@/lib/utils";
+import { wCard, wCardTight, wMuted, wTitle } from "@/lib/workout-ui";
 
 /** Quick Workout — Übungen wählen, dann starten. Kein Plan nötig. */
 export default function QuickWorkoutPage() {
@@ -35,10 +37,10 @@ export default function QuickWorkoutPage() {
     <div className="space-y-6 pb-28 max-w-lg mx-auto min-h-[70dvh] flex flex-col">
       <WorkoutBackLink />
       <div className="flex-1 flex flex-col">
-        <div className="rounded-3xl border border-white/[0.08] bg-zinc-900/60 p-6 text-center">
-          <Zap className="h-12 w-12 text-zinc-300 mx-auto mb-3" />
-          <h1 className="text-2xl font-bold text-white">Quick Workout</h1>
-          <p className="text-zinc-400 text-sm mt-2 leading-relaxed">
+        <div className={cn(wCard, "rounded-3xl p-6 text-center")}>
+          <Zap className="h-12 w-12 text-zinc-500 dark:text-zinc-300 mx-auto mb-3" />
+          <h1 className={cn("text-2xl font-bold", wTitle)}>Quick Workout</h1>
+          <p className={cn("text-sm mt-2 leading-relaxed", wMuted)}>
             Übungen wählen, dann starten — ohne Plan.
           </p>
         </div>
@@ -47,10 +49,10 @@ export default function QuickWorkoutPage() {
           {picked.map((ex) => (
             <li
               key={ex.id}
-              className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-zinc-900/60 px-4 py-3"
+              className={cn(wCardTight, "flex items-center justify-between")}
             >
               <div className="min-w-0">
-                <p className="font-medium text-white truncate">{ex.name}</p>
+                <p className={cn("font-medium truncate", wTitle)}>{ex.name}</p>
                 <p className="text-xs text-zinc-500 truncate">
                   {ex.muscleGroup}
                   {ex.equipment ? ` · ${ex.equipment}` : ""}

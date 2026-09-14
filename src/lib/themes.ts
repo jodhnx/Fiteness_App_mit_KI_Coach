@@ -3,19 +3,19 @@ export type AppThemeId =
   | "pure-white"
   | "soft-blue"
   | "ocean"
+  | "purple"
+  | "rose"
+  | "red"
+  | "forest"
+  | "sand"
   | "graphite"
   | "dark"
   | "midnight"
-  | "forest"
-  | "purple"
-  | "rose"
-  | "sand"
   | "high-contrast"
   // Legacy accent-only ids (still valid in DB / localStorage)
   | "turquoise"
   | "blue"
   | "green"
-  | "red"
   | "orange"
   | "yellow"
   | "gold"
@@ -67,24 +67,10 @@ export const APP_THEMES: ThemePreview[] = [
     colorMode: "light",
   },
   {
-    id: "graphite",
-    label: "Graphite",
-    preview: "#64748b",
-    previewSecondary: "#f1f5f9",
-    colorMode: "light",
-  },
-  {
-    id: "sand",
-    label: "Sand",
-    preview: "#d97706",
-    previewSecondary: "#faf6f1",
-    colorMode: "light",
-  },
-  {
-    id: "forest",
-    label: "Forest",
-    preview: "#059669",
-    previewSecondary: "#ecfdf5",
+    id: "purple",
+    label: "Purple",
+    preview: "#7c3aed",
+    previewSecondary: "#f5f3ff",
     colorMode: "light",
   },
   {
@@ -95,10 +81,31 @@ export const APP_THEMES: ThemePreview[] = [
     colorMode: "light",
   },
   {
-    id: "purple",
-    label: "Purple",
-    preview: "#7c3aed",
-    previewSecondary: "#f5f3ff",
+    id: "red",
+    label: "Red",
+    preview: "#dc2626",
+    previewSecondary: "#fef2f2",
+    colorMode: "light",
+  },
+  {
+    id: "forest",
+    label: "Forest",
+    preview: "#059669",
+    previewSecondary: "#ecfdf5",
+    colorMode: "light",
+  },
+  {
+    id: "sand",
+    label: "Sand",
+    preview: "#d97706",
+    previewSecondary: "#faf6f1",
+    colorMode: "light",
+  },
+  {
+    id: "graphite",
+    label: "Graphite",
+    preview: "#64748b",
+    previewSecondary: "#f1f5f9",
     colorMode: "light",
   },
   {
@@ -129,14 +136,12 @@ export const LEGACY_THEME_IDS: AppThemeId[] = [
   "turquoise",
   "blue",
   "green",
-  "red",
   "orange",
   "yellow",
   "gold",
   "pink",
   "white",
   "gray",
-  "purple",
 ];
 
 export const COLOR_MODE_OPTIONS: { id: ColorMode; label: string }[] = [
@@ -162,7 +167,6 @@ const LEGACY_TO_PACK: Partial<Record<AppThemeId, AppThemeId>> = {
   turquoise: "ocean",
   blue: "clean-light",
   green: "forest",
-  red: "rose",
   orange: "sand",
   yellow: "sand",
   gold: "sand",

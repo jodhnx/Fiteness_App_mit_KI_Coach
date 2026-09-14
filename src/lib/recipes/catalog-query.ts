@@ -36,6 +36,7 @@ export type CatalogQuery = {
   filters?: string[];
   page?: number;
   limit?: number;
+  sort?: "protein" | "calories" | "quick" | "popular";
 };
 
 function toListItem(r: FitnessRecipe): RecipeListItem {
@@ -75,6 +76,41 @@ function matchesFilters(r: FitnessRecipe, filters: string[]): boolean {
   });
 }
 
+function sortRecipes(
+  list: FitnessRecipe[],
+  sort: CatalogQuery["sort"]
+): FitnessRecipe[] {
+  const next = [...list];
+  switch (sort) {
+    case "protein":
+      next.sort((a, b) => b.proteinG - a.proteinG || a.calories - b.calories);
+      break;
+    case "calories":
+      next.sort((a, b) => a.calories - b.calories || b.proteinG - a.proteinG);
+      break;
+    case "quick":
+      next.sort(
+        (a, b) =>
+          recipeTotalMinutes(a) - recipeTotalMinutes(b) ||
+          b.proteinG - a.proteinG
+      );
+      break;
+    case "popular":
+      next.sort((a, b) => {
+        const score = (r: FitnessRecipe) =>
+          r.proteinG * 2 +
+          (r.tags.includes("high-protein") ? 20 : 0) +
+          (r.tags.includes("quick") ? 10 : 0) +
+          (r.imageUrl ? 5 : 0);
+        return score(b) - score(a);
+      });
+      break;
+    default:
+      break;
+  }
+  return next;
+}
+
 export function queryRecipeCatalog(input: CatalogQuery): {
   recipes: RecipeListItem[];
   total: number;
@@ -96,9 +132,10 @@ export function queryRecipeCatalog(input: CatalogQuery): {
     return matchesFilters(r, filters);
   });
 
-  const total = filtered.length;
+  const sorted = sortRecipes(filtered, input.sort);
+  const total = sorted.length;
   const start = (page - 1) * limit;
-  const recipes = filtered.slice(start, start + limit).map(toListItem);
+  const recipes = sorted.slice(start, start + limit).map(toListItem);
 
   return {
     recipes,

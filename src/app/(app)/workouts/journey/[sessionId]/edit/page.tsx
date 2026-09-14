@@ -10,6 +10,8 @@ import { invalidateCache } from "@/lib/client-cache";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
 import { WORKOUT_INPUT_PLACEHOLDERS } from "@/lib/workout-input-placeholders";
+import { cn } from "@/lib/utils";
+import { wCardMuted, wInputDeep, wMuted, wSkeleton, wTitle } from "@/lib/workout-ui";
 
 type WorkoutSetRow = {
   id: string;
@@ -131,8 +133,8 @@ export default function EditJourneyWorkoutPage() {
     return (
       <div className="max-w-lg mx-auto pb-24 space-y-3">
         <WorkoutBackLink href="/workouts/journey" label="Fitness Journey" />
-        <div className="h-10 rounded-xl bg-zinc-900 border border-zinc-800" />
-        <div className="h-32 rounded-xl bg-zinc-900 border border-zinc-800" />
+        <div className={cn(wSkeleton, "h-10 rounded-xl")} />
+        <div className={cn(wSkeleton, "h-32 rounded-xl")} />
       </div>
     );
   }
@@ -142,8 +144,8 @@ export default function EditJourneyWorkoutPage() {
       <WorkoutBackLink href="/workouts/journey" label="Fitness Journey" />
 
       <div>
-        <h1 className="text-2xl font-bold text-white">Workout bearbeiten</h1>
-        <p className="text-sm text-zinc-500 mt-1">Übungen, Sätze und Gewichte anpassen</p>
+        <h1 className={cn("text-2xl font-bold", wTitle)}>Workout bearbeiten</h1>
+        <p className={cn("text-sm mt-1", wMuted)}>Übungen, Sätze und Gewichte anpassen</p>
       </div>
 
       <div>
@@ -151,7 +153,7 @@ export default function EditJourneyWorkoutPage() {
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1.5 h-12 rounded-xl bg-zinc-950 border-zinc-700"
+          className={cn("mt-1.5 h-12 rounded-xl", wInputDeep)}
         />
       </div>
 
@@ -159,20 +161,20 @@ export default function EditJourneyWorkoutPage() {
         {grouped.map(([exerciseName, exerciseSets]) => (
           <div
             key={exerciseName}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-3"
+            className={cn(wCardMuted, "p-4 space-y-3")}
           >
             <div>
               <label className="text-xs text-zinc-500">Übungsname</label>
               <Input
                 value={exerciseName}
                 onChange={(e) => renameExercise(exerciseName, e.target.value)}
-                className="mt-1 h-10 rounded-xl bg-zinc-950 border-zinc-700 font-semibold"
+                className={cn("mt-1 h-10 rounded-xl font-semibold", wInputDeep)}
               />
             </div>
             {exerciseSets.map((s) => (
               <div key={s.id} className="grid grid-cols-3 gap-2 items-end">
                 <div>
-                  <label className="text-[10px] text-zinc-600">Satz {s.setNumber}</label>
+                  <label className="text-[10px] text-zinc-500 dark:text-zinc-600">Satz {s.setNumber}</label>
                   <Input
                     type="number"
                     value={s.reps ?? ""}
@@ -181,12 +183,12 @@ export default function EditJourneyWorkoutPage() {
                         reps: e.target.value === "" ? null : Number(e.target.value),
                       })
                     }
-                    className="mt-0.5 h-10 rounded-lg bg-zinc-950 border-zinc-700 tabular-nums"
+                    className={cn("mt-0.5 h-10 rounded-lg tabular-nums", wInputDeep)}
                     placeholder={WORKOUT_INPUT_PLACEHOLDERS.reps}
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-zinc-600">Gewicht (kg)</label>
+                  <label className="text-[10px] text-zinc-500 dark:text-zinc-600">Gewicht (kg)</label>
                   <Input
                     type="number"
                     step="0.5"
@@ -196,11 +198,11 @@ export default function EditJourneyWorkoutPage() {
                         weightKg: e.target.value === "" ? null : Number(e.target.value),
                       })
                     }
-                    className="mt-0.5 h-10 rounded-lg bg-zinc-950 border-zinc-700 tabular-nums"
+                    className={cn("mt-0.5 h-10 rounded-lg tabular-nums", wInputDeep)}
                     placeholder={WORKOUT_INPUT_PLACEHOLDERS.weightKg}
                   />
                 </div>
-                <p className="text-xs text-zinc-600 pb-2 text-center">Satz {s.setNumber}</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-600 pb-2 text-center">Satz {s.setNumber}</p>
               </div>
             ))}
           </div>

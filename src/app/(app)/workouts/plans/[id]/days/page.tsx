@@ -13,6 +13,7 @@ import type { DayStatus } from "@/lib/plan-day-status";
 import { filterTrainingDays, weekdayLabelForDay } from "@/lib/plan-training-days";
 import { ChevronRight, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { wIconBtn, wMuted, wTitle } from "@/lib/workout-ui";
 
 type PlanExercise = {
   id: string;
@@ -57,10 +58,10 @@ const DayRow = memo(function DayRow({
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <DayStatusIndicator status={status} showLabel={false} />
           <div className="min-w-0">
-            <p className="text-base font-semibold text-white truncate">
+            <p className={cn("text-base font-semibold truncate", wTitle)}>
               {weekday}: {day.name}
             </p>
-            <p className="text-sm text-zinc-500 mt-0.5">
+            <p className={cn("text-sm mt-0.5", wMuted)}>
               {day.exercises.length}{" "}
               {day.exercises.length === 1 ? "Übung" : "Übungen"}
               {status === "completed" && (
@@ -69,7 +70,7 @@ const DayRow = memo(function DayRow({
             </p>
           </div>
         </div>
-        <ChevronRight className="h-5 w-5 text-zinc-500 shrink-0" />
+        <ChevronRight className={cn("h-5 w-5 shrink-0", wMuted)} />
       </Link>
     </li>
   );
@@ -103,14 +104,14 @@ export default function PlanDaysPage() {
 
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">{plan?.name ?? "Trainingsplan"}</h1>
-          <p className="text-sm text-zinc-500 mt-1">Trainingstag wählen</p>
+          <h1 className={cn("text-2xl font-bold", wTitle)}>{plan?.name ?? "Trainingsplan"}</h1>
+          <p className={cn("text-sm mt-1", wMuted)}>Trainingstag wählen</p>
         </div>
         {plan && (
           <Link
             href={`/workouts/plans/${planId}`}
             prefetch
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400"
+            className={cn("flex h-10 w-10 items-center justify-center", wIconBtn)}
             aria-label="Plan bearbeiten"
           >
             <Settings2 className="h-4 w-4" />

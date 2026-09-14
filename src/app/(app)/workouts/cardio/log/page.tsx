@@ -22,6 +22,14 @@ import {
   publishNutritionDashboard,
 } from "@/lib/nutrition-sync";
 import { cn } from "@/lib/utils";
+import {
+  wChipOff,
+  wChipOn,
+  wIconBtn,
+  wInput,
+  wMuted,
+  wTitle,
+} from "@/lib/workout-ui";
 import { ChevronLeft } from "lucide-react";
 
 function CardioLogInner() {
@@ -123,7 +131,7 @@ function CardioLogInner() {
         <button
           type="button"
           onClick={() => router.push("/workouts/cardio")}
-          className="h-10 w-10 rounded-2xl border border-zinc-700 bg-zinc-900/80 flex items-center justify-center text-zinc-200"
+          className={cn(wIconBtn, "h-10 w-10 flex items-center justify-center")}
           aria-label="Zurück zu Cardio"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -143,7 +151,7 @@ function CardioLogInner() {
         <div>
           <Label>Bezeichnung</Label>
           <Input
-            className="mt-1.5 h-12"
+            className={cn("mt-1.5 h-12", wInput)}
             value={customName}
             onChange={(e) => setCustomName(e.target.value)}
             placeholder="z. B. Seilspringen"
@@ -154,7 +162,7 @@ function CardioLogInner() {
       <div>
         <Label>Dauer (Minuten)</Label>
         <Input
-          className="mt-1.5 h-12 text-lg tabular-nums"
+          className={cn("mt-1.5 h-12 text-lg tabular-nums", wInput)}
           inputMode="numeric"
           value={durationMin}
           onChange={(e) => setDurationMin(e.target.value.replace(/[^\d]/g, ""))}
@@ -165,7 +173,7 @@ function CardioLogInner() {
       <div>
         <Label>Distanz (km, optional)</Label>
         <Input
-          className="mt-1.5 h-12 text-lg tabular-nums"
+          className={cn("mt-1.5 h-12 text-lg tabular-nums", wInput)}
           inputMode="decimal"
           value={distanceKm}
           onChange={(e) => setDistanceKm(e.target.value.replace(/[^\d.,]/g, ""))}
@@ -188,10 +196,8 @@ function CardioLogInner() {
               type="button"
               onClick={() => setIntensity(opt.id)}
               className={cn(
-                "h-11 rounded-xl border text-sm font-medium transition-colors",
-                intensity === opt.id
-                  ? "border-accent/50 bg-accent/15 text-white"
-                  : "border-zinc-700 bg-zinc-900/60 text-zinc-400"
+                "h-11 rounded-xl text-sm font-medium transition-colors",
+                intensity === opt.id ? wChipOn : wChipOff
               )}
             >
               {opt.label}
@@ -201,12 +207,12 @@ function CardioLogInner() {
       </div>
 
       <div className="rounded-2xl border border-orange-500/25 bg-orange-500/10 p-4 space-y-1">
-        <p className="text-[11px] uppercase tracking-widest text-orange-300/80 font-semibold">
+        <p className="text-[11px] uppercase tracking-widest text-orange-600/80 dark:text-orange-300/80 font-semibold">
           {estimate.label}
         </p>
-        <p className="text-3xl font-bold text-white tabular-nums">
+        <p className={cn("text-3xl font-bold tabular-nums", wTitle)}>
           ≈ {estimate.calories}{" "}
-          <span className="text-base font-medium text-zinc-400">kcal</span>
+          <span className={cn("text-base font-medium", wMuted)}>kcal</span>
         </p>
         <p className="text-xs text-zinc-500">
           Basierend auf{" "}

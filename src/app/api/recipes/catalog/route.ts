@@ -24,6 +24,14 @@ export async function GET(req: NextRequest) {
         if (t) filters.push(t);
       }
     }
+    const sortRaw = sp.get("sort") ?? "popular";
+    const sort =
+      sortRaw === "protein" ||
+      sortRaw === "calories" ||
+      sortRaw === "quick" ||
+      sortRaw === "popular"
+        ? sortRaw
+        : "popular";
 
     let favoriteIds: string[] = [];
     if (await tableExists("RecipeCatalogFavorite")) {
@@ -36,7 +44,7 @@ export async function GET(req: NextRequest) {
       favoriteIds = favs.map((f) => f.recipeId);
     }
 
-    const result = queryRecipeCatalog({ q, filters, page, limit });
+    const result = queryRecipeCatalog({ q, filters, page, limit, sort });
     const stats = getCatalogStats();
 
     return jsonOk({

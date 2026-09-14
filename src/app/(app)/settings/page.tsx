@@ -25,7 +25,7 @@ import {
 } from "@/lib/nutrition-defaults";
 import { logoutAndClear } from "@/lib/auth-logout";
 import { usePreferences } from "@/components/providers/preferences-provider";
-import { APP_THEMES, COLOR_MODE_OPTIONS } from "@/lib/themes";
+import { APP_THEMES, COLOR_MODE_OPTIONS, UI_DENSITY_OPTIONS } from "@/lib/themes";
 import { SettingsHubNav } from "@/components/settings/settings-hub-nav";
 import { SettingsProfileOverview } from "@/components/settings/settings-profile-overview";
 import {
@@ -125,9 +125,9 @@ function SettingsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const view = searchParams.get("view");
-  const { theme, colorMode, setTheme, setColorMode } =
+  const { theme, colorMode, uiDensity, setTheme, setColorMode, setUiDensity } =
     usePreferences();
-  const [editingPersonal, setEditingPersonal] = useState(view === "konto");
+  const [editingPersonal, setEditingPersonal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<CalcPreview | null>(null);
   const [form, setForm] = useState({
@@ -588,6 +588,33 @@ function SettingsPageInner() {
                 {m.label}
               </button>
             ))}
+          </div>
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              Dichte
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {UI_DENSITY_OPTIONS.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setUiDensity(d.id)}
+                  className={cn(
+                    "min-h-11 rounded-xl border px-3 py-2 text-left transition-colors",
+                    uiDensity === d.id
+                      ? "border-accent bg-accent/5 ring-2 ring-accent/30"
+                      : "border-zinc-200 bg-zinc-50/80 dark:border-white/[0.08] dark:bg-white/[0.03]"
+                  )}
+                >
+                  <span className="block text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                    {d.label}
+                  </span>
+                  <span className="block text-[11px] text-zinc-500 mt-0.5">
+                    {d.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">

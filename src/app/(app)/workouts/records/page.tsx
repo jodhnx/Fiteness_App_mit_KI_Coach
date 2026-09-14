@@ -10,6 +10,15 @@ import { de } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import type { KeyLiftRecord, RecordHighlights } from "@/lib/record-highlights";
 import type { PrExerciseCard } from "@/lib/pr-center";
+import { cn } from "@/lib/utils";
+import {
+  wCard,
+  wCardMuted,
+  wInput,
+  wMuted,
+  wSkeleton,
+  wTitle,
+} from "@/lib/workout-ui";
 
 function HighlightCard({
   icon: Icon,
@@ -23,20 +32,25 @@ function HighlightCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 p-4">
-      <Icon className="h-5 w-5 text-zinc-400 mb-2" />
+    <div
+      className={cn(
+        wCard,
+        "bg-gradient-to-br from-white to-zinc-50 p-4 dark:from-zinc-900/80 dark:to-zinc-900/40"
+      )}
+    >
+      <Icon className={cn("h-5 w-5 mb-2", wMuted)} />
       <p className="text-[10px] uppercase tracking-wide text-zinc-500">{title}</p>
-      <p className="text-xl font-bold text-white mt-1 tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-zinc-400 mt-1 truncate">{sub}</p>}
+      <p className={cn("text-xl font-bold mt-1 tabular-nums", wTitle)}>{value}</p>
+      {sub && <p className={cn("text-xs mt-1 truncate", wMuted)}>{sub}</p>}
     </div>
   );
 }
 
 function KeyLiftCard({ lift }: { lift: KeyLiftRecord }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
-      <p className="text-sm font-semibold text-zinc-400">{lift.label}</p>
-      <p className="text-3xl font-semibold text-white tabular-nums mt-1">
+    <div className={cn(wCardMuted, "p-4")}>
+      <p className={cn("text-sm font-semibold", wMuted)}>{lift.label}</p>
+      <p className={cn("text-3xl font-semibold tabular-nums mt-1", wTitle)}>
         {lift.weightKg != null ? `${lift.weightKg} kg` : "—"}
       </p>
       {lift.reps != null && lift.reps > 0 && (
@@ -46,7 +60,7 @@ function KeyLiftCard({ lift }: { lift: KeyLiftRecord }) {
         <p className="text-xs text-zinc-500 mt-2 truncate">{lift.exerciseName}</p>
       )}
       {lift.achievedAt && (
-        <p className="text-[10px] text-zinc-600 mt-1">
+        <p className="text-[10px] text-zinc-500 dark:text-zinc-600 mt-1">
           {format(new Date(lift.achievedAt), "dd.MM.yyyy", { locale: de })}
         </p>
       )}
@@ -102,17 +116,17 @@ export default function RecordsPage() {
     <div className="space-y-5 max-w-lg mx-auto pb-24">
       <WorkoutBackLink />
       <div>
-        <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
-          <Trophy className="h-7 w-7 text-zinc-300" />
+        <h1 className={cn("text-2xl font-semibold flex items-center gap-2", wTitle)}>
+          <Trophy className="h-7 w-7 text-zinc-500 dark:text-zinc-300" />
           Rekorde
         </h1>
-        <p className="text-sm text-zinc-400 mt-1">Persönliche Bestleistungen</p>
+        <p className={cn("text-sm mt-1", wMuted)}>Persönliche Bestleistungen</p>
       </div>
 
       {loading && !data && (
-        <div className="grid grid-cols-2 gap-2 animate-pulse">
+        <div className="grid grid-cols-2 gap-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 bg-zinc-800 rounded-2xl" />
+            <div key={i} className={cn(wSkeleton, "h-28")} />
           ))}
         </div>
       )}
@@ -173,7 +187,7 @@ export default function RecordsPage() {
             onChange={(e) => setExerciseQuery(e.target.value)}
             placeholder="Exercise auswählen"
             aria-label="Exercise auswählen"
-            className="h-12 rounded-2xl bg-zinc-900 border-zinc-800"
+            className={cn("h-12 rounded-2xl", wInput)}
           />
           {exerciseRecords.map(([id, row]) => {
             const weight = row.types.MAX_WEIGHT;
@@ -184,26 +198,26 @@ export default function RecordsPage() {
               <Link
                 key={id}
                 href={`/workouts/exercises/${id}`}
-                className="block rounded-2xl border border-white/[0.08] bg-zinc-900/60 px-4 py-3 space-y-1.5"
+                className={cn(wCardMuted, "block px-4 py-3 space-y-1.5")}
               >
-                <p className="font-semibold text-white truncate">{row.name}</p>
+                <p className={cn("font-semibold truncate", wTitle)}>{row.name}</p>
                 <p className="text-[11px] text-zinc-500">{row.muscleGroup}</p>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm tabular-nums">
                   <div>
                     <dt className="text-[10px] uppercase text-zinc-500">Best Weight</dt>
-                    <dd className="text-zinc-200">
+                    <dd className="text-zinc-800 dark:text-zinc-200">
                       {weight && weight.value > 0 ? `${weight.weightKg ?? weight.value} KG` : "—"}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-[10px] uppercase text-zinc-500">Best Reps</dt>
-                    <dd className="text-zinc-200">
+                    <dd className="text-zinc-800 dark:text-zinc-200">
                       {reps && reps.value > 0 ? `${reps.reps ?? reps.value}` : "—"}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-[10px] uppercase text-zinc-500">Best Volume</dt>
-                    <dd className="text-zinc-200">
+                    <dd className="text-zinc-800 dark:text-zinc-200">
                       {volume && volume.value > 0
                         ? `${Math.round(volume.value).toLocaleString("de-DE")} KG`
                         : "—"}
@@ -211,7 +225,7 @@ export default function RecordsPage() {
                   </div>
                   <div>
                     <dt className="text-[10px] uppercase text-zinc-500">Estimated 1RM</dt>
-                    <dd className="text-zinc-200">
+                    <dd className="text-zinc-800 dark:text-zinc-200">
                       {e1 && e1.value > 0 ? `${e1.value} KG` : "—"}
                     </dd>
                   </div>

@@ -25,7 +25,7 @@ function assert(name: string, cond: boolean) {
 
 console.log("Theme Pack Tests\n");
 
-assert("exactly 12 appearance packs", APP_THEMES.length === 12);
+assert("exactly 13 appearance packs", APP_THEMES.length === 13);
 assert("default is clean-light", DEFAULT_THEME === "clean-light");
 assert(
   "all pack ids unique",
@@ -69,13 +69,14 @@ const required = [
   "pure-white",
   "soft-blue",
   "ocean",
+  "purple",
+  "rose",
+  "red",
+  "forest",
+  "sand",
   "graphite",
   "dark",
   "midnight",
-  "forest",
-  "purple",
-  "rose",
-  "sand",
   "high-contrast",
 ];
 for (const id of required) {

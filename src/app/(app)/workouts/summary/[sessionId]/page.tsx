@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatWorkoutClock } from "@/lib/workout-input";
+import { cn } from "@/lib/utils";
+import { wCard, wMuted, wSkeleton, wTitle } from "@/lib/workout-ui";
 
 type Analysis = {
   totalVolumeKg: number;
@@ -39,10 +41,10 @@ export default function WorkoutSummaryPage() {
   if (!analysis) {
     return (
       <div className="space-y-4 max-w-lg mx-auto py-6">
-        <div className="h-28 rounded-2xl bg-zinc-900/80 border border-white/[0.06]" />
+        <div className={cn(wSkeleton, "h-28")} />
         <div className="grid grid-cols-2 gap-3">
-          <div className="h-24 rounded-2xl bg-zinc-900/80 border border-white/[0.06]" />
-          <div className="h-24 rounded-2xl bg-zinc-900/80 border border-white/[0.06]" />
+          <div className={cn(wSkeleton, "h-24")} />
+          <div className={cn(wSkeleton, "h-24")} />
         </div>
       </div>
     );
@@ -60,59 +62,59 @@ export default function WorkoutSummaryPage() {
   return (
     <div className="space-y-6 max-w-lg mx-auto pb-28">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        <p className={cn("text-[10px] font-semibold uppercase tracking-[0.16em]", wMuted)}>
           Workout
         </p>
-        <h1 className="text-2xl font-semibold text-white mt-1">
+        <h1 className={cn("text-2xl font-semibold mt-1", wTitle)}>
           {session?.name ?? "Training"}
         </h1>
       </div>
 
-      <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/60 px-5 py-6 text-center">
-        <p className="text-4xl font-semibold text-white tabular-nums tracking-tight">
+      <div className={cn(wCard, "px-5 py-6 text-center")}>
+        <p className={cn("text-4xl font-semibold tabular-nums tracking-tight", wTitle)}>
           {formatWorkoutClock(analysis.durationSec)}
         </p>
-        <p className="text-sm text-zinc-500 mt-1">Workout Duration</p>
+        <p className={cn("text-sm mt-1", wMuted)}>Workout Duration</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/60 px-4 py-4">
-          <p className="text-2xl font-semibold text-white tabular-nums">{analysis.completedSets}</p>
-          <p className="text-xs text-zinc-500 mt-1">Sets</p>
+        <div className={cn(wCard, "px-4 py-4")}>
+          <p className={cn("text-2xl font-semibold tabular-nums", wTitle)}>{analysis.completedSets}</p>
+          <p className={cn("text-xs mt-1", wMuted)}>Sets</p>
         </div>
-        <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/60 px-4 py-4">
-          <p className="text-2xl font-semibold text-white tabular-nums">
+        <div className={cn(wCard, "px-4 py-4")}>
+          <p className={cn("text-2xl font-semibold tabular-nums", wTitle)}>
             {analysis.totalVolumeKg.toLocaleString("de-DE")} KG
           </p>
-          <p className="text-xs text-zinc-500 mt-1">Volume</p>
+          <p className={cn("text-xs mt-1", wMuted)}>Volume</p>
         </div>
-        <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/60 px-4 py-4">
-          <p className="text-2xl font-semibold text-white tabular-nums">
+        <div className={cn(wCard, "px-4 py-4")}>
+          <p className={cn("text-2xl font-semibold tabular-nums", wTitle)}>
             {exerciseCount}
           </p>
-          <p className="text-xs text-zinc-500 mt-1">Exercises</p>
+          <p className={cn("text-xs mt-1", wMuted)}>Exercises</p>
         </div>
-        <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/60 px-4 py-4">
-          <p className="text-2xl font-semibold text-white tabular-nums">{prCount}</p>
-          <p className="text-xs text-zinc-500 mt-1">PRs</p>
+        <div className={cn(wCard, "px-4 py-4")}>
+          <p className={cn("text-2xl font-semibold tabular-nums", wTitle)}>{prCount}</p>
+          <p className={cn("text-xs mt-1", wMuted)}>PRs</p>
         </div>
       </div>
 
       {calories != null && (
-        <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/60 px-4 py-4">
-          <p className="text-2xl font-semibold text-white tabular-nums">
+        <div className={cn(wCard, "px-4 py-4")}>
+          <p className={cn("text-2xl font-semibold tabular-nums", wTitle)}>
             {Math.round(calories).toLocaleString("de-DE")}
           </p>
-          <p className="text-xs text-zinc-500 mt-1">Calories</p>
+          <p className={cn("text-xs mt-1", wMuted)}>Calories</p>
         </div>
       )}
 
       {analysis.newPRs.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/60 px-4 py-4 space-y-2">
+        <div className={cn(wCard, "px-4 py-4 space-y-2")}>
           {analysis.newPRs.map((pr, i) => (
             <div key={`${pr.exercise?.name}-${pr.recordType}-${i}`} className="flex items-center justify-between gap-3">
-              <p className="text-sm text-zinc-300 truncate">{pr.exercise?.name ?? "Übung"}</p>
-              <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+              <p className="text-sm text-zinc-700 dark:text-zinc-300 truncate">{pr.exercise?.name ?? "Übung"}</p>
+              <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
                 New PR
               </span>
             </div>
@@ -121,11 +123,11 @@ export default function WorkoutSummaryPage() {
       )}
 
       {analysis.muscleVolume.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/60 px-4 py-4 space-y-2">
+        <div className={cn(wCard, "px-4 py-4 space-y-2")}>
           {analysis.muscleVolume.map((m) => (
             <div key={m.label} className="flex justify-between text-sm">
-              <span className="text-zinc-400">{m.label}</span>
-              <span className="text-zinc-500 tabular-nums">
+              <span className={wMuted}>{m.label}</span>
+              <span className={cn("tabular-nums", wMuted)}>
                 {m.volume.toLocaleString("de-DE")} KG
               </span>
             </div>
@@ -139,7 +141,7 @@ export default function WorkoutSummaryPage() {
         </Link>
         <Link
           href="/workouts/history"
-          className="block text-center text-sm text-zinc-500 min-h-11 leading-[2.75rem]"
+          className={cn("block text-center text-sm min-h-11 leading-[2.75rem]", wMuted)}
         >
           Historie
         </Link>

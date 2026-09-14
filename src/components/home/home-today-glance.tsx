@@ -37,17 +37,17 @@ function GlanceCell({
         "flex min-h-[4.5rem] flex-col justify-center rounded-2xl border px-3 py-2.5",
         "active:scale-[0.99] transition-transform",
         accent
-          ? "border-cyan-500/25 bg-cyan-500/10"
-          : "border-white/[0.07] bg-white/[0.02]"
+          ? "border-accent/25 bg-accent/10"
+          : "border-zinc-200/90 bg-white shadow-sm dark:border-white/[0.07] dark:bg-white/[0.02] dark:shadow-none"
       )}
     >
       <div className="flex items-center gap-1.5 mb-1">
-        <Icon className={cn("h-3.5 w-3.5", accent ? "text-cyan-400" : "text-zinc-500")} />
+        <Icon className={cn("h-3.5 w-3.5", accent ? "text-accent" : "text-zinc-500")} />
         <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
           {label}
         </span>
       </div>
-      <p className="text-sm font-bold text-white leading-tight tabular-nums">{primary}</p>
+      <p className="text-sm font-bold text-zinc-900 leading-tight tabular-nums dark:text-white">{primary}</p>
       {secondary && (
         <p className="text-[11px] text-zinc-500 mt-0.5 tabular-nums leading-snug">{secondary}</p>
       )}

@@ -10,6 +10,8 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { startWorkoutAndNavigate } from "@/lib/workout-start";
 import { toast } from "sonner";
+import { wCardMuted, wMuted, wTitle } from "@/lib/workout-ui";
+import { cn } from "@/lib/utils";
 
 type CalendarData = {
   completed: { id: string; name: string; completedAt: string; durationSec: number | null }[];
@@ -44,13 +46,13 @@ export default function WorkoutCalendarPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+      <h1 className={cn("text-3xl font-bold flex items-center gap-2", wTitle)}>
         <Calendar className="text-cyan-400" /> Trainingskalender
       </h1>
       <WorkoutNav />
 
       {data?.lastWorkoutAt && (
-        <p className="text-sm text-zinc-400">
+        <p className={cn("text-sm", wMuted)}>
           Letztes Training:{" "}
           {format(new Date(data.lastWorkoutAt), "PPP", { locale: de })}
         </p>
@@ -64,10 +66,10 @@ export default function WorkoutCalendarPage() {
           {data?.upcoming.map((u) => (
             <div
               key={u.dayId}
-              className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-3"
+              className={cn("flex items-center justify-between px-3 py-3", wCardMuted)}
             >
               <div>
-                <p className="font-medium text-white">
+                <p className={cn("font-medium", wTitle)}>
                   {u.planName} — {u.dayName}
                 </p>
                 <p className="text-xs text-zinc-500">
@@ -92,7 +94,7 @@ export default function WorkoutCalendarPage() {
         <CardContent className="space-y-2">
           {data?.completed.map((s) => (
             <div key={s.id} className="rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-3 py-2 text-sm">
-              <p className="text-white">{s.name}</p>
+              <p className={wTitle}>{s.name}</p>
               <p className="text-zinc-500 text-xs">
                 {s.completedAt &&
                   format(new Date(s.completedAt), "EEE HH:mm", { locale: de })}

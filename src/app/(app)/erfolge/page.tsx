@@ -292,8 +292,10 @@ export default function ErfolgePage() {
               type="button"
               onClick={() => setCategory("all")}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs",
-                category === "all" ? "bg-cyan-500/20 text-cyan-300" : "bg-white/5 text-zinc-500"
+                "px-3 py-1.5 rounded-lg text-xs min-h-9",
+                category === "all"
+                  ? "bg-accent/15 text-accent font-semibold"
+                  : "bg-zinc-100 text-zinc-600 dark:bg-white/5 dark:text-zinc-500"
               )}
             >
               Alle
@@ -304,15 +306,20 @@ export default function ErfolgePage() {
                 type="button"
                 onClick={() => setCategory(c.id)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs whitespace-nowrap",
-                  category === c.id ? "bg-cyan-500/20 text-cyan-300" : "bg-white/5 text-zinc-500"
+                  "px-3 py-1.5 rounded-lg text-xs whitespace-nowrap min-h-9",
+                  category === c.id
+                    ? "bg-accent/15 text-accent font-semibold"
+                    : "bg-zinc-100 text-zinc-600 dark:bg-white/5 dark:text-zinc-500"
                 )}
               >
                 {c.icon} {c.label}
               </button>
             ))}
           </div>
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+          <div
+            className="space-y-2 max-h-[60vh] overflow-y-auto pr-1"
+            data-scroll-restore="erfolge-list"
+          >
             {filtered.length === 0 ? (
               <p className="text-sm text-zinc-500 py-6 text-center">Keine Erfolge in dieser Kategorie.</p>
             ) : (

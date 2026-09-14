@@ -122,10 +122,11 @@ console.log("Food nutrition consistency + search ranking\n");
 
   const rankedChicken = rankFoodSearchResults(
     [
-      { name: "Sandwich mit Hühnerfleisch", brand: "Ready Meal" },
-      { name: "Hühnerbrust", brand: "Standardlebensmittel" },
-      { name: "Chicken Wrap", brand: "Takeaway" },
-      { name: "Hühnerfleisch", brand: "Standardlebensmittel" },
+      { name: "Sandwich mit Hühnerfleisch", brand: "Ready Meal", calories: 99, proteinG: 6 },
+      { name: "Hühnerbrust", brand: "Standardlebensmittel", calories: 165, proteinG: 31, carbsG: 0, fatG: 3.6 },
+      { name: "Chicken Wrap", brand: "Takeaway", calories: 250, proteinG: 20 },
+      { name: "Hühnerfleisch", brand: "Standardlebensmittel", calories: 165, proteinG: 31, carbsG: 0, fatG: 3.6 },
+      { name: "Hühnerfleisch", brand: null, calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
     ],
     "hühnerfleisch"
   );
@@ -133,6 +134,13 @@ console.log("Food nutrition consistency + search ranking\n");
     "hühnerfleisch ranks staple first",
     rankedChicken[0].name === "Hühnerfleisch" ||
       rankedChicken[0].name === "Hühnerbrust"
+  );
+  assert(
+    "empty-nutrition OFF stub not first",
+    !(
+      rankedChicken[0].name === "Hühnerfleisch" &&
+      Number(rankedChicken[0].calories ?? 0) === 0
+    )
   );
   assert(
     "sandwich not first for hühnerfleisch",

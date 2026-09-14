@@ -20,13 +20,15 @@ import { getCached, setCached } from "@/lib/client-cache";
 import { HOME_DATA_CACHE_KEY, HOME_DATA_EVENT } from "@/lib/nutrition-sync";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { startWorkoutAndNavigate } from "@/lib/workout-start";
+import { wCard, wInput, wMuted, wSkeleton, wTitle } from "@/lib/workout-ui";
+import { cn } from "@/lib/utils";
 
 const PlanDaySortableList = dynamic(
   () =>
     import("@/components/workout/plan-exercise-sets-card").then(
       (m) => m.PlanDaySortableList
     ),
-  { loading: () => <div className="h-40 rounded-2xl bg-zinc-900/60 animate-pulse" /> }
+  { loading: () => <div className={cn("h-40", wSkeleton)} /> }
 );
 
 const ExercisePickerSheet = dynamic(
@@ -462,11 +464,11 @@ export default function PlanEditorPage() {
   if (planLoading && !plan) {
     return (
       <div className="space-y-4 animate-pulse max-w-xl">
-        <div className="h-8 bg-zinc-800 rounded-xl w-1/3" />
-        <div className="h-14 bg-zinc-800 rounded-2xl" />
+        <div className={cn("h-8 w-1/3", wSkeleton)} />
+        <div className={cn("h-14", wSkeleton)} />
         <div className="grid grid-cols-2 gap-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 bg-zinc-800 rounded-2xl" />
+            <div key={i} className={cn("h-20", wSkeleton)} />
           ))}
         </div>
       </div>
@@ -481,7 +483,7 @@ export default function PlanEditorPage() {
 
       {recoveryHint && (
         <div className="rounded-2xl p-3 border border-emerald-500/20 bg-emerald-500/5">
-          <p className="text-sm text-emerald-200/90">{recoveryHint}</p>
+          <p className="text-sm text-emerald-800 dark:text-emerald-200/90">{recoveryHint}</p>
         </div>
       )}
 
@@ -489,7 +491,7 @@ export default function PlanEditorPage() {
         value={plan.name}
         onChange={(e) => setPlan({ ...plan, name: e.target.value })}
         onBlur={savePlanMeta}
-        className="text-2xl font-bold h-14 rounded-2xl border-zinc-800 bg-zinc-900/60"
+        className={cn("text-2xl font-bold h-14 rounded-2xl border", wInput)}
       />
 
       {plan.days.length > 1 && (
@@ -578,16 +580,19 @@ export default function PlanEditorPage() {
       )}
 
       {replaceTargetId && alternatives.length > 0 && (
-        <Card className="border-white/[0.08]">
+        <Card className={wCard}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-zinc-400">Alternativen</CardTitle>
+            <CardTitle className={cn("text-sm", wMuted)}>Alternativen</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
             {alternatives.map((alt) => (
               <button
                 key={alt.id}
                 type="button"
-                className="w-full text-left text-sm text-white hover:bg-white/5 px-3 py-2 rounded-xl"
+                className={cn(
+                  "w-full text-left text-sm px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/5",
+                  wTitle
+                )}
                 onClick={() => replaceExercise(alt.id)}
               >
                 {alt.name}

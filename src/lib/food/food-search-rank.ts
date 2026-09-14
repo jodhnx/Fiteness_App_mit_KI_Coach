@@ -195,7 +195,21 @@ export type RankableFood = {
   name: string;
   brand?: string | null;
   source?: string;
+  /** Per 100g — when present, empty OFF rows must not beat real staples. */
+  calories?: number | null;
+  proteinG?: number | null;
+  carbsG?: number | null;
+  fatG?: number | null;
 };
+
+/** True when macros look missing/corrupt (not legit 0-kcal water). */
+export function hasEmptyNutrition(product: RankableFood): boolean {
+  const cal = Number(product.calories ?? 0);
+  const p = Number(product.proteinG ?? 0);
+  const c = Number(product.carbsG ?? 0);
+  const f = Number(product.fatG ?? 0);
+  return cal <= 0 && p <= 0 && c <= 0 && f <= 0;
+}
 
 /**
  * Higher = better. Used to sort search results.
@@ -230,6 +244,13 @@ export function scoreFoodSearchMatch(
 
   if (staple) score += 90;
   if (composite) score -= 80;
+
+  // Empty nutrition (common OFF stubs) must never outrank real staples
+  if (hasEmptyNutrition(product)) {
+    score -= 250;
+  } else if (Number(product.calories ?? 0) > 0) {
+    score += 15;
+  }
 
   // Prefer catalog staples over restaurant brands for generic queries
   const brandL = brand;

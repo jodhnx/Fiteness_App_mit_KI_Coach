@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LazyStatChart } from "@/components/charts/lazy-stat-chart";
 import { ArrowLeft } from "lucide-react";
 import { ExerciseVisual } from "@/components/workout/exercise-visual";
+import { wCard, wMuted, wTitle } from "@/lib/workout-ui";
+import { cn } from "@/lib/utils";
 
 export default function ExerciseStatsPage() {
   const params = useParams();
@@ -61,21 +63,21 @@ export default function ExerciseStatsPage() {
         imageUrl={data.exercise.imageUrl}
         equipment={data.exercise.equipment}
       />
-      <h1 className="text-2xl font-bold text-white">{data.exercise.name}</h1>
-      <p className="text-sm text-zinc-400">
+      <h1 className={cn("text-2xl font-bold", wTitle)}>{data.exercise.name}</h1>
+      <p className={cn("text-sm", wMuted)}>
         {data.exercise.muscleGroup} · {data.exercise.equipment}
       </p>
 
       {(data.lastPerformance || data.estimated1RM != null) && (
-        <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/70 px-4 py-3 space-y-1">
+        <div className={cn(wCard, "px-4 py-3 space-y-1")}>
           {data.lastPerformance && (
-            <p className="text-sm text-zinc-200 tabular-nums">
+            <p className="text-sm text-zinc-800 dark:text-zinc-200 tabular-nums">
               Letztes Mal: {data.lastPerformance.weightKg ?? "—"} kg ×{" "}
               {data.lastPerformance.reps ?? "—"}
             </p>
           )}
           {data.estimated1RM != null && (
-            <p className="text-sm text-zinc-400 tabular-nums">
+            <p className={cn("text-sm tabular-nums", wMuted)}>
               Geschätztes 1RM: {Math.round(data.estimated1RM)} kg
             </p>
           )}

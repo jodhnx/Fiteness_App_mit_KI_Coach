@@ -11,6 +11,7 @@ import { resetNavCacheWarmer } from "@/lib/nav-cache-warmer";
 import { clearExercisePickerListsCache } from "@/lib/exercise-picker-cache";
 import { clearExerciseSearchCache } from "@/lib/exercise-search-cache";
 import { clearBootSplashFlag } from "@/lib/boot-splash";
+import { clearAllScrollPositions } from "@/lib/scroll-restore";
 
 const LOCAL_KEYS = [
   "nexform:shopping-list-v1",
@@ -29,6 +30,10 @@ const LOCAL_KEYS = [
   "nexform:home-widgets-v8",
   "nexform:home-widgets-v7",
   "nexform:home-widgets-v6",
+  // Theme prefs are user-scoped on the server; wipe device keys on account switch
+  "app-theme",
+  "app-color-mode",
+  "app-density",
 ] as const;
 
 const SESSION_KEYS = [
@@ -66,6 +71,7 @@ export function clearAllUserClientState(): void {
   clearExerciseSearchCache();
   resetNavCacheWarmer();
   clearBootSplashFlag();
+  clearAllScrollPositions();
 
   try {
     clearPhoneSensorConsent();

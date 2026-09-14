@@ -65,36 +65,10 @@ export function useNutritionPageDashboard(
       if (cachedReady) return (dayCached ?? todayCached)!;
       return dashboard;
     }
+    // Historical: prefer day cache, then fetched — NEVER invent empty 0-kcal day
+    // from today's shell (that causes empty-meal flash).
     if (isPaintReadyDashboard(dayCached)) return dayCached!;
-    // Placeholder shell until fetch — keep targets from today if available
-    if (isPaintReadyDashboard(dashboard)) {
-      return {
-        ...dashboard,
-        date: day,
-        consumed: {
-          calories: 0,
-          proteinG: 0,
-          carbsG: 0,
-          fatG: 0,
-          fiberG: 0,
-        },
-        remaining: dashboard.remaining,
-        mealsByType: (dashboard.mealsByType ?? []).map((m) => ({
-          ...m,
-          items: [],
-          totals: { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 },
-        })),
-        water: {
-          consumedMl: 0,
-          targetMl: dashboard.water?.targetMl ?? 2500,
-        },
-        empty: true,
-      };
-    }
-    return (
-      dayCached ??
-      dashboard
-    );
+    return dayCached ?? dashboard;
   }, [
     viewingToday,
     usableToday,
@@ -102,7 +76,6 @@ export function useNutritionPageDashboard(
     cachedReady,
     dayCached,
     todayCached,
-    day,
   ]);
 
   const paintReady =
@@ -121,8 +94,9 @@ export function useNutritionPageDashboard(
     ttlMs,
     8_000,
     {
-      revalidateOnMount: !viewingToday || !paintReady,
-      staleRatio: paintReady ? 0.85 : 0.5,
+      // Historical: revalidate in background when cache exists; fetch when not
+      revalidateOnMount: true,
+      staleRatio: paintReady ? 0.9 : 0.4,
     }
   );
 
@@ -150,24 +124,33 @@ export function useNutritionPageDashboard(
     fetched != null &&
     !hasNutritionTargets(fetched);
 
-  const historicalPaint =
-    !viewingToday && isPaintReadyDashboard(fetched ?? dayCached);
+  const historicalReady =
+    !viewingToday &&
+    isPaintReadyDashboard(fetched ?? dayCached);
+
+  // While historical day loads without cache: keep loading=true (skeleton),
+  // do not paint a fake empty day.
+  const historicalLoading =
+    !viewingToday && !historicalReady && (loading || !isBootSettled());
 
   return {
     dashboard:
       !viewingToday && isPaintReadyDashboard(fetched)
         ? fetched!
-        : displayDashboard,
+        : !viewingToday && isPaintReadyDashboard(dayCached)
+          ? dayCached!
+          : displayDashboard,
     loading:
-      (loading && !paintReady && !historicalPaint) ||
+      historicalLoading ||
+      (loading && !paintReady && !historicalReady) ||
       (viewingToday &&
         !paintReady &&
         !settledWithoutTarget &&
         !error &&
         !timedOut) ||
       (viewingToday && !paintReady && !isBootSettled()),
-    error: paintReady || historicalPaint ? null : error,
-    timedOut: paintReady || historicalPaint ? false : timedOut,
+    error: paintReady || historicalReady ? null : error,
+    timedOut: paintReady || historicalReady ? false : timedOut,
     reload,
     applyDashboard,
     selectedDay: day,
