@@ -7,6 +7,7 @@ async function main() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: "Test User",
+      username: `test${Date.now()}`.slice(0, 20).toLowerCase(),
       email: `test${Date.now()}@example.com`,
       password: "TestPass123!",
     }),
