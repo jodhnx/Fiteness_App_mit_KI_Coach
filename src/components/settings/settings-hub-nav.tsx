@@ -123,7 +123,7 @@ export function SettingsHubNav({
     <div className={cn("space-y-6", className)}>
       <Section title="App">
         <Row
-          href="/settings?view=konto#settings-design"
+          href="/settings?view=design"
           label="Design"
           description="Themes & Darstellung"
           icon={Palette}

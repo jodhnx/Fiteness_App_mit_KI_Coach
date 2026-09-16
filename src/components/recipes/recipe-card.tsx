@@ -56,9 +56,9 @@ export const RecipeCard = memo(function RecipeCard({
   const meta = `${tagLabel(recipe)} · ${SLOT_LABEL[recipe.mealSlot] ?? ""}`;
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm transition-colors hover:border-zinc-300 dark:border-white/[0.08] dark:bg-zinc-900/70 dark:shadow-none dark:hover:border-white/[0.14]">
+    <div className="group relative overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm transition-colors hover:border-zinc-300 dark:border-white/[0.08] dark:bg-zinc-900/70 dark:shadow-none dark:hover:border-white/[0.14]">
       <Link href={`/rezepte/${recipe.id}`} prefetch className="block active:opacity-95">
-        <div className="relative aspect-[5/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
           {recipe.imageUrl ? (
             <Image
               src={recipe.imageUrl}
@@ -84,29 +84,24 @@ export const RecipeCard = memo(function RecipeCard({
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent dark:from-zinc-950/80" />
         </div>
 
-        <div className="space-y-1.5 p-2.5">
-          <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-zinc-900 dark:text-white">
+        <div className="space-y-1 p-2">
+          <p className="line-clamp-2 text-[12px] font-semibold leading-snug text-zinc-900 dark:text-white">
             {recipe.name}
           </p>
           <p className="truncate text-[10px] font-medium text-zinc-500">
             {meta}
           </p>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] tabular-nums text-zinc-600 dark:text-zinc-400">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-zinc-600 dark:text-zinc-400">
             <span className="inline-flex items-center gap-0.5 font-semibold text-orange-600 dark:text-orange-300/90">
               <Flame className="h-3 w-3" />
-              {recipe.calories} kcal
+              {recipe.calories}
             </span>
-            <span>P {recipe.proteinG}g</span>
-            <span>C {recipe.carbsG}g</span>
-            <span>F {recipe.fatG}g</span>
-            <span className="inline-flex items-center gap-0.5">
+            <span className="font-medium">P {recipe.proteinG}g</span>
+            <span className="inline-flex items-center gap-0.5 text-zinc-500">
               <Clock className="h-3 w-3" />
-              {timeMin} min
+              {timeMin}m
             </span>
           </div>
-          <span className="inline-flex min-h-8 items-center text-[11px] font-semibold text-accent">
-            Ansehen
-          </span>
         </div>
       </Link>
 

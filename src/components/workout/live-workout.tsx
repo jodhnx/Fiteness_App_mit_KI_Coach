@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Check, Pause, Play, Plus, Timer, Trash2, Trophy, Dumbbell, ChevronLeft } from "lucide-react";
+import { Pause, Play, Plus, Timer, Trash2, Trophy, Dumbbell, ChevronLeft } from "lucide-react";
 import { EndWorkoutDialog } from "@/components/workout/end-workout-dialog";
 import { ExercisePickerSheet } from "@/components/workout/exercise-picker-sheet";
 import { clearActiveWorkoutCaches, PENDING_LIVE_SESSION_KEY } from "@/lib/workout-cache-sync";
@@ -113,35 +113,80 @@ const LiveSetRow = memo(function LiveSetRow({
     rowRef.current?.scrollIntoView({ block: "center", inline: "nearest" });
   };
 
+  const flushRow = () => {
+    focused.current = false;
+    const parsedReps = parseReps(reps);
+    const parsedWeight = parseWeightKg(weight);
+    const valid = validateCompleteSet(weight, reps);
+
+    if (set.completed) {
+      if (!valid.ok) {
+        setLocalError(null);
+        onComplete({ ...set, reps: parsedReps, weightKg: parsedWeight });
+        return;
+      }
+      if (parsedReps !== set.reps || parsedWeight !== set.weightKg) {
+        onPatch(set.id, { reps: parsedReps, weightKg: parsedWeight });
+      }
+      return;
+    }
+
+    if (valid.ok) {
+      setLocalError(null);
+      onComplete({ ...set, weightKg: valid.weightKg, reps: valid.reps });
+      return;
+    }
+
+    onPatch(set.id, { reps: parsedReps, weightKg: parsedWeight });
+    if (reps.trim() !== "" || weight.trim() !== "") {
+      setLocalError(valid.error);
+    } else {
+      setLocalError(null);
+    }
+  };
+
+  const handleRowBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && rowRef.current?.contains(next)) return;
+    flushRow();
+  };
+
   return (
-    <div ref={rowRef} className="space-y-1 set-row-enter">
+    <div ref={rowRef} className="space-y-0.5 set-row-enter">
       <div
         className={cn(
-          "grid grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1.1fr)_2.75rem] gap-2 items-center rounded-xl px-1.5 py-1 min-h-11",
+          "grid grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1.2fr)] gap-1.5 items-center rounded-lg px-1 py-0.5 min-h-10",
           set.completed
             ? "bg-emerald-50 border border-emerald-200 set-complete-flash dark:bg-emerald-500/12 dark:border-emerald-500/25"
             : "bg-zinc-50 border border-zinc-200 dark:bg-zinc-800/40 dark:border-transparent",
           set.saveState === "error" && "border-amber-400 dark:border-amber-500/40"
         )}
+        onBlurCapture={handleRowBlur}
       >
-        <span
+        <button
+          type="button"
           className={cn(
-            "text-sm font-semibold tabular-nums pl-1",
+            "flex min-h-10 min-w-7 items-center justify-center text-xs font-bold tabular-nums rounded-md",
             set.completed
               ? "text-emerald-700 dark:text-emerald-300"
               : "text-zinc-500 dark:text-zinc-400"
           )}
+          onClick={() => {
+            if (!set.completed) return;
+            onComplete({ ...set });
+          }}
+          aria-label={set.completed ? "Satz wieder öffnen" : `Satz ${index + 1}`}
         >
           {index + 1}
-        </span>
+        </button>
         <div className="flex items-center min-w-0">
           <Input
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
-            placeholder=""
+            placeholder="Wdh"
             aria-label="Wiederholungen"
-            className="h-11 min-w-0 flex-1 text-lg text-center rounded-xl tabular-nums keyboard-stable-input appearance-none border-zinc-200 bg-white text-zinc-900 focus-visible:ring-accent/50 dark:border-white/10 dark:bg-black/40 dark:text-white"
+            className="h-10 min-w-0 flex-1 text-base text-center rounded-lg tabular-nums keyboard-stable-input appearance-none border-zinc-200 bg-white text-zinc-900 focus-visible:ring-accent/50 dark:border-white/10 dark:bg-black/40 dark:text-white"
             value={reps}
             onFocus={keepRowVisible}
             onChange={(e) => {
@@ -149,67 +194,27 @@ const LiveSetRow = memo(function LiveSetRow({
               if (next === "" || Number(next) <= 100) setReps(next);
               setLocalError(null);
             }}
-            onBlur={() => {
-              focused.current = false;
-              onPatch(set.id, { reps: parseReps(reps) });
-            }}
           />
         </div>
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
           <Input
             type="text"
             inputMode="decimal"
             pattern="[0-9]*[.,]?[0-9]*"
-            placeholder=""
+            placeholder="kg"
             aria-label="Gewicht in Kilogramm"
-            className="h-11 min-w-0 flex-1 text-lg text-center rounded-xl tabular-nums keyboard-stable-input appearance-none border-zinc-200 bg-white text-zinc-900 focus-visible:ring-accent/50 dark:border-white/10 dark:bg-black/40 dark:text-white"
+            className="h-10 min-w-0 flex-1 text-base text-center rounded-lg tabular-nums keyboard-stable-input appearance-none border-zinc-200 bg-white text-zinc-900 focus-visible:ring-accent/50 dark:border-white/10 dark:bg-black/40 dark:text-white"
             value={weight}
             onFocus={keepRowVisible}
             onChange={(e) => {
               setWeight(sanitizeWeightInput(e.target.value));
               setLocalError(null);
             }}
-            onBlur={() => {
-              focused.current = false;
-              onPatch(set.id, { weightKg: parseWeightKg(weight) });
-            }}
           />
-          <span className="text-[10px] font-bold text-zinc-400 shrink-0 w-6 tracking-wide">
+          <span className="text-[9px] font-bold text-zinc-400 shrink-0 w-5 tracking-wide">
             KG
           </span>
         </div>
-        <Button
-          size="icon"
-          variant={set.completed ? "default" : "secondary"}
-          className={cn(
-            "h-11 w-11 rounded-full",
-            set.completed && "bg-emerald-500 text-zinc-950 hover:bg-emerald-400"
-          )}
-          disabled={set.saveState === "pending"}
-          onClick={() => {
-            if (typeof document !== "undefined") {
-              (document.activeElement as HTMLElement | null)?.blur();
-            }
-            if (set.completed) {
-              onComplete({ ...set, completed: true });
-              return;
-            }
-            const parsed = validateCompleteSet(weight, reps);
-            if (!parsed.ok) {
-              setLocalError(parsed.error);
-              return;
-            }
-            setLocalError(null);
-            onComplete({ ...set, weightKg: parsed.weightKg, reps: parsed.reps });
-          }}
-          aria-label={set.completed ? "Satz wieder öffnen" : "Satz abschließen"}
-        >
-          {set.completed ? (
-            <Check className="h-5 w-5" aria-hidden />
-          ) : (
-            <span className="h-4 w-4 rounded-full border-2 border-current" aria-hidden />
-          )}
-        </Button>
       </div>
       {(localError || set.saveState === "error" || canDelete) && (
         <div className="flex items-center justify-between px-1">

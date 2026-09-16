@@ -11,7 +11,7 @@ const WeightTrendChartInner = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[240px] rounded-xl bg-zinc-800/50 animate-pulse border border-white/5" />
+      <div className="h-[220px] rounded-xl bg-zinc-200/70 animate-pulse border border-zinc-200 dark:bg-white/[0.04] dark:border-white/[0.06]" />
     ),
   }
 );

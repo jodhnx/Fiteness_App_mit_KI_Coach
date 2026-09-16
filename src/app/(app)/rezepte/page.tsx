@@ -5,11 +5,8 @@ import { Search, Heart, Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Input } from "@/components/ui/input";
 import { RecipeCard } from "@/components/recipes/recipe-card";
-import {
-  RECIPE_PRIMARY_FILTERS,
-  RECIPE_SORT_OPTIONS,
-  type RecipeSortId,
-} from "@/data/fitness-recipes";
+import { RecipeFilterBar } from "@/components/recipes/recipe-filter-bar";
+import { RECIPE_SORT_OPTIONS, type RecipeSortId } from "@/data/fitness-recipes";
 import type { RecipeListItem } from "@/lib/recipes/catalog-query";
 import { getCached } from "@/lib/client-cache";
 import {
@@ -75,31 +72,6 @@ function hydrateInitial() {
   };
 }
 
-function Chip({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold min-h-9",
-        active
-          ? "border-accent bg-accent text-white"
-          : "border-zinc-200 bg-white text-zinc-600 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:text-zinc-400"
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
 export default function RezeptePage() {
   const initial = useRef(hydrateInitial()).current;
   const [query, setQuery] = useState(initial.query);
@@ -116,6 +88,7 @@ export default function RezeptePage() {
   const [catalogTotal, setCatalogTotal] = useState(initial.catalogTotal);
   const [loading, setLoading] = useState(initial.loading);
   const [softLoading, setSoftLoading] = useState(false);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const skipFirstDebounce = useRef(true);
 
   useEffect(() => {
@@ -256,7 +229,7 @@ export default function RezeptePage() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rezept oder Zutat suchen…"
+          placeholder="Suche: Chicken, Reis, Protein, Low Carb…"
           className="h-11 rounded-2xl pl-10 bg-white border-zinc-200 shadow-sm dark:bg-zinc-900/80 dark:border-white/[0.08]"
           autoComplete="off"
         />
@@ -266,24 +239,13 @@ export default function RezeptePage() {
       </div>
 
       <div className="space-y-2">
-        <div className="scrollbar-none -mx-0.5 flex gap-1.5 overflow-x-auto px-0.5 pb-0.5">
-          <Chip
-            active={filters.length === 0}
-            label="Alle"
-            onClick={() => {
-              hapticTap();
-              setFilters([]);
-            }}
-          />
-          {RECIPE_PRIMARY_FILTERS.map((f) => (
-            <Chip
-              key={f.id}
-              active={filters.includes(f.id)}
-              label={f.label}
-              onClick={() => toggleFilter(f.id)}
-            />
-          ))}
-        </div>
+        <RecipeFilterBar
+          filters={filters}
+          onToggle={toggleFilter}
+          onClear={() => setFilters([])}
+          moreOpen={moreFiltersOpen}
+          onToggleMore={() => setMoreFiltersOpen((v) => !v)}
+        />
 
         <div className="flex flex-wrap gap-1.5">
           {RECIPE_SORT_OPTIONS.map((s) => (
@@ -313,7 +275,7 @@ export default function RezeptePage() {
             <Heart className="h-3.5 w-3.5 text-rose-400" />
             Favoriten
           </h2>
-          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {favorites.slice(0, 8).map((r, i) => (
               <RecipeCard
                 key={`fav-${r.id}`}
@@ -333,7 +295,7 @@ export default function RezeptePage() {
             ? `${total} Ergebnisse`
             : "Entdecken"}
         </h2>
-        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {recipes.map((r, i) => (
             <RecipeCard
               key={r.id}

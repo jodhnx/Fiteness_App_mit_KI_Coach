@@ -25,6 +25,8 @@ type Props = {
   onWeightPeriodChange: (p: WeightPeriod) => void;
   trainingVolumeTrend: TrendPoint[];
   trainingFrequencyTrend: TrendPoint[];
+  /** When false, weight chart is omitted (shown elsewhere on the page). */
+  showWeightChart?: boolean;
 };
 
 const RANGES: { id: ChartRange; label: string }[] = [
@@ -77,6 +79,7 @@ export const ProgressChartsSection = memo(function ProgressChartsSection({
   onWeightPeriodChange,
   trainingVolumeTrend,
   trainingFrequencyTrend,
+  showWeightChart = true,
 }: Props) {
   const [nutRange, setNutRange] = useState<ChartRange>("day");
   const [trainRange, setTrainRange] = useState<ChartRange>("week");
@@ -145,25 +148,27 @@ export const ProgressChartsSection = memo(function ProgressChartsSection({
         )}
       </div>
 
-      <div className="card-premium p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-white">Gewichtsentwicklung</h2>
-        <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1">
-          {WEIGHT_PERIODS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onWeightPeriodChange(p.id)}
-              className={cn(
-                "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
-                weightPeriod === p.id ? "bg-accent text-zinc-950" : "bg-zinc-800 text-zinc-400"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
+      {showWeightChart ? (
+        <div className="card-premium p-4 space-y-3">
+          <h2 className="text-sm font-semibold text-white">Gewichtsentwicklung</h2>
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1">
+            {WEIGHT_PERIODS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onWeightPeriodChange(p.id)}
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
+                  weightPeriod === p.id ? "bg-accent text-zinc-950" : "bg-zinc-800 text-zinc-400"
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <LazyWeightTrendChart data={weightChartPoints} />
         </div>
-        <LazyWeightTrendChart data={weightChartPoints} />
-      </div>
+      ) : null}
 
       <div className="card-premium p-4 space-y-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">

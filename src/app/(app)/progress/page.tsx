@@ -30,6 +30,7 @@ import { PageIntro } from "@/components/guide/page-intro";
 import { markScreenLoaded } from "@/lib/storage-service";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { ProgressWeeklyIntelligenceCard } from "@/components/progress/progress-weekly-intelligence-card";
+import { ProgressWeightHero } from "@/components/progress/progress-weight-hero";
 
 const ProgressChartsSection = dynamic(
   () =>
@@ -330,6 +331,15 @@ export default function ProgressPage() {
     >
       <PageIntro pageId="progress" />
 
+      <ProgressWeightHero
+        points={analytics.chartPoints}
+        period={period}
+        onPeriodChange={setPeriod}
+        loading={showSkeleton}
+        currentKg={lastWeight ?? null}
+        changeWeekKg={analytics.changeWeekKg}
+      />
+
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
         {tabs.map((t) => (
           <button
@@ -388,29 +398,18 @@ export default function ProgressPage() {
             </div>
           )}
 
-          {showSkeleton && (
-            <div className="space-y-4">
-              <div className="h-36 rounded-2xl bg-zinc-200/70 border border-zinc-200 animate-pulse dark:bg-white/[0.03] dark:border-white/[0.06]" />
-              <div className="h-48 rounded-2xl bg-zinc-200/70 border border-zinc-200 animate-pulse dark:bg-white/[0.03] dark:border-white/[0.06]" />
-            </div>
-          )}
-
           {!showSkeleton && dashboard && chartsReady && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-white px-0.5">
-                Gewichtsverlauf
-              </h2>
-              <ProgressChartsSection
-                nutritionTrend={dashboard.nutritionTrend ?? []}
-                calorieTarget={dashboard.calorieTarget ?? 0}
-                proteinTargetG={dashboard.proteinTargetG ?? 0}
-                weightChartPoints={analytics.chartPoints}
-                weightPeriod={period}
-                onWeightPeriodChange={setPeriod}
-                trainingVolumeTrend={dashboard.trainingVolumeTrend ?? []}
-                trainingFrequencyTrend={dashboard.trainingFrequencyTrend ?? []}
-              />
-            </section>
+            <ProgressChartsSection
+              nutritionTrend={dashboard.nutritionTrend ?? []}
+              calorieTarget={dashboard.calorieTarget ?? 0}
+              proteinTargetG={dashboard.proteinTargetG ?? 0}
+              weightChartPoints={analytics.chartPoints}
+              weightPeriod={period}
+              onWeightPeriodChange={setPeriod}
+              trainingVolumeTrend={dashboard.trainingVolumeTrend ?? []}
+              trainingFrequencyTrend={dashboard.trainingFrequencyTrend ?? []}
+              showWeightChart={false}
+            />
           )}
 
           {!showSkeleton && (
@@ -454,18 +453,6 @@ export default function ProgressPage() {
             </p>
           )}
           <WeightInput initialKg={lastWeight} onSave={saveWeight} />
-          {dashboard && chartsReady ? (
-            <ProgressChartsSection
-              nutritionTrend={dashboard.nutritionTrend ?? []}
-              calorieTarget={dashboard.calorieTarget ?? 0}
-              proteinTargetG={dashboard.proteinTargetG ?? 0}
-              weightChartPoints={analytics.chartPoints}
-              weightPeriod={period}
-              onWeightPeriodChange={setPeriod}
-              trainingVolumeTrend={dashboard.trainingVolumeTrend ?? []}
-              trainingFrequencyTrend={dashboard.trainingFrequencyTrend ?? []}
-            />
-          ) : null}
         </div>
       ) : null}
 

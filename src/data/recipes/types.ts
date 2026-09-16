@@ -116,14 +116,48 @@ export const RECIPE_PRIMARY_FILTERS = RECIPE_FILTERS.filter((f) =>
     "low-fat",
     "high-calorie",
     "meal-prep",
-    "bulking",
-    "cutting",
-    "pre-workout",
-    "post-workout",
+    "muscle-gain",
+    "fat-loss",
+    "vegetarian",
     "vegan",
-    "austrian",
   ].includes(f.id)
 );
+
+/** Additional filters in the expandable “Mehr Filter” section. */
+export const RECIPE_MORE_FILTERS = RECIPE_FILTERS.filter(
+  (f) => !RECIPE_PRIMARY_FILTERS.some((p) => p.id === f.id)
+);
+
+export const RECIPE_FILTER_GROUPS: {
+  id: string;
+  label: string;
+  filterIds: string[];
+}[] = [
+  {
+    id: "meal",
+    label: "Mahlzeit",
+    filterIds: ["BREAKFAST", "LUNCH", "DINNER", "SNACK"],
+  },
+  {
+    id: "goal",
+    label: "Ernährungsziel",
+    filterIds: [
+      "high-protein",
+      "low-calorie",
+      "high-calorie",
+      "low-fat",
+      "low-carb",
+      "meal-prep",
+      "muscle-gain",
+      "fat-loss",
+    ],
+  },
+  {
+    id: "diet",
+    label: "Ernährung",
+    filterIds: ["vegetarian", "vegan"],
+  },
+];
 
 export type RecipeSortId = "protein" | "calories" | "quick" | "popular";
 
