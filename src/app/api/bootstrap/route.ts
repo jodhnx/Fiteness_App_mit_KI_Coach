@@ -5,9 +5,10 @@ import { loadHomeCriticalData } from "@/lib/home-critical";
 import { profileStubFromBoot } from "@/lib/app-init";
 import { createEmptyNutritionDashboard } from "@/lib/nutrition-defaults";
 import { resolveNutritionDay } from "@/lib/nutrition-day";
+import { getActivePlanSummary } from "@/lib/nutrition-plans";
 
 /**
- * Boot payload: ONLY Home + Nutrition (+ profile stub from same query).
+ * Boot payload: Home + Nutrition + active plan summary (+ profile stub).
  * Progress / community / recipes must NOT block cold start —
  * they warm in the background after Home is shown.
  *
@@ -26,10 +27,13 @@ export async function GET(req: NextRequest) {
       tzOffset: q.get("tzOffset"),
     });
 
-    const home = await loadHomeCriticalData(userId, resolved.date, {
-      from: resolved.rangeFrom,
-      to: resolved.rangeTo,
-    });
+    const [home, activeNutritionPlan] = await Promise.all([
+      loadHomeCriticalData(userId, resolved.date, {
+        from: resolved.rangeFrom,
+        to: resolved.rangeTo,
+      }),
+      getActivePlanSummary(userId).catch(() => null),
+    ]);
     const nutrition = home.nutrition ?? createEmptyNutritionDashboard(resolved.date);
     const profile = profileStubFromBoot(home, nutrition);
 
@@ -42,6 +46,7 @@ export async function GET(req: NextRequest) {
       nutrition,
       profile,
       progress: null,
+      activeNutritionPlan,
     });
     res.headers.set("Cache-Control", "private, no-cache");
     return res;

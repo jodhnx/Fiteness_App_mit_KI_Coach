@@ -74,3 +74,14 @@ export type PlanListItemDto = {
   createdAt: string;
   updatedAt: string;
 };
+
+/** Compact active-plan card / bootstrap summary (planned macros only). */
+export type ActivePlanSummaryDto = {
+  id: string;
+  name: string;
+  durationDays: number;
+  currentDayNumber: number;
+  totals: { calories: number; proteinG: number; carbsG?: number; fatG?: number };
+  targetCalories: number;
+  targetProteinG: number;
+};

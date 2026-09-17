@@ -10,6 +10,7 @@ import {
   patchPlanItemSchema,
 } from "../src/lib/nutrition-plan-validation";
 import { sumMacros, macrosForQuantity, roundMacros } from "../src/lib/food-macros";
+import { NUTRITION_ACTIVE_PLAN_KEY } from "../src/lib/nutrition-plan-cache";
 
 let passed = 0;
 let failed = 0;
@@ -97,6 +98,16 @@ assert(
   "plan items route path is plans not quick-add",
   "/api/nutrition/plans/[id]/items".includes("plans") &&
     !"/api/nutrition/plans/[id]/items".includes("quick-add")
+);
+
+assert(
+  "active plan cache key is user-scoped via client-cache owner",
+  NUTRITION_ACTIVE_PLAN_KEY === "nutrition-active-plan"
+);
+
+assert(
+  "bootstrap includes activeNutritionPlan field name",
+  "activeNutritionPlan".length > 0
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

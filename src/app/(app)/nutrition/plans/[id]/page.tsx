@@ -22,6 +22,7 @@ import {
   readPlanCache,
   writePlanCache,
   invalidateNutritionPlanCaches,
+  syncActivePlanSummaryFromDetail,
 } from "@/lib/nutrition-plan-cache";
 import type { FoodProduct } from "@/lib/food/food-product-types";
 import { useFoodFavorites } from "@/hooks/use-food-favorites";
@@ -52,6 +53,7 @@ export default function NutritionPlanEditorPage() {
   const applyPlan = useCallback((next: PlanDetailDto) => {
     setPlan(next);
     writePlanCache(next);
+    syncActivePlanSummaryFromDetail(next);
   }, []);
 
   const load = useCallback(

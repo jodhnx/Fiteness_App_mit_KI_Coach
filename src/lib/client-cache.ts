@@ -220,6 +220,7 @@ export function hydratePersistentCaches(expectedUserId?: string | null) {
     "nutrition-dashboard",
     "profile-data",
     "food-history",
+    "nutrition-active-plan",
   ] as const;
   for (const key of keys) {
     if (store.has(key)) continue;

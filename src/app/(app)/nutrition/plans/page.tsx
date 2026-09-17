@@ -13,6 +13,8 @@ import {
   readPlansListCache,
   writePlansListCache,
   invalidateNutritionPlanCaches,
+  invalidateActiveNutritionPlanCache,
+  warmActiveNutritionPlanCaches,
 } from "@/lib/nutrition-plan-cache";
 import { PLAN_STATUS_LABEL } from "@/lib/nutrition-plan-constants";
 
@@ -65,17 +67,28 @@ export default function NutritionPlansPage() {
       }
       if (method === "DELETE") {
         invalidateNutritionPlanCaches(id);
+        invalidateActiveNutritionPlanCache();
         setPlans((prev) => prev.filter((p) => p.id !== id));
+        warmActiveNutritionPlanCaches();
         toast.success("Plan gelöscht");
       } else {
         const data = (await res.json()) as { plan: { id: string } };
         invalidateNutritionPlanCaches(id);
+        if (
+          body.action === "activate" ||
+          body.action === "archive" ||
+          body.isActive === true ||
+          body.isActive === false
+        ) {
+          invalidateActiveNutritionPlanCache();
+        }
         if (body.action === "duplicate") {
           toast.success("Plan dupliziert");
           router.push(`/nutrition/plans/${data.plan.id}`);
           return;
         }
         await load(true);
+        warmActiveNutritionPlanCaches();
         toast.success("Gespeichert");
       }
     } catch {

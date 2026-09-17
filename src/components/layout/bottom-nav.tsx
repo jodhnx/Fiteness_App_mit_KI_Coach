@@ -8,7 +8,9 @@ import { PRIMARY_NAV } from "@/lib/nav-items";
 import {
   warmProgressCache,
   warmNavDataCaches,
+  warmNutritionSearchCaches,
 } from "@/lib/nav-cache-warmer";
+import { warmActiveNutritionPlanCaches } from "@/lib/nutrition-plan-cache";
 import { hapticSelect } from "@/lib/haptic";
 import {
   useMainTabNav,
@@ -103,7 +105,10 @@ export const BottomNav = memo(function BottomNav() {
     (href: string) => {
       router.prefetch(href);
       if (href === "/progress") warmProgressCache();
-      else if (href !== "/more") warmNavDataCaches();
+      else if (href === "/nutrition") {
+        warmNutritionSearchCaches();
+        warmActiveNutritionPlanCaches();
+      } else if (href !== "/more") warmNavDataCaches();
     },
     [router]
   );

@@ -34,6 +34,10 @@ function schedulePostBootWarm() {
   if (typeof window === "undefined") return;
   // Food history ASAP so Nutrition "+" is instant (single warm path)
   void import("@/lib/food-history-cache").then((m) => m.warmFoodHistoryCache());
+  // Active plan detail prefetch (summary already applied from bootstrap)
+  void import("@/lib/nutrition-plan-cache").then((m) =>
+    m.warmActiveNutritionPlanCaches()
+  );
   const run = () => {
     warmNavDataCaches();
     // Active session warm is owned by warmNavDataCaches — avoid double fetch

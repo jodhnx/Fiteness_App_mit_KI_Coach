@@ -3,6 +3,7 @@ import { PROGRESS_CACHE_KEY } from "@/lib/progress-cache";
 import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
 import { warmFoodHistoryCache } from "@/lib/food-history-cache";
 import { WORKOUT_ACTIVE_CACHE_KEY } from "@/lib/workout-cache-sync";
+import { warmActiveNutritionPlanCaches } from "@/lib/nutrition-plan-cache";
 
 let warmed = false;
 
@@ -44,6 +45,11 @@ export function warmNavDataCaches() {
     typeof requestIdleCallback !== "undefined"
       ? requestIdleCallback
       : (cb: () => void) => setTimeout(cb, 800);
+
+  // Nutrition plan detail ASAP after boot (summary already in bootstrap)
+  idle(() => {
+    warmActiveNutritionPlanCaches();
+  });
 
   // Primary tabs: Training needs active session + plans
   window.setTimeout(() => {

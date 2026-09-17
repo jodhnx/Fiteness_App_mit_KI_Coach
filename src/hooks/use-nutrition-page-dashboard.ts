@@ -94,9 +94,10 @@ export function useNutritionPageDashboard(
     ttlMs,
     8_000,
     {
-      // Historical: revalidate in background when cache exists; fetch when not
-      revalidateOnMount: true,
-      staleRatio: paintReady ? 0.9 : 0.4,
+      // Paint-ready from bootstrap/cache: only soft-revalidate when stale.
+      // Avoid duplicate /api/nutrition/dashboard on every Nutrition tab open.
+      revalidateOnMount: !paintReady,
+      staleRatio: paintReady ? 0.95 : 0.4,
     }
   );
 

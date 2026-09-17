@@ -6,6 +6,7 @@ export const PERSISTENT_CACHE_KEYS = [
   "nutrition-dashboard",
   "profile-data",
   "food-history",
+  "nutrition-active-plan",
 ] as const;
 
 /** Shared with client-cache — never store account data without this owner. */

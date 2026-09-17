@@ -36,6 +36,12 @@ import { bootPerfMark, bootPerfReset } from "@/lib/app-init-perf";
 import { commitHomeIntelligenceRefresh } from "@/lib/intelligence/client-refresh";
 import { HOME_INSIGHTS_CACHE } from "@/lib/home-section-cache";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
+import type { ActivePlanSummaryDto } from "@/lib/nutrition-plan-types";
+import {
+  NUTRITION_ACTIVE_PLAN_KEY,
+  readActivePlanCache,
+  writeActivePlanCache,
+} from "@/lib/nutrition-plan-cache";
 
 export const BOOT_READY_KEY = "boot-ready-v1";
 
@@ -44,6 +50,8 @@ export type BootstrapPayload = {
   nutrition: NutritionDashboardPayload;
   profile: ProfileServerPrefetch | null;
   progress: unknown;
+  /** Active meal plan summary — null means checked and none; omitted only on legacy cache. */
+  activeNutritionPlan?: ActivePlanSummaryDto | null;
 };
 
 export type AppInitResult = {
@@ -188,11 +196,20 @@ export function readBootPayloadFromCache(): BootstrapPayload | null {
   const resolvedProfile =
     profile ?? profileStubFromBoot(mergedHome, normalizeNutritionDashboard(nutrition));
 
+  const activeEntry = readActivePlanCache();
+  const activeNutritionPlan =
+    activeEntry != null
+      ? activeEntry.active
+      : getCached<{ active: ActivePlanSummaryDto | null }>(NUTRITION_ACTIVE_PLAN_KEY, {
+          allowStale: true,
+        })?.active ?? undefined;
+
   return {
     home: mergedHome,
     nutrition: normalizeNutritionDashboard(nutrition),
     profile: resolvedProfile,
     progress: progress ?? null,
+    activeNutritionPlan,
   };
 }
 
@@ -278,6 +295,11 @@ function applyBootstrapPayload(payload: BootstrapPayload) {
     bootPerfMark("progress_apply_end");
   }
 
+  // Always write when present on payload (including explicit null = no active plan)
+  if ("activeNutritionPlan" in payload) {
+    writeActivePlanCache(payload.activeNutritionPlan ?? null);
+  }
+
   setCached(BOOT_READY_KEY, { at: Date.now() }, 12 * 60 * 60_000);
   bootPerfMark("boot_ready");
 }
@@ -304,6 +326,9 @@ async function fetchBootstrap(gen: number): Promise<BootstrapPayload | null> {
       null;
     const profile = (body as { profile?: ProfileServerPrefetch }).profile ?? null;
     const progress = (body as { progress?: unknown }).progress ?? null;
+    const activeNutritionPlan =
+      (body as { activeNutritionPlan?: ActivePlanSummaryDto | null })
+        .activeNutritionPlan ?? null;
 
     if (!isHomeBootReady(home ?? null) || !nutrition || !isNutritionBootReady(nutrition, { allowStaleDate: true })) {
       return null;
@@ -320,6 +345,7 @@ async function fetchBootstrap(gen: number): Promise<BootstrapPayload | null> {
       nutrition: canonical,
       profile: profile ?? profileStubFromBoot(home!, canonical),
       progress,
+      activeNutritionPlan,
     };
   } catch (e) {
     console.error("[initializeApp] bootstrap failed", e);

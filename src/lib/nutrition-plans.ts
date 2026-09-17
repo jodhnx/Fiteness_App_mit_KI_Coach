@@ -833,18 +833,17 @@ export async function logPlanItemAsEaten(
   };
 }
 
+/** Lean active-plan card payload — only current day macros (not full plan tree). */
 export async function getActivePlanSummary(userId: string) {
   const plan = await prisma.nutritionPlan.findFirst({
     where: { userId, isActive: true },
-    include: {
-      days: {
-        orderBy: { dayNumber: "asc" },
-        include: {
-          meals: {
-            include: { items: true },
-          },
-        },
-      },
+    select: {
+      id: true,
+      name: true,
+      durationDays: true,
+      startDate: true,
+      targetCalories: true,
+      targetProteinG: true,
     },
   });
   if (!plan) return null;
@@ -863,13 +862,35 @@ export async function getActivePlanSummary(userId: string) {
       Math.max(1, diff + 1)
     );
   } else {
-    const withItems = plan.days.find((d) =>
-      d.meals.some((m) => m.items.length > 0)
-    );
-    currentDayNumber = withItems?.dayNumber ?? 1;
+    const firstWithItems = await prisma.nutritionPlanDay.findFirst({
+      where: {
+        planId: plan.id,
+        meals: { some: { items: { some: {} } } },
+      },
+      orderBy: { dayNumber: "asc" },
+      select: { dayNumber: true },
+    });
+    currentDayNumber = firstWithItems?.dayNumber ?? 1;
   }
 
-  const day = plan.days.find((d) => d.dayNumber === currentDayNumber) ?? plan.days[0];
+  const day = await prisma.nutritionPlanDay.findFirst({
+    where: { planId: plan.id, dayNumber: currentDayNumber },
+    select: {
+      meals: {
+        select: {
+          items: {
+            select: {
+              calories: true,
+              proteinG: true,
+              carbsG: true,
+              fatG: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
   const totals = day
     ? sumMacros(
         day.meals.flatMap((m) =>
