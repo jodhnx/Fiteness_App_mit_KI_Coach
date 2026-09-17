@@ -10,7 +10,7 @@ import { createNutritionPlanSchema } from "@/lib/nutrition-plan-validation";
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
+    if (!session?.user?.id) return jsonError("Nicht angemeldet", 401, "UNAUTHORIZED");
     const plans = await listNutritionPlans(session.user.id);
     return jsonOk({ plans });
   } catch (e) {
@@ -21,10 +21,16 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
-    const body = await req.json();
+    if (!session?.user?.id) return jsonError("Nicht angemeldet", 401, "UNAUTHORIZED");
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return jsonError("Ungültiger Request-Body", 400);
+    }
     const parsed = createNutritionPlanSchema.safeParse(body);
-    if (!parsed.success) return jsonError("Ungültige Eingabe");
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      return jsonError(issue?.message ?? "Ungültige Eingabe", 400);
+    }
     const plan = await createNutritionPlan(session.user.id, parsed.data);
     return jsonOk({ plan }, 201);
   } catch (e) {

@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { isDatabaseConnectionError } from "@/lib/prisma-errors";
+import { isDatabaseConnectionError, isSchemaMismatchError } from "@/lib/prisma-errors";
 import { validateSupabaseDatabaseEnv, explainSupabasePoolerError, flattenErrorMessage } from "@/lib/database-url";
 
 /** Detect misconfigured Supabase URL (project ref used as hostname). */
@@ -22,6 +22,22 @@ export function formatConnectionErrorMessage(error: unknown): string | null {
   return null;
 }
 
+/** Machine-readable code for clients (never a secret). */
+export function apiErrorCode(error: unknown): string | undefined {
+  if (error instanceof Error) {
+    if (error.message === "UNAUTHORIZED") return "UNAUTHORIZED";
+    if (error.message === "FORBIDDEN") return "FORBIDDEN";
+  }
+  if (isSchemaMismatchError(error)) return "SCHEMA_MISMATCH";
+  if (isDatabaseConnectionError(error)) return "DB_UNAVAILABLE";
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") return "CONFLICT";
+    if (error.code === "P2025") return "NOT_FOUND";
+    if (error.code === "P2003") return "FK_VIOLATION";
+  }
+  return "INTERNAL";
+}
+
 /** Human-readable API error — never expose migration commands to end users. */
 export function formatApiErrorMessage(error: unknown): string {
   const connectionDetail = formatConnectionErrorMessage(error);
@@ -35,8 +51,12 @@ export function formatApiErrorMessage(error: unknown): string {
     switch (error.code) {
       case "P2021":
       case "P2022":
-        console.error("[api] schema mismatch", error.code, error.meta);
-        return "Einige Daten sind vorübergehend nicht verfügbar. Bitte später erneut versuchen.";
+        console.error(
+          "[api] schema mismatch — NutritionPlan tables/columns missing. Run: npx tsx scripts/ensure-nutrition-plan-schema.ts",
+          error.code,
+          error.meta
+        );
+        return "Ernährungspläne sind noch nicht vollständig eingerichtet. Bitte später erneut versuchen.";
       case "P2002":
         return "Dieser Eintrag existiert bereits.";
       case "P2003":
@@ -74,6 +94,7 @@ export function apiErrorStatus(error: unknown): number {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2021" || error.code === "P2022") return 503;
     if (error.code === "P2002") return 409;
+    if (error.code === "P2025") return 404;
   }
   if (isDatabaseConnectionError(error)) return 503;
   return 500;

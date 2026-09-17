@@ -1,4 +1,5 @@
 -- Nutrition meal plans: extend NutritionPlan + day/meal/item tables
+-- Idempotent: safe to re-run when partially applied.
 
 -- Drop old stub columns if present (macros-only plan)
 ALTER TABLE "NutritionPlan" DROP COLUMN IF EXISTS "calories";
@@ -26,7 +27,7 @@ CREATE TABLE IF NOT EXISTS "NutritionPlanDay" (
     "dayNumber" INTEGER NOT NULL,
     "date" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "NutritionPlanDay_pkey" PRIMARY KEY ("id")
 );
 
@@ -37,7 +38,7 @@ CREATE TABLE IF NOT EXISTS "NutritionPlanMeal" (
     "title" TEXT,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "NutritionPlanMeal_pkey" PRIMARY KEY ("id")
 );
 
@@ -57,7 +58,7 @@ CREATE TABLE IF NOT EXISTS "NutritionPlanItem" (
     "fiberG" DOUBLE PRECISION,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "NutritionPlanItem_pkey" PRIMARY KEY ("id")
 );
 

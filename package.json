@@ -26,6 +26,7 @@
     "db:test": "npx tsx scripts/test-database.ts",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:status": "prisma migrate status",
+    "db:ensure-nutrition-plans": "npx tsx scripts/ensure-nutrition-plan-schema.ts",
     "db:supabase:setup": "npx tsx scripts/setup-supabase.ts",
     "db:verify-supabase": "npx tsx scripts/verify-supabase.ts",
     "db:test-connection": "npx tsx scripts/test-prisma-connection.ts",

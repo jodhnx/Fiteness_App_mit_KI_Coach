@@ -8,6 +8,7 @@ import { nutritionTargetsFromProfile } from "@/lib/calorie-target";
 import { macrosForQuantity, roundMacros, sumMacros, type MacroTotals } from "@/lib/food-macros";
 import { accessibleFoodItemFilter } from "@/lib/food/food-access";
 import { MEAL_TYPE_LABELS } from "@/lib/meal-types";
+import { nutritionDayUtc } from "@/lib/nutrition-day";
 import type {
   PlanDayDto,
   PlanDetailDto,
@@ -208,9 +209,11 @@ export async function createNutritionPlan(
   }
 ): Promise<PlanDetailDto> {
   const targets = await resolveUserTargets(userId);
-  const startDate = input.startDate
-    ? new Date(`${input.startDate}T12:00:00.000Z`)
-    : null;
+  // Noon UTC via nutritionDayUtc avoids YYYY-MM-DD local/UTC day shift
+  const startDate =
+    input.startDate && /^\d{4}-\d{2}-\d{2}$/.test(input.startDate)
+      ? nutritionDayUtc(input.startDate)
+      : null;
 
   const plan = await prisma.nutritionPlan.create({
     data: {
@@ -288,8 +291,8 @@ export async function updateNutritionPlanMeta(
   const startDate =
     patch.startDate === undefined
       ? undefined
-      : patch.startDate
-        ? new Date(`${patch.startDate}T12:00:00.000Z`)
+      : patch.startDate && /^\d{4}-\d{2}-\d{2}$/.test(patch.startDate)
+        ? nutritionDayUtc(patch.startDate)
         : null;
 
   await prisma.nutritionPlan.update({

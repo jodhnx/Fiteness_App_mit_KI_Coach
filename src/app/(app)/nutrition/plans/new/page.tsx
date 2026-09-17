@@ -7,10 +7,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PLAN_DURATIONS } from "@/lib/nutrition-plan-constants";
-import { writePlanCache, invalidateNutritionPlanCaches } from "@/lib/nutrition-plan-cache";
-import type { PlanDetailDto } from "@/lib/nutrition-plan-types";
+import {
+  writePlanCache,
+  writePlansListCache,
+  readPlansListCache,
+} from "@/lib/nutrition-plan-cache";
+import type { PlanDetailDto, PlanListItemDto } from "@/lib/nutrition-plan-types";
+import { nutritionPlanApiErrorMessage } from "@/lib/nutrition-plan-api-error";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+function planToListItem(plan: PlanDetailDto): PlanListItemDto {
+  return {
+    id: plan.id,
+    name: plan.name,
+    durationDays: plan.durationDays,
+    status: plan.status,
+    isActive: plan.isActive,
+    targetCalories: plan.targetCalories,
+    targetProteinG: plan.targetProteinG,
+    targetCarbsG: plan.targetCarbsG,
+    targetFatG: plan.targetFatG,
+    mealCount: plan.totalMeals,
+    itemCount: plan.totalItems,
+    progressDays: plan.days.filter((d) => d.itemCount > 0).length,
+    createdAt: plan.createdAt,
+    updatedAt: plan.updatedAt,
+  };
+}
 
 export default function NewNutritionPlanPage() {
   const router = useRouter();
@@ -36,18 +60,32 @@ export default function NewNutritionPlanPage() {
           startDate: startDate || null,
         }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error((err as { error?: string }).error ?? "Erstellen fehlgeschlagen");
+      const body = (await res.json().catch(() => null)) as {
+        plan?: PlanDetailDto;
+        error?: string;
+        code?: string;
+      } | null;
+      if (!res.ok || !body?.plan) {
+        toast.error(nutritionPlanApiErrorMessage(res.status, body));
+        if (process.env.NODE_ENV === "development") {
+          console.error("[nutrition/plans/new]", res.status, body);
+        }
         return;
       }
-      const data = (await res.json()) as { plan: PlanDetailDto };
-      writePlanCache(data.plan);
-      invalidateNutritionPlanCaches();
+      const plan = body.plan;
+      writePlanCache(plan);
+      const prev = readPlansListCache() ?? [];
+      writePlansListCache([
+        planToListItem(plan),
+        ...prev.filter((p) => p.id !== plan.id),
+      ]);
       toast.success("Plan erstellt");
-      router.replace(`/nutrition/plans/${data.plan.id}`);
-    } catch {
-      toast.error("Netzwerkfehler");
+      router.replace(`/nutrition/plans/${plan.id}`);
+    } catch (e) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[nutrition/plans/new] network", e);
+      }
+      toast.error("Netzwerkfehler — bitte Verbindung prüfen.");
     } finally {
       setSaving(false);
     }

@@ -17,6 +17,7 @@ import {
   warmActiveNutritionPlanCaches,
 } from "@/lib/nutrition-plan-cache";
 import { PLAN_STATUS_LABEL } from "@/lib/nutrition-plan-constants";
+import { nutritionPlanApiErrorMessage } from "@/lib/nutrition-plan-api-error";
 
 const STATUS_LABEL = PLAN_STATUS_LABEL;
 
@@ -26,17 +27,32 @@ export default function NutritionPlansPage() {
   const [plans, setPlans] = useState<PlanListItemDto[]>(initial ?? []);
   const [loading, setLoading] = useState(!initial?.length);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async (soft = false) => {
     if (!soft) setLoading(true);
     try {
       const res = await fetch("/api/nutrition/plans", { credentials: "include" });
-      if (!res.ok) throw new Error("load");
-      const data = (await res.json()) as { plans: PlanListItemDto[] };
-      setPlans(data.plans);
-      writePlansListCache(data.plans);
+      const body = (await res.json().catch(() => null)) as {
+        plans?: PlanListItemDto[];
+        error?: string;
+        code?: string;
+      } | null;
+      if (!res.ok) {
+        const msg = nutritionPlanApiErrorMessage(res.status, body);
+        setLoadError(msg);
+        // Keep existing cache — never wipe on failed fetch
+        if (!soft && !plans.length) toast.error(msg);
+        return;
+      }
+      setLoadError(null);
+      const next = Array.isArray(body?.plans) ? body!.plans! : [];
+      setPlans(next);
+      writePlansListCache(next);
     } catch {
-      if (!plans.length) toast.error("Pläne konnten nicht geladen werden");
+      const msg = "Netzwerkfehler — Pläne konnten nicht geladen werden.";
+      setLoadError(msg);
+      if (!soft && !plans.length) toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -61,8 +77,11 @@ export default function NutritionPlansPage() {
         body: method === "PATCH" ? JSON.stringify(body) : undefined,
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error((err as { error?: string }).error ?? "Aktion fehlgeschlagen");
+        const err = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          code?: string;
+        };
+        toast.error(nutritionPlanApiErrorMessage(res.status, err));
         return;
       }
       if (method === "DELETE") {
@@ -136,7 +155,23 @@ export default function NutritionPlansPage() {
         </div>
       ) : null}
 
-      {!loading && plans.length === 0 ? (
+      {loadError && plans.length === 0 && !loading ? (
+        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 p-5 text-center space-y-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+          <p className="text-sm font-medium text-zinc-900 dark:text-white">
+            {loadError}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 rounded-xl"
+            onClick={() => void load(false)}
+          >
+            Erneut versuchen
+          </Button>
+        </div>
+      ) : null}
+
+      {!loading && !loadError && plans.length === 0 ? (
         <div className="rounded-2xl border border-zinc-200/90 bg-white p-8 text-center space-y-4 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.02]">
           <CalendarDays className="h-10 w-10 mx-auto text-accent" />
           <div>
