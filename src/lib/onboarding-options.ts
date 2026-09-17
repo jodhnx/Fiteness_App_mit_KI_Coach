@@ -103,12 +103,36 @@ export const ONBOARDING_GOAL_SIMPLE: {
   label: string;
   description: string;
 }[] = [
-  { key: "GAIN_MUSCLE", label: "Muskelaufbau", description: "Masse & Definition aufbauen" },
-  { key: "LOSE_WEIGHT", label: "Fettverlust", description: "Gewicht reduzieren & definieren" },
-  { key: "RECOMP", label: "Gewicht halten", description: "Gewicht halten und Körper umbauen" },
-  { key: "STRENGTH", label: "Kraft", description: "Maximalkraft & Leistung" },
-  { key: "ENDURANCE", label: "Ausdauer", description: "Kondition & Cardio" },
-  { key: "GENERAL_FITNESS", label: "Fitness", description: "Gesund und fit bleiben" },
+  {
+    key: "LOSE_WEIGHT",
+    label: "Abnehmen",
+    description: "Fett reduzieren / moderates Defizit",
+  },
+  {
+    key: "RECOMP",
+    label: "Gewicht halten",
+    description: "Kalorien ungefähr auf Erhalt",
+  },
+  {
+    key: "GAIN_MUSCLE",
+    label: "Muskelaufbau",
+    description: "Moderater Überschuss",
+  },
+  {
+    key: "STRENGTH",
+    label: "Kraft",
+    description: "Maximalkraft & Leistung",
+  },
+  {
+    key: "ENDURANCE",
+    label: "Ausdauer",
+    description: "Kondition & Cardio",
+  },
+  {
+    key: "GENERAL_FITNESS",
+    label: "Fitness",
+    description: "Gesund und fit bleiben",
+  },
 ];
 
 export const ONBOARDING_WELCOME_FEATURES = [

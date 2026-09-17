@@ -39,6 +39,7 @@ import {
 import { CONFIG_LOCATIONS, type ConfigLocation } from "@/lib/plan-configurator";
 import { PlaceholderNumberInput } from "@/components/ui/placeholder-number-input";
 import { ChevronLeft, ChevronRight, Sparkles, Minus, Plus } from "lucide-react";
+import { useOnboardingDarkTheme } from "@/hooks/use-onboarding-dark-theme";
 
 const PROFILE_STEPS = 12;
 const TOTAL = 14;
@@ -79,9 +80,9 @@ const DEFAULT: Draft = {
 };
 
 const GOALS: { key: MainGoalKey; label: string; desc: string }[] = [
-  { key: "GAIN_MUSCLE", label: "Muskelaufbau", desc: "Masse & Kraft" },
-  { key: "LOSE_WEIGHT", label: "Fettverlust", desc: "Defizit & Definition" },
-  { key: "ENDURANCE", label: "Gewicht halten", desc: "Stabil bleiben" },
+  { key: "LOSE_WEIGHT", label: "Abnehmen", desc: "Fett reduzieren / moderates Defizit" },
+  { key: "ENDURANCE", label: "Gewicht halten", desc: "Kalorien ungefähr auf Erhalt" },
+  { key: "GAIN_MUSCLE", label: "Muskelaufbau", desc: "Moderater Überschuss" },
   { key: "STRENGTH", label: "Kraftaufbau", desc: "Maximalkraft" },
   { key: "GENERAL_FITNESS", label: "Fitness", desc: "Gesund & aktiv" },
 ];
@@ -108,6 +109,7 @@ function Chip({ selected, onClick, label }: { selected: boolean; onClick: () => 
 }
 
 export function RegistrationFlow() {
+  useOnboardingDarkTheme(true);
   const router = useRouter();
   const params = useSearchParams();
   const { data: session, update } = useSession();
@@ -560,22 +562,40 @@ export function RegistrationFlow() {
       )}
 
       {step === 13 && plan && (
-        <GlassCard className="space-y-4">
+        <GlassCard className="space-y-4 nexform-onboarding-card">
           <div className="flex items-center gap-2 text-cyan-400">
             <Sparkles className="h-5 w-5" />
-            <span className="text-sm font-semibold">Dein persönlicher Plan</span>
+            <span className="text-sm font-semibold">Dein Tagesziel</span>
           </div>
           <div className="text-center py-2">
-            <p className="text-4xl font-bold text-cyan-400 tabular-nums">{plan.calorieTarget}</p>
-            <p className="text-sm text-zinc-400">kcal / Tag</p>
+            <p className="text-4xl font-bold text-cyan-400 tabular-nums">
+              {plan.calorieTarget.toLocaleString("de-DE")}
+            </p>
+            <p className="text-sm text-zinc-300">kcal / Tag</p>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-zinc-950/60 p-2"><p className="text-[10px] text-zinc-500">Protein</p><p className="font-bold text-white">{plan.proteinTargetG}g</p></div>
-            <div className="rounded-xl bg-zinc-950/60 p-2"><p className="text-[10px] text-zinc-500">KH</p><p className="font-bold text-white">{plan.carbsTargetG}g</p></div>
-            <div className="rounded-xl bg-zinc-950/60 p-2"><p className="text-[10px] text-zinc-500">Fett</p><p className="font-bold text-white">{plan.fatTargetG}g</p></div>
+            <div className="rounded-xl bg-black/40 border border-white/10 p-2">
+              <p className="text-[10px] text-zinc-300">Protein</p>
+              <p className="font-bold text-white">{plan.proteinTargetG} g</p>
+            </div>
+            <div className="rounded-xl bg-black/40 border border-white/10 p-2">
+              <p className="text-[10px] text-zinc-300">Kohlenhydrate</p>
+              <p className="font-bold text-white">{plan.carbsTargetG} g</p>
+            </div>
+            <div className="rounded-xl bg-black/40 border border-white/10 p-2">
+              <p className="text-[10px] text-zinc-300">Fett</p>
+              <p className="font-bold text-white">{plan.fatTargetG} g</p>
+            </div>
           </div>
-          <p className="text-sm text-zinc-400 text-center">
-            Geschätzte Dauer: ca. {GOAL_PACE_OPTIONS.find((p) => p.id === draft.pace)?.weeks ?? estimateGoalWeeks(draft.mainGoalKey)} Wochen
+          <p className="text-sm text-zinc-300 text-center nexform-onboarding-muted">
+            Die Ziele basieren auf deinen Körperdaten, deiner Aktivität und deinem
+            ausgewählten Ziel.
+          </p>
+          <p className="text-xs text-zinc-400 text-center">
+            Geschätzte Dauer: ca.{" "}
+            {GOAL_PACE_OPTIONS.find((p) => p.id === draft.pace)?.weeks ??
+              estimateGoalWeeks(draft.mainGoalKey)}{" "}
+            Wochen
           </p>
         </GlassCard>
       )}

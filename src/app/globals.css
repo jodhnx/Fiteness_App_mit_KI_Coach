@@ -557,6 +557,50 @@ body {
     #000000;
 }
 
+/* First-setup / onboarding: force premium dark surfaces + WCAG-friendly text */
+html[data-onboarding="true"] {
+  color-scheme: dark;
+  --background: #050508;
+  --foreground: #f4f4f5;
+  --muted: #a1a1aa;
+  --card: #12121a;
+  --border: rgba(255, 255, 255, 0.12);
+  --accent: #22d3ee;
+  --accent-fg: #042f2e;
+  --accent-soft: rgba(34, 211, 238, 0.18);
+  --accent-ring: rgba(34, 211, 238, 0.45);
+}
+html[data-onboarding="true"] body {
+  background: #050508;
+  color: #f4f4f5;
+}
+html[data-onboarding="true"] .gradient-mesh {
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -20%, rgba(34, 211, 238, 0.22), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 100% 0%, rgba(99, 102, 241, 0.12), transparent),
+    radial-gradient(ellipse 40% 30% at 0% 100%, rgba(34, 211, 238, 0.08), transparent),
+    #050508;
+}
+html[data-onboarding="true"] .nexform-onboarding-card {
+  background: color-mix(in srgb, #18181f 92%, var(--accent));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+html[data-onboarding="true"] label,
+html[data-onboarding="true"] .nexform-onboarding-muted {
+  color: #d4d4d8 !important;
+}
+html[data-onboarding="true"] input,
+html[data-onboarding="true"] textarea {
+  background: #0c0c12 !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #fafafa !important;
+}
+html[data-onboarding="true"] input::placeholder,
+html[data-onboarding="true"] textarea::placeholder {
+  color: #a1a1aa !important;
+  opacity: 1;
+}
+
 .text-accent { color: var(--accent); }
 .bg-accent { background-color: var(--accent); }
 .bg-accent-soft { background-color: var(--accent-soft); }

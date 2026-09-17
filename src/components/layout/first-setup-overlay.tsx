@@ -84,10 +84,10 @@ export function FirstSetupOverlay({
     >
       <div className="max-w-sm text-center space-y-3">
         <div className="mx-auto h-10 w-10 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
-        <p className="text-lg font-semibold text-zinc-900 dark:text-white">
+        <p className="text-lg font-semibold text-[var(--foreground)]">
           Dein Setup wird vorbereitet
         </p>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-sm text-zinc-600 dark:text-zinc-300">
           Profil, Ziele und Tageswerte werden eingerichtet — nur dieses eine Mal.
         </p>
       </div>

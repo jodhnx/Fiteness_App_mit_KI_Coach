@@ -1,6 +1,18 @@
+/**
+ * Registration calorie helpers — delegates to the central calorie plan.
+ * Kept for API compatibility; do not invent a second formula here.
+ */
+
 import type { ActivityLevel, Gender } from "@prisma/client";
 import type { MainGoalKey } from "@/lib/onboarding-options";
-import { ACTIVITY_MULTIPLIERS } from "@/lib/calorie-target";
+import { defaultNutritionGoalForMainGoal } from "@/lib/onboarding-options";
+import { calculateBMR } from "@/lib/nutrition";
+import {
+  ACTIVITY_MULTIPLIERS,
+  calculateNutritionTargets,
+  computeCaloriePlan,
+} from "@/lib/calorie-target";
+import { trainingGoalFromNutritionGoal } from "@/lib/nutrition";
 
 export type RegistrationGoalKey =
   | "GAIN_MUSCLE"
@@ -8,20 +20,13 @@ export type RegistrationGoalKey =
   | "MAINTAIN"
   | "STRENGTH";
 
-const GOAL_FACTOR: Record<RegistrationGoalKey, number> = {
-  GAIN_MUSCLE: 1.2,
-  LOSE_WEIGHT: 0.8,
-  MAINTAIN: 1.0,
-  STRENGTH: 1.15,
-};
-
 function genderConstant(gender: Gender): number {
   if (gender === "MALE") return 5;
   if (gender === "FEMALE") return -161;
   return -78;
 }
 
-/** Mifflin-St Jeor BMR */
+/** Mifflin-St Jeor BMR (OTHER uses midpoint constant). */
 export function calculateBmrMifflin(
   weightKg: number,
   heightCm: number,
@@ -56,7 +61,7 @@ export function mainGoalKeyFromRegistrationGoal(
   }
 }
 
-/** Preview calories for registration summary (BMR × activity × goal factor) */
+/** Preview calories for registration summary — uses central plan. */
 export function calculateRegistrationCalories(input: {
   weightKg: number;
   heightCm: number;
@@ -65,9 +70,25 @@ export function calculateRegistrationCalories(input: {
   trainingDaysPerWeek: number;
   goal: RegistrationGoalKey;
 }): { bmr: number; tdee: number; calorieTarget: number } {
-  const bmr = Math.round(calculateBmrMifflin(input.weightKg, input.heightCm, input.age, input.gender));
+  const mainKey = mainGoalKeyFromRegistrationGoal(input.goal);
+  const nutritionGoal = defaultNutritionGoalForMainGoal(mainKey);
   const activity = activityLevelFromTrainingDays(input.trainingDaysPerWeek);
-  const tdee = Math.round(bmr * ACTIVITY_MULTIPLIERS[activity]);
-  const calorieTarget = Math.round(tdee * GOAL_FACTOR[input.goal]);
-  return { bmr, tdee, calorieTarget: Math.max(1200, calorieTarget) };
+  const trainingGoal = trainingGoalFromNutritionGoal(nutritionGoal);
+  const plan = computeCaloriePlan({
+    age: input.age,
+    weightKg: input.weightKg,
+    heightCm: input.heightCm,
+    gender: input.gender,
+    activityLevel: activity,
+    nutritionGoal,
+    trainingGoal,
+    workoutDaysPerWeek: input.trainingDaysPerWeek,
+  });
+  return {
+    bmr: plan.bmr,
+    tdee: plan.adjustedTdee,
+    calorieTarget: plan.calorieTarget,
+  };
 }
+
+export { ACTIVITY_MULTIPLIERS, calculateNutritionTargets, calculateBMR };

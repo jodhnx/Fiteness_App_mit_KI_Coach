@@ -1,6 +1,12 @@
 import { differenceInDays, isAfter } from "date-fns";
 import type { ActivityLevel, Gender, NutritionGoal, Profile, TrainingGoal } from "@prisma/client";
 import { calculateBMR, calculateMacros, trainingGoalFromNutritionGoal } from "@/lib/nutrition";
+import {
+  areStoredMacrosPlausible,
+  sanitizeWeightKgForTargets,
+  sanitizeAgeForTargets,
+  sanitizeHeightCmForTargets,
+} from "@/lib/nutrition-macros";
 import { recommendedTrainingDays } from "@/lib/profile-training-days";
 import type { CalculatedTargets, ProfileMetricsInput } from "@/lib/profile-types";
 import { sanitizeCalorieTarget } from "@/lib/daily-kcal";
@@ -19,21 +25,21 @@ export const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, number> = {
   VERY_ACTIVE: 1.9,
 };
 
-/** Zielabhängige Anpassung auf TDEE (nach Trainings-/Schritt-/Cardio-Bonus) */
+/** Moderate goal adjustments — avoid extreme deficits / surpluses. */
 const GOAL_ADJUSTMENT: Record<
   NutritionGoal,
   { defaultPct: number; minPct: number; maxPct: number }
 > = {
-  FAT_LOSS: { defaultPct: -0.175, minPct: -0.25, maxPct: -0.1 },
+  FAT_LOSS: { defaultPct: -0.15, minPct: -0.2, maxPct: -0.1 },
   MAINTENANCE: { defaultPct: 0, minPct: 0, maxPct: 0 },
   LEAN_BULK: { defaultPct: 0.075, minPct: 0.05, maxPct: 0.1 },
-  MUSCLE_GAIN: { defaultPct: 0.15, minPct: 0.1, maxPct: 0.2 },
+  MUSCLE_GAIN: { defaultPct: 0.12, minPct: 0.08, maxPct: 0.15 },
   RECOMP: { defaultPct: 0, minPct: -0.05, maxPct: 0.05 },
 };
 
 const KCAL_PER_KG = 7700;
-const MIN_CALORIES = 1200;
-const MAX_CALORIES = 6000;
+const MIN_CALORIES_FLOOR = 1200;
+const MAX_CALORIES_CEILING = 5500;
 
 export type CaloriePlanContext = {
   /** Ø Schritte/Tag (7-Tage oder heute) */
@@ -163,14 +169,17 @@ function mergeGoalAndDateTargets(
 
 /**
  * Zentrale Kalorienberechnung — einzige Quelle für Zielkalorien in der App.
+ * Validates inputs; returns conservative maintenance-like plan only when data is valid.
  */
 export function computeCaloriePlan(input: CaloriePlanInput): CaloriePlanBreakdown {
+  const age = sanitizeAgeForTargets(input.age) ?? input.age;
+  const weightKg = sanitizeWeightKgForTargets(input.weightKg) ?? input.weightKg;
+  const heightCm = sanitizeHeightCmForTargets(input.heightCm) ?? input.heightCm;
+
   const trainingGoal =
     input.trainingGoal ?? trainingGoalFromNutritionGoal(input.nutritionGoal);
 
-  const bmr = Math.round(
-    calculateBMR(input.weightKg, input.heightCm, input.age, input.gender)
-  );
+  const bmr = Math.round(calculateBMR(weightKg, heightCm, age, input.gender));
   const activityFactor = ACTIVITY_MULTIPLIERS[input.activityLevel];
   const tdee = Math.round(bmr * activityFactor);
 
@@ -189,24 +198,28 @@ export function computeCaloriePlan(input: CaloriePlanInput): CaloriePlanBreakdow
   if (targetKg != null && targetDate && isAfter(targetDate, new Date())) {
     dateCalories = caloriesForWeightDeadline(
       adjustedTdee,
-      input.weightKg,
+      weightKg,
       targetKg,
       targetDate
     );
   }
 
-  const kgChange = targetKg != null ? targetKg - input.weightKg : 0;
-  const calorieTarget = clamp(
-    mergeGoalAndDateTargets(
-      goalCalories,
-      adjustedTdee,
-      dateCalories,
-      input.nutritionGoal,
-      kgChange
-    ),
-    MIN_CALORIES,
-    MAX_CALORIES
+  const kgChange = targetKg != null ? targetKg - weightKg : 0;
+  const rawTarget = mergeGoalAndDateTargets(
+    goalCalories,
+    adjustedTdee,
+    dateCalories,
+    input.nutritionGoal,
+    kgChange
   );
+
+  // Context-aware bounds: never below ~BMR×1.1 floor, never absurd surplus
+  const minCal = Math.max(MIN_CALORIES_FLOOR, Math.round(bmr * 1.1));
+  const maxCal = Math.min(
+    MAX_CALORIES_CEILING,
+    Math.max(minCal + 200, Math.round(adjustedTdee * 1.35))
+  );
+  const calorieTarget = clamp(rawTarget, minCal, maxCal);
 
   return {
     bmr,
@@ -274,7 +287,12 @@ export function computeProfileTargets(
   const nutritionGoal = profile.nutritionGoal ?? "MAINTENANCE";
   const trainingGoal =
     profile.trainingGoal ?? trainingGoalFromNutritionGoal(nutritionGoal);
-  const macros = calculateMacros(plan.calorieTarget, trainingGoal, nutritionGoal);
+  const macros = calculateMacros(
+    plan.calorieTarget,
+    trainingGoal,
+    nutritionGoal,
+    profile.weightKg
+  );
 
   return {
     bmi: calculateBMI(profile.weightKg!, profile.heightCm!),
@@ -333,15 +351,31 @@ export function nutritionTargetsFromProfile(
       );
     }
     if (calories != null) {
-      return {
+      const proteinG = profile.proteinTargetG;
+      const carbsG = profile.carbsTargetG ?? 0;
+      const fatG = profile.fatTargetG ?? 0;
+      const plausible = areStoredMacrosPlausible({
         calories,
-        proteinG: profile.proteinTargetG,
-        carbsG: profile.carbsTargetG ?? 0,
-        fatG: profile.fatTargetG ?? 0,
-        waterTargetMl: profile.waterTargetMl ?? 2500,
-        nutritionGoal: profile.nutritionGoal ?? null,
-        profileComplete: true,
-      };
+        proteinG,
+        carbsG,
+        fatG,
+        weightKg: profile.weightKg,
+      });
+      if (plausible) {
+        return {
+          calories,
+          proteinG,
+          carbsG,
+          fatG,
+          waterTargetMl: profile.waterTargetMl ?? 2500,
+          nutritionGoal: profile.nutritionGoal ?? null,
+          profileComplete: true,
+        };
+      }
+      console.warn(
+        "[calorie-target] stored macros implausible — recomputing",
+        { calories, proteinG, carbsG, fatG }
+      );
     }
   }
 
@@ -456,7 +490,12 @@ export function previewTargetsFromForm(fields: {
     )
   );
 
-  const macros = calculateMacros(plan.calorieTarget, trainingGoal, nutritionGoal);
+  const macros = calculateMacros(
+    plan.calorieTarget,
+    trainingGoal,
+    nutritionGoal,
+    weightKg
+  );
   return {
     bmi: calculateBMI(weightKg, heightCm),
     bmr: plan.bmr,
@@ -468,6 +507,60 @@ export function previewTargetsFromForm(fields: {
       Number.isFinite(workoutDays) ? workoutDays : undefined,
       trainingGoal
     ),
+  };
+}
+
+/**
+ * Public SSOT for daily nutrition targets.
+ * Prefer this over ad-hoc macro math elsewhere.
+ */
+export function calculateNutritionTargets(input: {
+  age: number;
+  weightKg: number;
+  heightCm: number;
+  gender: Gender;
+  activityLevel: ActivityLevel;
+  nutritionGoal: NutritionGoal;
+  trainingGoal?: TrainingGoal;
+  workoutDaysPerWeek?: number | null;
+  targetWeightKg?: number | null;
+  targetWeightDate?: Date | null;
+  context?: CaloriePlanContext;
+}): {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  bmr: number;
+  tdee: number;
+} | null {
+  const age = sanitizeAgeForTargets(input.age);
+  const weightKg = sanitizeWeightKgForTargets(input.weightKg);
+  const heightCm = sanitizeHeightCmForTargets(input.heightCm);
+  if (age == null || weightKg == null || heightCm == null) return null;
+
+  const trainingGoal =
+    input.trainingGoal ?? trainingGoalFromNutritionGoal(input.nutritionGoal);
+  const plan = computeCaloriePlan({
+    ...input,
+    age,
+    weightKg,
+    heightCm,
+    trainingGoal,
+  });
+  const macros = calculateMacros(
+    plan.calorieTarget,
+    trainingGoal,
+    input.nutritionGoal,
+    weightKg
+  );
+  return {
+    calories: macros.calories,
+    protein: macros.proteinG,
+    carbs: macros.carbsG,
+    fat: macros.fatG,
+    bmr: plan.bmr,
+    tdee: plan.adjustedTdee,
   };
 }
 

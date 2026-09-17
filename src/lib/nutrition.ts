@@ -91,39 +91,15 @@ export function nutritionGoalFromTrainingGoal(goal: TrainingGoal): NutritionGoal
   return TRAINING_GOAL_TO_NUTRITION[goal] ?? "MAINTENANCE";
 }
 
-export function calculateMacros(
-  calories: number,
-  trainingGoal: TrainingGoal,
-  nutritionGoal?: NutritionGoal | null
-) {
-  let proteinRatio = 0.3;
-  let fatRatio = 0.25;
-
-  const goal = nutritionGoal ?? null;
-  if (
-    goal === "MUSCLE_GAIN" ||
-    goal === "LEAN_BULK" ||
-    trainingGoal === "GAIN_MUSCLE" ||
-    trainingGoal === "STRENGTH"
-  ) {
-    proteinRatio = 0.32;
-    fatRatio = 0.22;
-  } else if (goal === "FAT_LOSS" || trainingGoal === "LOSE_WEIGHT") {
-    proteinRatio = 0.35;
-    fatRatio = 0.28;
-  } else if (goal === "RECOMP") {
-    proteinRatio = 0.33;
-    fatRatio = 0.25;
-  } else if (trainingGoal === "ENDURANCE") {
-    proteinRatio = 0.25;
-    fatRatio = 0.22;
-  }
-
-  const proteinG = Math.round((calories * proteinRatio) / 4);
-  const fatG = Math.round((calories * fatRatio) / 9);
-  const carbsG = Math.round((calories - proteinG * 4 - fatG * 9) / 4);
-  return { proteinG, carbsG, fatG, calories };
-}
+export {
+  calculateMacros,
+  areStoredMacrosPlausible,
+  isProteinTargetAggressive,
+  proteinGramsPerKg,
+  fatGramsPerKg,
+  sanitizeWeightKgForTargets,
+  type NutritionMacroTargets,
+} from "@/lib/nutrition-macros";
 
 export const NUTRITION_GOAL_LABELS: Record<NutritionGoal, string> = {
   MUSCLE_GAIN: "Aufbau",

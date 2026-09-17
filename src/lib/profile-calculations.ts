@@ -34,7 +34,12 @@ export function recalculateProfileTargets(
     targetWeightDate: targetWeightDate ?? null,
     context,
   });
-  const macros = calculateMacros(plan.calorieTarget, trainingGoal, input.nutritionGoal);
+  const macros = calculateMacros(
+    plan.calorieTarget,
+    trainingGoal,
+    input.nutritionGoal,
+    input.weightKg
+  );
 
   return {
     bmi: calculateBMI(input.weightKg, input.heightCm),

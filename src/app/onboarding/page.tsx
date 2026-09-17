@@ -29,6 +29,7 @@ import {
   Trophy,
   Utensils,
 } from "lucide-react";
+import { useOnboardingDarkTheme } from "@/hooks/use-onboarding-dark-theme";
 
 const TOTAL_STEPS = 5;
 
@@ -58,17 +59,18 @@ function OptionButton({
       className={cn(
         "w-full min-h-12 rounded-2xl border px-4 py-3.5 text-left transition-all active:scale-[0.98]",
         selected
-          ? "border-cyan-500/50 bg-cyan-500/15 text-white shadow-lg shadow-cyan-500/10"
-          : "border-zinc-700/80 bg-zinc-900/60 text-zinc-300"
+          ? "border-cyan-400/60 bg-cyan-500/20 text-white shadow-lg shadow-cyan-500/15"
+          : "border-white/15 bg-zinc-900/80 text-zinc-100"
       )}
     >
       <span className="font-semibold block text-base">{label}</span>
-      {hint && <span className="text-sm text-zinc-400 mt-1 block">{hint}</span>}
+      {hint && <span className="text-sm text-zinc-300 mt-1 block nexform-onboarding-muted">{hint}</span>}
     </button>
   );
 }
 
 export default function OnboardingPage() {
+  useOnboardingDarkTheme(true);
   const router = useRouter();
   const { update } = useSession();
   const [step, setStep] = useState(1);
@@ -185,42 +187,51 @@ export default function OnboardingPage() {
         <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
           <div className="text-center mb-6">
             <Sparkles className="h-12 w-12 text-cyan-400 mx-auto mb-3" />
-            <h1 className="text-2xl font-bold text-white">Dein persönlicher Plan</h1>
-            <p className="text-zinc-400 mt-2 text-sm">
-              Basierend auf deinen Angaben — jederzeit in den Einstellungen anpassbar.
+            <h1 className="text-2xl font-bold text-white">Dein Tagesziel</h1>
+            <p className="text-zinc-300 mt-2 text-sm nexform-onboarding-muted">
+              Die Ziele basieren auf deinen Körperdaten, deiner Aktivität und
+              deinem ausgewählten Ziel.
             </p>
           </div>
 
-          <div className="rounded-3xl border border-cyan-500/25 bg-zinc-900/80 p-5 space-y-4">
+          <div className="nexform-onboarding-card rounded-3xl p-5 space-y-4">
             <div className="text-center py-2">
-              <p className="text-xs uppercase tracking-widest text-zinc-500">Kalorienziel</p>
-              <p className="text-4xl font-bold text-cyan-400 tabular-nums mt-1">
-                {result.calorieTarget}
+              <p className="text-xs uppercase tracking-widest text-zinc-300">
+                🔥 Kalorien
               </p>
-              <p className="text-sm text-zinc-400">kcal / Tag</p>
+              <p className="text-4xl font-bold text-cyan-400 tabular-nums mt-1">
+                {result.calorieTarget.toLocaleString("de-DE")}
+              </p>
+              <p className="text-sm text-zinc-300">kcal / Tag</p>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-2xl bg-zinc-800/80 p-3 text-center">
-                <p className="text-[10px] uppercase text-zinc-500">Protein</p>
-                <p className="text-lg font-bold text-white tabular-nums">{result.proteinTargetG}g</p>
+              <div className="rounded-2xl bg-black/35 border border-white/10 p-3 text-center">
+                <p className="text-[10px] uppercase text-zinc-300">Protein</p>
+                <p className="text-lg font-bold text-white tabular-nums">
+                  {result.proteinTargetG} g
+                </p>
               </div>
-              <div className="rounded-2xl bg-zinc-800/80 p-3 text-center">
-                <p className="text-[10px] uppercase text-zinc-500">KH</p>
-                <p className="text-lg font-bold text-white tabular-nums">{result.carbsTargetG}g</p>
+              <div className="rounded-2xl bg-black/35 border border-white/10 p-3 text-center">
+                <p className="text-[10px] uppercase text-zinc-300">Kohlenhydrate</p>
+                <p className="text-lg font-bold text-white tabular-nums">
+                  {result.carbsTargetG} g
+                </p>
               </div>
-              <div className="rounded-2xl bg-zinc-800/80 p-3 text-center">
-                <p className="text-[10px] uppercase text-zinc-500">Fett</p>
-                <p className="text-lg font-bold text-white tabular-nums">{result.fatTargetG}g</p>
+              <div className="rounded-2xl bg-black/35 border border-white/10 p-3 text-center">
+                <p className="text-[10px] uppercase text-zinc-300">Fett</p>
+                <p className="text-lg font-bold text-white tabular-nums">
+                  {result.fatTargetG} g
+                </p>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-center">
-              <p className="text-sm text-zinc-400">Geschätzte Dauer bis zum Ziel</p>
+            <div className="rounded-2xl border border-white/12 bg-black/30 p-4 text-center">
+              <p className="text-sm text-zinc-300">Geschätzte Dauer bis zum Ziel</p>
               <p className="text-xl font-semibold text-white mt-1">
                 ca. {result.estimatedGoalWeeks} Wochen ({months} Monate)
               </p>
-              <p className="text-xs text-zinc-500 mt-1">
+              <p className="text-xs text-zinc-400 mt-1">
                 Empfohlen: {result.recommendedTrainingDays}× Training pro Woche
               </p>
             </div>
@@ -257,7 +268,7 @@ export default function OnboardingPage() {
                   Willkommen bei
                 </p>
                 <h1 className="text-4xl font-bold text-white">NEXFORM</h1>
-                <p className="text-zinc-400 mt-3 text-sm leading-relaxed">
+                <p className="text-zinc-300 mt-3 text-sm leading-relaxed nexform-onboarding-muted">
                   Dein smarter Fitness-Begleiter — trainieren, essen, wachsen.
                 </p>
               </div>
@@ -268,14 +279,14 @@ export default function OnboardingPage() {
                   return (
                     <div
                       key={f.title}
-                      className="flex items-center gap-4 rounded-2xl border border-white/10 bg-zinc-900/50 p-4"
+                      className="nexform-onboarding-card flex items-center gap-4 rounded-2xl p-4"
                     >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-400">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/20 text-cyan-300">
                         <Icon className="h-6 w-6" />
                       </div>
                       <div>
                         <p className="font-semibold text-white">{f.title}</p>
-                        <p className="text-sm text-zinc-400">{f.desc}</p>
+                        <p className="text-sm text-zinc-300 nexform-onboarding-muted">{f.desc}</p>
                       </div>
                     </div>
                   );
@@ -288,7 +299,7 @@ export default function OnboardingPage() {
             <div className="space-y-4">
               <div>
                 <h2 className="text-2xl font-bold text-white">Erzähl uns etwas über dich</h2>
-                <p className="text-zinc-400 text-sm mt-1">Für deinen personalisierten Plan</p>
+                <p className="text-zinc-300 text-sm mt-1 nexform-onboarding-muted">Für deinen personalisierten Plan</p>
               </div>
 
               <div>
@@ -352,11 +363,11 @@ export default function OnboardingPage() {
                   />
                 </div>
               </div>
-              <p className="text-[10px] text-zinc-400">Größe in cm · Gewicht in kg</p>
+              <p className="text-[10px] text-zinc-300 nexform-onboarding-muted">Größe in cm · Gewicht in kg</p>
 
               <div>
                 <Label>Wo wohnst du?</Label>
-                <p className="text-[11px] text-zinc-500 mt-0.5 mb-1.5">
+                <p className="text-[11px] text-zinc-300 mt-0.5 mb-1.5 nexform-onboarding-muted">
                   Für regionale Lebensmittel, Händler und Bezeichnungen
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -381,7 +392,7 @@ export default function OnboardingPage() {
             <div className="space-y-4">
               <div>
                 <h2 className="text-2xl font-bold text-white">Dein Ziel</h2>
-                <p className="text-zinc-400 text-sm mt-1">Was möchtest du erreichen?</p>
+                <p className="text-zinc-300 text-sm mt-1 nexform-onboarding-muted">Was möchtest du erreichen?</p>
               </div>
               <div className="space-y-2">
                 {ONBOARDING_GOAL_SIMPLE.map((o) => (
@@ -401,7 +412,7 @@ export default function OnboardingPage() {
             <div className="space-y-4">
               <div>
                 <h2 className="text-2xl font-bold text-white">Deine Aktivität</h2>
-                <p className="text-zinc-400 text-sm mt-1">Wie aktiv bist du im Alltag?</p>
+                <p className="text-zinc-300 text-sm mt-1 nexform-onboarding-muted">Wie aktiv bist du im Alltag?</p>
               </div>
               <div className="space-y-2">
                 {ONBOARDING_ACTIVITY_SIMPLE.map((o) => (

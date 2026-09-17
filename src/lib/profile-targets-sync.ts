@@ -4,6 +4,7 @@ import {
   computeProfileTargets,
   type CaloriePlanContext,
 } from "@/lib/calorie-target";
+import { areStoredMacrosPlausible } from "@/lib/nutrition-macros";
 import { loadCaloriePlanContext } from "@/lib/calorie-health-context";
 import type { CalculatedTargets } from "@/lib/profile-types";
 import { recommendedTrainingDays } from "@/lib/profile-training-days";
@@ -21,6 +22,23 @@ export function readStoredProfileTargets(profile: Profile | null): CalculatedTar
     return null;
   }
 
+  const calories = profile.calorieTarget;
+  const proteinG = profile.proteinTargetG;
+  const carbsG = profile.carbsTargetG ?? 0;
+  const fatG = profile.fatTargetG ?? 0;
+
+  if (
+    !areStoredMacrosPlausible({
+      calories,
+      proteinG,
+      carbsG,
+      fatG,
+      weightKg: profile.weightKg,
+    })
+  ) {
+    return null;
+  }
+
   const nutritionGoal = profile.nutritionGoal ?? "MAINTENANCE";
   const trainingGoal =
     profile.trainingGoal ?? trainingGoalFromNutritionGoal(nutritionGoal);
@@ -28,10 +46,10 @@ export function readStoredProfileTargets(profile: Profile | null): CalculatedTar
   return {
     bmi: profile.bmi ?? 0,
     bmr: 0,
-    calorieTarget: profile.calorieTarget,
-    proteinTargetG: profile.proteinTargetG,
-    carbsTargetG: profile.carbsTargetG ?? 0,
-    fatTargetG: profile.fatTargetG ?? 0,
+    calorieTarget: calories,
+    proteinTargetG: proteinG,
+    carbsTargetG: carbsG,
+    fatTargetG: fatG,
     recommendedTrainingDays: recommendedTrainingDays(
       profile.workoutDaysPerWeek,
       trainingGoal

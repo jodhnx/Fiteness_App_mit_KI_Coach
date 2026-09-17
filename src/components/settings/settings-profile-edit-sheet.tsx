@@ -26,7 +26,7 @@ import {
   ONBOARDING_NUTRITION_GOAL_OPTIONS,
   ONBOARDING_TRAINING_DAYS,
 } from "@/lib/onboarding-options";
-import { NUTRITION_GOAL_LABELS } from "@/lib/nutrition";
+import { NUTRITION_GOAL_LABELS, isProteinTargetAggressive } from "@/lib/nutrition";
 import { cn } from "@/lib/utils";
 
 export type ProfileEditForm = {
@@ -456,6 +456,14 @@ export const SettingsProfileEditSheet = memo(function SettingsProfileEditSheet({
                 {errors.proteinTargetG ? (
                   <p className="text-[11px] text-red-400 mt-1">
                     {errors.proteinTargetG}
+                  </p>
+                ) : isProteinTargetAggressive(
+                    Number(String(draft.proteinTargetG).replace(",", ".")),
+                    Number(String(draft.weightKg).replace(",", "."))
+                  ) ? (
+                  <p className="text-[11px] text-amber-500 mt-1">
+                    Dieser Proteinwert liegt deutlich über einem üblichen
+                    Zielbereich. Möchtest du ihn wirklich verwenden?
                   </p>
                 ) : null}
               </div>
