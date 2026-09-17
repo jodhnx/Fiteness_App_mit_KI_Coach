@@ -150,7 +150,7 @@ function finalizeMacros(
   if (carbsG < 0) carbsG = 0;
 
   // Nudge carbs so macro kcal ≈ target (prefer carbs for ±1–2 g drift)
-  let macroKcal = p * 4 + carbsG * 4 + f * 9;
+  const macroKcal = p * 4 + carbsG * 4 + f * 9;
   const drift = calories - macroKcal;
   if (Math.abs(drift) >= 4) {
     carbsG = Math.max(0, carbsG + Math.round(drift / 4));
