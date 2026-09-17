@@ -34,6 +34,7 @@ import { resetBodyScroll } from "@/lib/scroll-lock";
 import type { FoodAIItem } from "@/lib/food/food-ai-schema";
 import { nutritionDayKey } from "@/lib/nutrition-day";
 import { NutritionQuickActions } from "@/components/nutrition/nutrition-quick-actions";
+import { NutritionActivePlanCard } from "@/components/nutrition/nutrition-active-plan-card";
 import { NutritionDayCalendar } from "@/components/nutrition/nutrition-day-calendar";
 import { MONTH_LABELS_DE } from "@/lib/nutrition-calendar";
 
@@ -618,11 +619,12 @@ function NutritionPageInner() {
         data-nutrition-layout="single-v2"
         className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:gap-x-8 lg:gap-y-5 lg:items-start"
       >
-        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1 space-y-2.5">
           <NutritionOrbitOverview
             dashboard={dashboard}
             loading={loading}
           />
+          <NutritionActivePlanCard />
         </div>
 
         <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-4 space-y-2">
