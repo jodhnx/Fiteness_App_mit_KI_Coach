@@ -264,6 +264,7 @@ export default function HomePage() {
     <PageShell className="space-y-2.5 lg:space-y-3">
       <HomeGreeting
         name={displayName}
+        image={data.userImage}
         streakDays={nutritionStreakDays}
         cue={greetingCue}
       />

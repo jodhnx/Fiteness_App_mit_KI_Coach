@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import type { DailyFitnessIntelligence } from "@/lib/intelligence/types";
 import type { AdaptiveRecommendations } from "@/lib/intelligence/recommendations/types";
 import type { DailyActionPlan } from "@/lib/intelligence/daily-plan/types";
@@ -26,31 +26,40 @@ export const HomeCoachBriefing = memo(function HomeCoachBriefing({
   const hasPlan = Boolean(dailyActionPlan?.primary);
 
   return (
-    <div className="rounded-2xl border border-zinc-200/90 bg-white overflow-hidden shadow-sm dark:border-white/[0.07] dark:bg-zinc-900/40 dark:shadow-none">
-      <div className="px-4 pt-4 pb-2 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-zinc-900 dark:text-white">Heute wichtig</p>
-          <p className="text-[11px] text-zinc-500">Nächster Schritt</p>
+    <div className="space-y-2.5">
+      <div className="rounded-[1.125rem] border border-zinc-200/90 bg-white overflow-hidden shadow-sm dark:border-white/[0.07] dark:bg-[#1a1a21] dark:shadow-none">
+        <div className="px-3.5 pt-3.5 pb-2 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+              Heute wichtig
+            </p>
+            <p className="text-[13px] font-semibold text-zinc-900 dark:text-white mt-0.5">
+              Nächster Schritt
+            </p>
+          </div>
+          <span className="rounded-md bg-[var(--accent,#6d5dfe)]/15 px-2 py-0.5 text-[10px] font-semibold text-[var(--accent,#6d5dfe)]">
+            Heute
+          </span>
         </div>
-      </div>
 
-      <div className="mx-4 mb-3">
-        {hasPlan ? (
-          <HomeDailyActionPlanCard plan={dailyActionPlan} />
-        ) : (
-          <>
-            <HomeIntelligenceCard intelligence={intelligence} />
-            <HomeAdaptiveRecommendationCard recommendations={adaptiveRecommendations} />
-          </>
-        )}
+        <div className="px-3.5 pb-3">
+          {hasPlan ? (
+            <HomeDailyActionPlanCard plan={dailyActionPlan} />
+          ) : (
+            <>
+              <HomeIntelligenceCard intelligence={intelligence} />
+              <HomeAdaptiveRecommendationCard recommendations={adaptiveRecommendations} />
+            </>
+          )}
+        </div>
       </div>
 
       <Link
         href="/coach"
-        className="flex min-h-11 items-center justify-between px-4 py-2.5 border-t border-zinc-100 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:border-white/[0.05] dark:hover:text-white transition-colors"
+        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[1.125rem] border border-[var(--ai-accent,#2dd4bf)]/45 bg-transparent px-4 text-[14px] font-semibold text-[var(--ai-accent,#2dd4bf)] active:opacity-90"
       >
+        <Sparkles className="h-4 w-4" aria-hidden />
         <span>KI Coach öffnen</span>
-        <ChevronRight className="h-3.5 w-3.5" />
       </Link>
     </div>
   );

@@ -107,25 +107,47 @@ function FoodResultRow({
     servingG: food.servingG,
   });
   return (
-    <div className="flex items-center gap-1 rounded-xl border border-zinc-200 bg-white pr-2 shadow-sm hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:shadow-none dark:hover:border-zinc-600">
+    <div className="flex items-center gap-1 rounded-[1rem] border border-zinc-200 bg-white pr-2 shadow-sm hover:border-zinc-300 dark:border-white/[0.07] dark:bg-[#1a1a21] dark:shadow-none dark:hover:border-white/15">
       <button
         type="button"
         onClick={onClick}
-        className="flex-1 text-left px-4 py-3.5 min-w-0 active:scale-[0.99]"
+        className="flex-1 text-left px-3.5 py-3 min-w-0 active:scale-[0.99]"
       >
-        <p className="font-medium text-zinc-900 text-[15px] leading-snug dark:text-white">
+        <p className="font-semibold text-zinc-900 text-[15px] leading-snug dark:text-white">
           {food.name}
         </p>
         {food.brand && (
           <p className="text-xs text-zinc-500 mt-0.5">{food.brand}</p>
         )}
-        <p className="text-xs text-zinc-500 mt-1.5 tabular-nums dark:text-zinc-400">
-          {fmtKcal(per100.calories)} kcal / 100g · {fmtG(per100.proteinG)} g Protein
+        <p className="text-xs text-zinc-500 mt-1.5 tabular-nums flex flex-wrap items-center gap-x-2 dark:text-zinc-400">
+          <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+            {fmtKcal(per100.calories)} kcal
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--nutrition-protein)]" />
+            {fmtG(per100.proteinG)}g
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--nutrition-carbs)]" />
+            {fmtG(per100.carbsG)}g
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--nutrition-fat)]" />
+            {fmtG(per100.fatG)}g
+          </span>
         </p>
       </button>
       {food.id && (
         <FavoriteStar active={isFavorite} onToggle={onToggleFavorite} size="sm" />
       )}
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-500/90 text-white"
+        aria-label="Hinzufügen"
+      >
+        +
+      </button>
     </div>
   );
 }

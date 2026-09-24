@@ -15,7 +15,7 @@ type Props = {
 };
 
 const CARD =
-  "rounded-2xl border border-zinc-200/90 bg-white px-4 py-4 space-y-3 shadow-sm dark:border-white/[0.08] dark:bg-zinc-900/80 dark:shadow-none";
+  "rounded-[1.125rem] border border-zinc-200/90 bg-white px-3.5 py-3.5 space-y-3 shadow-sm dark:border-white/[0.07] dark:bg-[#1a1a21] dark:shadow-none";
 
 /** Strong-inspired next workout hero — one tap to start. */
 export const NextWorkoutHero = memo(function NextWorkoutHero({ home, hasPlans }: Props) {

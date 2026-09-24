@@ -15,8 +15,11 @@ import {
   Star,
   X,
   ChevronLeft,
+  ChevronRight,
+  Camera,
 } from "lucide-react";
 import type { MealType } from "@prisma/client";
+import { TRACK_MEAL_ORDER, MEAL_TYPE_LABELS } from "@/lib/meal-types";
 import {
   foodSearchUrl,
   mergeFoodSearchResponses,
@@ -171,6 +174,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const [scannerOpen, setScannerOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualBarcode, setManualBarcode] = useState("");
+  const [activeMeal, setActiveMeal] = useState<MealType>(mealType);
   const abortRef = useRef<AbortController | null>(null);
   const requestGen = useRef(0);
   const inflightQueryRef = useRef<string | null>(null);
@@ -181,6 +185,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
 
   useEffect(() => {
     if (!open) return;
+    setActiveMeal(mealType);
     if (initialQuery.trim()) setView("search");
     else if (initialView === "favorites" || initialView === "search") setView(initialView);
     else setView("hub");
@@ -196,7 +201,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
       inputRef.current?.focus({ preventScroll: true });
     }, 120);
     return () => window.clearTimeout(t);
-  }, [open, initialQuery, initialView]);
+  }, [open, initialQuery, initialView, mealType]);
 
   useBodyScrollLock(open);
 
@@ -377,9 +382,9 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   const quickAdd = useCallback(
     (product: FoodProduct) => {
       const grams = getDefaultQuickAddGrams(product);
-      onQuickAddFood(product, grams, mealType);
+      onQuickAddFood(product, grams, activeMeal);
     },
-    [mealType, onQuickAddFood]
+    [activeMeal, onQuickAddFood]
   );
 
   const addFromDetail = useCallback(
@@ -410,11 +415,11 @@ export const FoodAddPopup = memo(function FoodAddPopup({
     async (meal: SavedMealSummary) => {
       if (!onLogSavedMeal || loggingMealId) return;
       setLoggingMealId(meal.id);
-      void Promise.resolve(onLogSavedMeal(meal.id, mealType)).finally(() => {
+      void Promise.resolve(onLogSavedMeal(meal.id, activeMeal)).finally(() => {
         setLoggingMealId(null);
       });
     },
-    [onLogSavedMeal, loggingMealId, mealType]
+    [onLogSavedMeal, loggingMealId, activeMeal]
   );
 
   const renderSavedSection = (meals: SavedMealSummary[]) => {
@@ -459,28 +464,39 @@ export const FoodAddPopup = memo(function FoodAddPopup({
           className="food-add-popup-root"
           role="dialog"
           aria-modal="true"
-          aria-label="Lebensmittel hinzufügen"
+          aria-label="Essen eintragen"
         >
           <div className="food-add-popup-inner">
-            <div className="food-add-popup-search gap-2">
-              {backLabel ? (
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleClose();
-                  }}
-                  className="food-add-popup-icon-btn self-end mb-0.5 relative z-20 touch-manipulation"
-                  aria-label={`Zurück zu ${backLabel}`}
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-              ) : null}
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 mb-1.5 px-0.5">
-                  {backLabel ? backLabel : "Lebensmittel hinzufügen"}
-                </p>
+            <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleClose();
+                }}
+                className="food-add-popup-icon-btn relative z-20 touch-manipulation"
+                aria-label={backLabel ? `Zurück zu ${backLabel}` : "Zurück"}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <h1 className="flex-1 text-center text-[17px] font-bold text-zinc-900 dark:text-white truncate">
+                Essen eintragen
+              </h1>
+              <button
+                type="button"
+                onClick={() => {
+                  setManualBarcode("");
+                  setManualOpen(true);
+                }}
+                className="shrink-0 min-h-11 px-2 text-[13px] font-semibold text-teal-400 active:opacity-80"
+              >
+                + Eigene
+              </button>
+            </div>
+
+            <div className="px-3 pb-2">
+              <div className="relative flex items-center gap-2">
                 <input
                   ref={inputRef}
                   type="search"
@@ -492,70 +508,116 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                   onFocus={() => {
                     if (view !== "search") setView("search");
                   }}
-                  placeholder="Lebensmittel suchen…"
-                  className="food-add-popup-input w-full"
+                  placeholder="Lebensmittel, Marke oder Rezept…"
+                  className="food-add-popup-input w-full pr-12"
                   autoComplete="off"
                   enterKeyHint="search"
                   autoFocus={false}
                   aria-label="Lebensmittel suchen"
                 />
+                <button
+                  type="button"
+                  onClick={() => setScannerOpen(true)}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-lg text-orange-400 active:opacity-80"
+                  aria-label="Barcode scannen"
+                >
+                  <ScanBarcode className="h-5 w-5" />
+                </button>
               </div>
+            </div>
+
+            <div className="px-3 pb-2">
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+                {TRACK_MEAL_ORDER.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setActiveMeal(m)}
+                    className={`shrink-0 h-9 rounded-full px-3.5 text-[12px] font-semibold transition-colors ${
+                      activeMeal === m
+                        ? "bg-[var(--accent,#6d5dfe)] text-white"
+                        : "bg-zinc-100 text-zinc-600 dark:bg-[#1a1a21] dark:text-zinc-400 dark:border dark:border-white/[0.06]"
+                    }`}
+                  >
+                    {MEAL_TYPE_LABELS[m]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-3 pb-2">
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                className="flex w-full items-center gap-3 rounded-[1rem] border border-zinc-200/90 bg-white px-3.5 py-3 text-left shadow-sm active:opacity-90 dark:border-white/[0.07] dark:bg-[#1a1a21] dark:shadow-none"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-orange-500/40 text-orange-400">
+                  <Camera className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[14px] font-semibold text-zinc-900 dark:text-white">
+                    Barcode scannen
+                  </span>
+                  <span className="block text-[12px] text-zinc-500 mt-0.5">
+                    Nährwerte sekundenschnell erfassen
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 text-zinc-400 shrink-0" aria-hidden />
+              </button>
+            </div>
+
+            <div className="px-3 pb-1 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (view === "favorites") {
+                    setView(q.trim() ? "search" : "hub");
+                    return;
+                  }
+                  setView("favorites");
+                  setQ("");
+                  setResult(null);
+                }}
+                className={`h-9 flex-1 rounded-xl border text-[11px] font-semibold flex items-center justify-center gap-1 ${
+                  view === "favorites"
+                    ? "border-accent/30 bg-accent/10 text-accent"
+                    : "border-zinc-200 bg-white text-zinc-700 dark:border-white/10 dark:bg-[#1a1a21] dark:text-zinc-300"
+                }`}
+              >
+                <Star className="h-3.5 w-3.5" />
+                Favoriten
+              </button>
               <button
                 type="button"
                 onPointerDown={(e) => {
-                  // Fire before keyboard/focus steal — one tap must close.
                   e.preventDefault();
                   e.stopPropagation();
                   handleClose();
                 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                className="food-add-popup-icon-btn self-end mb-0.5 relative z-20 touch-manipulation"
+                className="h-9 w-9 rounded-xl border border-zinc-200 bg-white flex items-center justify-center text-zinc-500 dark:border-white/10 dark:bg-[#1a1a21] dark:text-zinc-400"
                 aria-label="Schließen"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
-            </div>
-
-            <div className="px-1 pb-2">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (view === "favorites") {
-                      setView(q.trim() ? "search" : "hub");
-                      return;
-                    }
-                    setView("favorites");
-                    setQ("");
-                    setResult(null);
-                  }}
-                  className={`h-11 flex-1 rounded-xl border text-[11px] font-semibold flex items-center justify-center gap-1 ${
-                    view === "favorites"
-                      ? "border-accent/30 bg-accent/10 text-accent"
-                      : "border-zinc-200 bg-white text-zinc-700 dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-300"
-                  }`}
-                >
-                  <Star className="h-3.5 w-3.5" />
-                  Favoriten
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setScannerOpen(true)}
-                  className="h-11 flex-1 rounded-xl border border-zinc-200 bg-white text-[11px] font-semibold text-zinc-700 flex items-center justify-center gap-1 dark:border-white/10 dark:bg-zinc-900/70 dark:text-zinc-300"
-                >
-                  <ScanBarcode className="h-3.5 w-3.5" />
-                  Barcode
-                </button>
-              </div>
             </div>
 
             <div className="food-add-popup-scroll">
               {view === "hub" && (
                 <div className="space-y-3 px-1 pb-4">
-                  <FoodSection title="Zuletzt verwendet">
+                  <FoodSection title="Häufig & Favoriten" actionLabel="Alle ansehen" onAction={() => setView("favorites")}>
+                    {(historyFoods.frequent.length > 0
+                      ? historyFoods.frequent
+                      : favoriteOnly
+                    )
+                      .slice(0, 8)
+                      .map((food) => renderRow(food))}
+                    {historyFoods.frequent.length === 0 && favoriteOnly.length === 0 ? (
+                      <p className="text-sm text-zinc-400 py-3 text-center px-2">
+                        Noch keine Favoriten — Suche oben starten.
+                      </p>
+                    ) : null}
+                  </FoodSection>
+                  <FoodSection title="Zuletzt gegessen" actionLabel="Verlauf">
                     {historyFoods.recents.length === 0 ? (
                       <p className="text-sm text-zinc-400 py-3 text-center px-2">
                         Noch keine Lebensmittel — Suche oben starten.
@@ -564,17 +626,14 @@ export const FoodAddPopup = memo(function FoodAddPopup({
                       historyFoods.recents.slice(0, 10).map((food) => renderRow(food))
                     )}
                   </FoodSection>
-                  {historyFoods.frequent.length > 0 && (
-                    <FoodSection title="Häufig verwendet">
-                      {historyFoods.frequent.slice(0, 8).map((food) => renderRow(food))}
-                    </FoodSection>
-                  )}
-                  {favoriteOnly.length > 0 && (
-                    <FoodSection title="Favoriten">
-                      {favoriteOnly.slice(0, 8).map((food) => renderRow(food))}
-                    </FoodSection>
-                  )}
                   {renderSavedSection(savedMeals.slice(0, 8))}
+                  <div className="rounded-[1rem] border border-zinc-200/90 bg-white px-3.5 py-3 dark:border-white/[0.07] dark:bg-[#1a1a21]">
+                    <p className="text-[13px] text-zinc-600 dark:text-zinc-300">
+                      Frage den{" "}
+                      <LinkCoach />
+                      , um Mahlzeiten per Foto oder Freitext zu tracken!
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -674,7 +733,7 @@ export const FoodAddPopup = memo(function FoodAddPopup({
       {detailProduct && (
         <FoodDetailPopup
           product={detailProduct}
-          mealType={mealType}
+          mealType={activeMeal}
           adding={quickAdding}
           onClose={() => setDetailProduct(null)}
           onAdd={addFromDetail}
@@ -705,17 +764,42 @@ export const FoodAddPopup = memo(function FoodAddPopup({
   );
 });
 
+function LinkCoach() {
+  return (
+    <a href="/coach" className="font-semibold text-teal-400">
+      KI Coach
+    </a>
+  );
+}
+
 function FoodSection({
   title,
   children,
+  actionLabel,
+  onAction,
 }: {
   title: string;
   children: ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
 }) {
   return (
     <section className="food-add-popup-section">
-      <h3 className="food-add-popup-section-title">{title}</h3>
-      <div className="divide-y divide-zinc-800/80">{children}</div>
+      <div className="flex items-center justify-between gap-2 mb-1 px-0.5">
+        <h3 className="food-add-popup-section-title !mb-0">{title}</h3>
+        {actionLabel ? (
+          <button
+            type="button"
+            onClick={onAction}
+            className="text-[12px] font-semibold text-teal-400 active:opacity-80"
+          >
+            {actionLabel}
+          </button>
+        ) : null}
+      </div>
+      <div className="rounded-[1rem] border border-zinc-200/90 bg-white px-3 dark:border-white/[0.07] dark:bg-[#1a1a21] divide-y divide-zinc-100 dark:divide-white/[0.06]">
+        {children}
+      </div>
     </section>
   );
 }

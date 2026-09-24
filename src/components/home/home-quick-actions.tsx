@@ -10,18 +10,18 @@ type Props = {
 };
 
 const BTN =
-  "flex min-h-11 flex-col items-center justify-center gap-1 rounded-2xl border border-zinc-200/90 bg-white px-1 py-2 text-[11px] font-semibold text-zinc-700 shadow-sm active:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 dark:border-white/[0.07] dark:bg-white/[0.03] dark:text-zinc-300 dark:shadow-none dark:active:bg-white/[0.07]";
+  "flex min-h-[4.25rem] flex-col items-center justify-center gap-1.5 rounded-[1rem] border border-zinc-200/90 bg-white px-1 py-2.5 text-[11px] font-semibold text-zinc-700 shadow-sm active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 dark:border-white/[0.07] dark:bg-[#1a1a21] dark:text-zinc-200 dark:shadow-none dark:active:bg-white/[0.05]";
 
 function IconPlusFood() {
   return (
-    <svg className="h-4 w-4 text-amber-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className="h-4 w-4 text-orange-500" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
 function IconCamera() {
   return (
-    <svg className="h-4 w-4 text-sky-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className="h-4 w-4 text-teal-400" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M4 8h3l2-2h6l2 2h3v12H4V8Z"
         stroke="currentColor"
@@ -34,7 +34,7 @@ function IconCamera() {
 }
 function IconBolt() {
   return (
-    <svg className="h-4 w-4 text-violet-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg className="h-4 w-4 text-[var(--accent,#6d5dfe)]" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"
         stroke="currentColor"

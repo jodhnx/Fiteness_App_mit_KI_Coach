@@ -38,6 +38,19 @@ function portionChip(food: FoodProduct, grams: number): string {
   return `${grams} g`;
 }
 
+function MacroDot({ color, value }: { color: string; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 tabular-nums">
+      <span
+        className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
+        style={{ background: color }}
+        aria-hidden
+      />
+      {value}
+    </span>
+  );
+}
+
 export const FoodQuickRow = memo(function FoodQuickRow({
   food,
   isFavorite,
@@ -56,9 +69,14 @@ export const FoodQuickRow = memo(function FoodQuickRow({
   });
   const brand = brandLine(food);
   const chip = portionChip(food, grams);
+  const scale = grams / 100;
+  const kcal = Math.round(per100.calories * scale);
+  const p = Math.round(per100.proteinG * scale);
+  const c = Math.round(per100.carbsG * scale);
+  const f = Math.round(per100.fatG * scale);
 
   return (
-    <div className="flex items-stretch gap-2 min-h-[64px] py-2.5 border-b border-zinc-200/80 last:border-0 dark:border-zinc-800/60">
+    <div className="flex items-center gap-2 min-h-[64px] py-2.5 border-b border-zinc-200/80 last:border-0 dark:border-white/[0.06]">
       <button
         type="button"
         onClick={onOpenDetail}
@@ -67,19 +85,16 @@ export const FoodQuickRow = memo(function FoodQuickRow({
         <p className="font-semibold text-zinc-900 text-[15px] leading-snug truncate dark:text-white">
           {food.name}
         </p>
-        {brand && (
-          <p className="text-[12px] text-zinc-500 mt-0.5 truncate leading-tight">
-            {brand}
-          </p>
-        )}
-        <p className="text-[12px] text-zinc-500 mt-1 tabular-nums leading-tight dark:text-zinc-400">
-          {Math.round(per100.calories)} kcal / 100 g
-          {" · "}
-          {Math.round(per100.proteinG)} P
-          {" · "}
-          {Math.round(per100.carbsG)} KH
-          {" · "}
-          {Math.round(per100.fatG)} F
+        <p className="text-[12px] text-zinc-500 mt-0.5 truncate leading-tight">
+          {[brand, chip].filter(Boolean).join(" · ") || chip}
+        </p>
+        <p className="text-[12px] text-zinc-500 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 leading-tight dark:text-zinc-400">
+          <span className="font-semibold tabular-nums text-zinc-800 dark:text-zinc-200">
+            {kcal} kcal
+          </span>
+          <MacroDot color="var(--nutrition-protein)" value={`${p}g`} />
+          <MacroDot color="var(--nutrition-carbs)" value={`${c}g`} />
+          <MacroDot color="var(--nutrition-fat)" value={`${f}g`} />
         </p>
       </button>
 
@@ -90,7 +105,7 @@ export const FoodQuickRow = memo(function FoodQuickRow({
             e.stopPropagation();
             onToggleFavorite();
           }}
-          className="flex h-11 w-11 shrink-0 items-center justify-center self-center text-zinc-500 active:opacity-80"
+          className="flex h-10 w-8 shrink-0 items-center justify-center self-center text-zinc-500 active:opacity-80"
           aria-label={isFavorite ? "Favorit entfernen" : "Als Favorit merken"}
           aria-pressed={Boolean(isFavorite)}
         >
@@ -107,13 +122,10 @@ export const FoodQuickRow = memo(function FoodQuickRow({
           e.stopPropagation();
           onQuickAdd();
         }}
-        className="shrink-0 self-center flex min-h-11 min-w-[2.75rem] flex-col items-center justify-center rounded-xl border border-accent/35 bg-accent/15 px-1.5 py-1 text-accent active:opacity-80 disabled:opacity-50"
+        className="shrink-0 self-center flex h-9 w-9 items-center justify-center rounded-full bg-teal-500/90 text-white active:opacity-80 disabled:opacity-50"
         aria-label={`${food.name} hinzufügen (${chip})`}
       >
         <span className="text-lg font-bold leading-none">+</span>
-        <span className="mt-0.5 text-[9px] font-semibold leading-none text-accent/80">
-          {chip}
-        </span>
       </button>
     </div>
   );

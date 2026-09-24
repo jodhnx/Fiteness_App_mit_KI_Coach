@@ -24,21 +24,12 @@ type CardRecipe = Pick<
   | "imageUrl"
 >;
 
-const SLOT_LABEL: Record<string, string> = {
+const MEAL_LABEL: Record<string, string> = {
   BREAKFAST: "Frühstück",
   LUNCH: "Mittag",
   DINNER: "Abend",
   SNACK: "Snack",
 };
-
-function tagLabel(recipe: CardRecipe): string {
-  if (recipe.tags.includes("high-protein")) return "High Protein";
-  if (recipe.tags.includes("low-calorie")) return "Low Calorie";
-  if (recipe.tags.includes("austrian")) return "Österreichisch";
-  if (recipe.tags.includes("meal-prep")) return "Meal Prep";
-  if (recipe.tags.includes("vegan")) return "Vegan";
-  return SLOT_LABEL[recipe.mealSlot] ?? "Rezept";
-}
 
 export const RecipeCard = memo(function RecipeCard({
   recipe,
@@ -53,10 +44,17 @@ export const RecipeCard = memo(function RecipeCard({
 }) {
   const timeMin =
     (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0) || recipe.prepMinutes;
-  const meta = `${tagLabel(recipe)} · ${SLOT_LABEL[recipe.mealSlot] ?? ""}`;
+  const badge =
+    recipe.tags?.includes("high-protein")
+      ? "High Protein"
+      : recipe.tags?.includes("low-calorie")
+        ? "Low Calorie"
+        : recipe.tags?.includes("austrian")
+          ? "Österreichisch"
+          : null;
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm transition-colors hover:border-zinc-300 dark:border-white/[0.08] dark:bg-zinc-900/70 dark:shadow-none dark:hover:border-white/[0.14]">
+    <div className="group relative overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm transition-colors hover:border-zinc-300 dark:border-white/[0.08] dark:bg-zinc-900/80 dark:shadow-none dark:hover:border-white/[0.14]">
       <Link href={`/rezepte/${recipe.id}`} prefetch className="block active:opacity-95">
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
           {recipe.imageUrl ? (
@@ -64,8 +62,8 @@ export const RecipeCard = memo(function RecipeCard({
               src={recipe.imageUrl}
               alt={recipe.name}
               fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
-              className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
+              className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
               priority={priority}
               loading={priority ? "eager" : "lazy"}
             />
@@ -76,30 +74,32 @@ export const RecipeCard = memo(function RecipeCard({
                 recipe.accent
               )}
             >
-              <span className="text-3xl" aria-hidden>
+              <span className="text-4xl" aria-hidden>
                 {recipe.emoji}
               </span>
             </div>
           )}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent dark:from-zinc-950/80" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
         </div>
 
-        <div className="space-y-1 p-2">
-          <p className="line-clamp-2 text-[12px] font-semibold leading-snug text-zinc-900 dark:text-white">
+        <div className="space-y-1.5 p-2.5">
+          <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-zinc-900 dark:text-white">
             {recipe.name}
           </p>
-          <p className="truncate text-[10px] font-medium text-zinc-500">
-            {meta}
+          <p className="text-[10px] font-medium text-zinc-500 truncate">
+            {[badge, MEAL_LABEL[recipe.mealSlot]].filter(Boolean).join(" · ")}
           </p>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-zinc-600 dark:text-zinc-400">
-            <span className="inline-flex items-center gap-0.5 font-semibold text-orange-600 dark:text-orange-300/90">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] tabular-nums text-zinc-600 dark:text-zinc-400">
+            <span className="inline-flex items-center gap-0.5 text-orange-600 dark:text-orange-300/90">
               <Flame className="h-3 w-3" />
               {recipe.calories}
             </span>
-            <span className="font-medium">P {recipe.proteinG}g</span>
-            <span className="inline-flex items-center gap-0.5 text-zinc-500">
+            <span>P {Math.round(recipe.proteinG)}g</span>
+            <span>C {Math.round(recipe.carbsG ?? 0)}g</span>
+            <span>F {Math.round(recipe.fatG ?? 0)}g</span>
+            <span className="inline-flex items-center gap-0.5">
               <Clock className="h-3 w-3" />
-              {timeMin}m
+              {timeMin} Min
             </span>
           </div>
         </div>
@@ -120,7 +120,7 @@ export const RecipeCard = memo(function RecipeCard({
               "h-4 w-4",
               favorited
                 ? "fill-rose-500 text-rose-500"
-                : "text-zinc-500 dark:text-zinc-200"
+                : "text-zinc-600 dark:text-zinc-200"
             )}
           />
         </button>

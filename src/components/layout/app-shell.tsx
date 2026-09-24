@@ -1,6 +1,5 @@
 "use client";
 
-import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useProfileHeader } from "@/hooks/use-profile-header";
@@ -20,7 +19,7 @@ import { MealReminderWarmup } from "@/components/nutrition/meal-reminder-warmup"
 import { FeatureTour } from "@/components/guide/feature-tour";
 import { PersistentTabProvider, TabKeepAliveOutlet } from "@/components/layout/persistent-tab-provider";
 import { TabSwipeLayer } from "@/components/layout/tab-swipe-layer";
-import { ScrollRestoreProvider } from "@/components/layout/scroll-restore-provider";
+import { PathScrollRestore } from "@/components/layout/path-scroll-restore";
 import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import { cn } from "@/lib/utils";
 
@@ -47,8 +46,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <PhoneSensorWarmup />
         <MealReminderWarmup />
         <PersistentTabProvider>
-          <Suspense fallback={null}>
-            <ScrollRestoreProvider>
+          <PathScrollRestore />
           <div className="gradient-mesh min-h-[100dvh] overflow-x-hidden lg:flex">
             <DesktopNav />
             <div className="flex-1 min-w-0 flex flex-col min-h-[100dvh]">
@@ -93,8 +91,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </AppErrorBoundary>
             </div>
           </div>
-            </ScrollRestoreProvider>
-          </Suspense>
         </PersistentTabProvider>
       </NotificationProvider>
     </SidebarProvider>

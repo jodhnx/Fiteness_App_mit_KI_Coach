@@ -4,6 +4,7 @@ import { memo } from "react";
 import Link from "next/link";
 import type { NutritionDashboardPayload } from "@/lib/nutrition-defaults";
 import { resolveNutritionDisplayState } from "@/lib/nutrition-display";
+import { NUTRITION_GOAL_LABELS } from "@/lib/nutrition";
 import { PremiumCard } from "@/components/ui/premium-card";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +16,13 @@ type Props = {
   trainingHint?: string | null;
 };
 
-/** Central Home TODAY card — calories + macros only (no duplicate mini-stats). */
+function modeLabel(nutrition: NutritionDashboardPayload): string {
+  const goal = nutrition.targets?.nutritionGoal;
+  if (goal && NUTRITION_GOAL_LABELS[goal]) return NUTRITION_GOAL_LABELS[goal];
+  return "Heute";
+}
+
+/** Central Home calorie card — dense premium layout matching reference. */
 export const HomeTodayOverview = memo(function HomeTodayOverview({
   nutrition,
   loading = false,
@@ -24,14 +31,14 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
 
   if (state.kind === "loading") {
     return (
-      <PremiumCard padding="md" className="space-y-3 min-h-[10rem]">
-        <div className="h-3 w-16 rounded bg-zinc-200/80 animate-pulse dark:bg-white/5" />
-        <div className="h-12 w-36 rounded bg-zinc-200/80 animate-pulse dark:bg-white/5" />
-        <div className="h-4 w-40 rounded bg-zinc-200/80 animate-pulse dark:bg-white/5" />
+      <PremiumCard padding="md" className="space-y-3 min-h-[9rem]">
+        <div className="h-3 w-20 rounded bg-zinc-200/80 animate-pulse dark:bg-white/5" />
+        <div className="h-9 w-40 rounded bg-zinc-200/80 animate-pulse dark:bg-white/5" />
+        <div className="h-2 w-full rounded bg-zinc-200/80 animate-pulse dark:bg-white/5" />
         <div className="grid grid-cols-3 gap-2">
-          <div className="h-14 rounded-xl bg-zinc-200/80 animate-pulse dark:bg-white/5" />
-          <div className="h-14 rounded-xl bg-zinc-200/80 animate-pulse dark:bg-white/5" />
-          <div className="h-14 rounded-xl bg-zinc-200/80 animate-pulse dark:bg-white/5" />
+          <div className="h-10 rounded-lg bg-zinc-200/80 animate-pulse dark:bg-white/5" />
+          <div className="h-10 rounded-lg bg-zinc-200/80 animate-pulse dark:bg-white/5" />
+          <div className="h-10 rounded-lg bg-zinc-200/80 animate-pulse dark:bg-white/5" />
         </div>
       </PremiumCard>
     );
@@ -41,12 +48,12 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
     return (
       <PremiumCard
         padding="md"
-        className="text-center space-y-3 min-h-[10rem] flex flex-col justify-center"
+        className="text-center space-y-3 min-h-[9rem] flex flex-col justify-center"
       >
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
-          Today
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          Heute
         </p>
-        <p className="text-lg font-semibold text-zinc-900 dark:text-white">
+        <p className="text-base font-semibold text-zinc-900 dark:text-white">
           Kalorienziel festlegen
         </p>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -83,83 +90,99 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
       label: "Protein",
       consumed: Math.round(consumed.proteinG ?? 0),
       target: Math.round(targets.proteinG ?? 0),
+      color: "var(--nutrition-protein)",
     },
     {
       label: "Carbs",
       consumed: Math.round(consumed.carbsG ?? 0),
       target: Math.round(targets.carbsG ?? 0),
+      color: "var(--nutrition-carbs)",
     },
     {
-      label: "Fat",
+      label: "Fett",
       consumed: Math.round(consumed.fatG ?? 0),
       target: Math.round(targets.fatG ?? 0),
+      color: "var(--nutrition-fat)",
     },
   ].filter((m) => m.target > 0);
+
+  const segParts = macros.map((m) => {
+    const ratio = Math.min(1, m.consumed / Math.max(1, m.target));
+    return { ...m, ratio };
+  });
+  const segSum = segParts.reduce((s, p) => s + p.ratio, 0) || 1;
 
   return (
     <PremiumCard
       padding="md"
-      className={cn("space-y-4", cal.isOver && "ring-1 ring-red-500/25")}
+      className={cn("space-y-3", cal.isOver && "ring-1 ring-red-500/25")}
     >
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
-          Today
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          {modeLabel(nutrition)}
         </p>
+        <Link
+          href="/nutrition"
+          className="text-[12px] font-semibold text-[var(--ai-accent,#2dd4bf)] hover:opacity-90"
+        >
+          Ernährung öffnen
+        </Link>
+      </div>
+
+      <div className="flex items-baseline gap-1.5 flex-wrap">
         <p
           className={cn(
-            "mt-2 text-[2.35rem] font-bold leading-none tabular-nums tracking-tight",
+            "text-[2.15rem] font-bold leading-none tabular-nums tracking-tight",
             cal.isOver
               ? "text-red-500 dark:text-red-400"
               : "text-zinc-900 dark:text-white"
           )}
         >
-          {cal.primaryValue.toLocaleString("de-DE")}
-          <span
-            className={cn(
-              "ml-2 text-base font-semibold",
-              cal.isOver
-                ? "text-red-500/90 dark:text-red-400/90"
-                : "text-zinc-500 dark:text-zinc-400"
-            )}
-          >
-            {cal.isOver ? "kcal über Ziel" : "kcal übrig"}
-          </span>
-        </p>
-        <p className="mt-2 text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
           {Math.round(cal.consumed).toLocaleString("de-DE")}
+        </p>
+        <p className="text-[15px] font-medium tabular-nums text-zinc-500 dark:text-zinc-400">
           {" / "}
-          {Math.round(cal.target).toLocaleString("de-DE")} kcal gegessen
+          {Math.round(cal.target).toLocaleString("de-DE")} kcal
         </p>
       </div>
 
-      {macros.length > 0 ? (
-        <div className="grid grid-cols-3 gap-2">
-          {macros.map((m) => (
+      {segParts.length > 0 ? (
+        <div
+          className="flex h-2 w-full overflow-hidden rounded-full bg-zinc-200/80 dark:bg-white/[0.06]"
+          aria-hidden
+        >
+          {segParts.map((p) => (
             <div
-              key={m.label}
-              className="rounded-xl border border-zinc-100 bg-zinc-50/90 px-2 py-2.5 dark:border-white/[0.06] dark:bg-white/[0.03]"
-            >
+              key={p.label}
+              className="h-full first:rounded-l-full last:rounded-r-full"
+              style={{
+                width: `${(p.ratio / segSum) * 100}%`,
+                background: p.color,
+                minWidth: p.ratio > 0 ? 4 : 0,
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {macros.length > 0 ? (
+        <div className="grid grid-cols-3 gap-2 pt-0.5">
+          {macros.map((m) => (
+            <div key={m.label} className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
                 {m.label}
               </p>
-              <p className="mt-1 text-[13px] font-bold tabular-nums text-zinc-900 dark:text-white">
-                {m.consumed}
+              <p className="mt-0.5 text-[13px] font-bold tabular-nums text-zinc-900 dark:text-white">
+                {m.consumed}g
                 <span className="text-[11px] font-medium text-zinc-500">
                   {" "}
-                  / {m.target} g
+                  / {m.target}g
                 </span>
               </p>
             </div>
           ))}
         </div>
       ) : null}
-
-      <Link
-        href="/nutrition"
-        className="inline-flex text-[13px] font-semibold text-accent hover:text-accent-hover"
-      >
-        Ernährung öffnen
-      </Link>
     </PremiumCard>
   );
 });

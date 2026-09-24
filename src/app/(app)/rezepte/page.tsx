@@ -5,8 +5,7 @@ import { Search, Heart, Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { Input } from "@/components/ui/input";
 import { RecipeCard } from "@/components/recipes/recipe-card";
-import { RecipeFilterBar } from "@/components/recipes/recipe-filter-bar";
-import { RECIPE_SORT_OPTIONS, type RecipeSortId } from "@/data/fitness-recipes";
+import { RECIPE_FILTERS } from "@/data/fitness-recipes";
 import type { RecipeListItem } from "@/lib/recipes/catalog-query";
 import { getCached } from "@/lib/client-cache";
 import {
@@ -22,6 +21,42 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { hapticTap } from "@/lib/haptic";
 import { Button } from "@/components/ui/button";
+import {
+  getWindowScrollY,
+  saveScrollPosition,
+  scrollRouteKey,
+} from "@/lib/scroll-restore";
+
+const MEAL_CHIPS = [
+  { id: "BREAKFAST", label: "Frühstück" },
+  { id: "LUNCH", label: "Mittag" },
+  { id: "DINNER", label: "Abend" },
+  { id: "SNACK", label: "Snack" },
+] as const;
+
+const GOAL_CHIPS = [
+  { id: "high-protein", label: "High Protein" },
+  { id: "low-calorie", label: "Low Calorie" },
+  { id: "low-carb", label: "Low Carb" },
+  { id: "low-fat", label: "Low Fat" },
+  { id: "high-calorie", label: "High Calorie" },
+  { id: "meal-prep", label: "Meal Prep" },
+  { id: "bulking", label: "Bulking" },
+  { id: "cutting", label: "Cutting" },
+  { id: "pre-workout", label: "Pre Workout" },
+  { id: "post-workout", label: "Post Workout" },
+  { id: "vegan", label: "Vegan" },
+  { id: "austrian", label: "Österreichisch" },
+] as const;
+
+const SORT_OPTIONS = [
+  { id: "popular", label: "Beliebt" },
+  { id: "protein", label: "Protein" },
+  { id: "calories", label: "Kalorien" },
+  { id: "quick", label: "Schnell" },
+] as const;
+
+type SortId = (typeof SORT_OPTIONS)[number]["id"];
 
 type CatalogResponse = {
   recipes: RecipeListItem[];
@@ -33,13 +68,37 @@ type CatalogResponse = {
   catalogTotal: number;
 };
 
+function Chip({
+  label,
+  on,
+  onClick,
+}: {
+  label: string;
+  on: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "shrink-0 min-h-9 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+        on
+          ? "border-accent bg-accent text-white"
+          : "border-zinc-200 bg-white text-zinc-700 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-zinc-300"
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
 function hydrateInitial() {
   const ui = readRecipeUiState();
   const q = ui?.query ?? "";
   const filters = ui?.filters ?? [];
-  const sort = (ui?.sort as RecipeSortId | undefined) ?? "popular";
   const cached =
-    readRecipeCatalogCache(q, filters, sort) ??
+    readRecipeCatalogCache(q, filters) ??
     (!q && filters.length === 0 ? readDefaultRecipeCatalog() : null);
   const favs = getCached<string[]>(RECIPE_FAV_CACHE_KEY, { allowStale: true }) ?? [];
 
@@ -53,7 +112,6 @@ function hydrateInitial() {
       favoriteIds: cached.favoriteIds?.length ? cached.favoriteIds : favs,
       query: q,
       filters,
-      sort,
       loading: false,
     };
   }
@@ -67,7 +125,6 @@ function hydrateInitial() {
     favoriteIds: favs,
     query: q,
     filters,
-    sort,
     loading: true,
   };
 }
@@ -77,7 +134,6 @@ export default function RezeptePage() {
   const [query, setQuery] = useState(initial.query);
   const [debouncedQ, setDebouncedQ] = useState(initial.query.trim());
   const [filters, setFilters] = useState<string[]>(initial.filters);
-  const [sort, setSort] = useState<RecipeSortId>(initial.sort);
   const [favoriteIds, setFavoriteIds] = useState<string[]>(initial.favoriteIds);
   const [recipes, setRecipes] = useState<RecipeListItem[]>(initial.recipes);
   const recipesRef = useRef(recipes);
@@ -88,8 +144,16 @@ export default function RezeptePage() {
   const [catalogTotal, setCatalogTotal] = useState(initial.catalogTotal);
   const [loading, setLoading] = useState(initial.loading);
   const [softLoading, setSoftLoading] = useState(false);
-  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const [sort, setSort] = useState<SortId>("popular");
   const skipFirstDebounce = useRef(true);
+
+  useEffect(() => {
+    // Persist list scroll before leaving to detail
+    return () => {
+      const key = scrollRouteKey("/rezepte");
+      if (key) saveScrollPosition(key, getWindowScrollY());
+    };
+  }, []);
 
   useEffect(() => {
     if (skipFirstDebounce.current) {
@@ -101,12 +165,8 @@ export default function RezeptePage() {
   }, [query]);
 
   useEffect(() => {
-    writeRecipeUiState({
-      query,
-      filters,
-      sort,
-    });
-  }, [query, filters, sort]);
+    writeRecipeUiState({ query, filters });
+  }, [query, filters]);
 
   const load = useCallback(
     async (pageNum: number, append: boolean, opts?: { soft?: boolean }) => {
@@ -118,7 +178,6 @@ export default function RezeptePage() {
         const params = new URLSearchParams();
         params.set("page", String(pageNum));
         params.set("limit", "24");
-        params.set("sort", sort);
         if (debouncedQ) params.set("q", debouncedQ);
         for (const f of filters) params.append("filter", f);
 
@@ -145,7 +204,6 @@ export default function RezeptePage() {
           favoriteIds: data.favoriteIds ?? [],
           q: debouncedQ,
           filters,
-          sort,
         });
       } catch {
         if (!recipesRef.current.length) {
@@ -156,11 +214,11 @@ export default function RezeptePage() {
         setSoftLoading(false);
       }
     },
-    [debouncedQ, filters, sort]
+    [debouncedQ, filters]
   );
 
   useEffect(() => {
-    const cached = readRecipeCatalogCache(debouncedQ, filters, sort);
+    const cached = readRecipeCatalogCache(debouncedQ, filters);
     if (cached?.recipes?.length) {
       setRecipes(cached.recipes);
       setHasMore(cached.hasMore);
@@ -175,7 +233,7 @@ export default function RezeptePage() {
       return;
     }
     void load(1, false);
-  }, [debouncedQ, filters, sort, load]);
+  }, [debouncedQ, filters, load]);
 
   const favorites = useMemo(
     () => recipes.filter((r) => favoriteIds.includes(r.id)),
@@ -218,19 +276,19 @@ export default function RezeptePage() {
       title="Rezepte"
       subtitle={
         catalogTotal > 0
-          ? `${catalogTotal} Rezepte · Filter & Sortierung`
+          ? `${catalogTotal} Rezepte · Suche, Filter & Favoriten`
           : "Fitness-Rezepte"
       }
       maxWidth="2xl"
-      className="space-y-3 pb-28"
+      className="space-y-4 pb-28"
     >
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Suche: Chicken, Reis, Protein, Low Carb…"
-          className="h-11 rounded-2xl pl-10 bg-white border-zinc-200 shadow-sm dark:bg-zinc-900/80 dark:border-white/[0.08]"
+          placeholder="Rezept oder Zutat suchen…"
+          className="h-12 rounded-2xl pl-10"
           autoComplete="off"
         />
         {softLoading && (
@@ -238,44 +296,34 @@ export default function RezeptePage() {
         )}
       </div>
 
-      <div className="space-y-2">
-        <RecipeFilterBar
-          filters={filters}
-          onToggle={toggleFilter}
-          onClear={() => setFilters([])}
-          moreOpen={moreFiltersOpen}
-          onToggleMore={() => setMoreFiltersOpen((v) => !v)}
-        />
-
-        <div className="flex flex-wrap gap-1.5">
-          {RECIPE_SORT_OPTIONS.map((s) => (
+      <div className="scrollbar-none -mx-0.5 flex gap-2 overflow-x-auto px-0.5 pb-1">
+        {RECIPE_FILTERS.map((f) => {
+          const on = filters.includes(f.id);
+          return (
             <button
-              key={s.id}
+              key={f.id}
               type="button"
-              onClick={() => {
-                hapticTap();
-                setSort(s.id);
-              }}
+              onClick={() => toggleFilter(f.id)}
               className={cn(
-                "min-h-9 rounded-lg border px-2.5 text-[11px] font-semibold",
-                sort === s.id
-                  ? "border-accent/40 bg-accent/10 text-accent"
-                  : "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-zinc-400"
+                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold",
+                on
+                  ? "border-accent bg-accent text-zinc-950"
+                  : "border-white/[0.08] bg-zinc-900/80 text-zinc-400"
               )}
             >
-              {s.label}
+              {f.label}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {favorites.length > 0 && !debouncedQ && filters.length === 0 && (
-        <section className="space-y-2">
-          <h2 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500">
+        <section className="space-y-2.5">
+          <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
             <Heart className="h-3.5 w-3.5 text-rose-400" />
             Favoriten
           </h2>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {favorites.slice(0, 8).map((r, i) => (
               <RecipeCard
                 key={`fav-${r.id}`}
@@ -289,13 +337,13 @@ export default function RezeptePage() {
         </section>
       )}
 
-      <section className="space-y-2">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500">
+      <section className="space-y-2.5">
+        <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-zinc-500">
           {debouncedQ || filters.length > 0
             ? `${total} Ergebnisse`
             : "Entdecken"}
         </h2>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
           {recipes.map((r, i) => (
             <RecipeCard
               key={r.id}

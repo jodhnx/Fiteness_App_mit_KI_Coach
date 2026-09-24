@@ -5,7 +5,6 @@ import { UserAvatar } from "@/components/user/user-avatar";
 import { ONBOARDING_ACTIVITY_OPTIONS, ONBOARDING_MAIN_GOAL_UI } from "@/lib/onboarding-options";
 import { NUTRITION_GOAL_LABELS } from "@/lib/nutrition";
 import type { ActivityLevel, NutritionGoal, TrainingGoal } from "@prisma/client";
-import { Pencil } from "lucide-react";
 import { GENDER_LABELS } from "@/lib/profile-labels";
 
 export type SettingsProfileOverviewForm = {
@@ -46,9 +45,9 @@ function formatGrams(raw: string | number | null | undefined): string {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 min-h-11 py-2 border-b border-zinc-100 last:border-0 dark:border-white/[0.05]">
-      <dt className="text-sm text-zinc-500 shrink-0">{label}</dt>
-      <dd className="text-sm font-semibold text-zinc-900 text-right tabular-nums truncate dark:text-white">
+    <div className="flex items-center justify-between gap-3 min-h-10 py-2.5 border-b border-zinc-100 last:border-0 dark:border-white/[0.06]">
+      <dt className="text-[14px] font-medium text-zinc-900 shrink-0 dark:text-white">{label}</dt>
+      <dd className="text-[14px] text-zinc-500 text-right tabular-nums truncate dark:text-[#8e8e93]">
         {value}
       </dd>
     </div>
@@ -67,7 +66,7 @@ function Section({
       <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500 px-0.5">
         {title}
       </h3>
-      <dl className="rounded-2xl border border-zinc-200/90 bg-white px-3.5 shadow-sm dark:border-white/[0.07] dark:bg-white/[0.02] dark:shadow-none">
+      <dl className="rounded-[1rem] border border-zinc-200/90 bg-white px-3.5 shadow-sm dark:border-white/[0.07] dark:bg-[#1a1a21] dark:shadow-none">
         {children}
       </dl>
     </section>
@@ -103,19 +102,19 @@ export function SettingsProfileOverview({
 
   return (
     <section id="settings-profil" className="scroll-mt-24 space-y-4">
-      <div className="flex items-center gap-3.5">
+      <div className="flex items-center gap-3">
         <UserAvatar
           src={userImage}
           name={form.name}
-          size="lg"
-          className="!h-14 !w-14 text-lg shrink-0"
+          size="md"
+          className="!h-12 !w-12 text-sm shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-semibold text-zinc-900 tracking-tight truncate dark:text-white">
+          <h2 className="text-[17px] font-semibold text-zinc-900 tracking-tight truncate dark:text-white">
             {displayName}
           </h2>
           {form.username ? (
-            <p className="text-sm text-zinc-500 truncate">@{form.username}</p>
+            <p className="text-[13px] text-zinc-500 truncate">@{form.username}</p>
           ) : form.email ? (
             <p className="text-xs text-zinc-500 truncate">{form.email}</p>
           ) : null}
@@ -125,9 +124,8 @@ export function SettingsProfileOverview({
           variant="outline"
           size="sm"
           onClick={onEdit}
-          className="shrink-0 min-h-11 px-3"
+          className="shrink-0 min-h-9 h-9 rounded-full px-3.5 text-[13px] dark:border-white/10 dark:bg-white/[0.04]"
         >
-          <Pencil className="h-4 w-4 mr-1.5" aria-hidden />
           Bearbeiten
         </Button>
       </div>

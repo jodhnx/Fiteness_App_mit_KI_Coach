@@ -5,16 +5,13 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
-import { scrollMainTabToTop } from "@/components/layout/scroll-restore-provider";
-import {
-  buildScrollKeyNormalized,
-  saveScrollPosition,
-} from "@/lib/scroll-restore";
 
 export const MAIN_TABS = [
   "/home",
@@ -26,7 +23,7 @@ export const MAIN_TABS = [
 
 export type MainTab = (typeof MAIN_TABS)[number];
 
-/** Exact main-tab paths (nav + soft switch). */
+/** Exact paths kept mounted so returning is instant (no remount / refetch flash). */
 const PATH_KEEP_ALIVE = new Set<string>([...MAIN_TABS]);
 
 export function matchMainTab(pathname: string | null): MainTab | null {
@@ -67,29 +64,22 @@ export function PersistentTabProvider({ children }: { children: ReactNode }) {
   const navigateMainTab = useCallback(
     (href: MainTab) => {
       if (pathname === href) {
-        // Same tab re-tap → intentional top (clears stored position)
-        scrollMainTabToTop(href);
+        // Same tab re-tap → scroll to top (and clear stored position)
+        window.dispatchEvent(new Event("nexform:scroll-force-top"));
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
         return;
       }
-      // Persist leaving tab scroll before soft navigation
-      saveScrollPosition(
-        buildScrollKeyNormalized(
-          pathname,
-          typeof window !== "undefined" ? window.location.search : ""
-        )
-      );
       router.prefetch(href);
       router.push(href, { scroll: false });
     },
     [pathname, router]
   );
 
-  useEffect(() => {
+  // Track active main tab — scroll restore is owned by PathScrollRestore.
+  useLayoutEffect(() => {
     const tab = matchMainTab(pathname);
-    if (!tab) {
-      prevMainTab.current = null;
-      return;
-    }
     prevMainTab.current = tab;
   }, [pathname]);
 
@@ -102,27 +92,63 @@ export function PersistentTabProvider({ children }: { children: ReactNode }) {
   );
 }
 
+function isRenderablePanel(node: ReactNode): boolean {
+  return node != null && node !== false;
+}
+
 /**
- * Main-tab outlet.
- *
- * IMPORTANT (Next.js App Router / RSC): Do NOT freeze and re-parent `children`.
- * Caching the RSC payload and rendering it beside the live tree duplicates page
- * DOM (e.g. two Nutrition layouts — one hidden). Instant tab UX comes from
- * cache-first data providers + soft navigation, not from freezing RSC nodes.
+ * Keep-alive for main tabs — revisiting shows cached tree instantly.
+ * First visit renders live `children`; after mount the tree is frozen in cache.
  */
 export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const keepActive = pathname != null && PATH_KEEP_ALIVE.has(pathname);
+  const panels = useRef<Map<string, ReactNode>>(new Map());
+  const [readyPaths, setReadyPaths] = useState<Set<string>>(() => new Set());
+
+  useLayoutEffect(() => {
+    if (!keepActive || !pathname || !isRenderablePanel(children)) return;
+    panels.current.set(pathname, children);
+    setReadyPaths((prev) => {
+      if (prev.has(pathname)) return prev;
+      const next = new Set(prev);
+      next.add(pathname);
+      return next;
+    });
+  }, [keepActive, pathname, children]);
+
+  useEffect(() => {
+    const clear = () => {
+      panels.current.clear();
+      setReadyPaths(new Set());
+    };
+    window.addEventListener("nexform:user-state-cleared", clear);
+    return () => window.removeEventListener("nexform:user-state-cleared", clear);
+  }, []);
+
+  if (!keepActive || !pathname) {
+    return <AppErrorBoundary label="page">{children}</AppErrorBoundary>;
+  }
+
+  const cached = panels.current.get(pathname);
+  const hasCached = readyPaths.has(pathname) && isRenderablePanel(cached);
+  const visible = hasCached ? cached : children;
 
   return (
-    <div
-      className="nf-keep-alive"
-      data-path={pathname ?? undefined}
-      data-keep-mode={keepActive ? "live" : "page"}
-    >
-      <AppErrorBoundary label={keepActive && pathname ? `keep:${pathname}` : "page"}>
-        {children}
-      </AppErrorBoundary>
-    </div>
+    <>
+      {[...PATH_KEEP_ALIVE].map((path) => {
+        if (path === pathname) return null;
+        const node = panels.current.get(path);
+        if (!node || !readyPaths.has(path)) return null;
+        return (
+          <div key={path} hidden aria-hidden style={{ display: "none" }}>
+            <AppErrorBoundary label={`keep:${path}`}>{node}</AppErrorBoundary>
+          </div>
+        );
+      })}
+      <div>
+        <AppErrorBoundary label={`keep:${pathname}`}>{visible}</AppErrorBoundary>
+      </div>
+    </>
   );
 }

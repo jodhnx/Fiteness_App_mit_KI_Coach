@@ -90,10 +90,10 @@ export function TrainingChoiceCard({
   );
 
   const className = cn(
-    "flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition-colors active:scale-[0.99]",
+    "flex w-full items-center gap-3 rounded-[1.125rem] border p-3.5 text-left transition-colors active:scale-[0.99]",
     featured
-      ? "border-accent/25 bg-white shadow-sm hover:bg-accent/5 dark:border-white/[0.14] dark:bg-zinc-900 dark:shadow-none dark:hover:border-white/[0.2]"
-      : "border-zinc-200/90 bg-white shadow-sm hover:bg-zinc-50 dark:border-white/[0.08] dark:bg-zinc-900/70 dark:shadow-none dark:hover:border-white/[0.14] dark:hover:bg-zinc-900"
+      ? "border-accent/25 bg-white shadow-sm hover:bg-accent/5 dark:border-white/[0.12] dark:bg-[#1a1a21] dark:shadow-none dark:hover:border-white/[0.18]"
+      : "border-zinc-200/90 bg-white shadow-sm hover:bg-zinc-50 dark:border-white/[0.07] dark:bg-[#1a1a21] dark:shadow-none dark:hover:border-white/[0.12] dark:hover:bg-[#22222b]"
   );
 
   if (onClick) {

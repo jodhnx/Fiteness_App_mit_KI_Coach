@@ -22,11 +22,11 @@ export const PageHeader = memo(function PageHeader({
       {back ? <div className="mb-1">{back}</div> : null}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+          <h1 className="text-[1.65rem] sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
             {title}
           </h1>
           {subtitle ? (
-            <p className="text-sm text-zinc-500 mt-1">{subtitle}</p>
+            <p className="text-[13px] text-zinc-500 mt-0.5">{subtitle}</p>
           ) : null}
         </div>
         {action}

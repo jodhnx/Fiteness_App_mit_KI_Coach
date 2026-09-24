@@ -60,7 +60,7 @@ export const NutritionOrbitOverview = memo(function NutritionOrbitOverview({
 
   if (state.kind === "missing_target") {
     return (
-      <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-5 space-y-3 text-center shadow-sm sm:text-left dark:border-white/[0.08] dark:bg-zinc-900/30 dark:shadow-none">
+      <div className="rounded-[1.125rem] border border-zinc-200 bg-white px-4 py-4 space-y-3 text-center shadow-sm sm:text-left dark:border-white/[0.07] dark:bg-[#1a1a21] dark:shadow-none">
         <p className="text-base font-semibold text-zinc-900 dark:text-white">
           Kalorienziel festlegen
         </p>

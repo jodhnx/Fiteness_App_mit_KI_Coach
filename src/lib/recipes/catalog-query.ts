@@ -36,7 +36,7 @@ export type CatalogQuery = {
   filters?: string[];
   page?: number;
   limit?: number;
-  sort?: "protein" | "calories" | "quick" | "popular";
+  sort?: "protein" | "calories" | "quick" | "popular" | "name";
 };
 
 function toListItem(r: FitnessRecipe): RecipeListItem {
@@ -80,35 +80,21 @@ function sortRecipes(
   list: FitnessRecipe[],
   sort: CatalogQuery["sort"]
 ): FitnessRecipe[] {
-  const next = [...list];
-  switch (sort) {
-    case "protein":
-      next.sort((a, b) => b.proteinG - a.proteinG || a.calories - b.calories);
-      break;
-    case "calories":
-      next.sort((a, b) => a.calories - b.calories || b.proteinG - a.proteinG);
-      break;
-    case "quick":
-      next.sort(
-        (a, b) =>
-          recipeTotalMinutes(a) - recipeTotalMinutes(b) ||
-          b.proteinG - a.proteinG
-      );
-      break;
-    case "popular":
-      next.sort((a, b) => {
-        const score = (r: FitnessRecipe) =>
-          r.proteinG * 2 +
-          (r.tags.includes("high-protein") ? 20 : 0) +
-          (r.tags.includes("quick") ? 10 : 0) +
-          (r.imageUrl ? 5 : 0);
-        return score(b) - score(a);
-      });
-      break;
-    default:
-      break;
+  if (!sort || sort === "popular") return list;
+  const copy = [...list];
+  if (sort === "protein") {
+    copy.sort((a, b) => b.proteinG - a.proteinG || a.name.localeCompare(b.name));
+  } else if (sort === "calories") {
+    copy.sort((a, b) => a.calories - b.calories || a.name.localeCompare(b.name));
+  } else if (sort === "quick") {
+    copy.sort(
+      (a, b) =>
+        recipeTotalMinutes(a) - recipeTotalMinutes(b) || a.name.localeCompare(b.name)
+    );
+  } else if (sort === "name") {
+    copy.sort((a, b) => a.name.localeCompare(b.name, "de"));
   }
-  return next;
+  return copy;
 }
 
 export function queryRecipeCatalog(input: CatalogQuery): {
