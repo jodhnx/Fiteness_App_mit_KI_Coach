@@ -4,11 +4,12 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   applyWindowScrollY,
-  clearScrollRestoreState,
+  buildScrollKeyNormalized,
+  clearAllScrollPositions,
+  clearScrollPosition,
   getWindowScrollY,
   restoreScrollPosition,
   saveScrollPosition,
-  scrollRouteKey,
 } from "@/lib/scroll-restore";
 
 /**
@@ -18,8 +19,8 @@ import {
 export function usePathScrollRestore() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const search = searchParams?.toString() ?? "";
-  const routeKey = scrollRouteKey(pathname, search);
+  const search = searchParams?.toString() ? `?${searchParams.toString()}` : "";
+  const routeKey = buildScrollKeyNormalized(pathname, search);
   const prevKey = useRef<string | null>(null);
   const skipNextRestore = useRef(false);
 
@@ -55,22 +56,21 @@ export function usePathScrollRestore() {
     if (skipNextRestore.current) {
       skipNextRestore.current = false;
       applyWindowScrollY(0);
-      saveScrollPosition(routeKey, 0);
+      clearScrollPosition(routeKey);
       prevKey.current = routeKey;
       return;
     }
 
-    const cancel = restoreScrollPosition(routeKey);
+    restoreScrollPosition(routeKey);
     prevKey.current = routeKey;
-    return cancel;
   }, [routeKey]);
 
   useEffect(() => {
-    const onClear = () => clearScrollRestoreState();
+    const onClear = () => clearAllScrollPositions();
     const onForceTop = () => {
       skipNextRestore.current = true;
       applyWindowScrollY(0);
-      if (routeKey) saveScrollPosition(routeKey, 0);
+      if (routeKey) clearScrollPosition(routeKey);
     };
     window.addEventListener("nexform:user-state-cleared", onClear);
     window.addEventListener("nexform:scroll-force-top", onForceTop);

@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import {
   getWindowScrollY,
   saveScrollPosition,
-  scrollRouteKey,
+  buildScrollKeyNormalized,
 } from "@/lib/scroll-restore";
 
 const MEAL_CHIPS = [
@@ -150,7 +150,7 @@ export default function RezeptePage() {
   useEffect(() => {
     // Persist list scroll before leaving to detail
     return () => {
-      const key = scrollRouteKey("/rezepte");
+      const key = buildScrollKeyNormalized("/rezepte");
       if (key) saveScrollPosition(key, getWindowScrollY());
     };
   }, []);
