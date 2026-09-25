@@ -1,15 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { startGuestSession } from "@/lib/guest-client";
 import { cn } from "@/lib/utils";
-import { Zap } from "lucide-react";
 
 type Props = {
   title: string;
@@ -23,7 +18,7 @@ export function AuthScreenLayout({ title, subtitle, children, footer }: Props) {
     <div className="auth-screen-root fixed inset-0 gradient-mesh overflow-hidden">
       <div className="auth-screen-scroll mx-auto flex h-full w-full max-w-md flex-col overflow-y-auto overscroll-contain px-5 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] keyboard-stable-page">
         <Link href="/" className="mb-8 inline-block shrink-0 text-xl font-extrabold text-white">
-          NEX<span className="text-cyan-400">FORM</span>
+          NEX<span className="text-[var(--accent,#6d5dfe)]">FORM</span>
         </Link>
         <div className="mb-6 shrink-0">
           <h1 className="text-2xl font-bold text-white">{title}</h1>
@@ -35,34 +30,6 @@ export function AuthScreenLayout({ title, subtitle, children, footer }: Props) {
         {footer && <div className="mt-6 shrink-0 auth-sticky-actions">{footer}</div>}
       </div>
     </div>
-  );
-}
-
-export function GuestContinueButton({ className }: { className?: string }) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      className={cn("w-full h-12 text-zinc-400", className)}
-      disabled={loading}
-      onClick={async () => {
-        setLoading(true);
-        const r = await startGuestSession();
-        setLoading(false);
-        if (!r.ok) {
-          toast.error(r.error ?? "Fehler");
-          return;
-        }
-        toast.success("Als Gast angemeldet");
-        router.replace("/home");
-      }}
-    >
-      <Zap className="h-4 w-4 mr-2 text-amber-400" />
-      {loading ? "Startet…" : "Als Gast fortfahren"}
-    </Button>
   );
 }
 

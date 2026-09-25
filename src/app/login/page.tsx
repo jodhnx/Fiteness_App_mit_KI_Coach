@@ -17,7 +17,6 @@ import { warmPostLoginCaches } from "@/lib/post-login-cache";
 import { clearAllUserClientState } from "@/lib/clear-user-client-state";
 import {
   AuthScreenLayout,
-  GuestContinueButton,
 } from "@/components/auth/auth-screen-layout";
 import { signIn } from "next-auth/react";
 
@@ -94,15 +93,12 @@ function LoginForm() {
       title="Anmelden"
       subtitle="Willkommen zurück bei NEXFORM"
       footer={
-        <div className="space-y-3">
-          <GuestContinueButton />
-          <p className="text-center text-sm text-zinc-500">
-            Noch kein Konto?{" "}
-            <Link href="/register" className="text-cyan-400 hover:underline">
-              Registrieren
-            </Link>
-          </p>
-        </div>
+        <p className="text-center text-sm text-zinc-500">
+          Noch kein Konto?{" "}
+          <Link href="/register" className="text-cyan-400 hover:underline">
+            Registrieren
+          </Link>
+        </p>
       }
     >
       {lastError && (

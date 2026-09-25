@@ -1,172 +1,156 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { startGuestSession } from "@/lib/guest-client";
-import { toast } from "sonner";
-import { useState } from "react";
 import {
   Bot,
   Dumbbell,
   Apple,
   LineChart,
-  Trophy,
-  Zap,
   HeartPulse,
-  Sparkles,
-  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const FEATURES = [
   {
-    icon: Bot,
-    title: "KI Fitness Coach",
-    desc: "Persönliche Tipps, Pläne und Motivation — rund um die Uhr.",
-    color: "text-violet-400",
-  },
-  {
     icon: Dumbbell,
-    title: "Trainingspläne",
-    desc: "Quick Workout, intelligenter Plan-Konfigurator, Live-Tracking.",
-    color: "text-cyan-400",
+    title: "Training",
+    desc: "Individuelle Trainingspläne und Workouts",
+    accent: "text-[var(--accent,#6d5dfe)]",
+    soft: "bg-[var(--accent,#6d5dfe)]/12",
   },
   {
     icon: Apple,
-    title: "Ernährungstracker",
-    desc: "Kalorien, Makros und Mahlzeiten — präzise wie MyFitnessPal.",
-    color: "text-emerald-400",
+    title: "Ernährung",
+    desc: "Kalorien, Makros, Lebensmittel und Mahlzeiten",
+    accent: "text-orange-400",
+    soft: "bg-orange-500/12",
+  },
+  {
+    icon: Bot,
+    title: "KI-Coach",
+    desc: "Persönliche Empfehlungen auf Basis deiner Daten",
+    accent: "text-teal-400",
+    soft: "bg-teal-500/12",
   },
   {
     icon: LineChart,
-    title: "Fortschrittsanalyse",
-    desc: "Gewicht, Volumen, Kalorien — alle Trends auf einen Blick.",
-    color: "text-orange-400",
-  },
-  {
-    icon: Trophy,
-    title: "Erfolge & Level",
-    desc: "XP, Badges und Streaks — bleib motiviert.",
-    color: "text-amber-400",
+    title: "Fortschritt",
+    desc: "Gewicht, Training und persönliche Entwicklung",
+    accent: "text-emerald-400",
+    soft: "bg-emerald-500/12",
   },
   {
     icon: HeartPulse,
-    title: "Regenerationsanalyse",
-    desc: "Muskelgruppen-Recovery für smarteres Training.",
-    color: "text-rose-400",
+    title: "Gesundheit",
+    desc: "Aktivität und kompatible Gesundheitsdaten",
+    accent: "text-sky-400",
+    soft: "bg-sky-500/12",
   },
-];
-
-const MOCK_SCREENS = [
-  { label: "Home Dashboard", gradient: "from-cyan-500/20 to-violet-500/20" },
-  { label: "Live Workout", gradient: "from-amber-500/20 to-orange-500/20" },
-  { label: "Ernährung", gradient: "from-emerald-500/20 to-teal-500/20" },
-  { label: "Fortschritt", gradient: "from-violet-500/20 to-fuchsia-500/20" },
-];
+] as const;
 
 export function PremiumLanding() {
-  const router = useRouter();
-  const [guestLoading, setGuestLoading] = useState(false);
-
-  async function continueAsGuest() {
-    setGuestLoading(true);
-    const result = await startGuestSession();
-    setGuestLoading(false);
-    if (!result.ok) {
-      toast.error(result.error ?? "Gastmodus fehlgeschlagen");
-      return;
-    }
-    toast.success("Willkommen! Du bist als Gast angemeldet.");
-    router.replace("/home");
-  }
-
   return (
-    <div className="gradient-mesh min-h-[100dvh] flex flex-col">
-      <header className="px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4 max-w-lg mx-auto w-full">
-        <span className="text-2xl font-extrabold tracking-tight text-white">
-          NEX<span className="text-cyan-400">FORM</span>
-        </span>
-      </header>
+    <div className="min-h-[100dvh] bg-[#0a0a0f] text-white flex flex-col overflow-x-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-24 left-1/2 h-64 w-[28rem] -translate-x-1/2 rounded-full bg-[var(--accent,#6d5dfe)]/15 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-48 w-48 rounded-full bg-teal-500/8 blur-3xl" />
+      </div>
 
-      <main className="flex-1 max-w-lg mx-auto w-full px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-        <section className="text-center pt-4 pb-8">
-          <p className="inline-flex items-center gap-1.5 text-cyan-400 text-xs font-semibold tracking-widest uppercase mb-4">
-            <Sparkles className="h-3.5 w-3.5" />
-            Premium Fitness Platform
+      <div className="relative mx-auto flex w-full max-w-lg flex-1 flex-col px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:max-w-xl lg:px-8">
+        <header
+          className="pt-2 pb-6 text-center animate-[landingFade_0.35s_ease-out_both]"
+        >
+          <p className="text-[1.75rem] font-extrabold tracking-tight sm:text-[2rem]">
+            NEX<span className="text-[var(--accent,#6d5dfe)]">FORM</span>
           </p>
-          <h1 className="text-4xl font-bold text-white leading-tight">
-            Dein Körper.
-            <br />
-            <span className="text-cyan-400">Dein Plan.</span>
-          </h1>
-          <p className="text-zinc-400 text-sm mt-4 leading-relaxed max-w-sm mx-auto">
-            Training, Ernährung, KI-Coach und Fortschritt — alles in einer App. Wie Hevy &
-            MyFitnessPal, nur smarter.
+          <p className="mt-2 text-[15px] font-medium text-zinc-400">
+            Dein persönlicher KI Fitness Coach
           </p>
-        </section>
+        </header>
 
-        <section className="grid grid-cols-2 gap-2 mb-8">
-          {MOCK_SCREENS.map((s, i) => (
-            <div
-              key={s.label}
-              className={cn(
-                "rounded-2xl border border-white/10 bg-gradient-to-br p-4 h-28 flex flex-col justify-end",
-                s.gradient,
-                "animate-[fadeUp_0.5s_ease-out_both]"
-              )}
-              style={{ animationDelay: `${i * 80}ms` }}
-            >
-              <div className="rounded-lg bg-zinc-950/40 h-12 mb-2 border border-white/5" />
-              <p className="text-[10px] font-medium text-zinc-300">{s.label}</p>
-            </div>
-          ))}
-        </section>
-
-        <section className="space-y-2 mb-10">
-          {FEATURES.map((f) => (
-            <div
-              key={f.title}
-              className="flex items-start gap-3 rounded-2xl border border-white/10 bg-zinc-900/40 backdrop-blur-sm p-4"
-            >
-              <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-950/60", f.color)}>
-                <f.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-white text-sm">{f.title}</p>
-                <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </section>
-
-        <section className="space-y-3 sticky bottom-0 pb-2 bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent pt-4 -mx-1 px-1">
-          <Link href="/register" className="block">
-            <Button className="w-full h-14 text-base rounded-2xl btn-accent font-semibold">
-              Registrieren
-              <ChevronRight className="h-5 w-5 ml-1" />
-            </Button>
-          </Link>
-          <Link href="/login" className="block">
-            <Button variant="outline" className="w-full h-14 text-base rounded-2xl border-zinc-700">
-              Anmelden
-            </Button>
-          </Link>
-          <Button
-            variant="ghost"
-            className="w-full h-12 text-sm text-zinc-400"
-            disabled={guestLoading}
-            onClick={() => void continueAsGuest()}
+        <main className="flex flex-1 flex-col">
+          <section
+            className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+            aria-label="Funktionen"
           >
-            {guestLoading ? "Startet…" : "Als Gast fortfahren"}
-          </Button>
-        </section>
-      </main>
+            {FEATURES.map((f, i) => (
+              <div
+                key={f.title}
+                className={cn(
+                  "flex items-start gap-3 rounded-[1.125rem] border border-white/[0.08] bg-[#1a1a21] px-3.5 py-3",
+                  "animate-[landingFade_0.4s_ease-out_both]",
+                  i === FEATURES.length - 1 && "sm:col-span-2 sm:max-w-md sm:mx-auto sm:w-full"
+                )}
+                style={{ animationDelay: `${60 + i * 40}ms` }}
+              >
+                <span
+                  className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                    f.soft,
+                    f.accent
+                  )}
+                >
+                  <f.icon className="h-5 w-5" aria-hidden />
+                </span>
+                <div className="min-w-0 pt-0.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                    {f.title}
+                  </p>
+                  <p className="mt-0.5 text-[13px] font-medium leading-snug text-zinc-100">
+                    {f.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </section>
+
+          <p
+            className="mt-7 text-center text-[17px] font-semibold tracking-tight text-white animate-[landingFade_0.4s_ease-out_both]"
+            style={{ animationDelay: "280ms" }}
+          >
+            Alles für deinen Fortschritt.
+            <br className="sm:hidden" />{" "}
+            <span className="text-zinc-400 font-medium">In einer App.</span>
+          </p>
+
+          <div
+            className="mt-auto pt-8 space-y-3 animate-[landingFade_0.4s_ease-out_both]"
+            style={{ animationDelay: "320ms" }}
+          >
+            <Link
+              href="/register"
+              prefetch
+              className="flex h-12 w-full items-center justify-center rounded-xl bg-[var(--accent,#6d5dfe)] text-[15px] font-semibold text-white active:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent,#6d5dfe)]/50"
+            >
+              Registrieren
+            </Link>
+            <Link
+              href="/login"
+              prefetch
+              className="flex h-12 w-full items-center justify-center rounded-xl border border-white/[0.12] bg-transparent text-[15px] font-semibold text-zinc-200 active:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+            >
+              Anmelden
+            </Link>
+          </div>
+        </main>
+      </div>
 
       <style jsx global>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(12px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes landingFade {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-\[landingFade_0\.35s_ease-out_both\],
+          .animate-\[landingFade_0\.4s_ease-out_both\] {
+            animation: none !important;
+          }
         }
       `}</style>
     </div>

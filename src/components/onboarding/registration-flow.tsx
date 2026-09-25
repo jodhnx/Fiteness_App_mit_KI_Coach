@@ -27,7 +27,6 @@ import { storageGetJson, storageSetJson } from "@/lib/storage-service";
 import { warmTrainingCaches } from "@/lib/cache-manager";
 import { warmPostLoginCaches } from "@/lib/post-login-cache";
 import { clearAllUserClientState } from "@/lib/clear-user-client-state";
-import { startGuestSession } from "@/lib/guest-client";
 import { isGuestEmail } from "@/lib/guest-utils";
 import {
   type OnboardingDraft,
@@ -117,7 +116,6 @@ export function RegistrationFlow() {
   const [step, setStep] = useState(isConvert ? 14 : 1);
   const [draft, setDraft] = useState<Draft>(() => storageGetJson<Draft>(ONBOARDING_DRAFT_KEY) ?? DEFAULT);
   const [submitting, setSubmitting] = useState(false);
-  const [authMode, setAuthMode] = useState<"email" | "guest" | null>(isConvert ? "email" : null);
 
   useEffect(() => {
     storageSetJson(ONBOARDING_DRAFT_KEY, draft);
@@ -178,20 +176,16 @@ export function RegistrationFlow() {
       case 13:
         return plan != null;
       case 14:
-        if (authMode === "guest") return true;
-        if (authMode === "email") {
-          return (
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email) &&
-            draft.password.length >= 8 &&
-            draft.password === draft.passwordConfirm &&
-            draft.acceptTerms
-          );
-        }
-        return authMode != null;
+        return (
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email) &&
+          draft.password.length >= 8 &&
+          draft.password === draft.passwordConfirm &&
+          draft.acceptTerms
+        );
       default:
         return false;
     }
-  }, [step, draft, authMode, plan]);
+  }, [step, draft, plan]);
 
   const onboardingPayload = useCallback((): OnboardingDraft => {
     const { email, password, passwordConfirm, acceptTerms, ...rest } = draft;
@@ -228,53 +222,6 @@ export function RegistrationFlow() {
     },
     []
   );
-
-  async function finishAsGuest() {
-    setSubmitting(true);
-    const ob = onboardingPayload();
-    const isGuestUser = session?.user?.email && isGuestEmail(session.user.email);
-
-    if (isGuestUser && session?.user?.id) {
-      const obRes = await fetch("/api/onboarding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildOnboardingApiBody(ob)),
-      });
-      const obData = await obRes.json().catch(() => ({}));
-      if (!obRes.ok) {
-        toast.error(obData.error ?? "Profil konnte nicht gespeichert werden");
-        setSubmitting(false);
-        return;
-      }
-      toast.success("Profil gespeichert");
-      warmPostLoginCaches();
-      try {
-        sessionStorage.setItem("nexform:first-setup", "1");
-      } catch {
-        /* ignore */
-      }
-      router.replace("/home");
-      setSubmitting(false);
-      return;
-    }
-
-    clearAllUserClientState();
-    const r = await startGuestSession(ob);
-    setSubmitting(false);
-    if (!r.ok) {
-      toast.error(r.error ?? "Fehler");
-      return;
-    }
-    storageSetJson(ONBOARDING_DRAFT_KEY, null);
-    warmPostLoginCaches();
-    try {
-      sessionStorage.setItem("nexform:first-setup", "1");
-    } catch {
-      /* ignore */
-    }
-    toast.success("Willkommen bei NEXFORM!");
-    router.replace("/home");
-  }
 
   async function finishWithEmail() {
     setSubmitting(true);
@@ -361,8 +308,7 @@ export function RegistrationFlow() {
 
   function handleNext() {
     if (step === 14) {
-      if (authMode === "guest") void finishAsGuest();
-      else if (authMode === "email") void finishWithEmail();
+      void finishWithEmail();
       return;
     }
     if (step < TOTAL) setStep((s) => s + 1);
@@ -603,56 +549,41 @@ export function RegistrationFlow() {
       {step === 14 && (
         <div className="space-y-4">
           {!isConvert && (
-            <p className="text-sm text-zinc-400">Konto erstellen — oder als Gast starten.</p>
-          )}
-          {!isConvert && (
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setAuthMode("email")} className={cn("rounded-xl border py-4 text-sm font-semibold", authMode === "email" ? "border-cyan-400/60 bg-cyan-500/15 text-white" : "border-zinc-800 text-zinc-400")}>
-                Mit E-Mail
-              </button>
-              <button type="button" onClick={() => setAuthMode("guest")} className={cn("rounded-xl border py-4 text-sm font-semibold", authMode === "guest" ? "border-amber-400/60 bg-amber-500/15 text-white" : "border-zinc-800 text-zinc-400")}>
-                Als Gast
-              </button>
-            </div>
+            <p className="text-sm text-zinc-400">Konto erstellen — E-Mail und Passwort festlegen.</p>
           )}
           {isConvert && (
             <p className="text-sm text-zinc-400">Gastdaten werden übernommen — E-Mail und Passwort festlegen.</p>
           )}
-          {(authMode === "email" || isConvert) && (
-            <div className="space-y-3 pt-2">
-              <div>
-                <Label>E-Mail</Label>
-                <Input
-                  type="email"
-                  className="mt-1.5 h-12 rounded-xl keyboard-stable-input"
-                  value={draft.email}
-                  onChange={(e) => patch({ email: e.target.value })}
-                  placeholder="deine@email.de"
-                />
-              </div>
-              <div>
-                <Label>Passwort</Label>
-                <Input
-                  type="password"
-                  className="mt-1.5 h-12 rounded-xl keyboard-stable-input"
-                  value={draft.password}
-                  onChange={(e) => patch({ password: e.target.value })}
-                />
-                <PasswordStrength password={draft.password} />
-              </div>
-              <div>
-                <Label>Passwort wiederholen</Label>
-                <Input type="password" className="mt-1.5 h-12 rounded-xl keyboard-stable-input" value={draft.passwordConfirm} onChange={(e) => patch({ passwordConfirm: e.target.value })} />
-              </div>
-              <label className="flex items-start gap-2 text-xs text-zinc-400">
-                <input type="checkbox" checked={draft.acceptTerms} onChange={(e) => patch({ acceptTerms: e.target.checked })} className="mt-0.5 accent-cyan-400" />
-                AGB & Datenschutz akzeptieren
-              </label>
+          <div className="space-y-3 pt-2">
+            <div>
+              <Label>E-Mail</Label>
+              <Input
+                type="email"
+                className="mt-1.5 h-12 rounded-xl keyboard-stable-input"
+                value={draft.email}
+                onChange={(e) => patch({ email: e.target.value })}
+                placeholder="deine@email.de"
+              />
             </div>
-          )}
-          {authMode === "guest" && (
-            <p className="text-xs text-zinc-500">Alle Daten werden gespeichert. Später jederzeit Konto erstellen.</p>
-          )}
+            <div>
+              <Label>Passwort</Label>
+              <Input
+                type="password"
+                className="mt-1.5 h-12 rounded-xl keyboard-stable-input"
+                value={draft.password}
+                onChange={(e) => patch({ password: e.target.value })}
+              />
+              <PasswordStrength password={draft.password} />
+            </div>
+            <div>
+              <Label>Passwort wiederholen</Label>
+              <Input type="password" className="mt-1.5 h-12 rounded-xl keyboard-stable-input" value={draft.passwordConfirm} onChange={(e) => patch({ passwordConfirm: e.target.value })} />
+            </div>
+            <label className="flex items-start gap-2 text-xs text-zinc-400">
+              <input type="checkbox" checked={draft.acceptTerms} onChange={(e) => patch({ acceptTerms: e.target.checked })} className="mt-0.5 accent-cyan-400" />
+              AGB & Datenschutz akzeptieren
+            </label>
+          </div>
         </div>
       )}
 
