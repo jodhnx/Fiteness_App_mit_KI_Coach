@@ -288,6 +288,7 @@ export const BottomNav = memo(function BottomNav() {
                 key={href}
                 type="button"
                 onPointerEnter={() => warmIntent(href)}
+                onPointerDown={() => warmIntent(href)}
                 onFocus={() => warmIntent(href)}
                 onClick={() => {
                   if (drag.current.suppressClick) {

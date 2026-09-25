@@ -255,7 +255,7 @@ export default function HomePage() {
     calState.kind === "ready"
       ? calState.cal.isOver
         ? `${calState.cal.overBy.toLocaleString("de-DE")} über Ziel`
-        : "Heute tracken"
+        : `${calState.cal.primaryValue.toLocaleString("de-DE")} übrig`
       : calState.kind === "missing_target"
         ? "Ziel setzen"
         : "…";

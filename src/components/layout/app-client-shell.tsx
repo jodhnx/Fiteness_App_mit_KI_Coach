@@ -32,19 +32,17 @@ import { FirstSetupOverlay } from "@/components/layout/first-setup-overlay";
 /** After first paint — never blocks Home (no artificial delay). */
 function schedulePostBootWarm() {
   if (typeof window === "undefined") return;
-  // Food history ASAP so Nutrition "+" is instant (single warm path)
+  // Food history + active plan ASAP so Nutrition/Training feel instant
   void import("@/lib/food-history-cache").then((m) => m.warmFoodHistoryCache());
-  // Active plan detail prefetch (summary already applied from bootstrap)
   void import("@/lib/nutrition-plan-cache").then((m) =>
     m.warmActiveNutritionPlanCaches()
   );
   const run = () => {
     warmNavDataCaches();
-    // Active session warm is owned by warmNavDataCaches — avoid double fetch
   };
   const ric = window.requestIdleCallback;
   if (typeof ric === "function") {
-    ric(run, { timeout: 1200 });
+    ric(run, { timeout: 400 });
   } else {
     requestAnimationFrame(run);
   }

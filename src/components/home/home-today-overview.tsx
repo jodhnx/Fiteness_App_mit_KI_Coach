@@ -129,7 +129,7 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
         </Link>
       </div>
 
-      <div className="flex items-baseline gap-1.5 flex-wrap">
+      <div className="space-y-1">
         <p
           className={cn(
             "text-[2.15rem] font-bold leading-none tabular-nums tracking-tight",
@@ -138,11 +138,20 @@ export const HomeTodayOverview = memo(function HomeTodayOverview({
               : "text-zinc-900 dark:text-white"
           )}
         >
-          {Math.round(cal.consumed).toLocaleString("de-DE")}
+          {cal.primaryValue.toLocaleString("de-DE")}
+          <span className="ml-1.5 text-[1.05rem] font-semibold text-zinc-500 dark:text-zinc-400">
+            kcal
+          </span>
         </p>
-        <p className="text-[15px] font-medium tabular-nums text-zinc-500 dark:text-zinc-400">
-          {" / "}
-          {Math.round(cal.target).toLocaleString("de-DE")} kcal
+        <p
+          className={cn(
+            "text-[13px] font-medium",
+            cal.isOver
+              ? "text-red-500/90 dark:text-red-400/90"
+              : "text-zinc-500 dark:text-zinc-400"
+          )}
+        >
+          {cal.isOver ? "über dem Ziel" : "noch übrig"}
         </p>
       </div>
 

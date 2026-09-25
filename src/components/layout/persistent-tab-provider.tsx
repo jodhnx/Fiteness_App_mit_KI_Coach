@@ -97,8 +97,8 @@ function isRenderablePanel(node: ReactNode): boolean {
 }
 
 /**
- * Keep-alive for main tabs — revisiting shows cached tree instantly.
- * First visit renders live `children`; after mount the tree is frozen in cache.
+ * Keep-alive for main tabs — other tabs stay mounted (hidden) for instant return.
+ * Active route always renders live `children` so cache events / nutrition updates paint.
  */
 export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -130,10 +130,6 @@ export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
     return <AppErrorBoundary label="page">{children}</AppErrorBoundary>;
   }
 
-  const cached = panels.current.get(pathname);
-  const hasCached = readyPaths.has(pathname) && isRenderablePanel(cached);
-  const visible = hasCached ? cached : children;
-
   return (
     <>
       {[...PATH_KEEP_ALIVE].map((path) => {
@@ -147,7 +143,7 @@ export function TabKeepAliveOutlet({ children }: { children: ReactNode }) {
         );
       })}
       <div>
-        <AppErrorBoundary label={`keep:${pathname}`}>{visible}</AppErrorBoundary>
+        <AppErrorBoundary label={`keep:${pathname}`}>{children}</AppErrorBoundary>
       </div>
     </>
   );

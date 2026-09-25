@@ -33,8 +33,7 @@ export function warmProgressCache() {
 
 /**
  * Background prefetch for instant primary-tab switches.
- * Keep lean: only Training-critical caches here. Social/gamification warm later
- * on demand or much later idle — they are not needed for first navigation.
+ * Nutrition dashboard is owned by bootstrap — do not refetch here.
  */
 export function warmNavDataCaches() {
   if (typeof window === "undefined") return;
@@ -44,14 +43,15 @@ export function warmNavDataCaches() {
   const idle =
     typeof requestIdleCallback !== "undefined"
       ? requestIdleCallback
-      : (cb: () => void) => setTimeout(cb, 800);
+      : (cb: () => void) => window.setTimeout(cb, 200);
 
-  // Nutrition plan detail ASAP after boot (summary already in bootstrap)
+  // ASAP after paint — plans + food history (Nutrition / Training first hops)
   idle(() => {
     warmActiveNutritionPlanCaches();
+    warmFoodHistoryCache();
   });
 
-  // Primary tabs: Training needs active session + plans
+  // Primary tabs: session + plans — shortly after first paint
   window.setTimeout(() => {
     idle(() => {
       if (isCacheStale(WORKOUT_ACTIVE_CACHE_KEY, 0.9)) {
@@ -69,9 +69,9 @@ export function warmNavDataCaches() {
         ).catch(() => {});
       }
     });
-  }, 1800);
+  }, 350);
 
-  // Secondary: recovery only (workouts tab depth) — much later
+  // Secondary: recovery — later, not on critical path
   window.setTimeout(() => {
     idle(() => {
       if (isCacheStale("workouts-recovery", 0.9)) {
@@ -82,7 +82,7 @@ export function warmNavDataCaches() {
         ).catch(() => {});
       }
     });
-  }, 6000);
+  }, 2800);
 }
 
 /** Warm food search + history when user opens nutrition (instant + button). */
@@ -97,7 +97,7 @@ export function warmSecondarySocialCaches() {
   const idle =
     typeof requestIdleCallback !== "undefined"
       ? requestIdleCallback
-      : (cb: () => void) => setTimeout(cb, 1200);
+      : (cb: () => void) => window.setTimeout(cb, 800);
   idle(() => {
     if (isCacheStale("gamification-full", 0.9)) {
       void fetchCached(

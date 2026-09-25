@@ -46,7 +46,7 @@ export function RoutePrefetcher() {
       warmNavDataCaches();
     });
 
-    // Secondary hubs much later — don't contend with Home/Nutrition first paint
+    // Secondary hubs later — don't contend with Home/Nutrition first paint
     window.setTimeout(() => {
       idle(() => {
         for (const href of NAV_ROUTES.slice(5, 8)) {
@@ -54,7 +54,7 @@ export function RoutePrefetcher() {
         }
         warmTrainingCaches();
       });
-    }, 5000);
+    }, 3500);
 
     window.setTimeout(() => {
       idle(() => {
@@ -63,7 +63,7 @@ export function RoutePrefetcher() {
         }
         warmHealthSync();
       });
-    }, 9000);
+    }, 7000);
   }, [router]);
 
   return null;
