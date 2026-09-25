@@ -64,10 +64,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const themeBoot = `(function(){try{var legacy={turquoise:'ocean',blue:'clean-light',green:'forest',orange:'sand',yellow:'sand',gold:'sand',pink:'rose',white:'pure-white',gray:'graphite'};var t=localStorage.getItem('app-theme')||'clean-light';if(legacy[t])t=legacy[t];var darkPacks={dark:1,midnight:1};var m=localStorage.getItem('app-color-mode');if(m!=='light'&&m!=='dark')m=darkPacks[t]?'dark':'light';var d=localStorage.getItem('app-density')||'standard';var r=document.documentElement;r.dataset.theme=t;r.dataset.appearance=t;r.dataset.density=d;r.dataset.colorMode=m;r.classList.toggle('light',m==='light');r.classList.toggle('dark',m!=='light');}catch(e){}})();`;
+  const themeBoot = `(function(){try{var legacy={turquoise:'ocean',blue:'clean-light',green:'forest',orange:'sand',yellow:'sand',gold:'sand',pink:'rose',white:'pure-white',gray:'graphite',light:'soft-light'};var raw=localStorage.getItem('app-theme')||'midnight';var parts=String(raw).split(':');var t=parts[0];var accent=localStorage.getItem('app-accent')||parts[1]||'violet';if(legacy[t])t=legacy[t];var darkPacks={dark:1,midnight:1,'premium-dark':1,'deep-dark':1,graphite:1,carbon:1,'oled-black':1};var m=localStorage.getItem('app-color-mode');if(m!=='light'&&m!=='dark')m=darkPacks[t]?'dark':'light';var d=localStorage.getItem('app-density')||'standard';var r=document.documentElement;r.dataset.theme=t;r.dataset.appearance=t;r.dataset.accent=accent;r.dataset.density=d;r.dataset.colorMode=m;r.classList.toggle('light',m==='light');r.classList.toggle('dark',m!=='light');}catch(e){}})();`;
 
   return (
-    <html lang="de" className="light" data-theme="clean-light" data-appearance="clean-light" data-color-mode="light" data-density="standard" suppressHydrationWarning>
+    <html lang="de" className="dark" data-theme="midnight" data-appearance="midnight" data-accent="violet" data-color-mode="dark" data-density="standard" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
       </head>

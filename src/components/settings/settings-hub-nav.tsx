@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 import { usePreferences } from "@/components/providers/preferences-provider";
+import { APPEARANCE_PACKS } from "@/lib/themes";
 
 type HubRow = {
   href?: string;
@@ -123,13 +124,19 @@ export function SettingsHubNav({
   loggingOut?: boolean;
 }) {
   const prefs = usePreferences();
-  const designValue = prefs?.colorMode === "light" ? "Hell" : "Dunkel";
+  const packLabel =
+    APPEARANCE_PACKS.find((p) => p.id === prefs.theme)?.label ?? prefs.theme;
+  const accentLabel =
+    prefs.accent && prefs.accent !== "violet"
+      ? ` · ${prefs.accent}`
+      : "";
+  const designValue = `${packLabel}${accentLabel}`;
 
   return (
     <div className={cn("space-y-5", className)}>
       <Section title="App">
         <Row
-          href="/settings?view=konto#settings-design"
+          href="/settings?view=design"
           label="Design"
           value={designValue}
           icon={Palette}

@@ -1,8 +1,8 @@
 /**
- * Nutrition / activity streak calendar-day semantics.
+ * Nutrition streak = food-log calendar days only.
  * Run: npx tsx scripts/test-nutrition-streak.ts
  *
- * Activity = meal log OR completed training. App open / settings do NOT count.
+ * A day counts when ≥1 meal item was logged. Training / app open / water do NOT count.
  */
 import {
   computeStreakFromDayKeys,
@@ -114,6 +114,11 @@ console.log("Nutrition Streak Tests\n");
       d("2026-09-11"),
     ]).currentDays === 1
   );
+  assert(
+    "same day listed twice still +1",
+    computeStreakFromDayKeys([d("2026-09-10"), d("2026-09-10")]).currentDays ===
+      1
+  );
 }
 
 {
@@ -124,11 +129,11 @@ console.log("Nutrition Streak Tests\n");
       .currentDays === 2
   );
   assert(
-    "training-only days count",
+    "training-only keys still compute if passed — but server never passes them",
     computeActivityStreakFromDayKeys([d("2026-09-10")]).currentDays === 1
   );
   assert(
-    "food + training same day merges to one day",
+    "duplicate food same day merges to one day",
     computeActivityStreakFromDayKeys([
       d("2026-09-10"),
       d("2026-09-10"),
@@ -136,7 +141,7 @@ console.log("Nutrition Streak Tests\n");
     ]).currentDays === 2
   );
   assert(
-    "mixed food/training consecutive days",
+    "three consecutive food days",
     computeActivityStreakFromDayKeys([
       d("2026-09-08"),
       d("2026-09-09"),

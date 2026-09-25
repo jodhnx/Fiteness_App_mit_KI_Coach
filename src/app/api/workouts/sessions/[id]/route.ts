@@ -331,9 +331,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
       await awardXPForAction(session.user.id, "WORKOUT_COMPLETED");
       await updateTrainingStreak(session.user.id);
-      // Activity streak (Home/Nutrition): training day counts like a food day.
-      const { updateNutritionStreak } = await import("@/lib/nutrition-streak");
-      await updateNutritionStreak(session.user.id, new Date()).catch(() => null);
+      // Nutrition streak is food-log only — do not bump on training complete.
       await upsertMissingPersonalRecords(session.user.id).catch(() => 0);
       const unlocks = await evaluateAndUnlockAchievements(session.user.id);
       const { loadNextWorkoutForUser } = await import("@/lib/plan-next-day");
