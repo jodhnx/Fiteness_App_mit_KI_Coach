@@ -5,6 +5,7 @@
 
 import { invalidateCache, clearCacheOwner } from "@/lib/client-cache";
 import { clearCachedCoachChat } from "@/lib/coach-chat-cache";
+import { clearAllCoachChatCaches } from "@/lib/coach-chat-store";
 import { clearPhoneSensorConsent, clearGpsSession } from "@/lib/phone-sensors";
 import { PENDING_LIVE_SESSION_KEY } from "@/lib/workout-cache-sync";
 import { resetNavCacheWarmer } from "@/lib/nav-cache-warmer";
@@ -74,6 +75,7 @@ export function clearAllUserClientState(): void {
   invalidateCache("recipe-catalog");
   clearCacheOwner();
   clearCachedCoachChat();
+  clearAllCoachChatCaches();
   clearExercisePickerListsCache();
   clearExerciseSearchCache();
   resetNavCacheWarmer();

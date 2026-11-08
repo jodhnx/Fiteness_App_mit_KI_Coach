@@ -15,6 +15,7 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { buildSelectiveCoachContext } from "@/lib/coach-context-engine";
 import type { CoachAction, CoachContextMode } from "@/lib/coach-actions";
 import { generateLocalCoachReply } from "@/lib/coach-engine";
+import { titleFromFirstMessage } from "@/lib/coach-chats";
 
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_HISTORY_CHARS = 900;
@@ -100,7 +101,7 @@ async function prepareChat(
     chat = await prisma.aIChat.create({
       data: {
         userId,
-        title: message.slice(0, 40),
+        title: titleFromFirstMessage(message),
         messages: {
           create: { role: "user", content: message },
         },
@@ -110,6 +111,11 @@ async function prepareChat(
   } else {
     await prisma.aIChatMessage.create({
       data: { chatId: chat.id, role: "user", content: message },
+    });
+    // Keep updatedAt fresh for list sorting
+    await prisma.aIChat.update({
+      where: { id: chat.id },
+      data: { updatedAt: new Date() },
     });
   }
 
