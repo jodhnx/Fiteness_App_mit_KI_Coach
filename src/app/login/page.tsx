@@ -72,7 +72,9 @@ function LoginForm() {
       clearAllUserClientState();
       const res = await signInCredentials(email, password, DEFAULT_POST_LOGIN);
       if (res.ok) {
-        warmPostLoginCaches();
+        const { getSession } = await import("next-auth/react");
+        const session = await getSession();
+        warmPostLoginCaches(session?.user?.id ?? null);
         toast.success("Willkommen zurück!");
         redirectAfterLogin(router);
         return;

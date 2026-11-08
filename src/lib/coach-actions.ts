@@ -3,6 +3,8 @@
  * Only routes/features that already exist — no fake buttons.
  */
 
+import { classifyCoachIntent } from "@/lib/coach-engine/intent";
+
 export type CoachAction = {
   id: string;
   label: string;
@@ -92,44 +94,5 @@ export function detectCoachContextMode(
   hint?: CoachContextMode | null
 ): CoachContextMode {
   if (hint && hint !== "general") return hint;
-
-  const t = message.toLowerCase();
-
-  if (
-    /stagnier|gewicht|abnehm|zunehm|waage|körpergewicht|cut|bulk|kaloriedefizit/.test(
-      t
-    )
-  ) {
-    return "weight";
-  }
-  if (
-    /trainingsplan|wochenplan|split|übungen planen|plan erstellen|plan optimier|generator/.test(
-      t
-    )
-  ) {
-    return "plan";
-  }
-  if (
-    /woche|wochenüberblick|wochenbericht|wie läuft|fortschritt diese woche|zusammenfassung/.test(
-      t
-    )
-  ) {
-    return "weekly";
-  }
-  if (
-    /essen|ernähr|protein|kcal|kalorien|mahlzeit|makro|hunger|snack|trinken|wasser|kohlenhydrat|fett\b/.test(
-      t
-    )
-  ) {
-    return "nutrition";
-  }
-  if (
-    /trainier|workout|übung|satz|wiederholung|muskel|kraft|cardio|regeneration|deload|heute train/.test(
-      t
-    )
-  ) {
-    return "training";
-  }
-
-  return "general";
+  return classifyCoachIntent(message, { hint }).mode;
 }

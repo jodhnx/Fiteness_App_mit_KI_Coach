@@ -32,11 +32,8 @@ import { FirstSetupOverlay } from "@/components/layout/first-setup-overlay";
 /** After first paint — never blocks Home (no artificial delay). */
 function schedulePostBootWarm() {
   if (typeof window === "undefined") return;
-  // Food history + active plan ASAP so Nutrition/Training feel instant
-  void import("@/lib/food-history-cache").then((m) => m.warmFoodHistoryCache());
-  void import("@/lib/nutrition-plan-cache").then((m) =>
-    m.warmActiveNutritionPlanCaches()
-  );
+  // Nav warmer already covers food-history; bootstrap already wrote active plan.
+  // Avoid duplicate /api/nutrition/plans/active + food-history on every boot.
   const run = () => {
     warmNavDataCaches();
   };
@@ -77,6 +74,7 @@ export function AppClientShell({ children }: { children: ReactNode }) {
 
     if (status === "unauthenticated") {
       initFor.current = null;
+      setBootPayload(null);
       return;
     }
 

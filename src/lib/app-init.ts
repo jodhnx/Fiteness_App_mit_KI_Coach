@@ -355,13 +355,28 @@ async function fetchBootstrap(gen: number): Promise<BootstrapPayload | null> {
   }
 }
 
+/** Enrich home with extras (gamification, recovery, …) without reloading nutrition. */
+let enrichInflight: Promise<void> | null = null;
+
+const DISK_TTL_MS = 7 * 24 * 60 * 60_000;
+
+/**
+ * Cancel in-flight bootstrap/enrich so a previous account's fetch cannot
+ * paint into the next session after logout or account switch.
+ */
+export function resetBootstrapState(): void {
+  bootstrapGen += 1;
+  bootstrapInflight = null;
+  enrichInflight = null;
+  bootSettled = false;
+}
+
 /** One in-flight /api/bootstrap — login warm + initializeApp share it. */
 export function fetchBootstrapShared(opts?: {
   force?: boolean;
 }): Promise<BootstrapPayload | null> {
   if (opts?.force) {
-    bootstrapGen += 1;
-    bootstrapInflight = null;
+    resetBootstrapState();
   }
   if (bootstrapInflight) return bootstrapInflight;
   const gen = bootstrapGen;
@@ -374,9 +389,6 @@ export function fetchBootstrapShared(opts?: {
 }
 
 export { applyBootstrapPayload };
-
-/** Enrich home with extras (gamification, recovery, …) without reloading nutrition. */
-let enrichInflight: Promise<void> | null = null;
 
 export function enrichHomeInBackground() {
   if (typeof window === "undefined") return;
@@ -404,7 +416,8 @@ export function enrichHomeInBackground() {
       if (!base) return;
       const merged = mergeHomeEnrichment(base, extras);
       const next = commitHomeIntelligenceRefresh(merged);
-      setCached(HOME_DATA_CACHE_KEY, next, 900_000);
+      // Keep 7d disk TTL — do not shrink overnight reopen cache.
+      setCached(HOME_DATA_CACHE_KEY, next, DISK_TTL_MS);
       window.dispatchEvent(new CustomEvent(HOME_DATA_EVENT, { detail: next }));
     })
     .catch(() => {})

@@ -20,7 +20,7 @@ function seedProfileCacheFromServer(initial: ProfileServerPrefetch) {
       profile: initial.profile ?? prev?.profile,
       calculations: initial.calculations ?? prev?.calculations,
     },
-    120_000
+    7 * 24 * 60 * 60_000
   );
 }
 

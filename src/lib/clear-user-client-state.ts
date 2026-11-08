@@ -12,6 +12,7 @@ import { clearExercisePickerListsCache } from "@/lib/exercise-picker-cache";
 import { clearExerciseSearchCache } from "@/lib/exercise-search-cache";
 import { clearBootSplashFlag } from "@/lib/boot-splash";
 import { clearAllScrollPositions } from "@/lib/scroll-restore";
+import { resetBootstrapState } from "@/lib/app-init";
 
 const LOCAL_KEYS = [
   "nexform:shopping-list-v1",
@@ -27,11 +28,16 @@ const LOCAL_KEYS = [
   "nexform:guest-credentials",
   "nexform:cache-owner",
   "nexform:cache:recipe-catalog-favorites",
+  "nexform:home-widgets-v10",
   "nexform:home-widgets-v8",
   "nexform:home-widgets-v7",
   "nexform:home-widgets-v6",
+  "nexform:food-panel-return",
+  "nexform:first-setup",
+  "workout-save-seq",
   // Theme prefs are user-scoped on the server; wipe device keys on account switch
   "app-theme",
+  "app-accent",
   "app-color-mode",
   "app-density",
 ] as const;
@@ -63,6 +69,7 @@ function safeRemoveSession(key: string) {
 export function clearAllUserClientState(): void {
   if (typeof window === "undefined") return;
 
+  resetBootstrapState();
   invalidateCache();
   invalidateCache("recipe-catalog");
   clearCacheOwner();
@@ -82,7 +89,7 @@ export function clearAllUserClientState(): void {
 
   for (const key of LOCAL_KEYS) safeRemoveLocal(key);
 
-  // Sweep any leftover nexform:cache:* entries
+  // Sweep leftover nexform cache / widget / live-draft / coach keys
   try {
     const toRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -91,6 +98,8 @@ export function clearAllUserClientState(): void {
       if (
         k.startsWith("nexform:cache:") ||
         k.startsWith("nexform:loaded:") ||
+        k.startsWith("nexform:home-widgets") ||
+        k.startsWith("nexform:live-draft:") ||
         k === "nexform:guest-credentials" ||
         k.startsWith("erfolge-level:")
       ) {

@@ -1,12 +1,36 @@
 /**
  * Post-login redirects: same-origin /home via trustHost baseUrl (absolute URL for NextAuth client).
+ * Auth/logout destinations (/login, /register, …) must NOT be rewritten to /home.
  */
 import { logAuthServer } from "@/lib/auth-logger";
 
 export const DEFAULT_POST_LOGIN = "/home";
 
+const AUTH_PUBLIC_PATHS = [
+  "/login",
+  "/register",
+  "/reset-password",
+  "/verify-email",
+] as const;
+
 export function resolvePostLoginPath(_input?: string | null): string {
   return DEFAULT_POST_LOGIN;
+}
+
+function resolveAllowedAuthPath(url: string, baseUrl: string): string | null {
+  try {
+    const base = baseUrl.replace(/\/$/, "");
+    const resolved = new URL(url, baseUrl);
+    // Same-origin only
+    if (new URL(baseUrl).origin !== resolved.origin) return null;
+    const path = resolved.pathname.replace(/\/$/, "") || "/";
+    if (AUTH_PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`))) {
+      return `${base}${path}${resolved.search}${resolved.hash}`;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }
 
 /**
@@ -20,6 +44,22 @@ export function safeAuthRedirect({
   url: string;
   baseUrl: string;
 }): string {
+  // Logout / auth screens must keep their destination (was always forced to /home).
+  if (url && baseUrl) {
+    const allowed = resolveAllowedAuthPath(url, baseUrl);
+    if (allowed) {
+      if (looksLikeEphemeralDeploymentUrl(baseUrl)) {
+        // Still return relative path so client can navigate without bad host
+        try {
+          return new URL(allowed).pathname + new URL(allowed).search;
+        } catch {
+          return "/login";
+        }
+      }
+      return allowed;
+    }
+  }
+
   const path = DEFAULT_POST_LOGIN;
 
   if (url && looksLikeEphemeralDeploymentUrl(url)) {

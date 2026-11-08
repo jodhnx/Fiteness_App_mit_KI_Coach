@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect, memo } from "react";
+import {
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+  memo,
+  type ReactNode,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Send, Bot, Square, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +24,55 @@ import {
 import type { CoachAction, CoachContextMode } from "@/lib/coach-actions";
 
 type UiMessage = CoachChatMessage & { actions?: CoachAction[] };
+
+/** Lightweight markdown: **bold**, bullet lines — no HTML injection. */
+function renderCoachContent(text: string) {
+  const blocks = text.split(/\n{2,}/);
+  return blocks.map((block, bi) => {
+    const lines = block.split("\n");
+    const isList = lines.every((l) => !l.trim() || /^[-*•]\s+/.test(l.trim()) || /^\*\*.+\*\*$/.test(l.trim()));
+    if (isList && lines.some((l) => /^[-*•]\s+/.test(l.trim()))) {
+      return (
+        <ul key={bi} className="my-1.5 list-disc space-y-1 pl-4">
+          {lines
+            .filter((l) => /^[-*•]\s+/.test(l.trim()))
+            .map((l, li) => (
+              <li key={li}>{formatInline(l.replace(/^[-*•]\s+/, ""))}</li>
+            ))}
+        </ul>
+      );
+    }
+    return (
+      <p key={bi} className="my-1">
+        {lines.map((line, li) => (
+          <span key={li}>
+            {li > 0 ? <br /> : null}
+            {formatInline(line)}
+          </span>
+        ))}
+      </p>
+    );
+  });
+}
+
+function formatInline(line: string): ReactNode[] {
+  const parts: ReactNode[] = [];
+  const re = /\*\*(.+?)\*\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+  while ((m = re.exec(line))) {
+    if (m.index > last) parts.push(line.slice(last, m.index));
+    parts.push(
+      <strong key={key++} className="font-semibold text-white">
+        {m[1]}
+      </strong>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < line.length) parts.push(line.slice(last));
+  return parts;
+}
 
 const ChatBubble = memo(function ChatBubble({
   role,
@@ -43,13 +99,13 @@ const ChatBubble = memo(function ChatBubble({
   return (
     <div className={`max-w-[94%] ${isUser ? "ml-auto" : "mr-auto"}`}>
       <div
-        className={`rounded-2xl px-3.5 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap ${
+        className={`rounded-2xl px-3.5 py-2.5 text-[15px] leading-relaxed ${
           isUser
-            ? "bg-cyan-500/20 text-cyan-50 border border-cyan-500/25"
+            ? "whitespace-pre-wrap bg-cyan-500/20 text-cyan-50 border border-cyan-500/25"
             : "bg-zinc-800/90 text-zinc-100 border border-white/5"
         }`}
       >
-        {content}
+        {isUser ? content : renderCoachContent(content)}
       </div>
       {!isUser && content && (
         <div className="mt-1.5 flex flex-col gap-1">

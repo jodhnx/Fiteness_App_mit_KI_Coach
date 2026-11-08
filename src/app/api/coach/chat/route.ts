@@ -6,6 +6,7 @@ import {
   COACH_SYSTEM_PROMPT,
   chatCompletion,
   chatCompletionStream,
+  isOpenAIConfigured,
   logAIUsage,
 } from "@/lib/openai";
 import { rateLimit } from "@/lib/security/rate-limit";
@@ -13,6 +14,7 @@ import { rateLimitAiUsage } from "@/lib/security/ai-rate-limit";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
 import { buildSelectiveCoachContext } from "@/lib/coach-context-engine";
 import type { CoachAction, CoachContextMode } from "@/lib/coach-actions";
+import { generateLocalCoachReply } from "@/lib/coach-engine";
 
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_HISTORY_CHARS = 900;
@@ -20,6 +22,54 @@ const MAX_HISTORY_CHARS = 900;
 function trimHistoryContent(content: string): string {
   if (content.length <= MAX_HISTORY_CHARS) return content;
   return `${content.slice(0, MAX_HISTORY_CHARS)}…`;
+}
+
+function sseLocalReply(opts: {
+  chatId: string;
+  mode: CoachContextMode;
+  actions: CoachAction[];
+  message: string;
+}) {
+  const encoder = new TextEncoder();
+  const { chatId, mode, actions, message } = opts;
+  const readable = new ReadableStream({
+    start(controller) {
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({ type: "meta", chatId, mode, actions })}\n\n`
+        )
+      );
+      // Deliver in a few chunks for progressive UI — no artificial delay.
+      const chunkSize = Math.max(80, Math.ceil(message.length / 4));
+      for (let i = 0; i < message.length; i += chunkSize) {
+        const text = message.slice(i, i + chunkSize);
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "delta", text })}\n\n`
+          )
+        );
+      }
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({
+            type: "done",
+            message,
+            actions,
+            mode,
+            source: "local-engine",
+          })}\n\n`
+        )
+      );
+      controller.close();
+    },
+  });
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
 }
 
 async function prepareChat(
@@ -82,7 +132,27 @@ async function prepareChat(
     })),
   ];
 
-  return { chatId: chat.id, openAiMessages, mode, actions };
+  return { chatId: chat.id, openAiMessages, mode, actions, contextText, history };
+}
+
+async function persistAssistant(
+  chatId: string,
+  content: string,
+  tokens: number,
+  userId: string,
+  endpoint: string,
+  model: string
+) {
+  const trimmed = content.trim();
+  if (!trimmed) return;
+  await prisma.aIChatMessage.create({
+    data: { chatId, role: "assistant", content: trimmed, tokens },
+  });
+  await prisma.aIChat.update({
+    where: { id: chatId },
+    data: { updatedAt: new Date() },
+  });
+  await logAIUsage(userId, endpoint, tokens, model);
 }
 
 export async function GET() {
@@ -143,30 +213,73 @@ export async function POST(req: NextRequest) {
       parsed.data.stream === true ||
       req.headers.get("accept")?.includes("text/event-stream");
 
-    const { chatId, openAiMessages, mode, actions } = await prepareChat(
-      session.user.id,
-      parsed.data.message,
-      parsed.data.chatId,
-      parsed.data.contextMode as CoachContextMode | undefined
-    );
+    const { chatId, openAiMessages, mode, actions, contextText, history } =
+      await prepareChat(
+        session.user.id,
+        parsed.data.message,
+        parsed.data.chatId,
+        parsed.data.contextMode as CoachContextMode | undefined
+      );
+
+    // API-key-free path: local knowledge + rule engine (default when no OpenAI).
+    if (!isOpenAIConfigured()) {
+      const local = generateLocalCoachReply({
+        message: parsed.data.message,
+        contextText,
+        history,
+        hint: (parsed.data.contextMode as CoachContextMode | undefined) ?? mode,
+        actions,
+      });
+      await persistAssistant(
+        chatId,
+        local.message,
+        Math.ceil(local.message.length / 4),
+        session.user.id,
+        "chat-local",
+        "local-engine"
+      );
+      if (streamRequested) {
+        return sseLocalReply({
+          chatId,
+          mode: local.mode,
+          actions: local.actions,
+          message: local.message,
+        });
+      }
+      return jsonOk({
+        chatId,
+        message: local.message,
+        mode: local.mode,
+        actions: local.actions,
+        source: "local-engine",
+      });
+    }
 
     if (streamRequested) {
       const result = await chatCompletionStream(openAiMessages, session.user.id);
       if ("error" in result) {
-        const encoder = new TextEncoder();
-        return new Response(
-          encoder.encode(
-            `data: ${JSON.stringify({ type: "error", message: result.error })}\n\n`
-          ),
-          {
-            status: 200,
-            headers: {
-              "Content-Type": "text/event-stream; charset=utf-8",
-              "Cache-Control": "no-cache, no-transform",
-              Connection: "keep-alive",
-            },
-          }
+        // Fallback to local engine instead of dead-end error.
+        const local = generateLocalCoachReply({
+          message: parsed.data.message,
+          contextText,
+          history,
+          hint: mode,
+          actions,
+        });
+        await persistAssistant(
+          chatId,
+          local.message,
+          Math.ceil(local.message.length / 4),
+          session.user.id,
+          "chat-local-fallback",
+          "local-engine"
         );
+        return sseLocalReply({
+          chatId,
+          mode: local.mode,
+          actions: local.actions,
+          message: local.message,
+        });
       }
 
       const encoder = new TextEncoder();
@@ -194,20 +307,14 @@ export async function POST(req: NextRequest) {
               );
             }
             const trimmed = full.trim();
-            // Never persist empty assistant bubbles ("Coach schreibt..." ghosts).
             if (trimmed) {
               const tokens = Math.ceil(trimmed.length / 4);
-              await prisma.aIChatMessage.create({
-                data: { chatId, role: "assistant", content: trimmed, tokens },
-              });
-              await prisma.aIChat.update({
-                where: { id: chatId },
-                data: { updatedAt: new Date() },
-              });
-              await logAIUsage(
+              await persistAssistant(
+                chatId,
+                trimmed,
+                tokens,
                 session.user!.id,
                 "chat-stream",
-                tokens,
                 result.model
               );
             }
@@ -250,20 +357,59 @@ export async function POST(req: NextRequest) {
       openAiMessages,
       session.user.id
     );
-    const trimmed = (content ?? "").trim();
-    if (!trimmed) {
-      return jsonError("Leere Coach-Antwort — bitte erneut versuchen", 502);
+    let trimmed = (content ?? "").trim();
+    let replyMode = mode;
+    let replyActions = actions;
+    let replyTokens = tokens;
+
+    // If OpenAI returned the "not configured" / unreachable stub, use local engine.
+    if (
+      !trimmed ||
+      /OPENAI_API_KEY|nicht verfügbar|nicht erreichbar/i.test(trimmed)
+    ) {
+      const local = generateLocalCoachReply({
+        message: parsed.data.message,
+        contextText,
+        history,
+        hint: mode,
+        actions,
+      });
+      trimmed = local.message;
+      replyMode = local.mode;
+      replyActions = local.actions;
+      replyTokens = Math.ceil(trimmed.length / 4);
+      await persistAssistant(
+        chatId,
+        trimmed,
+        replyTokens,
+        session.user.id,
+        "chat-local-fallback",
+        "local-engine"
+      );
+      return jsonOk({
+        chatId,
+        message: trimmed,
+        mode: replyMode,
+        actions: replyActions,
+        source: "local-engine",
+      });
     }
 
-    await prisma.aIChatMessage.create({
-      data: { chatId, role: "assistant", content: trimmed, tokens },
-    });
-    await prisma.aIChat.update({
-      where: { id: chatId },
-      data: { updatedAt: new Date() },
-    });
+    await persistAssistant(
+      chatId,
+      trimmed,
+      replyTokens,
+      session.user.id,
+      "chat",
+      "gpt-4o-mini"
+    );
 
-    return jsonOk({ chatId, message: trimmed, mode, actions });
+    return jsonOk({
+      chatId,
+      message: trimmed,
+      mode: replyMode,
+      actions: replyActions,
+    });
   } catch (e) {
     return handleApiError(e);
   }

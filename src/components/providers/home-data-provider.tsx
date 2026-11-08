@@ -7,7 +7,7 @@ import { normalizeHomeData, type HomeDataPayload } from "@/lib/home-defaults";
 
 function seedHomeCache(initial: HomeDataPayload) {
   const normalized = normalizeHomeData(initial);
-  setCached(HOME_DATA_CACHE_KEY, normalized, 900_000);
+  setCached(HOME_DATA_CACHE_KEY, normalized, 7 * 24 * 60 * 60_000);
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent(HOME_DATA_EVENT, { detail: normalized })
