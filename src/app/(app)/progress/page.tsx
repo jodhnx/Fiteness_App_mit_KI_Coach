@@ -419,8 +419,6 @@ export default function ProgressPage() {
               calorieTarget={dashboard.calorieTarget ?? 0}
               proteinTargetG={dashboard.proteinTargetG ?? 0}
               weightChartPoints={analytics.chartPoints}
-              weightPeriod={period}
-              onWeightPeriodChange={setPeriod}
               trainingVolumeTrend={dashboard.trainingVolumeTrend ?? []}
               trainingFrequencyTrend={dashboard.trainingFrequencyTrend ?? []}
               showWeightChart={false}

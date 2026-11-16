@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { LazyStatChart } from "@/components/charts/lazy-stat-chart";
 import { LazyWeightTrendChart } from "@/components/progress/lazy-weight-trend-chart";
 import { Flame, Beef, Dumbbell, Calendar } from "lucide-react";
@@ -12,7 +12,6 @@ import {
   type NutritionPoint,
 } from "@/lib/progress-chart-utils";
 import { getPrefetchedCharts } from "@/lib/progress-chart-prefetch";
-import type { WeightPeriod } from "@/lib/weight-analytics";
 
 type TrendPoint = { date: string; label: string; value: number };
 
@@ -21,58 +20,50 @@ type Props = {
   calorieTarget: number;
   proteinTargetG: number;
   weightChartPoints: { label: string; value: number; trend: number }[];
-  weightPeriod: WeightPeriod;
-  onWeightPeriodChange: (p: WeightPeriod) => void;
   trainingVolumeTrend: TrendPoint[];
   trainingFrequencyTrend: TrendPoint[];
   /** When false, weight chart is omitted (shown elsewhere on the page). */
   showWeightChart?: boolean;
 };
 
-const PERIODS: { id: WeightPeriod; label: string }[] = [
-  { id: "7d", label: "Woche" },
-  { id: "30d", label: "Monat" },
-  { id: "90d", label: "3 Monate" },
-  { id: "180d", label: "6 Monate" },
-  { id: "365d", label: "Jahr" },
+const PERIODS: { id: ChartRange; label: string }[] = [
+  { id: "day", label: "Tag" },
+  { id: "week", label: "Woche" },
+  { id: "month", label: "Monat" },
+  { id: "year", label: "Jahr" },
   { id: "all", label: "Gesamt" },
 ];
 
-/** Map shared weight period → nutrition/training aggregation bucket. */
-function chartRangeForPeriod(period: WeightPeriod): ChartRange {
-  if (period === "7d") return "day";
-  if (period === "30d") return "week";
-  return "month";
-}
-
-function daysForPeriod(period: WeightPeriod): number | null {
-  switch (period) {
-    case "7d":
-      return 7;
-    case "30d":
-      return 30;
-    case "90d":
-      return 90;
-    case "180d":
-      return 180;
-    case "365d":
-      return 365;
-    default:
-      return null;
-  }
-}
-
-function filterByDays<T extends { date: string }>(
-  points: T[],
-  period: WeightPeriod
-): T[] {
-  const days = daysForPeriod(period);
-  if (days == null || points.length === 0) return points;
-  const cutoff = Date.now() - days * 86_400_000;
-  return points.filter((p) => {
-    const t = new Date(p.date).getTime();
-    return Number.isFinite(t) && t >= cutoff;
-  });
+function ChartPeriodBar({
+  value,
+  onChange,
+}: {
+  value: ChartRange;
+  onChange: (r: ChartRange) => void;
+}) {
+  return (
+    <div
+      className="grid w-full grid-cols-5 gap-0.5 rounded-lg bg-zinc-100/90 p-0.5 dark:bg-zinc-800/80"
+      role="group"
+      aria-label="Zeitraum"
+    >
+      {PERIODS.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          onClick={() => onChange(p.id)}
+          className={cn(
+            "min-w-0 rounded-md px-0.5 py-1 text-center text-[10px] font-semibold leading-tight tracking-tight transition-colors sm:text-[11px]",
+            value === p.id
+              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
+              : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          )}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export const ProgressChartsSection = memo(function ProgressChartsSection({
@@ -80,80 +71,51 @@ export const ProgressChartsSection = memo(function ProgressChartsSection({
   calorieTarget,
   proteinTargetG,
   weightChartPoints,
-  weightPeriod,
-  onWeightPeriodChange,
   trainingVolumeTrend,
   trainingFrequencyTrend,
   showWeightChart = true,
 }: Props) {
-  const range = chartRangeForPeriod(weightPeriod);
+  const [caloriePeriod, setCaloriePeriod] = useState<ChartRange>("week");
+  const [proteinPeriod, setProteinPeriod] = useState<ChartRange>("week");
+  const [volumePeriod, setVolumePeriod] = useState<ChartRange>("week");
+  const [frequencyPeriod, setFrequencyPeriod] = useState<ChartRange>("week");
+
   const prefetched = useMemo(() => getPrefetchedCharts(), []);
 
-  const nutSlice = useMemo(
-    () => filterByDays(nutritionTrend, weightPeriod),
-    [nutritionTrend, weightPeriod]
-  );
-  const volSlice = useMemo(
-    () => filterByDays(trainingVolumeTrend, weightPeriod),
-    [trainingVolumeTrend, weightPeriod]
-  );
-  const freqSlice = useMemo(
-    () => filterByDays(trainingFrequencyTrend, weightPeriod),
-    [trainingFrequencyTrend, weightPeriod]
-  );
-
   const calorieData = useMemo(() => {
-    const hit = prefetched?.calories[range];
-    if (hit?.length && weightPeriod === "30d" && range === "week") return hit;
-    return aggregateNutrition(nutSlice, range, "calories");
-  }, [prefetched, nutSlice, range, weightPeriod]);
+    const hit = prefetched?.calories[caloriePeriod];
+    if (hit?.length) return hit;
+    return aggregateNutrition(nutritionTrend, caloriePeriod, "calories");
+  }, [prefetched, nutritionTrend, caloriePeriod]);
 
   const proteinData = useMemo(() => {
-    const hit = prefetched?.protein[range];
-    if (hit?.length && weightPeriod === "30d" && range === "week") return hit;
-    return aggregateNutrition(nutSlice, range, "proteinG");
-  }, [prefetched, nutSlice, range, weightPeriod]);
+    const hit = prefetched?.protein[proteinPeriod];
+    if (hit?.length) return hit;
+    return aggregateNutrition(nutritionTrend, proteinPeriod, "proteinG");
+  }, [prefetched, nutritionTrend, proteinPeriod]);
 
   const volumeData = useMemo(() => {
-    return aggregateSumByRange(volSlice, range);
-  }, [volSlice, range]);
+    const hit = prefetched?.volume[volumePeriod];
+    if (hit?.length) return hit;
+    return aggregateSumByRange(trainingVolumeTrend, volumePeriod);
+  }, [prefetched, trainingVolumeTrend, volumePeriod]);
 
   const frequencyData = useMemo(() => {
-    return aggregateSumByRange(freqSlice, range);
-  }, [freqSlice, range]);
+    const hit = prefetched?.frequency[frequencyPeriod];
+    if (hit?.length) return hit;
+    return aggregateSumByRange(trainingFrequencyTrend, frequencyPeriod);
+  }, [prefetched, trainingFrequencyTrend, frequencyPeriod]);
 
   return (
     <div className="space-y-4">
-      <div className="card-premium p-3">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-          Zeitraum für alle Diagramme
-        </p>
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
-          {PERIODS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onWeightPeriodChange(p.id)}
-              className={cn(
-                "shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors",
-                weightPeriod === p.id
-                  ? "bg-accent text-white"
-                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="card-premium p-4 space-y-4">
+      <div className="card-premium space-y-3 p-4">
         <div className="flex items-center gap-2">
-          <Flame className="h-4 w-4 text-orange-400" />
+          <Flame className="h-4 w-4 shrink-0 text-orange-400" />
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
             Kalorienverlauf
           </h2>
         </div>
+        <ChartPeriodBar value={caloriePeriod} onChange={setCaloriePeriod} />
         {calorieTarget > 0 && (
           <p className="text-xs text-zinc-500">Ziel: {calorieTarget} kcal / Tag</p>
         )}
@@ -166,13 +128,14 @@ export const ProgressChartsSection = memo(function ProgressChartsSection({
         )}
       </div>
 
-      <div className="card-premium p-4 space-y-4">
+      <div className="card-premium space-y-3 p-4">
         <div className="flex items-center gap-2">
-          <Beef className="h-4 w-4 text-rose-400" />
+          <Beef className="h-4 w-4 shrink-0 text-rose-400" />
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
             Proteinverlauf
           </h2>
         </div>
+        <ChartPeriodBar value={proteinPeriod} onChange={setProteinPeriod} />
         {proteinTargetG > 0 && (
           <p className="text-xs text-zinc-500">Ziel: {proteinTargetG} g / Tag</p>
         )}
@@ -186,7 +149,7 @@ export const ProgressChartsSection = memo(function ProgressChartsSection({
       </div>
 
       {showWeightChart ? (
-        <div className="card-premium p-4 space-y-3">
+        <div className="card-premium space-y-3 p-4">
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
             Gewichtsentwicklung
           </h2>
@@ -194,13 +157,14 @@ export const ProgressChartsSection = memo(function ProgressChartsSection({
         </div>
       ) : null}
 
-      <div className="card-premium p-4 space-y-4">
+      <div className="card-premium space-y-3 p-4">
         <div className="flex items-center gap-2">
-          <Dumbbell className="h-4 w-4 text-cyan-400" />
+          <Dumbbell className="h-4 w-4 shrink-0 text-cyan-400" />
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
             Trainingsvolumen
           </h2>
         </div>
+        <ChartPeriodBar value={volumePeriod} onChange={setVolumePeriod} />
         {volumeData.length > 0 ? (
           <LazyStatChart data={volumeData} type="bar" color="#22d3ee" />
         ) : (
@@ -210,13 +174,14 @@ export const ProgressChartsSection = memo(function ProgressChartsSection({
         )}
       </div>
 
-      <div className="card-premium p-4 space-y-4">
+      <div className="card-premium space-y-3 p-4">
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-violet-400" />
+          <Calendar className="h-4 w-4 shrink-0 text-violet-400" />
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
             Trainingshäufigkeit
           </h2>
         </div>
+        <ChartPeriodBar value={frequencyPeriod} onChange={setFrequencyPeriod} />
         {frequencyData.length > 0 ? (
           <LazyStatChart data={frequencyData} type="area" color="#a78bfa" />
         ) : (

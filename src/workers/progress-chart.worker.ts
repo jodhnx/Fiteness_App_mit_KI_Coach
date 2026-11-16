@@ -22,7 +22,7 @@ export type ProgressChartPrefetchResult = {
   frequency: Record<ChartRange, { label: string; value: number }[]>;
 };
 
-const RANGES: ChartRange[] = ["day", "week", "month"];
+const RANGES: ChartRange[] = ["day", "week", "month", "year", "all"];
 
 function computeCharts(input: ProgressChartPrefetchInput): ProgressChartPrefetchResult {
   const calories = {} as ProgressChartPrefetchResult["calories"];
