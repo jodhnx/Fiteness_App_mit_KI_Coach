@@ -69,6 +69,13 @@ const STAPLES: Staple[] = [
   { name: "Milch 1,5 %", brand: "EDEKA", calories: 47, proteinG: 3.4, carbsG: 4.9, fatG: 1.5, servingG: 100, servingLabel: "100 g" },
   { name: "Skyr natur", brand: "REWE", calories: 63, proteinG: 11, carbsG: 4, fatG: 0.2, servingG: 150, servingLabel: "1 Becher (150 g)" },
   { name: "Magerquark", brand: "REWE", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
+
+  // dm / Unimarkt — same verified staple macros, brand for search
+  { name: "Haferflocken", brand: "dm", calories: 379, proteinG: 13, carbsG: 67, fatG: 7, servingG: 40, servingLabel: "1 Portion (40 g)" },
+  { name: "Skyr natur", brand: "dm", calories: 63, proteinG: 11, carbsG: 4, fatG: 0.2, servingG: 150, servingLabel: "1 Becher (150 g)" },
+  { name: "Milch 1,5 %", brand: "Unimarkt", calories: 47, proteinG: 3.4, carbsG: 4.9, fatG: 1.5, servingG: 100, servingLabel: "100 g" },
+  { name: "Magertopfen", brand: "Unimarkt", calories: 67, proteinG: 12, carbsG: 4, fatG: 0.2, servingG: 250, servingLabel: "1 Packung (250 g)" },
+  { name: "Naturjoghurt 1,5 %", brand: "Unimarkt", calories: 50, proteinG: 4.5, carbsG: 5, fatG: 1.5, servingG: 150, servingLabel: "1 Becher (150 g)" },
 ];
 
 function toProduct(s: Staple): FoodProduct {
@@ -118,6 +125,8 @@ export function searchDachRetailFoods(
     "penny",
     "mpreis",
     "adeg",
+    "dm",
+    "unimarkt",
   ]);
   const deBrands = new Set(["rewe", "edeka", "lidl", "aldi", "penny"]);
 

@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "NEXFORM",
+    "slug": "nexform-companion",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "nexform",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "NEXFORM benötigt die Kamera zum Barcode-Scannen und für die Foto-KI."
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.nexform.companion",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "NEXFORM liest Schritte, Training und Schlaf aus Apple Health, wenn du zustimmst.",
+        "NSHealthUpdateUsageDescription": "NEXFORM schreibt keine Gesundheitsdaten ohne deine Zustimmung."
+      }
+    },
+    "android": {
+      "package": "app.nexform.companion",
+      "permissions": [
+        "CAMERA",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_SLEEP"
+      ]
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:3000",
+      "eas": {
+        "projectId": "replace-after-eas-init"
+      }
+    }
+  }
+}

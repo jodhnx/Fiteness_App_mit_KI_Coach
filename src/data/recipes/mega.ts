@@ -460,27 +460,41 @@ function buildBatch(): SpecBase[] {
   const prepVeg = ["Brokkoli & Paprika", "Zucchini-Mix", "Ofengemüse", "Blattsalat & Gurke"];
   const prepCuisines: Cuisine[] = ["classic", "mediterranean", "mexican", "asian", "indian"];
 
-  for (let n = 1; n <= 24; n++) {
+  // Scale catalog to ≥300 total recipes across modules (original NEXFORM templates).
+  for (let n = 1; n <= 160; n++) {
     const slot: RecipeMealSlot =
       n % 4 === 1 ? "BREAKFAST" : n % 4 === 2 ? "LUNCH" : n % 4 === 3 ? "DINNER" : "SNACK";
     const protein = 28 + (n % 20);
-    const cal = 320 + n * 7;
+    const cal = 320 + (n % 40) * 7;
     const cuisine = prepCuisines[n % prepCuisines.length];
+    const style =
+      n <= 24
+        ? "Meal Prep Box"
+        : n <= 80
+          ? "Batch Bowl"
+          : n <= 120
+            ? "Training Plate"
+            : "Macro Plate";
     specs.push({
       id: `mega-mealprep-${n}`,
-      name: `Meal Prep Box ${n}`,
+      name: `${style} ${n}`,
       mealSlot: slot,
-      tags: ["high-protein", "muscle-gain", "quick"],
-      prepMinutes: 15,
-      cookMinutes: 25,
+      tags: [
+        "high-protein",
+        "meal-prep",
+        ...(cal <= 380 ? (["fat-loss"] as RecipeTag[]) : (["muscle-gain"] as RecipeTag[])),
+        "quick",
+      ],
+      prepMinutes: 12 + (n % 8),
+      cookMinutes: 18 + (n % 12),
       calories: cal,
       proteinG: protein,
       carbsG: 35 + (n % 15),
       fatG: 10 + (n % 8),
       fiberG: 5,
-      emoji: "📦",
+      emoji: n % 3 === 0 ? "🥗" : n % 3 === 1 ? "📦" : "🍽️",
       accent: ACCENTS[n % ACCENTS.length],
-      description: `Vorbereitete Meal-Prep Box #${n} — batch-gekocht mit passenden Gewürzen und Aufbewahrungshinweisen.`,
+      description: `${style} #${n} — batch-gekocht mit ${prepProteins[n % prepProteins.length]}, ${prepCarbs[n % prepCarbs.length]} und ${prepVeg[n % prepVeg.length]}. Originale NEXFORM-Vorlage mit klaren Schritten.`,
       cuisine,
       proteinLabel: prepProteins[n % prepProteins.length],
       proteinGrams: 140 + (n % 40),

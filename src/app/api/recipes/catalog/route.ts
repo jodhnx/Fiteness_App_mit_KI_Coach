@@ -2,8 +2,9 @@ import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api-response";
-import { getFitnessRecipe } from "@/data/fitness-recipes";
+import { FITNESS_RECIPES, getFitnessRecipe } from "@/data/fitness-recipes";
 import { queryRecipeCatalog, getCatalogStats } from "@/lib/recipes/catalog-query";
+import { rankRecipesForRemaining } from "@/lib/recipes/personalize";
 import { tableExists } from "@/lib/prisma-safe";
 
 export async function GET(req: NextRequest) {
@@ -45,6 +46,55 @@ export async function GET(req: NextRequest) {
       sortRaw === "name"
         ? sortRaw
         : undefined;
+
+    const remainCal = sp.get("remainCal");
+    const remainProtein = sp.get("remainProtein");
+    const remainCarbs = sp.get("remainCarbs");
+    const remainFat = sp.get("remainFat");
+    const nutritionGoal = sp.get("goal");
+    const personalize = sp.get("personalize") === "1";
+
+    if (personalize) {
+      const ranked = rankRecipesForRemaining(
+        FITNESS_RECIPES,
+        {
+          calories: remainCal != null ? Number(remainCal) : null,
+          proteinG: remainProtein != null ? Number(remainProtein) : null,
+          carbsG: remainCarbs != null ? Number(remainCarbs) : null,
+          fatG: remainFat != null ? Number(remainFat) : null,
+          nutritionGoal,
+        },
+        Math.min(24, limit)
+      );
+      const stats = getCatalogStats();
+      return jsonOk({
+        recipes: ranked.map((r) => ({
+          id: r.id,
+          name: r.name,
+          mealSlot: r.mealSlot,
+          tags: r.tags,
+          prepMinutes: r.prepMinutes,
+          cookMinutes: r.cookMinutes,
+          calories: r.calories,
+          proteinG: r.proteinG,
+          carbsG: r.carbsG,
+          fatG: r.fatG,
+          fiberG: r.fiberG,
+          emoji: r.emoji,
+          accent: r.accent,
+          imageUrl: r.imageUrl,
+          difficulty: r.difficulty,
+          servings: r.servings,
+        })),
+        total: ranked.length,
+        page: 1,
+        limit,
+        hasMore: false,
+        favoriteIds,
+        catalogTotal: stats.total,
+        personalized: true,
+      });
+    }
 
     const result = queryRecipeCatalog({ q, filters, page, limit, sort });
     const stats = getCatalogStats();

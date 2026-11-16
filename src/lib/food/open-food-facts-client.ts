@@ -97,6 +97,10 @@ type OffProductRaw = {
   origins_tags?: string[];
   nutriments?: OffNutriments;
   categories_tags?: string[];
+  ingredients_text?: string;
+  ingredients_text_de?: string;
+  allergens_tags?: string[];
+  allergens_from_ingredients?: string;
 };
 
 type SearchALiciousResponse = {
@@ -264,6 +268,23 @@ export function mapOffProduct(raw: OffProductRaw): FoodProduct | null {
     source: "openfoodfacts",
     countries: raw.countries_tags ?? [],
     austriaScore: scoreAustriaProduct(raw, brand),
+    ingredientsText:
+      raw.ingredients_text_de?.trim() ||
+      raw.ingredients_text?.trim() ||
+      null,
+    allergens: (() => {
+      const tags = (raw.allergens_tags ?? [])
+        .map((t) => t.replace(/^en:/, "").replace(/-/g, " "))
+        .filter(Boolean);
+      if (tags.length) return tags;
+      const fromIng = raw.allergens_from_ingredients?.trim();
+      return fromIng
+        ? fromIng
+            .split(/[,;]/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : null;
+    })(),
   };
 }
 
@@ -475,23 +496,60 @@ export async function fetchOffProductByCode(
   const c = code.replace(/\D/g, "");
   if (c.length < 8) return { product: null, error: "Ungültiger Barcode" };
 
-  const url = `${OFF_WORLD}/api/v2/product/${c}.json`;
-  try {
-    const { res, text } = await fetchWithTimeout(url, "product-v2");
-    const data = parseJsonBody<{ product?: OffProductRaw; status?: number }>(
-      text,
-      "product-v2"
-    );
-    if (!data || data.status === 0 || !data.product) {
-      return { product: null, error: "Produkt nicht gefunden" };
-    }
-    const product = mapOffProduct(data.product);
-    return { product };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Produkt-Abruf fehlgeschlagen";
-    console.error("[open-food-facts] product", msg);
-    return { product: null, error: msg };
+  const { getCachedBarcodeLookup, setCachedBarcodeLookup } = await import(
+    "@/lib/food/barcode-cache"
+  );
+  const cached = getCachedBarcodeLookup(c);
+  if (cached) {
+    return { product: cached.product, error: cached.error };
   }
+
+  // Prefer AT mirror first for Austrian supermarket EANs, then world.
+  const urls = [
+    `${OFF_AT}/api/v2/product/${c}.json`,
+    `${OFF_WORLD}/api/v2/product/${c}.json`,
+  ];
+
+  let lastError = "Produkt nicht gefunden";
+  for (const url of urls) {
+    try {
+      const { res, text } = await fetchWithTimeout(url, "product-v2");
+      if (!res.ok) {
+        lastError = `Open Food Facts HTTP ${res.status}`;
+        continue;
+      }
+      const data = parseJsonBody<{ product?: OffProductRaw; status?: number }>(
+        text,
+        "product-v2"
+      );
+      if (!data || data.status === 0 || !data.product) {
+        lastError = "Produkt nicht gefunden";
+        continue;
+      }
+      const product = mapOffProduct(data.product);
+      if (!product) {
+        lastError = "Produkt ohne Nährwerte";
+        continue;
+      }
+      // Never invent macros — require at least calories or protein signal
+      if (product.calories <= 0 && product.proteinG <= 0) {
+        setCachedBarcodeLookup(c, null, "Keine verlässlichen Nährwerte");
+        return {
+          product: null,
+          error: "Produkt gefunden, aber ohne verlässliche Nährwerte",
+        };
+      }
+      setCachedBarcodeLookup(c, product);
+      return { product };
+    } catch (e) {
+      lastError =
+        e instanceof Error ? e.message : "Produkt-Abruf fehlgeschlagen";
+      console.error("[open-food-facts] product", lastError);
+    }
+  }
+
+  setCachedBarcodeLookup(c, null, lastError);
+  return { product: null, error: lastError };
 }
 
 export async function suggestOpenFoodFacts(query: string): Promise<string[]> {

@@ -283,7 +283,24 @@ export async function importOffProductByCode(
   product: FoodProduct | null;
   error?: string;
 }> {
-  const { product, error } = await fetchOffProductByCode(code);
+  const normalized = code.replace(/\D/g, "");
+
+  // Local DB first — avoid OFF round-trip for known barcodes
+  try {
+    const existing = await prisma.foodItem.findFirst({
+      where: {
+        OR: [{ barcode: normalized }, { offCode: normalized }],
+      },
+      select: foodSelect,
+    });
+    if (existing) {
+      return { product: mapDbFoodToProduct(existing) };
+    }
+  } catch {
+    /* fall through to OFF */
+  }
+
+  const { product, error } = await fetchOffProductByCode(normalized);
   if (!product) return { product: null, error };
   const saved = await upsertFoodFromProduct(product, ownerUserId);
   return { product: saved };

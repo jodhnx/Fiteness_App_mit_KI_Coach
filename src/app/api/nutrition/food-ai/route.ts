@@ -35,14 +35,16 @@ Antworte AUSSCHLIESSLICH als JSON-Objekt in genau diesem Schema:
 
 Regeln:
 - Pro sichtbares Lebensmittel/Komponente ein Eintrag (z.B. Burger + Pommes = 2 Items)
-- Realistische Grammschätzung für die sichtbare Portion
-- Nährwerte für GENAU diese geschätzte Menge (nicht pro 100g)
-- confidence zwischen 0 und 1 (wie sicher die Erkennung ist)
+- Erkenne typische Kategorien wenn sichtbar: Reis, Nudeln, Fleisch, Fisch, Gemüse, Obst, Brot, Kartoffeln/Erdäpfel, Eier, Milchprodukte, Saucen, Öle, Getränke, gemischte Gerichte
+- Realistische Grammschätzung für die sichtbare Portion — klar als Schätzung behandeln
+- Nährwerte für GENAU diese geschätzte Menge (nicht pro 100g); keine Werte erfinden wenn unsicher → confidence senken
+- confidence zwischen 0 und 1 (wie sicher die Erkennung ist); bei unklarer Portion ≤ 0.55
 - Markennamen nur wenn klar erkennbar, sonst null
 - Wenn nichts zuverlässig erkennbar: foods = []
 - Maximal 8 Items
-- Deutsche Bezeichnungen
-- Kein Freitext außerhalb des JSON`;
+- Deutsche bzw. österreichische Bezeichnungen (z. B. Erdäpfel, Topfen)
+- Kein Freitext außerhalb des JSON
+- Keine medizinischen Diagnosen`;
 
 const OPENAI_TIMEOUT_MS = 45_000;
 

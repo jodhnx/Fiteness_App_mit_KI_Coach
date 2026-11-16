@@ -33,6 +33,10 @@ export type FoodProduct = {
   source: FoodProductSource;
   countries?: string[];
   austriaScore?: number;
+  /** Open Food Facts ingredients text when available — never invented */
+  ingredientsText?: string | null;
+  /** Allergen labels from OFF when available */
+  allergens?: string[] | null;
 };
 
 export type FoodSearchResponse = {
