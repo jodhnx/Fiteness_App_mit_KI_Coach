@@ -839,7 +839,12 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
         onDiscard={() => void discardWorkout()}
       />
     <div className="space-y-4 pb-[calc(10.5rem+env(safe-area-inset-bottom,0px))] max-w-lg lg:max-w-4xl mx-auto keyboard-stable-page">
-      <div className="sticky top-0 z-20 pt-1 pb-2 bg-[#f4f7fa]/95 backdrop-blur-md border-b border-zinc-200 -mx-1 px-1 dark:bg-zinc-950/95 dark:border-white/[0.06]">
+      <div
+        className="sticky top-0 z-20 pb-2 bg-[#f4f7fa]/95 backdrop-blur-md border-b border-zinc-200 -mx-1 px-1 dark:bg-zinc-950/95 dark:border-white/[0.06]"
+        style={{
+          paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
+        }}
+      >
         <div className="flex items-center gap-2 min-h-12">
           <Button
             variant="ghost"

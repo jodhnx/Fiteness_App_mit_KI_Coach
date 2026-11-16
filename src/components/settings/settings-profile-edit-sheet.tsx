@@ -134,7 +134,10 @@ type Props = {
   userImage: string | null;
   saving: boolean;
   onClose: () => void;
-  onSave: (draft: ProfileEditForm) => Promise<boolean>;
+  onSave: (
+    draft: ProfileEditForm,
+    opts?: { macrosTouched?: boolean }
+  ) => Promise<boolean>;
   onImageUpdated: (url: string | null) => void;
 };
 
@@ -230,7 +233,7 @@ export const SettingsProfileEditSheet = memo(function SettingsProfileEditSheet({
     if (Object.keys(nextErrors).length > 0) return;
     saveLock.current = true;
     try {
-      const ok = await onSave(draft);
+      const ok = await onSave(draft, { macrosTouched });
       if (!ok) saveLock.current = false;
     } catch {
       saveLock.current = false;

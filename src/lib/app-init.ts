@@ -426,44 +426,68 @@ export function enrichHomeInBackground() {
     });
 }
 
+function reportBootProgress(p: number, onProgress?: (n: number) => void) {
+  const clamped = Math.max(0, Math.min(100, Math.round(p)));
+  onProgress?.(clamped);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("nexform:boot-progress", {
+        detail: { progress: clamped },
+      })
+    );
+  }
+}
+
 /**
  * Cache-first boot. Home already paints; this refreshes in the background.
  * Warm path: disk/memory. Cold path: one shared /api/bootstrap round-trip.
+ * `onProgress` + `nexform:boot-progress` drive the first-setup overlay.
  */
 export async function initializeApp(
   userId: string,
-  _onProgress?: (p: number) => void
+  onProgress?: (p: number) => void
 ): Promise<AppInitResult> {
   bootPerfReset();
   bootSettled = false;
+  reportBootProgress(8, onProgress);
   bootPerfMark("cache_hydrate_start");
   bindCacheOwner(userId);
+  reportBootProgress(22, onProgress);
   hydratePersistentCaches(userId);
   bootPerfMark("cache_hydrate_end");
+  reportBootProgress(38, onProgress);
 
   try {
     const cached = readBootPayloadFromCache();
     if (cached) {
       applyBootstrapPayload(cached);
+      reportBootProgress(78, onProgress);
       // Cached paint is ready — UI may show targets; background refresh continues.
       bootSettled = true;
+      reportBootProgress(92, onProgress);
       void fetchBootstrapShared().then((fresh) => {
         if (fresh) applyBootstrapPayload(fresh);
         enrichHomeInBackground();
         bootSettled = true;
+        reportBootProgress(100, onProgress);
       });
       return { payload: cached, fromCache: true };
     }
 
+    reportBootProgress(55, onProgress);
     const fresh = await fetchBootstrapShared();
+    reportBootProgress(78, onProgress);
     if (fresh) {
       applyBootstrapPayload(fresh);
+      reportBootProgress(92, onProgress);
       enrichHomeInBackground();
+      reportBootProgress(100, onProgress);
       return { payload: fresh, fromCache: false };
     }
 
     return { payload: null, fromCache: false };
   } finally {
     bootSettled = true;
+    reportBootProgress(100, onProgress);
   }
 }

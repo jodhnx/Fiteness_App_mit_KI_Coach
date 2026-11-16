@@ -5,21 +5,32 @@ import {
 } from "@/lib/app-init";
 
 /**
- * Start /api/bootstrap immediately after login.
- * Does NOT wipe caches (caller already did) and shares inflight with initializeApp.
+ * Start /api/bootstrap after login. Fire-and-forget for returning users.
+ * Shares inflight with initializeApp — no duplicate bootstrap.
  */
 export function warmPostLoginCaches(userId?: string | null): void {
-  if (typeof window === "undefined") return;
+  void warmPostLoginCachesAsync(userId);
+}
+
+/**
+ * Awaitable warm used after registration so Home paints with real targets.
+ */
+export async function warmPostLoginCachesAsync(
+  userId?: string | null
+): Promise<boolean> {
+  if (typeof window === "undefined") return false;
   if (userId) bindCacheOwner(userId);
 
-  void fetchBootstrapShared()
-    .then((fresh) => {
-      if (!fresh) return;
-      if (userId) bindCacheOwner(userId);
-      applyBootstrapPayload(fresh);
-      void import("@/lib/food-history-cache").then((m) =>
-        m.warmFoodHistoryCache(true)
-      );
-    })
-    .catch(() => undefined);
+  try {
+    const fresh = await fetchBootstrapShared();
+    if (!fresh) return false;
+    if (userId) bindCacheOwner(userId);
+    applyBootstrapPayload(fresh);
+    void import("@/lib/food-history-cache").then((m) =>
+      m.warmFoodHistoryCache(true)
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }

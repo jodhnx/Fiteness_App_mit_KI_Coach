@@ -144,7 +144,9 @@ export async function PATCH(req: NextRequest) {
 
     const raw: Record<string, unknown> = {
       ...profileFields,
-      ...(manualCalorieTarget === true ? { manualCalorieTarget: true } : {}),
+      ...(typeof manualCalorieTarget === "boolean"
+        ? { manualCalorieTarget }
+        : {}),
     };
 
     if (raw.targetWeightDate && typeof raw.targetWeightDate === "string") {

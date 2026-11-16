@@ -207,15 +207,15 @@ function SettingsPageInner() {
     });
   }, [livePreview]);
 
-  async function save(sourceForm: ProfileEditForm = form): Promise<boolean> {
+  async function save(
+    sourceForm: ProfileEditForm = form,
+    opts?: { macrosTouched?: boolean }
+  ): Promise<boolean> {
     if (saving || !profileLoaded) return false;
 
-    const manualMacros = Boolean(
-      (sourceForm.calorieTarget ?? "").trim() ||
-        (sourceForm.proteinTargetG ?? "").trim() ||
-        (sourceForm.carbsTargetG ?? "").trim() ||
-        (sourceForm.fatTargetG ?? "").trim()
-    );
+    // Only treat macros as manual when the user explicitly edited them.
+    // Auto-filled computed values must NOT lock old Cut macros after switching to Aufbau.
+    const manualMacros = opts?.macrosTouched === true;
 
     const sourcePreview = previewTargetsFromForm(sourceForm);
     if (sourcePreview) {
@@ -250,7 +250,8 @@ function SettingsPageInner() {
         workoutDaysPerWeek: sourceForm.workoutDaysPerWeek
           ? Number(sourceForm.workoutDaysPerWeek)
           : undefined,
-        manualCalorieTarget: manualMacros ? true : undefined,
+        // false clears a prior manual lock so Cut→Aufbau recalculates macros
+        manualCalorieTarget: manualMacros,
         calorieTarget:
           manualMacros && sourceForm.calorieTarget
             ? parseManualCalorieTargetInput(sourceForm.calorieTarget) ?? undefined

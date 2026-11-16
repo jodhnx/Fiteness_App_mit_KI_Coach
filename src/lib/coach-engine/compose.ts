@@ -141,6 +141,144 @@ function mealPlanAnswer(facts: CoachUserFacts): string {
   return parts.join("\n\n");
 }
 
+function plateauAnswer(facts: CoachUserFacts, intent: CoachIntent): string {
+  const wantsGain =
+    /nicht (mehr )?zu|zunehmen|aufbau|masse|bulk/.test(intent.normalized);
+  const parts: string[] = [
+    wantsGain
+      ? "Wenn das Gewicht trotz Aufbauziel stagniert, prüfen wir die typischen Hebel — mit deinen verfügbaren Daten:"
+      : "Wenn das Gewicht trotz Defizit stagniert, sind oft Wasser/Glykogen oder Tracking die Ursache — Analyse:",
+  ];
+  const signals: string[] = [];
+  if (facts.calorieTarget != null)
+    signals.push(`Kalorienziel: **${facts.calorieTarget} kcal**`);
+  if (facts.caloriesConsumed != null)
+    signals.push(`Heute erfasst: **${Math.round(facts.caloriesConsumed)} kcal**`);
+  if (facts.proteinTarget != null || facts.proteinConsumed != null) {
+    signals.push(
+      `Protein: ${facts.proteinConsumed != null ? `**${Math.round(facts.proteinConsumed)} g**` : "—"} / Ziel **${facts.proteinTarget ?? "?"} g**`
+    );
+  }
+  if (facts.weightKg != null) signals.push(`Aktuelles Gewicht: **${facts.weightKg} kg**`);
+  if (facts.weightTrend) signals.push(`Trend: **${facts.weightTrend}**`);
+  if (facts.nutritionGoal) signals.push(`Ernährungsziel: **${facts.nutritionGoal}**`);
+  if (facts.trainingToday) signals.push(`Training: ${facts.trainingToday}`);
+  if (signals.length) parts.push(section("Deine Daten", signals));
+  else
+    parts.push(
+      "_Gewichtstrend/Kalorien sind unvollständig — allgemeine Einordnung:_"
+    );
+
+  const advice: string[] = wantsGain
+    ? [
+        "7–14-Tage-Mittelgewicht prüfen, nicht den Tageswert.",
+        "Wenn Aufnahme ≤ Ziel: +150–250 kcal (meist KH), Protein halten.",
+        "Trainingsvolumen/Progression und Schlaf checken — ohne Reiz kein Aufbau.",
+        "Schritte/Cardio nicht unnötig hochfahren im Aufbau.",
+      ]
+    : [
+        "7–14-Tage-Mittel nutzen; Cheat Meals erzeugen oft Wassergewicht.",
+        "Tracking-Lücken (Öle, Saucen, Wochenende) schließen.",
+        "Falls Defizit schon lange hart: kurze Maintenance/Refeed, dann weiter.",
+        "NEAT/Schritte und Schlaf mitprüfen — kein extremes Unteressen.",
+      ];
+  parts.push(section("Empfehlung", advice));
+  parts.push(
+    section("Nächste Schritte", [
+      "Gewicht & Mahlzeiten weiter loggen.",
+      "Sag mir dein 14-Tage-Mittel und ob Cut oder Aufbau — dann wird die Anpassung konkreter.",
+    ])
+  );
+  parts.push(
+    "_Lokale Analyse auf Basis vorhandener App-Daten. Keine medizinische Diagnose._"
+  );
+  return parts.join("\n\n");
+}
+
+function planAnalysisAnswer(facts: CoachUserFacts): string {
+  const parts: string[] = [
+    "Kurze Bewertung deines Trainings-/Zielkontexts mit den verfügbaren App-Daten:",
+  ];
+  const signals: string[] = [];
+  if (facts.trainingGoal) signals.push(`Trainingsziel: **${facts.trainingGoal}**`);
+  if (facts.nutritionGoal) signals.push(`Ernährung: **${facts.nutritionGoal}**`);
+  if (facts.workoutDays != null)
+    signals.push(`Trainingstage/Woche: **${facts.workoutDays}**`);
+  if (facts.experience) signals.push(`Erfahrung: **${facts.experience}**`);
+  if (facts.trainingToday) signals.push(`Heute: ${facts.trainingToday}`);
+  if (facts.weightKg != null) signals.push(`Gewicht: **${facts.weightKg} kg**`);
+  if (signals.length) parts.push(section("Dein Stand", signals));
+  else
+    parts.push(
+      "_Trainingsplan-Details fehlen im Kontext — allgemeine Split-Orientierung:_"
+    );
+
+  const days = facts.workoutDays;
+  const splitHint =
+    days == null
+      ? "Wähle den Split nach verfügbaren Tagen (2–3 Full Body, 4 Upper/Lower, 5–6 PPL)."
+      : days <= 3
+        ? "Bei 2–3 Tagen: Full Body oder Upper/Lower light — jede Muskelgruppe ≥2×/Woche anstreben."
+        : days === 4
+          ? "Bei 4 Tagen: Upper/Lower ist oft der beste Kompromiss aus Volumen und Recovery."
+          : "Bei 5–6 Tagen: PPL oder ähnliche Splits — auf Deload und Schlaf achten.";
+
+  parts.push(
+    section("Volumen & Frequenz", [
+      splitHint,
+      "10–20+ harte Sätze/Muskelgruppe/Woche als Startkorridor; Progression vor Satzflut.",
+      "RIR 1–3 bei Arbeitssätzen; schwere Mehrgelenker mit längeren Pausen.",
+    ])
+  );
+  parts.push(
+    section("Nächste Schritte", [
+      "Prüfe, ob Kalorien/Protein zum Ziel passen (Cut vs. Aufbau).",
+      "Eine Variable ändern: Volumen, Intensität oder Kalorien — nicht alles gleichzeitig.",
+      "Sag mir deinen aktuellen Split und die Übungen, dann bewerte ich Frequenz konkreter.",
+    ])
+  );
+  parts.push(
+    "_Lokale Plananalyse. Keine medizinische Beratung._"
+  );
+  return parts.join("\n\n");
+}
+
+function progressSummaryAnswer(facts: CoachUserFacts): string {
+  const parts: string[] = [
+    "Fortschritts-Check auf Basis der vorliegenden Daten:",
+  ];
+  const signals: string[] = [];
+  if (facts.weightKg != null) signals.push(`Gewicht: **${facts.weightKg} kg**`);
+  if (facts.weightTrend) signals.push(`Trend: **${facts.weightTrend}**`);
+  if (facts.calorieTarget != null)
+    signals.push(`Kalorienziel: **${facts.calorieTarget} kcal**`);
+  if (facts.caloriesConsumed != null)
+    signals.push(`Heute: **${Math.round(facts.caloriesConsumed)} kcal**`);
+  if (facts.proteinTarget != null)
+    signals.push(`Proteinziel: **${facts.proteinTarget} g**`);
+  if (facts.nutritionGoal) signals.push(`Ziel: **${facts.nutritionGoal}**`);
+  if (facts.trainingToday) signals.push(`Training: ${facts.trainingToday}`);
+  if (signals.length) parts.push(section("Signale", signals));
+  else parts.push("_Wenige Fortschrittsdaten im Kontext — bitte Gewicht & Mahlzeiten loggen._");
+
+  parts.push(
+    section("Einordnung", [
+      "Muster über 2–4 Wochen zählen stärker als ein einzelner Tag.",
+      "Training (Frequenz/Progression), Ernährung (Protein/Kalorien) und Recovery zusammen bewerten.",
+      facts.weightTrend
+        ? `Dein aktueller Gewichtstrend (**${facts.weightTrend}**) sollte zum Ernährungsziel passen.`
+        : "Trag regelmäßig Gewicht ein, damit der Trend aussagekräftig wird.",
+    ])
+  );
+  parts.push(
+    section("Nächste Schritte", [
+      "7-Tage-Mittel im Fortschritt ansehen.",
+      "Bei Plateau: Kalorien-Trefferquote und Trainingsvolumen prüfen.",
+    ])
+  );
+  return parts.join("\n\n");
+}
+
 function todayDecisionAnswer(facts: CoachUserFacts, intent: CoachIntent): string {
   const parts: string[] = [
     "Kurze Entscheidungshilfe — basierend auf verfügbaren Signalen, ohne zu raten:",
@@ -265,6 +403,14 @@ export function composeLocalCoachReply(
     return proteinAnswer(facts, intent);
   }
   if (
+    intent.topics.includes("deficit_plateau") ||
+    (intent.kind === "why" &&
+      (intent.topics.includes("weight_trend") ||
+        intent.topics.includes("calories")))
+  ) {
+    return plateauAnswer(facts, intent);
+  }
+  if (
     intent.topics.includes("meal_plan") ||
     intent.kind === "what_to_eat"
   ) {
@@ -278,6 +424,15 @@ export function composeLocalCoachReply(
         intent.topics.includes("recovery")))
   ) {
     return todayDecisionAnswer(facts, intent);
+  }
+  if (
+    intent.topics.includes("split") ||
+    (intent.mode === "plan" && intent.kind === "how_to")
+  ) {
+    return planAnalysisAnswer(facts);
+  }
+  if (intent.topics.includes("progress")) {
+    return progressSummaryAnswer(facts);
   }
   return genericTopicAnswer(intent, facts);
 }

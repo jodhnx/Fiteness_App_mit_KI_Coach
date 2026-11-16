@@ -281,6 +281,21 @@ export default function ProgressPage() {
       }
       toast.success("Gewicht gespeichert");
       invalidateCache(PROGRESS_CACHE_KEY);
+      try {
+        const { HOME_COACH_CACHE, HOME_INSIGHTS_CACHE } = await import(
+          "@/lib/home-section-cache"
+        );
+        invalidateCache(HOME_COACH_CACHE);
+        invalidateCache(HOME_INSIGHTS_CACHE);
+        invalidateCache("nutrition-coach");
+      } catch {
+        /* ignore */
+      }
+      void import("@/lib/app-init").then((m) =>
+        m.fetchBootstrapShared({ force: true }).then((fresh) => {
+          if (fresh) m.applyBootstrapPayload(fresh);
+        })
+      );
       reload();
     },
     [reload]

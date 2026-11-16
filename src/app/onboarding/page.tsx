@@ -170,7 +170,17 @@ export default function OnboardingPage() {
       }
       setResult(data.calculations);
       await update({ onboardingComplete: true });
-      void import("@/lib/post-login-cache").then((m) => m.warmPostLoginCaches());
+      try {
+        sessionStorage.setItem("nexform:first-setup", "1");
+      } catch {
+        /* ignore */
+      }
+      const { getSession } = await import("next-auth/react");
+      const sessionAfter = await getSession();
+      const { warmPostLoginCachesAsync } = await import(
+        "@/lib/post-login-cache"
+      );
+      await warmPostLoginCachesAsync(sessionAfter?.user?.id ?? null);
       toast.success("Dein Plan ist bereit!");
       setStep(5);
     } catch {
@@ -240,9 +250,11 @@ export default function OnboardingPage() {
           <Button
             className="w-full h-14 text-base font-semibold mt-6 rounded-2xl btn-accent"
             onClick={() => {
-              void import("@/lib/post-login-cache").then((m) =>
-                m.warmPostLoginCaches()
-              );
+              try {
+                sessionStorage.setItem("nexform:first-setup", "1");
+              } catch {
+                /* ignore */
+              }
               router.push("/home");
             }}
           >

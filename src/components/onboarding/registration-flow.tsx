@@ -25,7 +25,7 @@ import {
 import { recalculateProfileTargets } from "@/lib/profile-calculations";
 import { storageGetJson, storageSetJson } from "@/lib/storage-service";
 import { warmTrainingCaches } from "@/lib/cache-manager";
-import { warmPostLoginCaches } from "@/lib/post-login-cache";
+import { warmPostLoginCachesAsync } from "@/lib/post-login-cache";
 import { clearAllUserClientState } from "@/lib/clear-user-client-state";
 import { isGuestEmail } from "@/lib/guest-utils";
 import {
@@ -293,12 +293,14 @@ export function RegistrationFlow() {
       await update({ onboardingComplete: true });
       storageSetJson(ONBOARDING_DRAFT_KEY, null);
       warmTrainingCaches(true);
-      warmPostLoginCaches();
       try {
         sessionStorage.setItem("nexform:first-setup", "1");
       } catch {
         /* ignore */
       }
+      const { getSession } = await import("next-auth/react");
+      const sessionAfter = await getSession();
+      await warmPostLoginCachesAsync(sessionAfter?.user?.id ?? null);
       toast.success("Dein Plan ist bereit!");
       router.replace("/home");
     } finally {

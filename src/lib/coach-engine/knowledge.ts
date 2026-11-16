@@ -18,18 +18,20 @@ export const KNOWLEDGE: Record<
     title: "Kalorien & Energiebilanz",
     bullets: [
       "Gewicht verändert sich langfristig über die Energiebilanz (Aufnahme vs. Verbrauch).",
-      "TDEE ≈ BMR × Aktivitätsfaktor; Mifflin-St Jeor ist eine gängige BMR-Schätzung.",
-      "Fettverlust: moderates Defizit (~250–500 kcal/Tag), nicht extrem.",
-      "Muskelaufbau: leichter Überschuss (~150–300 kcal) plus ausreichend Protein und Training.",
+      "Grundumsatz (BMR) ≈ Mifflin-St Jeor; Gesamtumsatz (TDEE) ≈ BMR × Aktivitätsfaktor (+ NEAT).",
+      "Fettverlust: moderates Defizit (~250–500 kcal/Tag). Aufbau: leichter Überschuss (~150–300).",
+      "Thermischer Effekt der Nahrung (TEF) und Schritte beeinflussen den Verbrauch spürbar.",
       "Waagen-Schwankungen von 0,5–2 kg durch Glykogen, Wasser und Darminhalt sind normal.",
+      "Refeed/Diätpause: kurz Kalorien anheben kann Hormone/Leistung stützen — kein Freifahrtschein.",
     ],
   },
   macros: {
     title: "Makronährstoffe",
     bullets: [
       "Protein zuerst setzen, dann Fett (~0,6–1,0 g/kg), Rest Kohlenhydrate.",
-      "Kohlenhydrate unterstützen Trainingsleistung; stark kürzen nur mit gutem Grund.",
+      "Kohlenhydrate füllen Glykogenspeicher und stützen Trainingsleistung.",
       "Ballaststoffe (Gemüse, Vollkorn, Hülsenfrüchte) helfen Sättigung und Verdauung.",
+      "Mikronährstoffe kommen aus abwechslungsreicher Kost — Supplements ersetzen keine Basisernährung.",
     ],
   },
   meal_plan: {
@@ -42,21 +44,24 @@ export const KNOWLEDGE: Record<
     ],
   },
   deficit_plateau: {
-    title: "Plateau trotz Defizit",
+    title: "Gewichtsstagnation (Cut & Aufbau)",
     bullets: [
-      "Kurzfristige Waagen-Stagnation ≠ Fettverlust gestoppt (Wasser/Glykogen).",
-      "Häufige Ursachen: Unterschätzte Kalorien, weniger NEAT, zu aggressives Defizit, Schlafmangel.",
+      "Kurzfristige Waagen-Stagnation ≠ Fettverlust/Zuwachs gestoppt (Wasser/Glykogen).",
+      "Cut: oft unterschätzte Kalorien, weniger NEAT, zu hartes Defizit oder Schlafmangel.",
+      "Aufbau: oft zu wenig Kalorien/Protein, zu viel Cardio oder schwache Progression.",
       "Prüfe 7–14-Tage-Durchschnitt statt Einzelmessungen.",
-      "Nach längerem Cut: kurze Maintenance oder Refeed kann helfen — kein Crash-Dieting.",
+      "Nach längerem Cut: kurze Maintenance oder Refeed — kein Crash-Dieting.",
     ],
   },
   hypertrophy: {
     title: "Muskelaufbau (Hypertrophie)",
     bullets: [
-      "Progressive Overload: langfristig mehr Leistung (Gewicht, Reps, Sätze, Kontrolle).",
-      "Effektiver Wiederholungsbereich oft 5–12+ bei 0–3 RIR.",
-      "10–20+ harte Sätze pro Muskelgruppe/Woche sind ein typischer Startkorridor.",
-      "Schlaf und Protein sind genauso wichtig wie die Trainingswahl.",
+      "Hauptreiz: mechanische Spannung über progressive Overload (Gewicht, Reps, Sätze, Kontrolle).",
+      "Wiederholungen oft 5–12+ bei ca. 0–3 RIR; volle ROM wo die Übung es hergibt.",
+      "Exzentrische Phase bewusst kontrollieren; konzentrisch explosiv, aber sauber.",
+      "10–20+ harte Sätze/Muskelgruppe/Woche als Startkorridor — individuell anpassen.",
+      "Muskelproteinsynthese braucht genug Protein + Kalorien + Schlaf; Training allein reicht nicht.",
+      "Periodisierung (Belastung/Erholung wechseln) verhindert Dauerplateaus.",
     ],
   },
   strength: {
@@ -70,9 +75,10 @@ export const KNOWLEDGE: Record<
   volume: {
     title: "Volumen, Intensität, RIR/RPE",
     bullets: [
-      "RIR 0–3 = nah am Muskelversagen; Anfänger oft eher 2–4 RIR.",
+      "RIR 0–3 = nah am Muskelversagen; Anfänger oft eher 2–4 RIR (RPE ~6–8).",
       "Mehr Volumen hilft nur, wenn Recovery mitkommt — Qualität > endlose Sätze.",
       "Pausen: Isolation ~60–90 s, schwere Mehrgelenksübungen 2–3+ Min.",
+      "Satzpausen und Frequenz steuern Ermüdung ebenso wie die Satzzahl.",
     ],
   },
   split: {
@@ -107,14 +113,17 @@ export const KNOWLEDGE: Record<
       "Muskelgruppen brauchen oft 48–72 h zwischen harten Einheiten.",
       "Muskelkater allein ist kein Fortschrittsmaß.",
       "Ruhetag ≠ Faulheit: Schlaf, Ernährung und leichte Bewegung fördern Adaptation.",
+      "Stress und hoher Ruhepuls können Erholung verzögern — Belastung dann dosieren.",
+      "Ermüdungsmanagement: Volumen, Intensität und Lebensstress zusammen betrachten.",
     ],
   },
   sleep: {
     title: "Schlaf",
     bullets: [
       "Ziel: regelmäßig ~7–9 h; schlechter Schlaf senkt Leistung und Appetitkontrolle.",
-      "Nach schlechter Nacht: Training verkürzen/intensität senken oder Technikarbeit — kein Ego-PR.",
+      "Nach schlechter Nacht: Training verkürzen/Intensität senken oder Technikarbeit — kein Ego-PR.",
       "Koffein und Screens abends können Schlafqualität verschlechtern.",
+      "Schlaf ist einer der stärksten Hebel für Muskelregeneration und Insulinsensitivität.",
     ],
   },
   weight_trend: {
@@ -123,6 +132,7 @@ export const KNOWLEDGE: Record<
       "Nutze 7-Tage-Mittelwerte und Fotos/Maße neben der Waage.",
       "Cheat Meals erhöhen oft Glykogen + Wasser — Anstieg am nächsten Tag ist meist kein Fettzuwachs.",
       "Plateaus 1–2 Wochen sind normal; erst danach Kalorien/NEAT/Training prüfen.",
+      "Körperzusammensetzung ändert sich langsamer als die Waage — Trend > Tageswert.",
     ],
   },
   supplements: {
