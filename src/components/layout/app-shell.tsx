@@ -65,18 +65,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <main
                 className={cn(
                   "app-page-content flex-1 min-w-0",
-                  immersive ? "px-3 pb-4 pt-2" : "px-4 pb-4"
+                  // Live/immersive: no top padding — screens own safe-area headers
+                  immersive ? "px-2 pb-2 pt-0 sm:px-3" : "px-4 pb-4"
                 )}
               >
-                <GuestUpgradeBanner />
+                {!immersive && <GuestUpgradeBanner />}
                 <TabSwipeLayer>
                   <TabKeepAliveOutlet>{children}</TabKeepAliveOutlet>
                 </TabSwipeLayer>
               </main>
             </div>
-            <AppErrorBoundary label="nav">
-              <BottomNav />
-            </AppErrorBoundary>
+            {!immersive && (
+              <AppErrorBoundary label="nav">
+                <BottomNav />
+              </AppErrorBoundary>
+            )}
             <AppErrorBoundary label="profile">
               <ProfileDashboardPanel
                 userName={headerName}

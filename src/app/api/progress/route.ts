@@ -34,10 +34,11 @@ export async function GET() {
       prisma.progressPhoto.findMany({
         where: { userId },
         orderBy: { takenAt: "desc" },
-        take: 12,
+        take: 120,
         select: {
           id: true,
           imageUrl: true,
+          caption: true,
           aiAnalysis: true,
           aiProgress: true,
           takenAt: true,

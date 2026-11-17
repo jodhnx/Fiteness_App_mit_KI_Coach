@@ -37,6 +37,7 @@ import {
 } from "@/lib/onboarding-draft";
 import { CONFIG_LOCATIONS, type ConfigLocation } from "@/lib/plan-configurator";
 import { PlaceholderNumberInput } from "@/components/ui/placeholder-number-input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { ChevronLeft, ChevronRight, Sparkles, Minus, Plus } from "lucide-react";
 import { useOnboardingDarkTheme } from "@/hooks/use-onboarding-dark-theme";
 
@@ -569,17 +570,27 @@ export function RegistrationFlow() {
             </div>
             <div>
               <Label>Passwort</Label>
-              <Input
-                type="password"
+              <PasswordInput
                 className="mt-1.5 h-12 rounded-xl keyboard-stable-input"
                 value={draft.password}
                 onChange={(e) => patch({ password: e.target.value })}
+                autoComplete="new-password"
+                minLength={8}
               />
               <PasswordStrength password={draft.password} />
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Mindestens 8 Zeichen — stark empfohlen: Buchstaben und Zahlen.
+              </p>
             </div>
             <div>
               <Label>Passwort wiederholen</Label>
-              <Input type="password" className="mt-1.5 h-12 rounded-xl keyboard-stable-input" value={draft.passwordConfirm} onChange={(e) => patch({ passwordConfirm: e.target.value })} />
+              <PasswordInput
+                className="mt-1.5 h-12 rounded-xl keyboard-stable-input"
+                value={draft.passwordConfirm}
+                onChange={(e) => patch({ passwordConfirm: e.target.value })}
+                autoComplete="new-password"
+                minLength={8}
+              />
             </div>
             <label className="flex items-start gap-2 text-xs text-zinc-400">
               <input type="checkbox" checked={draft.acceptTerms} onChange={(e) => patch({ acceptTerms: e.target.checked })} className="mt-0.5 accent-cyan-400" />

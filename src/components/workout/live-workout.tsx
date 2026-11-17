@@ -840,32 +840,51 @@ export function LiveWorkout({ sessionId }: { sessionId: string }) {
       />
     <div className="space-y-4 pb-[calc(10.5rem+env(safe-area-inset-bottom,0px))] max-w-lg lg:max-w-4xl mx-auto keyboard-stable-page">
       <div
-        className="sticky top-0 z-20 pb-2 bg-[#f4f7fa]/95 backdrop-blur-md border-b border-zinc-200 -mx-1 px-1 dark:bg-zinc-950/95 dark:border-white/[0.06]"
+        className="sticky top-0 z-30 pb-2 bg-[#f4f7fa]/95 backdrop-blur-md border-b border-zinc-200 -mx-2 px-2 sm:-mx-1 sm:px-1 dark:bg-zinc-950/95 dark:border-white/[0.06]"
         style={{
-          paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
+          paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))",
         }}
       >
         <div className="flex items-center gap-2 min-h-12">
           <Button
             variant="ghost"
-            className="h-12 min-w-[5.5rem] rounded-xl shrink-0 -ml-1 px-2 gap-0.5 text-sm font-semibold text-zinc-700 dark:text-zinc-200"
+            className="h-11 min-w-[4.75rem] rounded-xl shrink-0 px-2 gap-0.5 text-sm font-semibold text-zinc-700 dark:text-zinc-200"
             onClick={() => setDialog("leave")}
             aria-label="Zurück zum Training"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5 shrink-0" />
             Zurück
           </Button>
-          <div className="min-w-0 flex-1 text-center">
-            <h1 className="text-base font-semibold text-zinc-900 truncate leading-tight dark:text-white">
+          <div className="min-w-0 flex-1 text-center px-1">
+            <h1 className="text-sm sm:text-base font-semibold text-zinc-900 truncate leading-tight dark:text-white">
               {session.name}
             </h1>
             <LiveElapsedClock startedAt={session.startedAt} />
           </div>
-          <div className="w-[5.5rem] shrink-0" aria-hidden />
+          <div className="w-[4.75rem] shrink-0" aria-hidden />
         </div>
-        <p className="text-xs text-zinc-500 mt-1.5 tabular-nums px-1">
-          {completedExercises} / {grouped.length} Übungen
-        </p>
+        <div className="mt-1.5 px-1">
+          <div className="flex items-center justify-between gap-2 text-xs text-zinc-500 tabular-nums">
+            <span>
+              {completedExercises} / {grouped.length} Übungen
+            </span>
+            <span>
+              {completedSets}/{totalSets} Sätze
+            </span>
+          </div>
+          <div className="mt-1.5 h-1.5 rounded-full bg-zinc-200 overflow-hidden dark:bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-300"
+              style={{
+                width: `${
+                  totalSets > 0
+                    ? Math.min(100, Math.round((completedSets / totalSets) * 100))
+                    : 0
+                }%`,
+              }}
+            />
+          </div>
+        </div>
         {remainingRestSec(rest, Date.now()) <= 0 && rest.pausedAt == null && (
           <div className="mt-2 grid grid-cols-3 gap-2 px-1">
             {[60, 90, 120].map((sec) => (

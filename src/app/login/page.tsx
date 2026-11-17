@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { toast } from "sonner";
 import { getLoginErrorMessage } from "@/lib/auth-errors";
 import {
@@ -126,10 +127,9 @@ function LoginForm() {
         </div>
         <div>
           <Label htmlFor="password">Passwort</Label>
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="current-password"
             required
             disabled={loading}

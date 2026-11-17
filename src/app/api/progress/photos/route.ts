@@ -16,6 +16,8 @@ import {
   isPrivateStorageConfigured,
   uploadPrivateObject,
 } from "@/lib/storage/private-storage";
+import { encodePhotoCaption } from "@/lib/progress-photo-meta";
+import { isValid, startOfDay } from "date-fns";
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +25,7 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) return jsonError("Nicht angemeldet", 401);
     const userId = session.user.id;
 
-    const limit = rateLimit(`photo:${userId}`, 10, 3600_000);
+    const limit = rateLimit(`photo:${userId}`, 20, 3600_000);
     if (!limit.success) return jsonError("Zu viele Uploads", 429);
 
     if (!isPrivateStorageConfigured()) {
@@ -35,11 +37,30 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    const caption = (formData.get("caption") as string) || undefined;
+    const captionRaw = (formData.get("caption") as string) || undefined;
+    const weightRaw = formData.get("weightKg");
+    const takenAtRaw = formData.get("takenAt");
+    const analyzeFlag = String(formData.get("analyze") ?? "0") === "1";
+
     if (!file) return jsonError("Keine Datei");
 
     const invalid = validateImageUpload(file);
     if (invalid) return jsonError(invalid);
+
+    const weightKg =
+      weightRaw != null && String(weightRaw).trim()
+        ? Number(String(weightRaw).replace(",", "."))
+        : null;
+    const caption = encodePhotoCaption(
+      captionRaw,
+      weightKg != null && Number.isFinite(weightKg) ? weightKg : null
+    );
+
+    let takenAt = new Date();
+    if (typeof takenAtRaw === "string" && takenAtRaw.trim()) {
+      const d = startOfDay(new Date(takenAtRaw));
+      if (isValid(d)) takenAt = d;
+    }
 
     const buffer = await readUploadBuffer(file);
     const contentType = (file.type || "image/jpeg").toLowerCase();
@@ -50,8 +71,23 @@ export async function POST(req: NextRequest) {
 
     await uploadPrivateObject(storageKey, buffer, contentType);
 
-    const base64 = buffer.toString("base64");
-    const analysis = await analyzeProgressPhoto(base64, userId);
+    // Privacy: never send progress photos to AI unless the client opts in.
+    let analysis = {
+      analysis: null as string | null,
+      bodyFat: null as string | null,
+      muscle: null as string | null,
+      progress: null as string | null,
+    };
+    if (analyzeFlag) {
+      const base64 = buffer.toString("base64");
+      const ai = await analyzeProgressPhoto(base64, userId);
+      analysis = {
+        analysis: ai.analysis ?? null,
+        bodyFat: ai.bodyFat ?? null,
+        muscle: ai.muscle ?? null,
+        progress: ai.progress ?? null,
+      };
+    }
 
     let photo;
     try {
@@ -60,6 +96,7 @@ export async function POST(req: NextRequest) {
           userId,
           imageUrl: storageKey,
           caption,
+          takenAt,
           aiAnalysis: analysis.analysis,
           aiBodyFat: analysis.bodyFat,
           aiMuscle: analysis.muscle,
@@ -67,7 +104,6 @@ export async function POST(req: NextRequest) {
         },
       });
     } catch (e) {
-      // Do not leave an orphaned object behind if the row could not be written.
       await deletePrivateObject(storageKey).catch(() => {});
       throw e;
     }

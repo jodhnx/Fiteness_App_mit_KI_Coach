@@ -16,13 +16,11 @@ import { buildWeightAnalytics, type WeightPeriod } from "@/lib/weight-analytics"
 import { WeightInput } from "@/components/progress/weight-input";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import Image from "next/image";
 import { BodyTransformationCard } from "@/components/progress/body-transformation-card";
 import type { BodyTransformation } from "@/lib/body-transformation";
 import { TrainingHistorySection } from "@/components/progress/training-history-section";
 import { ProgressStatsSection } from "@/components/progress/progress-stats-section";
 import dynamic from "next/dynamic";
-import { Input } from "@/components/ui/input";
 import { prefetchProgressCharts } from "@/lib/progress-chart-prefetch";
 import { ProgressOverviewCards } from "@/components/progress/progress-overview-cards";
 import { BodyMeasurementsCard } from "@/components/progress/body-measurements-card";
@@ -31,6 +29,7 @@ import { markScreenLoaded } from "@/lib/storage-service";
 import type { HomeDataPayload } from "@/lib/home-defaults";
 import { ProgressWeeklyIntelligenceCard } from "@/components/progress/progress-weekly-intelligence-card";
 import { ProgressWeightHero } from "@/components/progress/progress-weight-hero";
+import { ProgressPhotosGallery } from "@/components/progress/progress-photos-gallery";
 
 const ProgressChartsSection = dynamic(
   () =>
@@ -60,6 +59,7 @@ type ProgressPayload = {
   photos: {
     id: string;
     imageUrl: string;
+    caption?: string | null;
     aiAnalysis?: string;
     aiProgress?: string;
     takenAt?: string;
@@ -301,21 +301,6 @@ export default function ProgressPage() {
     [reload]
   );
 
-  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/progress/photos", { method: "POST", body: fd });
-    if (!res.ok) {
-      toast.error("Upload fehlgeschlagen");
-      return;
-    }
-    toast.success("Fortschrittsbild gespeichert");
-    invalidateCache(PROGRESS_CACHE_KEY);
-    reload();
-  }
-
   const showSkeleton = loading && !displayData;
   const lastWeight = analytics.currentKg ?? profile?.weightKg;
 
@@ -470,83 +455,14 @@ export default function ProgressPage() {
       ) : null}
 
       {tab === "photos" && !showSkeleton ? (
-        <div className="card-premium p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
-            Vorher / Nachher
-          </h3>
-          <Input type="file" accept="image/*" onChange={uploadPhoto} className="text-sm" />
-          {photos.length === 0 ? (
-            <p className="text-sm text-zinc-500 py-4 text-center">
-              Noch keine Progress-Fotos. Lade ein privates Vorher-Bild hoch — nur du siehst es.
-            </p>
-          ) : (
-            <>
-              {photos.length >= 2 && (
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                    <p className="text-[10px] text-zinc-500 px-2 py-1 bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-400">
-                      Vorher
-                      {photos[photos.length - 1]?.takenAt
-                        ? ` · ${format(new Date(photos[photos.length - 1]!.takenAt!), "dd.MM.")}`
-                        : ""}
-                    </p>
-                    <Image
-                      src={photos[photos.length - 1]!.imageUrl}
-                      alt="Vorher"
-                      width={200}
-                      height={200}
-                      unoptimized
-                      className="w-full h-32 object-cover"
-                    />
-                  </div>
-                  <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                    <p className="text-[10px] text-zinc-500 px-2 py-1 bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-400">
-                      Nachher
-                      {photos[0]?.takenAt
-                        ? ` · ${format(new Date(photos[0]!.takenAt!), "dd.MM.")}`
-                        : ""}
-                    </p>
-                    <Image
-                      src={photos[0]!.imageUrl}
-                      alt="Nachher"
-                      width={200}
-                      height={200}
-                      unoptimized
-                      className="w-full h-32 object-cover"
-                    />
-                  </div>
-                </div>
-              )}
-              <div className="space-y-2 max-h-56 overflow-y-auto">
-                {photos.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex gap-3 items-center rounded-lg bg-zinc-50 p-2 dark:bg-zinc-900/60"
-                  >
-                    <Image
-                      src={p.imageUrl}
-                      alt=""
-                      width={48}
-                      height={48}
-                      unoptimized
-                      className="h-12 w-12 rounded-lg object-cover shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <p className="text-xs text-zinc-500">
-                        {p.takenAt ? format(new Date(p.takenAt), "dd.MM.yyyy") : "—"}
-                      </p>
-                      {p.aiProgress && (
-                        <p className="text-[11px] text-zinc-600 truncate dark:text-zinc-300">
-                          {p.aiProgress}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        <ProgressPhotosGallery
+          photos={photos}
+          defaultWeightKg={lastWeight ?? null}
+          onChanged={() => {
+            invalidateCache(PROGRESS_CACHE_KEY);
+            reload();
+          }}
+        />
       ) : null}
 
       {tab === "body" && !showSkeleton ? (
